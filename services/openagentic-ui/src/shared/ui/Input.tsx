@@ -1,14 +1,14 @@
 import React from 'react';
 
 /**
- * Shared Input — NEO-BRUTALIST field-guide restyle.
+ * Shared Input — TERMINAL GLASS (elevated) re-skin.
  *
- * Reads ONLY theme tokens. 2px solid ink border (border-rule-strong),
- * near-sharp corners (rounded-input → --radius-input, 2px), surface
- * background, signal-orange focus (border-accent + shadow-hard-xs). The
- * field label uses the mono eyebrow marker. Error state swaps the border +
- * focus shadow to the error token (no raw rgba literal). Prop API
- * ({ label, error, ...inputAttrs }) is unchanged.
+ * Reads ONLY theme tokens via the .glass-field* classes in theme.css. Replaces
+ * the brutalist 2px-ink-border + near-sharp corners + hard focus shadow with a
+ * frosted field: faint glass fill, 1px glass border + top edge highlight, soft
+ * radius (--ctl-radius), and a signal-orange focus GLOW ring. The label is a
+ * quiet Inter label (NOT the mono eyebrow). Error state swaps the border + glow
+ * to the error token. Prop API ({ label, error, ...inputAttrs }) is unchanged.
  */
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -21,22 +21,13 @@ export const Input: React.FC<InputProps> = ({
   className = '',
   ...props
 }) => {
-  const baseStyles = [
-    'block w-full rounded-input px-4 py-2.5 text-sm',
-    'bg-surface text-fg placeholder:text-fg-subtle',
-    'border-2 border-rule-strong',
-    'transition-[border-color,box-shadow] duration-100',
-    'focus:outline-none focus:border-accent focus:shadow-hard-xs',
-  ].join(' ');
-
-  const errorStyles = error
-    ? 'border-err focus:border-err'
-    : '';
+  const baseStyles = 'glass-field block px-4 py-2.5 text-sm';
+  const errorStyles = error ? 'glass-field-error' : '';
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       {label && (
-        <label className="eyebrow block text-fg">
+        <label className="glass-field-label block">
           {label}
         </label>
       )}

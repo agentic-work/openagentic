@@ -2122,20 +2122,23 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
         </div>
       )}
 
-      {/* Main chat area - FIXED to use proper flexbox layout - Hidden when fullscreen overlays are open */}
+      {/* Main chat area — TERMINAL GLASS (elevated): a floating frosted glass
+          panel (.glass) that the living orange aurora blurs THROUGH for real
+          depth, matching the reference main column. Inset from the viewport
+          edges so it reads as a panel (the sidebar is likewise floating), with
+          the staggered rise load-in. Hidden when fullscreen overlays are open. */}
       {!showAdminPortal && !showDocsViewer && (
       <div
         className="flex flex-col transition-all duration-150"
         style={{
           position: 'fixed',
-          top: 0,
-          bottom: 0,
-          right: 0,
+          top: 12,
+          bottom: 12,
+          right: 12,
           left: isSidebarExpanded ? '320px' : '64px',
-          width: `calc(100vw - ${isSidebarExpanded ? '320px' : '64px'})`
         }}
       >
-        <div className="flex flex-col h-full w-full">
+        <div className="glass rise rise-d2 flex flex-col h-full w-full overflow-hidden">
           {/* Conditional rendering: Chat Mode vs Flows Mode */}
           {appMode === 'flows' ? (
             /* Flows Mode - OpenAgenticflow Builder (embedded=true: sidebar managed by ChatSidebar) */
@@ -2148,7 +2151,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
           {/* Main content area - Chat messages */}
           <div
             id="chat-messages-container"
-            className="flex-1 overflow-y-auto bg-theme-bg-primary relative"
+            className="flex-1 overflow-y-auto bg-transparent relative"
             style={{
               // Optimize scroll performance
               overscrollBehavior: 'contain',

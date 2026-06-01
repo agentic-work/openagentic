@@ -391,6 +391,15 @@ interface MessageBubbleProps {
   liveTokensIn?: number;
   liveTokensOut?: number;
   liveActivity?: string;
+  /**
+   * Terminal Glass (Phase 4) — staggered load-in. ChatMessages sets this to a
+   * `rise rise-dN` utility on the FIRST couple of messages only, so the first
+   * turn rises+fades into place as part of the one orchestrated cascade
+   * (sidebar d1 → main d2 → first user d3 → first assistant d4 → composer d5).
+   * Empty for all later messages — the animation is a one-shot on load, not a
+   * per-scroll effect. Tokens/keyframes live in theme.css (the ONE SOT).
+   */
+  riseClass?: string;
 }
 
 /**
@@ -630,6 +639,7 @@ const MessageBubble = memo(function MessageBubble({
   liveTokensOut,
   liveActivity,
   streamingTables,
+  riseClass,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isAssistant = message.role === 'assistant';
@@ -969,7 +979,7 @@ const MessageBubble = memo(function MessageBubble({
     <div
       data-message-id={message.id}
       data-message-role={message.role}
-      className="w-full"
+      className={riseClass ? `w-full ${riseClass}` : 'w-full'}
       style={{ willChange: 'contents' }}
     >
       {/* Message container — task #166 mockup: 760px chat column
@@ -990,7 +1000,7 @@ const MessageBubble = memo(function MessageBubble({
                     onChange={(e) => onEditChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     aria-label="Edit message content"
-                    className="flex-1 px-4 py-2 rounded-input border-2 border-rule-strong bg-surface text-fg shadow-hard-xs resize-none focus:outline-none focus:border-accent"
+                    className="glass-field flex-1 px-4 py-2 resize-none"
                     style={{ minHeight: '44px' }}
                     autoFocus
                   />
@@ -1019,7 +1029,7 @@ const MessageBubble = memo(function MessageBubble({
                     </div>
                   )}
                   <div
-                    className="rounded-none border-2 border-rule-strong bg-surface text-fg shadow-hard-sm px-4 py-3 text-left"
+                    className="glass-bubble-user px-[18px] py-[14px] text-left"
                     data-testid="user-message-bubble"
                     style={{
                       // Editorial typography — mirror codemode .cm-markdown.

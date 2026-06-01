@@ -29,22 +29,20 @@ const ActionButton: React.FC<{
   action: SuggestedAction;
   onClick?: () => void;
 }> = ({ action, onClick }) => {
-  const variantClasses = {
-    primary: 'bg-[var(--color-primary)] text-white hover:opacity-90',
-    secondary: 'bg-[var(--color-surfaceSecondary)] text-[var(--color-text)] hover:bg-[var(--color-surfaceHover)]',
-    outline: 'border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surfaceHover)]',
-  };
+  // Terminal Glass: suggested-action chips are frosted glass buttons with a
+  // glow-lift hover (the .glass-chip helper). The primary variant gets the
+  // signal-orange gradient send-button treatment (.glass-btn-primary).
+  const variantClass =
+    (action.variant || 'secondary') === 'primary'
+      ? 'glass-btn glass-btn-primary'
+      : 'glass-chip';
 
   return (
     <motion.button
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className={`
-        flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium
-        transition-all duration-200
-        ${variantClasses[action.variant || 'secondary']}
-      `}
+      className={`flex items-center gap-2 px-[15px] py-[9px] text-sm ${variantClass}`}
     >
       {action.icon && <span>{action.icon}</span>}
       <span>{action.label}</span>
@@ -53,12 +51,12 @@ const ActionButton: React.FC<{
   );
 };
 
-// Key finding pill
+// Key finding pill — frosted glass chip with a mono technical value.
 const KeyFindingPill: React.FC<{ finding: KeyFinding }> = ({ finding }) => (
-  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-surfaceSecondary)] text-sm">
+  <div className="glass-chip flex items-center gap-2 px-3 py-1.5 text-sm cursor-default">
     {finding.icon && <span>{finding.icon}</span>}
     <span className="text-[var(--color-textMuted)]">{finding.label}:</span>
-    <span className="font-medium text-[var(--color-text)]">{finding.value}</span>
+    <span className="font-mono font-medium text-[var(--color-text)]">{finding.value}</span>
   </div>
 );
 
@@ -88,18 +86,10 @@ export const ResponseSummaryComponent: React.FC<ResponseSummaryProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.2 }}
-      className={`
-        response-summary
-        bg-[var(--color-surfaceSecondary)]/50
-        backdrop-blur-sm
-        border border-[var(--color-border)]/30
-        rounded-lg
-        overflow-hidden
-        ${className}
-      `}
+      className={`response-summary glass-card overflow-hidden ${className}`}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--color-border)]/20">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--glass-border)]">
         <ListTodo className="w-4 h-4 text-[var(--color-primary)]" />
         <span className="text-sm font-medium text-[var(--color-text)]">
           Summary

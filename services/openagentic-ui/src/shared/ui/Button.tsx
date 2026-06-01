@@ -1,17 +1,18 @@
 import React from 'react';
 
 /**
- * Shared Button — NEO-BRUTALIST field-guide restyle.
+ * Shared Button — TERMINAL GLASS (elevated) re-skin.
  *
- * Reads ONLY theme tokens (no raw color/font literals). The brutalist
- * signatures, all token-driven:
- *   - 2px solid ink border (border-rule-strong)
- *   - hard offset shadow, ZERO blur (shadow-hard-sm), tightening to
- *     shadow-hard-xs on press with a 2px translate
- *   - SHARP corners (rounded-none) on primary/danger; small radius on
- *     secondary/ghost so they read as chrome
- *   - IBM Plex Mono (font-mono) UPPERCASE label, tracked via .btn-label
- *   - signal-orange primary (bg-accent / text-on-accent)
+ * Reads ONLY theme tokens via the .glass-btn* classes in theme.css (no raw
+ * color/font literals). Replaces the brutalist 2px-ink-border + hard offset
+ * shadow + sharp corners + mono-uppercase label with the frosted Terminal
+ * Glass language:
+ *   - Inter label (sentence case), tight tracking — NOT uppercase mono
+ *   - soft radius (--ctl-radius, 12px), 1px glass border + top edge highlight
+ *   - primary = the signal-orange gradient + glow send button from the
+ *     reference; secondary/ghost = frosted neutral fill; danger = error-hue
+ *     gradient in the same glass language
+ *   - glow-lift hover (translateY -1px + warm soft shadow), orange focus ring
  *
  * Prop API is unchanged (variant / size / standard button attrs) so no
  * consumer breaks.
@@ -30,30 +31,15 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseClasses = [
-    'inline-flex items-center justify-center',
-    // IBM Plex Mono uppercase tracked label (token-baked in .btn-label)
-    'btn-label',
-    // 2px ink border on every variant — the #2 brutalist signature
-    'border-2 border-rule-strong',
-    'transition-[background,border,box-shadow,transform,color]',
-    'duration-100',
-    // hard zero-blur offset shadow → tighter shadow + 2px nudge on press
-    'shadow-hard-sm active:shadow-hard-xs active:translate-x-[2px] active:translate-y-[2px]',
-    'focus-visible:outline-none focus-visible:shadow-signal',
-    'disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-hard-xs',
-  ].join(' ');
-
-  // SHARP corners on primary/danger (the loud, brutalist CTAs); a hair of
-  // radius on secondary/ghost so dense toolbars stay legible.
-  const shapeClass =
-    variant === 'primary' || variant === 'danger' ? 'rounded-none' : 'rounded-sm';
+  // Base frosted-control class carries the radius, glass border + edge
+  // highlight, Inter label, transitions, focus ring, and disabled state.
+  const baseClasses = 'glass-btn';
 
   const variantClasses = {
-    primary: 'bg-accent text-on-accent hover:brightness-105',
-    secondary: 'bg-surface text-fg hover:bg-surface-2',
-    ghost: 'bg-transparent text-fg hover:bg-surface',
-    danger: 'bg-err text-on-accent hover:brightness-105',
+    primary: 'glass-btn-primary',
+    secondary: 'glass-btn-secondary',
+    ghost: 'glass-btn-ghost',
+    danger: 'glass-btn-danger',
   };
 
   const sizeClasses = {
@@ -65,7 +51,6 @@ export const Button: React.FC<ButtonProps> = ({
 
   const buttonClasses = [
     baseClasses,
-    shapeClass,
     variantClasses[variant],
     sizeClasses[size],
     className,

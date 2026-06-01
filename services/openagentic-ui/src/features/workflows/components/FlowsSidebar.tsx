@@ -60,7 +60,7 @@ const SectionHeader: React.FC<{
 }> = ({ title, isOpen, onToggle, count, action }) => (
   <button
     onClick={onToggle}
-    className="eyebrow w-full flex items-center justify-between px-4 py-2.5 text-fg-subtle border-b-2 border-rule-strong transition-colors hover:bg-surface-2 hover:text-fg"
+    className="eyebrow w-full flex items-center justify-between px-4 py-2.5 text-fg-subtle border-b border-rule transition-colors hover:bg-[var(--ctl-surf)] hover:text-fg"
   >
     <div className="flex items-center gap-1.5">
       <motion.div animate={{ rotate: isOpen ? 90 : 0 }} transition={{ duration: 0.15 }}>
@@ -68,7 +68,7 @@ const SectionHeader: React.FC<{
       </motion.div>
       {title}
       {count !== undefined && (
-        <span className="eyebrow ml-1 px-1.5 py-0.5 rounded-none border-2 border-rule-strong bg-surface text-fg-muted">
+        <span className="eyebrow ml-1 px-1.5 py-0.5 rounded-[var(--radius-chip)] border border-rule bg-[var(--ctl-surf)] text-fg-muted">
           {count}
         </span>
       )}
@@ -310,12 +310,12 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
   // Collapsed mode: just show icons
   if (!isExpanded) {
     return (
-      <div className="w-12 flex-shrink-0 flex flex-col items-center gap-2 pt-2 border-r-2 border-rule-strong bg-bg">
+      <div className="w-12 flex-shrink-0 flex flex-col items-center gap-2 pt-2">
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={onCreateNew}
-          className="p-2 rounded-none border-2 border-rule-strong bg-accent text-on-accent shadow-hard-xs transition-colors"
+          className="glass-newchat p-2"
           title="New Flow"
         >
           <Plus className="w-5 h-5" />
@@ -325,17 +325,17 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
   }
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-bg">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* New Flow Button */}
       <div className="px-3 mb-1 mt-2">
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={onCreateNew}
-          className="flex items-center gap-3 p-2 rounded-none bg-accent text-on-accent border-2 border-rule-strong shadow-hard-sm transition-[transform,box-shadow] active:translate-x-[2px] active:translate-y-[2px] active:shadow-hard-xs w-full justify-start"
+          className="glass-newchat flex items-center gap-3 px-3 py-2.5 w-full justify-start"
         >
           <Plus className="w-5 h-5 flex-shrink-0" />
-          <span className="btn-label text-xs whitespace-nowrap">New Flow</span>
+          <span className="text-sm font-semibold whitespace-nowrap">New flow</span>
         </motion.button>
       </div>
 
@@ -348,7 +348,7 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search flows..."
-            className="w-full pl-8 pr-3 py-1.5 text-sm rounded-input bg-surface text-fg border-2 border-rule-strong focus:outline-none focus:border-accent transition-colors"
+            className="glass-field pl-8 pr-3 py-1.5 text-sm"
           />
         </div>
       </div>
@@ -402,7 +402,7 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
                         }
                       }
                     }}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-none border-2 border-transparent text-left text-xs transition-colors hover:bg-surface-2 hover:border-rule"
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[var(--ctl-radius-sm)] border border-transparent text-left text-xs transition-[background,border-color] glass-row-hover"
                   >
                     <span className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
                       {executionStatusIcon(exec.status)}

@@ -116,37 +116,37 @@ export const StarterPrompts: React.FC<StarterPromptsProps> = ({
         transition={{ duration: 0.3 }}
         className="text-center mb-8"
       >
-        {/* Mono tight-tracked display heading (field-guide brand signature). */}
-        <h2 className="display text-xl mb-2 text-fg">
+        {/* Inter heading, tight tracking (Terminal Glass — no mono headings). */}
+        <h2 className="text-xl font-semibold tracking-tight mb-2 text-fg">
           How can I help you today?
         </h2>
-        {/* Mono uppercase tracked eyebrow marker. */}
-        <p className="eyebrow text-fg-subtle">
+        {/* Quiet muted subline (Inter, not mono uppercase). */}
+        <p className="text-sm text-fg-subtle">
           Click a suggestion or type your own message
         </p>
       </motion.div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {STARTER_PROMPTS.map((prompt, index) => (
-          // Sharp brutalist suggestion card: 2px ink border + sharp corners +
-          // hard zero-blur offset shadow (tightens with a 2px press nudge on
-          // hover). Accent on hover comes from the brand accent token — no
-          // per-prompt raw color literal in the render path.
+          // Frosted-glass suggestion CHIP: composes the .glass-chip helper —
+          // soft radius, top-lit frosted fill, hairline edge, glow-lift on
+          // hover (lifts + signal-orange border). All color/shadow values read
+          // glass tokens from theme.css; nothing hardcoded in the render path.
           <motion.button
             key={prompt.id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.03 }}
             onClick={() => onSelect(prompt)}
-            className="group p-4 rounded-none border-2 border-rule-strong bg-surface text-fg shadow-hard-sm text-left transition-all duration-150 hover:border-accent hover:shadow-hard-xs hover:translate-x-[2px] hover:translate-y-[2px]"
+            className="glass-chip group p-4 text-left"
           >
-            {/* Icon — accent-tinted square chip (sharp corners). */}
-            <div className="w-8 h-8 rounded-none border-2 border-rule-strong bg-accent-soft text-accent flex items-center justify-center mb-3 transition-colors">
+            {/* Icon — soft accent-tinted glass square. */}
+            <div className="w-8 h-8 rounded-[10px] bg-accent-soft text-accent flex items-center justify-center mb-3 transition-colors">
               {prompt.icon}
             </div>
 
-            {/* Title — mono uppercase tracked label. */}
-            <p className="btn-label text-xs line-clamp-2 text-fg">
+            {/* Title — Inter, quiet and legible (no mono uppercase). */}
+            <p className="text-xs font-medium line-clamp-2 text-fg">
               {prompt.title}
             </p>
           </motion.button>

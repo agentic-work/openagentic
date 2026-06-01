@@ -10,6 +10,14 @@ interface GlassCardProps {
   as?: keyof JSX.IntrinsicElements;
 }
 
+/**
+ * GlassCard — TERMINAL GLASS (elevated) re-skin.
+ *
+ * Now a REAL frosted glass surface (the name finally matches): top-lit
+ * gradient + backdrop blur + soft 1px glass border + top edge highlight + soft
+ * radius + soft shadow, all via the token-driven .glass-surface classes in
+ * theme.css. `hover` adds the glow-lift. Prop API is unchanged.
+ */
 const GlassCard: React.FC<GlassCardProps> = ({
   children,
   className = '',
@@ -22,27 +30,9 @@ const GlassCard: React.FC<GlassCardProps> = ({
   const Component = as as React.ElementType;
 
   const cardClasses = clsx(
-    // Solid brutalist surface — token-driven (no glassmorphism; the name is
-    // retained for API stability)
-    'bg-surface text-fg',
-    'border-2 border-rule-strong',
-    'rounded-none',
-    'shadow-hard',
-
-    // Transition - snappy, not sluggish
-    'transition-all duration-150',
-
-    // Hover lifts the hard offset shadow
-    hover && [
-      'hover:bg-surface-2',
-      'hover:shadow-hard-lg',
-      onClick && 'cursor-pointer',
-    ],
-
-    // Padding
+    'glass-surface',
+    hover && ['glass-surface-hover', onClick && 'cursor-pointer'],
     padding,
-
-    // Custom classes
     className
   );
 

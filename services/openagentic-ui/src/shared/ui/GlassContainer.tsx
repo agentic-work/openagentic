@@ -9,6 +9,16 @@ export interface GlassContainerProps {
   as?: keyof JSX.IntrinsicElements;
 }
 
+/**
+ * GlassContainer — TERMINAL GLASS (elevated) re-skin.
+ *
+ * Token-driven frosted panel via the .glass-surface* classes in theme.css.
+ * Variants map to elevation tiers in the glass language:
+ *   - subtle  → faint frosted fill, no blur (inline chrome)
+ *   - medium  → the standard frosted glass card (blur + soft shadow)
+ *   - strong  → frosted glass with the deep panel shadow
+ * Reads ONLY theme tokens. Prop API unchanged.
+ */
 export const GlassContainer: React.FC<GlassContainerProps> = ({
   children,
   variant = 'medium',
@@ -17,13 +27,10 @@ export const GlassContainer: React.FC<GlassContainerProps> = ({
   onClick,
   as: Component = 'div',
 }) => {
-  // NEO-BRUTALIST panel/surface — token-driven. Variants map to elevation
-  // tiers via the surface ramp + hard offset shadow; all carry the 2px ink
-  // border + sharp corners. Reads ONLY theme tokens.
   const variantClasses = {
-    subtle: 'rounded-none border-2 border-rule bg-bg text-fg',
-    medium: 'rounded-none border-2 border-rule-strong bg-surface text-fg shadow-hard-sm',
-    strong: 'rounded-none border-2 border-rule-strong bg-surface-2 text-fg shadow-hard',
+    subtle: 'glass-surface glass-surface-subtle',
+    medium: 'glass-surface',
+    strong: 'glass-surface glass-surface-strong',
   };
 
   const paddingClasses = {

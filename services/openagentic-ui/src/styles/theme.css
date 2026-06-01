@@ -256,6 +256,68 @@
   --color-textSecondary: var(--color-fg-muted);  --color-textMuted: var(--color-fg-subtle);
   --fg-0: var(--color-fg);  --fg-1: var(--color-fg-muted);  --fg-2: var(--color-fg-subtle);  --fg-3: var(--color-fg-subtle);
   --cm-text: var(--color-fg);  --cm-fg: var(--color-fg);  --cm-bg: var(--color-bg);  --cm-fg-0: var(--color-fg);
+
+  /* ── TERMINAL GLASS (elevated) — dark "orange-aurora" world ────────────────
+   * The frosted-glass + living-atmosphere design system. theme.css stays the
+   * ONE SOT: surfaces author with the .glass utility + these tokens; the app
+   * shell mounts .aurora/.grain/.vignette behind everything. Dark = the
+   * #140F09 world with a hero orange aurora. See terminal-glass-reference.html.
+   * --------------------------------------------------------------------------*/
+  --glass-page-bg:  #140F09;  /* the deep base the aurora blooms over (dark)   */
+  /* frosted surface = a subtle top-lit gradient of near-transparent warm paper */
+  --glass-surf-1:   color-mix(in srgb, var(--brand-paper) 4%,  transparent);
+  --glass-surf-2:   color-mix(in srgb, var(--brand-paper) 6.5%, transparent);
+  --glass-bg:       linear-gradient(180deg, var(--glass-surf-2), var(--glass-surf-1));
+  --glass-border:   color-mix(in srgb, var(--brand-paper) 9%, transparent);
+  --glass-edge:     color-mix(in srgb, #FFFFFF 14%, transparent);   /* hairline top highlight */
+  --glass-blur:     blur(28px) saturate(1.4);
+  --glass-radius:   18px;
+  --glass-shadow:   0 24px 60px -20px rgba(0,0,0,.7),
+                    0 2px 0 var(--glass-edge) inset,
+                    0 0 0 1px var(--glass-border);
+  --glass-card-shadow: 0 16px 40px -22px rgba(0,0,0,.7),
+                       0 1px 0 var(--glass-edge) inset;
+  /* aurora bloom stack — signal-orange radial blooms that slowly drift */
+  --aurora-1:  color-mix(in srgb, var(--brand-signal) 42%, transparent);
+  --aurora-2:  color-mix(in srgb, var(--brand-signal-soft) 28%, transparent);
+  --aurora-3:  color-mix(in srgb, var(--brand-signal-soft) 20%, transparent);
+  --aurora-4:  color-mix(in srgb, var(--brand-signal) 16%, transparent);
+  --aurora-opacity: 0.9;
+  --aurora-blur:    40px;
+  --grain-opacity:  0.05;
+  --vignette:  radial-gradient(120% 120% at 50% 40%, transparent 55%, rgba(0,0,0,.45));
+  /* on-glass accent tints (user/assistant bubbles, chips, send button) */
+  --glass-accent-fill:   color-mix(in srgb, var(--brand-signal) 20%, transparent);
+  --glass-accent-fill-2: color-mix(in srgb, var(--brand-signal) 12%, transparent);
+  --glass-accent-line:   color-mix(in srgb, var(--brand-signal) 30%, transparent);
+  --glass-accent-glow:   color-mix(in srgb, var(--brand-signal) 50%, transparent);
+
+  /* ── Glass CONTROL tokens (Button / Input / StatusBadge / Card primitives) ──
+   * Re-skinned chrome surfaces: soft radii, frosted fills, the signal-orange
+   * gradient + glow send button, glow-lift hover, orange focus ring. Dark world.
+   * --------------------------------------------------------------------------*/
+  --ctl-radius:        12px;   /* buttons / inputs (soft, not sharp)          */
+  --ctl-radius-sm:     10px;   /* xs/sm chrome                                */
+  /* frosted neutral fill (secondary / ghost surfaces) */
+  --ctl-surf:          color-mix(in srgb, var(--brand-paper) 7%, transparent);
+  --ctl-surf-hover:    color-mix(in srgb, var(--brand-paper) 11%, transparent);
+  /* primary = the orange gradient send button from the reference */
+  --ctl-primary-grad:  linear-gradient(180deg, var(--brand-signal-soft), var(--brand-signal));
+  --ctl-primary-fg:    color-mix(in srgb, var(--brand-on-accent) 88%, var(--brand-signal));
+  --ctl-primary-glow:  0 6px 22px -6px color-mix(in srgb, var(--brand-signal) 70%, transparent);
+  --ctl-primary-glow-h:0 12px 30px -6px color-mix(in srgb, var(--brand-signal) 78%, transparent);
+  /* danger uses the error hue in the same glass language */
+  --ctl-danger-grad:   linear-gradient(180deg,
+                          color-mix(in srgb, var(--brand-error) 85%, white),
+                          var(--brand-error));
+  --ctl-danger-glow:   0 6px 22px -6px color-mix(in srgb, var(--brand-error) 60%, transparent);
+  /* glow-lift hover for secondary/ghost/chips (warm soft shadow + orange edge) */
+  --ctl-lift-shadow:   0 10px 24px -12px color-mix(in srgb, var(--brand-signal) 50%, transparent),
+                       0 1px 0 var(--glass-edge) inset;
+  --ctl-edge:          var(--glass-edge);
+  /* orange focus ring (replaces the brutalist hard offset focus) */
+  --ctl-focus-ring:    0 0 0 3px color-mix(in srgb, var(--brand-signal) 30%, transparent);
+  --ctl-focus-border:  color-mix(in srgb, var(--brand-signal) 55%, transparent);
 }
 
 [data-theme="light"] {
@@ -284,6 +346,62 @@
   --color-textSecondary: var(--color-fg-muted);  --color-textMuted: var(--color-fg-subtle);
   --fg-0: var(--color-fg);  --fg-1: var(--color-fg-muted);  --fg-2: var(--color-fg-subtle);  --fg-3: var(--color-fg-subtle);
   --cm-text: var(--color-fg);  --cm-fg: var(--color-fg);  --cm-bg: var(--color-bg);  --cm-fg-0: var(--color-fg);
+
+  /* ── TERMINAL GLASS (elevated) — light "Warm Frost" world ──────────────────
+   * The same glass system on the paper palette: frosted cream cards over a soft
+   * peach/orange bloom on #F4EFE6, ink text, soft shadows, a gentler aurora.
+   * --------------------------------------------------------------------------*/
+  --glass-page-bg:  var(--brand-paper);  /* paper base the gentle bloom sits on */
+  /* frosted cream surface = top-lit lift tint over paper, mostly opaque so ink reads */
+  --glass-surf-1:   color-mix(in srgb, var(--brand-paper-lift) 62%, transparent);
+  --glass-surf-2:   color-mix(in srgb, var(--brand-paper-lift) 78%, transparent);
+  --glass-bg:       linear-gradient(180deg, var(--glass-surf-2), var(--glass-surf-1));
+  --glass-border:   color-mix(in srgb, var(--brand-ink) 10%, transparent);
+  --glass-edge:     color-mix(in srgb, #FFFFFF 75%, transparent);   /* bright cream hairline */
+  --glass-blur:     blur(24px) saturate(1.3);
+  --glass-radius:   18px;
+  --glass-shadow:   0 18px 44px -22px color-mix(in srgb, var(--brand-ink) 28%, transparent),
+                    0 1px 0 var(--glass-edge) inset,
+                    0 0 0 1px var(--glass-border);
+  --glass-card-shadow: 0 12px 32px -20px color-mix(in srgb, var(--brand-ink) 24%, transparent),
+                       0 1px 0 var(--glass-edge) inset;
+  /* gentler peach/orange bloom for Warm Frost */
+  --aurora-1:  color-mix(in srgb, var(--brand-signal) 22%, transparent);
+  --aurora-2:  color-mix(in srgb, var(--brand-signal-soft) 24%, transparent);
+  --aurora-3:  color-mix(in srgb, var(--brand-signal-soft) 18%, transparent);
+  --aurora-4:  color-mix(in srgb, var(--brand-signal) 10%, transparent);
+  --aurora-opacity: 0.55;
+  --aurora-blur:    48px;
+  --grain-opacity:  0.035;
+  --vignette:  radial-gradient(120% 120% at 50% 40%, transparent 60%, color-mix(in srgb, var(--brand-ink) 8%, transparent));
+  /* on-glass accent tints */
+  --glass-accent-fill:   color-mix(in srgb, var(--brand-signal) 16%, transparent);
+  --glass-accent-fill-2: color-mix(in srgb, var(--brand-signal) 9%, transparent);
+  --glass-accent-line:   color-mix(in srgb, var(--brand-signal) 34%, transparent);
+  --glass-accent-glow:   color-mix(in srgb, var(--brand-signal) 40%, transparent);
+
+  /* ── Glass CONTROL tokens — Warm Frost (light) variants ─────────────────────
+   * Same control language on paper: frosted cream chrome, ink labels, the same
+   * orange gradient primary, gentler glow + a peach focus ring.
+   * --------------------------------------------------------------------------*/
+  --ctl-radius:        12px;
+  --ctl-radius-sm:     10px;
+  /* frosted cream neutral fill over paper (mostly opaque so ink reads) */
+  --ctl-surf:          color-mix(in srgb, var(--brand-paper-lift) 70%, transparent);
+  --ctl-surf-hover:    color-mix(in srgb, var(--brand-paper-lift) 92%, transparent);
+  --ctl-primary-grad:  linear-gradient(180deg, var(--brand-signal-soft), var(--brand-signal));
+  --ctl-primary-fg:    var(--brand-on-accent);
+  --ctl-primary-glow:  0 6px 20px -8px color-mix(in srgb, var(--brand-signal) 55%, transparent);
+  --ctl-primary-glow-h:0 12px 28px -8px color-mix(in srgb, var(--brand-signal) 62%, transparent);
+  --ctl-danger-grad:   linear-gradient(180deg,
+                          color-mix(in srgb, var(--brand-error-ink) 80%, white),
+                          var(--brand-error-ink));
+  --ctl-danger-glow:   0 6px 20px -8px color-mix(in srgb, var(--brand-error-ink) 45%, transparent);
+  --ctl-lift-shadow:   0 10px 22px -12px color-mix(in srgb, var(--brand-signal) 38%, transparent),
+                       0 1px 0 var(--glass-edge) inset;
+  --ctl-edge:          var(--glass-edge);
+  --ctl-focus-ring:    0 0 0 3px color-mix(in srgb, var(--brand-signal) 26%, transparent);
+  --ctl-focus-border:  color-mix(in srgb, var(--brand-signal) 60%, transparent);
 }
 
 /* ============================================================================
@@ -621,6 +739,425 @@ html[data-accent="magenta"] { --color-accent: var(--cat-accent-magenta); }
     transform: translate(2px, 2px);
     box-shadow: var(--shadow-xs);
   }
+}
+
+/* ============================================================================
+ * LAYER 5 — TERMINAL GLASS (elevated): frosted surfaces + living atmosphere.
+ *
+ * The glassmorphism design system (replaces the brutalist hard-shadow look on
+ * the big feature surfaces). All values read the per-theme glass / aurora
+ * tokens defined in the LAYER-2 blocks, so dark ("orange-aurora") and light
+ * ("Warm Frost") both flow from this ONE SOT. Components apply these classes;
+ * the app shell mounts the atmosphere layers behind everything.
+ * Reference: docs/design/terminal-glass-reference.html
+ * ==========================================================================*/
+@layer components {
+  /* ---- frosted glass surface: top-lit gradient + blur + soft border/shadow
+         + a 1px light EDGE highlight at the top (::before hairline). ---- */
+  .glass {
+    position: relative;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: var(--glass-radius);
+    box-shadow: var(--glass-shadow);
+    overflow: hidden;
+  }
+  .glass::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 18px;
+    right: 18px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--glass-edge), transparent);
+    pointer-events: none;
+  }
+  /* a card variant (frosted result CARD inside prose): same surface, softer
+     shadow, no clipping of its own children's hairline. */
+  .glass-card {
+    position: relative;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: var(--radius-chip);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-card-shadow);
+  }
+
+  /* ==========================================================================
+   * RE-SKINNED SHARED PRIMITIVES (Phase 2): Terminal Glass control surfaces.
+   * The shared/ui primitives (Button, Card, Input, StatusBadge, GlassCard,
+   * GlassContainer) apply these classes so they hold ZERO color/font literals
+   * (the no-hardcoding guard stays green). All values read the per-theme glass
+   * / ctl tokens, so every control flips dark ⇄ light from the ONE SOT.
+   * ========================================================================== */
+
+  /* ---- Button: frosted chrome + Inter label + glow-lift hover ---- */
+  .glass-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-body);
+    font-weight: 600;
+    letter-spacing: -0.006em;
+    border-radius: var(--ctl-radius);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 1px 0 var(--ctl-edge) inset;
+    transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.2, 1),
+                box-shadow 0.18s ease, background 0.18s ease,
+                border-color 0.18s ease, color 0.18s ease;
+  }
+  .glass-btn:focus-visible {
+    outline: none;
+    border-color: var(--ctl-focus-border);
+    box-shadow: var(--ctl-focus-ring), 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 1px 0 var(--ctl-edge) inset;
+  }
+  /* mono variant: technical / code buttons keep IBM Plex Mono (per the spec) */
+  .glass-btn-mono { font-family: var(--font-mono); font-weight: 500; }
+
+  /* primary = signal-orange gradient + glow (the reference send button) */
+  .glass-btn-primary {
+    background: var(--ctl-primary-grad);
+    color: var(--ctl-primary-fg);
+    border-color: var(--glass-accent-line);
+    box-shadow: var(--ctl-primary-glow), 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-btn-primary:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: var(--ctl-primary-glow-h), 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-btn-primary:not(:disabled):active { transform: translateY(0); }
+
+  /* secondary = frosted neutral fill, glow-lift on hover */
+  .glass-btn-secondary {
+    background: var(--ctl-surf);
+    color: var(--color-fg);
+  }
+  .glass-btn-secondary:not(:disabled):hover {
+    transform: translateY(-1px);
+    background: var(--ctl-surf-hover);
+    border-color: var(--ctl-focus-border);
+    box-shadow: var(--ctl-lift-shadow);
+  }
+
+  /* ghost = transparent until hover, then a faint frosted lift */
+  .glass-btn-ghost {
+    background: transparent;
+    color: var(--color-fg);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .glass-btn-ghost:not(:disabled):hover {
+    transform: translateY(-1px);
+    background: var(--ctl-surf);
+    border-color: var(--glass-border);
+    box-shadow: var(--ctl-lift-shadow);
+  }
+
+  /* danger = error-hue gradient in the same glass language */
+  .glass-btn-danger {
+    background: var(--ctl-danger-grad);
+    color: var(--color-on-accent);
+    border-color: color-mix(in srgb, var(--color-err) 40%, transparent);
+    box-shadow: var(--ctl-danger-glow), 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-btn-danger:not(:disabled):hover { transform: translateY(-1px); }
+
+  /* ---- Input: frosted field + orange focus glow ---- */
+  .glass-field {
+    width: 100%;
+    font-family: var(--font-body);
+    background: var(--ctl-surf);
+    color: var(--color-fg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--ctl-radius);
+    box-shadow: 0 1px 0 var(--ctl-edge) inset;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  }
+  .glass-field::placeholder { color: var(--color-fg-subtle); }
+  .glass-field:focus {
+    outline: none;
+    border-color: var(--ctl-focus-border);
+    box-shadow: var(--ctl-focus-ring), 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-field-error,
+  .glass-field-error:focus {
+    border-color: var(--color-err);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-err) 26%, transparent),
+                0 1px 0 var(--ctl-edge) inset;
+  }
+  /* field label: Inter (not mono uppercase) — quiet, muted */
+  .glass-field-label {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: var(--text-sm);
+    color: var(--color-fg-muted);
+  }
+
+  /* ---- StatusBadge: frosted chip with a soft tint + mono technical label ---- */
+  .glass-status {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: var(--text-eyebrow);
+    letter-spacing: 0;
+    text-transform: none;
+    border-radius: var(--radius-chip);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-status-success { background: color-mix(in srgb, var(--color-ok) 14%, transparent);  color: var(--color-ok);  border-color: color-mix(in srgb, var(--color-ok) 32%, transparent); }
+  .glass-status-error   { background: color-mix(in srgb, var(--color-err) 14%, transparent); color: var(--color-err); border-color: color-mix(in srgb, var(--color-err) 32%, transparent); }
+  .glass-status-warning { background: color-mix(in srgb, var(--color-warn) 14%, transparent);color: var(--color-warn);border-color: color-mix(in srgb, var(--color-warn) 32%, transparent); }
+  .glass-status-info    { background: color-mix(in srgb, var(--color-nfo) 14%, transparent); color: var(--color-nfo); border-color: color-mix(in srgb, var(--color-nfo) 32%, transparent); }
+  .glass-status-default { background: var(--ctl-surf); color: var(--color-fg-muted); }
+
+  /* ---- Card / GlassContainer surface tiers (frosted, soft radius) ---- */
+  .glass-surface {
+    position: relative;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    color: var(--color-fg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius);
+    box-shadow: var(--glass-card-shadow);
+    transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.18s ease, background 0.18s ease;
+  }
+  .glass-surface-subtle {
+    background: var(--ctl-surf);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-surface-strong { box-shadow: var(--glass-shadow); }
+  /* hover-lift variant (Card hover / GlassCard hover) */
+  .glass-surface-hover:hover {
+    transform: translateY(-2px);
+    border-color: var(--ctl-focus-border);
+    box-shadow: var(--ctl-lift-shadow), var(--glass-card-shadow);
+  }
+
+  /* ==========================================================================
+   * CHAT-SURFACE glass helpers (Phase 3): the Terminal Glass chat treatment.
+   * Message bubbles, the frosted result CARD (tags / kv rows / status LEDs /
+   * "N/N healthy" chip), the suggestion/follow-up CHIPS, the top-bar crumb +
+   * mono model pill. Every value reads a per-theme glass / ctl token so the
+   * whole chat flips dark ⇄ light from the ONE SOT. Reference: the chat screen
+   * in docs/design/terminal-glass-reference.html.
+   * ========================================================================== */
+
+  /* ---- user message bubble = subtle orange-tinted glass ---- */
+  .glass-bubble-user {
+    background: linear-gradient(180deg, var(--glass-accent-fill), var(--glass-accent-fill-2));
+    border: 1px solid var(--glass-accent-line);
+    border-radius: 16px 16px 5px 16px;
+    box-shadow: 0 8px 24px -12px var(--glass-accent-glow);
+    color: var(--color-fg);
+  }
+
+  /* ---- assistant avatar = glowing signal-orange chip ---- */
+  .glass-avatar {
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 30% 25%, var(--brand-signal-soft), var(--brand-signal));
+    color: var(--brand-on-accent);
+    box-shadow: 0 3px 14px var(--glass-accent-glow),
+                0 0 0 1px color-mix(in srgb, #FFFFFF 12%, transparent) inset;
+  }
+
+  /* ---- frosted result CARD interior bits (tags / kv rows / status LEDs) ---- */
+  .glass-kv {
+    border-bottom: 1px solid color-mix(in srgb, var(--brand-paper) 6%, transparent);
+  }
+  .glass-kv:last-child { border-bottom: 0; }
+  .glass-tag {
+    font-family: var(--font-mono);
+    background: color-mix(in srgb, var(--glass-page-bg) 50%, transparent);
+    border: 1px solid var(--glass-border);
+    color: var(--brand-signal-soft);
+    border-radius: 7px;
+  }
+  .glass-led {
+    border-radius: 50%;
+    background: var(--color-ok);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-ok) 70%, transparent);
+  }
+  .glass-ok-chip {
+    font-family: var(--font-mono);
+    color: var(--color-ok);
+    background: color-mix(in srgb, var(--color-ok) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-ok) 28%, transparent);
+    border-radius: 6px;
+  }
+
+  /* ---- suggestion / follow-up CHIP = frosted glass button, glow-lift hover ---- */
+  .glass-chip {
+    font-family: var(--font-body);
+    font-weight: 500;
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    background: linear-gradient(180deg,
+                  color-mix(in srgb, var(--brand-paper) 7%, transparent),
+                  color-mix(in srgb, var(--brand-paper) 3%, transparent));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--ctl-radius);
+    box-shadow: 0 1px 0 var(--glass-edge) inset;
+    transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1),
+                box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  }
+  .glass-chip:hover {
+    transform: translateY(-2px);
+    color: var(--color-fg);
+    border-color: var(--ctl-focus-border);
+    box-shadow: var(--ctl-lift-shadow);
+  }
+
+  /* ---- top-bar crumb (⌥ § Chat) + mono model pill with a glowing dot ---- */
+  .glass-crumb {
+    font-family: var(--font-body);
+    font-size: var(--text-eyebrow);
+    color: var(--color-fg-subtle);
+    letter-spacing: 0.04em;
+  }
+  .glass-model-pill {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: var(--text-eyebrow);
+    color: var(--color-fg-muted);
+    background: color-mix(in srgb, var(--brand-paper) 6%, transparent);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--ctl-radius-sm);
+  }
+  .glass-model-dot {
+    border-radius: 50%;
+    background: var(--brand-signal);
+    box-shadow: 0 0 8px var(--brand-signal);
+  }
+
+  /* ==========================================================================
+   * SIDEBAR (Phase 3): frosted nav rows, the segmented tab indicator, and the
+   * orange-tinted-glass "New chat" button — composed by ChatSidebar /
+   * FlowsSidebar. All values read the per-theme glass / ctl tokens (ONE SOT),
+   * so the sidebar flips dark ⇄ light. Matches terminal-glass-reference.html
+   * (.row / .row.on / .tab.on / .newchat).
+   * ========================================================================== */
+
+  /* segmented Chat/Flows tab — the active pane: a lifted frosted slab with the
+     top edge highlight (reference .tab.on). */
+  .glass-tab-active {
+    background: var(--ctl-surf-hover);
+    box-shadow: 0 1px 0 var(--glass-edge) inset;
+  }
+
+  /* session / nav row — hover = a faint frosted wash (reference .row:hover). */
+  .glass-row-hover:hover {
+    background: var(--ctl-surf);
+    border-color: var(--glass-border);
+  }
+  /* active row = lifted frosted surface with the inset edge highlight
+     (reference .row.on). */
+  .glass-row-active {
+    background: var(--ctl-surf-hover);
+    border-color: var(--glass-border);
+    box-shadow: 0 1px 0 var(--glass-edge) inset;
+  }
+
+  /* "New chat" / "New flow" = orange-tinted glass: signal gradient fill, accent
+     line border, soft glow + an Inter label; glow-lift on hover (reference
+     .newchat). */
+  .glass-newchat {
+    font-family: var(--font-body);
+    font-weight: 600;
+    color: var(--brand-signal-soft);
+    background: linear-gradient(180deg, var(--glass-accent-fill), var(--glass-accent-fill-2));
+    border: 1px solid var(--glass-accent-line);
+    border-radius: var(--ctl-radius);
+    box-shadow: var(--ctl-primary-glow), 0 1px 0 var(--glass-edge) inset;
+    transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.2, 1),
+                box-shadow 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+  .glass-newchat:hover {
+    transform: translateY(-1px);
+    border-color: var(--glass-accent-glow);
+    box-shadow: var(--ctl-primary-glow-h), 0 1px 0 var(--glass-edge) inset;
+  }
+  .glass-newchat:active { transform: translateY(0); }
+
+  /* ---- staggered load-in: panels rise+fade with an animation-delay cascade. ---- */
+  .rise {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: oa-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+  .rise-d1 { animation-delay: 0.05s; }
+  .rise-d2 { animation-delay: 0.13s; }
+  .rise-d3 { animation-delay: 0.22s; }
+  .rise-d4 { animation-delay: 0.32s; }
+  .rise-d5 { animation-delay: 0.42s; }
+  .rise-d6 { animation-delay: 0.52s; }
+}
+
+/* ---- the living atmosphere: a fixed aurora + grain + vignette stack the app
+       shell mounts behind everything. Authored at :root (not @layer) so the
+       fixed positioning + z-order are not subject to utility-layer ordering. ---- */
+@keyframes oa-rise {
+  to { opacity: 1; transform: none; }
+}
+@keyframes oa-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(2%, -2%, 0) scale(1.06); }
+  100% { transform: translate3d(-2%, 2%, 0) scale(1.02); }
+}
+
+/* The atmosphere root paints the deep base; children blur THIS for real depth. */
+.oa-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: -1;            /* behind the app content (App shell uses z-10) */
+  background: var(--glass-page-bg);
+  overflow: hidden;
+  pointer-events: none;
+}
+.oa-atmosphere .aurora {
+  position: absolute;
+  inset: -20%;
+  filter: blur(var(--aurora-blur));
+  opacity: var(--aurora-opacity);
+  background:
+    radial-gradient(38% 44% at 16% 18%, var(--aurora-1), transparent 60%),
+    radial-gradient(32% 40% at 82% 26%, var(--aurora-2), transparent 62%),
+    radial-gradient(46% 50% at 70% 96%, var(--aurora-3), transparent 60%),
+    radial-gradient(40% 44% at 30% 88%, var(--aurora-4), transparent 60%);
+  animation: oa-drift 26s ease-in-out infinite alternate;
+}
+.oa-atmosphere .grain {
+  position: absolute;
+  inset: 0;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.oa-atmosphere .vignette {
+  position: absolute;
+  inset: 0;
+  background: var(--vignette);
+}
+
+/* Respect reduced-motion + the user's background-animations=off setting: freeze
+   the aurora drift + rise cascade (the static bloom + glass still render). */
+@media (prefers-reduced-motion: reduce) {
+  .oa-atmosphere .aurora { animation: none; }
+  .rise { animation-duration: 0.01ms; }
 }
 
 /* ----------------------------------------------------------------------------

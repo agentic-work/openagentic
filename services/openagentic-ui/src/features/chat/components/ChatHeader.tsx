@@ -36,9 +36,12 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
         display: 'flex',
         alignItems: 'center',
         gap: 12,
-        padding: '12px 20px',
-        borderBottom: '1px solid var(--color-rule)',
-        background: 'var(--color-surface)',
+        padding: '14px 24px',
+        // Terminal Glass: the top bar is transparent so the frosted glass main
+        // panel (and the aurora behind it) reads through; only a soft hairline
+        // rule separates it from the stream. Matches the reference top bar.
+        borderBottom: '1px solid var(--glass-border)',
+        background: 'transparent',
       }}
     >
       <Crumbs trail={trail} />

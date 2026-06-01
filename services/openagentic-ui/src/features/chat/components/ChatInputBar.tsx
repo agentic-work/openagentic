@@ -419,6 +419,11 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
       className={clsx(
         'w-full',
         'px-3 pb-6',
+        // Terminal Glass (Phase 4) — the composer is the last beat of the
+        // orchestrated load-in cascade (sidebar d1 → main d2 → first user d3
+        // → first assistant d4 → composer d5). One-shot rise+fade; keyframes +
+        // delay live in theme.css (the ONE SOT).
+        'rise rise-d5',
         className
       )}
       onDragEnter={handleDragEnter}
@@ -444,19 +449,19 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Unified Input Container — NEO-BRUTALIST field-guide composer:
-            2px ink border (border-rule-strong), near-sharp corners
-            (rounded-input → 2px), surface bg, and a hard zero-blur offset
-            shadow (shadow-hard-sm). The whole box lifts to the accent border
-            + a tighter shadow on focus-within, mirroring the shared Input
-            primitive. Token-only — no raw color/shadow literals. */}
+        {/* Unified Input Container — TERMINAL GLASS (elevated) composer:
+            a frosted glass panel (.glass-surface: top-lit gradient + blur +
+            soft 1px border + soft radius) with a signal-orange focus GLOW on
+            focus-within, mirroring the reference composer. Token-only — every
+            visual value reads the per-theme glass / ctl tokens in theme.css,
+            so the panel flips dark ("orange-aurora") ⇄ light ("Warm Frost"). */}
         <div
           className={clsx(
-            'relative bg-surface',
-            'rounded-input border-2 border-rule-strong shadow-hard-sm',
+            'glass-surface relative',
             'transition-[border-color,box-shadow,background] duration-150',
-            'focus-within:border-accent focus-within:shadow-hard-xs',
-            isDragging && 'border-accent'
+            'focus-within:[border-color:var(--ctl-focus-border)]',
+            'focus-within:[box-shadow:var(--ctl-focus-ring),var(--glass-card-shadow)]',
+            isDragging && '[border-color:var(--ctl-focus-border)]'
           )}
         >
           {/* Drag Overlay */}
@@ -466,7 +471,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 flex items-center justify-center bg-accent-primary/10 rounded-input z-10 border-2 border-dashed border-accent-primary"
+                className="absolute inset-0 flex items-center justify-center bg-accent-primary/10 z-10 border border-dashed border-accent-primary [border-radius:var(--glass-radius)]"
               >
                 <div className="text-center">
                   <motion.div
@@ -615,14 +620,11 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                     onClick={onStopGeneration}
                     aria-label="Stop generation"
                     className={clsx(
-                      // Sharp brutalist square: 2px ink border + hard offset
-                      // shadow (tightens on press), zero radius.
-                      'h-10 w-10 rounded-none border-2 border-rule-strong shadow-hard-xs flex items-center justify-center',
-                      'transition-[background,box-shadow,transform] duration-150',
-                      'active:translate-x-[1px] active:translate-y-[1px]',
-                      'focus-visible:outline-none focus-visible:shadow-signal'
+                      // Terminal Glass: error-hue gradient control in the same
+                      // glass language as the send button — soft radius, glow,
+                      // glow-lift hover (.glass-btn-danger). Token-only.
+                      'glass-btn glass-btn-danger h-10 w-10'
                     )}
-                    style={{ backgroundColor: 'var(--color-err)', color: 'var(--color-on-accent)' }}
                   >
                     <Square size={14} aria-hidden="true" />
                   </motion.button>
@@ -639,21 +641,15 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                     aria-label={showStopButton ? "Queue message" : "Send message"}
                     title={showStopButton ? "Queue this message for after current response" : "Send message"}
                     className={clsx(
-                      // Sharp brutalist accent CTA: signal-orange fill, 2px
-                      // ink border, zero radius, hard offset shadow that
-                      // tightens with a 1px press nudge.
-                      'h-10 w-10 rounded-none border-2 border-rule-strong shadow-hard-xs flex items-center justify-center',
-                      'transition-[background,box-shadow,transform,opacity] duration-150',
-                      'active:translate-x-[1px] active:translate-y-[1px]',
-                      'focus-visible:outline-none focus-visible:shadow-signal',
-                      (!hasContent && attachments.length === 0) && 'opacity-50 cursor-not-allowed'
+                      // Terminal Glass send CTA (the reference ".go"): the
+                      // signal-orange gradient + glow with a glow-lift hover
+                      // when there's content, falling back to a frosted neutral
+                      // control when empty. Soft radius, token-only.
+                      'glass-btn h-10 w-10',
+                      (showStopButton || hasContent || attachments.length > 0)
+                        ? 'glass-btn-primary'
+                        : 'glass-btn-secondary'
                     )}
-                    style={{
-                      backgroundColor: showStopButton || hasContent
-                        ? 'var(--color-accent)'
-                        : 'var(--color-surface-2)',
-                      color: 'var(--color-on-accent)',
-                    }}
                   >
                     <ArrowUp size={16} aria-hidden="true" strokeWidth={2.5} />
                   </motion.button>

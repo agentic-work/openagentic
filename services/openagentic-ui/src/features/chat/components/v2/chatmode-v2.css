@@ -70,15 +70,17 @@
 }
 /* NEO-BRUTALIST model pill: 2px ink border + sharp corners + mono uppercase
    tracked label. Reads the canonical rule-strong / accent tokens only. */
+/* Terminal Glass: frosted mono model pill — soft radius, hairline edge, no
+   brutalist uppercase tracking (mono is the technical signal, not the shape). */
 .cm-msg-head .cm-model {
   font-size: var(--text-eyebrow);
-  color: var(--color-fg-subtle);
-  padding: 2px 7px;
-  border-radius: var(--radius-card);
-  border: var(--border-w) solid var(--color-rule-strong);
+  color: var(--color-fg-muted);
+  padding: 5px 10px;
+  border-radius: var(--ctl-radius-sm);
+  border: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--brand-paper) 6%, transparent);
   font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-button);
+  letter-spacing: 0;
 }
 .cm-msg-head .cm-model .cm-tag {
   color: var(--color-accent);
@@ -386,15 +388,18 @@
 /* ----------------------------- topbar tools pill ------------------------- */
 /* mock 10:205 .tools-pill anatomy + mock 01:146-152 chip variant. */
 
+/* Terminal Glass: frosted mono pill, soft radius (not a hard pill), glowing
+   signal-orange dot — matches the topbar model pill in the reference. */
 .cm-tools-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border-radius: 99px;
-  border: 1px solid var(--cm-line-2);
-  background: var(--cm-bg-1);
-  font-size: 11px;
+  gap: 7px;
+  padding: 6px 11px;
+  border-radius: var(--ctl-radius-sm);
+  border: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--brand-paper) 6%, transparent);
+  font-family: var(--font-mono);
+  font-size: var(--text-eyebrow);
   color: var(--cm-fg-2);
   white-space: nowrap;
 }
@@ -402,7 +407,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--cm-ok, #22c55e);
+  background: var(--brand-signal);
+  box-shadow: 0 0 8px var(--brand-signal);
 }
 .cm-tools-pill .cm-tools-pill-text {
   display: inline-flex;

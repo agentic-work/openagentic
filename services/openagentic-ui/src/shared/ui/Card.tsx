@@ -1,12 +1,13 @@
 import React from 'react';
 
 /**
- * Shared Card — NEO-BRUTALIST field-guide restyle.
+ * Shared Card — TERMINAL GLASS (elevated) re-skin.
  *
- * Reads ONLY theme tokens. Sharp corners (rounded-none), 2px solid ink
- * border (border-rule-strong), surface background, and the hard zero-blur
- * offset shadow (shadow-hard) — the field-guide "card sitting on paper"
- * motif. Prop API ({ children, className, style }) is unchanged.
+ * Reads ONLY theme tokens via the .glass-surface class in theme.css. Replaces
+ * the brutalist sharp-corner + 2px-ink-border + hard offset shadow with the
+ * frosted glass result-card: top-lit gradient, backdrop blur, soft 1px glass
+ * border + edge highlight, soft radius, soft shadow. Prop API
+ * ({ children, className, style }) is unchanged.
  */
 export interface CardProps {
   children: React.ReactNode;
@@ -16,10 +17,7 @@ export interface CardProps {
 
 export const Card: React.FC<CardProps> = ({ children, className = '', style }) => {
   return (
-    <div
-      className={`rounded-none border-2 border-rule-strong bg-surface text-fg shadow-hard ${className}`}
-      style={style}
-    >
+    <div className={`glass-surface ${className}`} style={style}>
       {children}
     </div>
   );

@@ -528,10 +528,18 @@ export default function ChatMessages({
               return out.length > 0 ? out : undefined;
             })();
 
+            // Terminal Glass (Phase 4) — staggered load-in. Only the FIRST turn
+            // rises into place (idx 0 = first user → d3, idx 1 = first assistant
+            // → d4), continuing the orchestrated cascade from the sidebar (d1) /
+            // main panel (d2) / composer (d5). Later messages don't carry a rise
+            // class, so this is a one-shot on load — not a per-scroll effect.
+            const riseClass = idx === 0 ? 'rise rise-d3' : idx === 1 ? 'rise rise-d4' : undefined;
+
             return (
               <React.Fragment key={message.id}>
                 <MessageBubble
                   message={message}
+                  riseClass={riseClass}
                   theme={theme}
                   showMCPIndicators={showMCPIndicators}
                   showModelBadges={showModelBadges}

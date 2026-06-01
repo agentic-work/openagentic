@@ -1,76 +1,31 @@
 /**
- * MinimalBackground - Zero GPU, Maximum Performance
+ * MinimalBackground — the living "Terminal Glass" atmosphere.
  *
- * A completely static, GPU-free background inspired by Linear, Notion, and Slack.
- * Uses only solid colors with optional static gradients.
+ * A fixed, behind-everything atmosphere layer that the frosted-glass surfaces
+ * blur to get real depth: a slowly-drifting signal-orange AURORA + a fine GRAIN
+ * overlay + a soft VIGNETTE, over the deep page base. The whole look flows from
+ * the ONE SOT (theme.css): every value reads a per-theme glass / aurora CSS
+ * token, so dark ("orange-aurora") and light ("Warm Frost") both come from the
+ * same markup — gentler in light, hero in dark. See
+ * docs/design/terminal-glass-reference.html.
  *
- * Performance: 0% GPU, ~0% CPU overhead
+ * Mounted by the App shell only when backgroundEffect === 'subtle' (the user's
+ * background-animations toggle); when 'off' the App paints a solid --color-bg
+ * instead. prefers-reduced-motion freezes the drift (handled in theme.css).
  *
- * No:
- * - WebGL/Canvas
- * - backdrop-filter (GPU-accelerated blur)
- * - CSS animations
- * - transform/opacity animations
- * - Multiple compositing layers
+ * This component holds NO color/font literals — all visual values live in
+ * theme.css. It composes the .oa-atmosphere / .aurora / .grain / .vignette
+ * classes defined there.
  */
 
 import React from 'react';
-import { useTheme } from '@/contexts/ThemeContext';
 
 export default function MinimalBackground() {
-  const { resolvedTheme, accentColor } = useTheme();
-  const isLightTheme = resolvedTheme === 'light';
-
-  // Get accent colors with fallbacks
-  // theme-allow: fallback matches the default accent token (signal orange) and
-  // MUST be a raw hex because it is concatenated with hex-alpha suffixes
-  // (`${primaryColor}08`) for the subtle corner glows below.
-  const primaryColor = accentColor?.primary || '#FF5722';
-
   return (
-    <div
-      className="minimal-background"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: -1,
-        // Solid background — flips with the theme via the SOT token.
-        background: 'var(--color-bg)',
-      }}
-    >
-      {/* Optional: Very subtle static corner accents (no animation, no blur) */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          // Static gradients - rendered once, no GPU
-          background: isLightTheme
-            ? `
-              radial-gradient(ellipse 50% 50% at 0% 0%, ${primaryColor}08, transparent 50%),
-              radial-gradient(ellipse 50% 50% at 100% 100%, ${primaryColor}06, transparent 50%)
-            `
-            : `
-              radial-gradient(ellipse 50% 50% at 0% 0%, ${primaryColor}10, transparent 50%),
-              radial-gradient(ellipse 50% 50% at 100% 100%, ${primaryColor}08, transparent 50%)
-            `,
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* Subtle bottom edge gradient for depth (static, no blur) */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: '30%',
-          background: isLightTheme
-            ? 'linear-gradient(to top, color-mix(in srgb, var(--color-shadow) 2%, transparent), transparent)'
-            : 'linear-gradient(to top, color-mix(in srgb, var(--color-shadow) 30%, transparent), transparent)',
-          pointerEvents: 'none',
-        }}
-      />
+    <div className="oa-atmosphere" aria-hidden="true">
+      <div className="aurora" />
+      <div className="grain" />
+      <div className="vignette" />
     </div>
   );
 }

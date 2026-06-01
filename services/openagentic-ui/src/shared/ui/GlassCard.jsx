@@ -1,45 +1,34 @@
 import React from 'react';
 import classNames from 'classnames';
 
-const GlassCard = ({ 
-  children, 
-  className = '', 
+/**
+ * GlassCard (JSX) — TERMINAL GLASS (elevated) re-skin.
+ *
+ * Mirror of GlassCard.tsx: a real frosted glass surface via the token-driven
+ * .glass-surface classes in theme.css. `hover` adds the glow-lift. Prop API
+ * unchanged.
+ */
+const GlassCard = ({
+  children,
+  className = '',
   hover = false,
   padding = 'p-6',
   onClick,
   as = 'div',
-  ...props 
+  ...props
 }) => {
   const Component = as;
-  
+
   const cardClasses = classNames(
-    // Solid brutalist surface — token-driven (no glassmorphism; the name is
-    // retained for API stability)
-    'bg-surface text-fg',
-    'border-2 border-rule-strong',
-    'rounded-none',
-    'shadow-hard',
-
-    // Transition - snappy, not sluggish
-    'transition-all duration-150',
-
-    // Hover lifts the hard offset shadow
-    hover && [
-      'hover:bg-surface-2',
-      'hover:shadow-hard-lg',
-      onClick && 'cursor-pointer',
-    ],
-    
-    // Padding
+    'glass-surface',
+    hover && ['glass-surface-hover', onClick && 'cursor-pointer'],
     padding,
-    
-    // Custom classes
     className
   );
-  
+
   return (
-    <Component 
-      className={cardClasses} 
+    <Component
+      className={cardClasses}
       onClick={onClick}
       {...props}
     >
