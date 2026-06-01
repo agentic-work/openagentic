@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 export type Theme = 'dark' | 'light'
-export type Accent = 'gcp' | 'green' | 'teal' | 'amber' | 'violet' | 'magenta'
+export type Accent = 'orange' | 'gcp' | 'green' | 'teal' | 'amber' | 'violet' | 'magenta'
 export type Density = 'compact' | 'cozy' | 'comfortable'
 
 const AC_DENSITY_KEY = 'ac-density'
@@ -49,12 +49,16 @@ function readTheme(): Theme {
 }
 
 // Map an `ac-accent-color` object (`{name,primary,secondary}`) to our internal
-// Accent token. Anything we don't recognise falls back to gcp (blue).
+// Accent token. Anything we don't recognise falls back to the brand orange.
 function mapAccentObjectToToken(obj: any): Accent | null {
   if (!obj || typeof obj !== 'object') return null
   const name: string | undefined = obj.name
   if (!name) return null
   switch (name.toLowerCase()) {
+    // Brand default — signal orange (#FF5722) has its OWN token now; it must
+    // NOT collapse into the stale legacy 'amber' (#ffb547).
+    case 'orange':
+      return 'orange'
     case 'blue':
     case 'gcp':
       return 'gcp'
@@ -63,7 +67,6 @@ function mapAccentObjectToToken(obj: any): Accent | null {
     case 'teal':
       return 'teal'
     case 'amber':
-    case 'orange':
       return 'amber'
     case 'violet':
     case 'purple':
@@ -85,10 +88,12 @@ function readAccent(): Accent {
       if (token) return token
     }
     const awp = localStorage.getItem(OpenAgentic_ACCENT_KEY)
-    const valid: readonly Accent[] = ['gcp', 'green', 'teal', 'amber', 'violet', 'magenta']
+    const valid: readonly Accent[] = ['orange', 'gcp', 'green', 'teal', 'amber', 'violet', 'magenta']
     if (awp && (valid as readonly string[]).includes(awp)) return awp as Accent
   } catch { /* ignore */ }
-  return 'gcp'
+  // Missing/unknown stored accent → brand signal orange (#FF5722), NOT the
+  // old blue/amber default.
+  return 'orange'
 }
 
 function readDensity(): Density {

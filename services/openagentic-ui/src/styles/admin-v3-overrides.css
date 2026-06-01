@@ -419,3 +419,328 @@
    Labels: uppercase 11px wide-spaced. The pre-existing PageHead /
    PanelHead components already use these sizes; this rule snaps
    any v2-leaf component that didn't into line. */
+
+/* ============================================================
+   TERMINAL GLASS — admin re-skin (2026-06-01)
+
+   Brings the admin console into the app-wide "Terminal Glass"
+   glassmorphism design (docs/design/terminal-glass-reference.html).
+   The v3 admin shipped as a flat INDUSTRIAL surface (opaque --bg-1
+   panes, 1px --line-1 hairlines, radius 0, no shadow). This layer
+   re-skins every structural surface to FROSTED GLASS so it matches
+   chat / flows: the living orange aurora (mounted app-wide behind
+   everything via MinimalBackground) now shows THROUGH the admin
+   gutters + page background, panes float as frosted glass slabs
+   with a soft radius, a 1px top edge highlight, and a soft shadow,
+   and the signal-orange accent (--accent === --brand-signal) carries
+   the active / link / focus states with a warm glow.
+
+   Token-only: every value reads a theme.css token (--glass-* / --ctl-*
+   / --accent* / --bg-* / --fg-* / --line-* / status), so theme.css
+   stays the ONE source of truth and the no-hardcoding guard passes.
+   Scoped to .aw-shell + !important so it wins over the base
+   shell-v3 / primitives-v3 stylesheets regardless of load order.
+
+   Typography is already on-brand here: --font-v3-body === Inter (UI
+   text) and --font-v3-mono === IBM Plex Mono (technical / metric
+   cells), so we only adjust surfaces, radii + accents — not fonts.
+   ============================================================ */
+
+/* ---- the shell base + scroll surfaces go TRANSPARENT so the
+   app-wide aurora atmosphere blooms through the admin. A small inset
+   gap (matching the reference's 16px gutters) lets the orange field
+   breathe between the frosted panes. ---- */
+.aw-shell {
+  background: transparent !important;
+  gap: 12px !important;
+  padding: 12px !important;
+  /* re-flow the grid so the topbar + side + main float as separate
+     glass slabs with the aurora visible in the gutters between them. */
+  grid-template-rows: var(--v3-topbar-h, 44px) 1fr !important;
+  grid-template-columns: var(--v3-sidebar-w, 220px) 1fr !important;
+  grid-template-areas:
+    'topbar topbar'
+    'side   main' !important;
+}
+.aw-shell[data-sidebar="collapsed"] {
+  grid-template-columns: var(--v3-sidebar-w-collapsed, 52px) 1fr !important;
+}
+.aw-main {
+  background: transparent !important;
+  border-radius: var(--glass-radius, 18px) !important;
+}
+
+/* shared frosted-glass surface recipe for the admin panes (topbar /
+   sidebar / content panels / cards). Soft radius, frosted top-lit
+   fill, hairline glass border, soft shadow + the 1px edge highlight. */
+.aw-shell .aw-topbar,
+.aw-shell .aw-sidebar,
+.aw-shell .aw-panel-head,
+.aw-shell .aw-subtabs,
+.aw-shell .aw-filter-row,
+.aw-shell .aw-scoring-strip,
+.aw-shell .aw-kpi-grid,
+.aw-shell .glass-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  border-color: var(--glass-border) !important;
+}
+
+/* ---- TopBar = a floating frosted glass bar ---- */
+.aw-shell .aw-topbar {
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--glass-radius, 18px) !important;
+  box-shadow: var(--glass-card-shadow) !important;
+  overflow: visible !important;
+}
+/* keep the signal-orange horizon under the bar, but as a soft inset
+   glow rather than a hard 1px rail. */
+.aw-shell .aw-topbar::after {
+  left: 18px !important;
+  right: 18px !important;
+  background: linear-gradient(90deg, transparent, var(--glass-edge), transparent) !important;
+}
+.aw-shell .aw-topbar__brand-mark { border-color: var(--accent) !important; }
+.aw-shell .aw-topbar__chip,
+.aw-shell .aw-topbar__search,
+.aw-shell .aw-topbar__density,
+.aw-shell .aw-topbar__user,
+.aw-shell .aw-topbar__agent,
+.aw-shell .aw-topbar__close {
+  background: var(--ctl-surf) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--ctl-radius-sm, 10px) !important;
+}
+.aw-shell .aw-topbar__chip:hover,
+.aw-shell .aw-topbar__search:hover,
+.aw-shell .aw-topbar__agent:hover {
+  border-color: var(--ctl-focus-border) !important;
+  background: var(--ctl-surf-hover) !important;
+}
+.aw-shell .aw-topbar__icon-btn { border-radius: var(--ctl-radius-sm, 10px) !important; }
+.aw-shell .aw-topbar__icon-btn:hover { background: var(--ctl-surf) !important; }
+
+/* ---- Sidebar = a floating frosted glass rail ---- */
+.aw-shell .aw-sidebar {
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--glass-radius, 18px) !important;
+  box-shadow: var(--glass-card-shadow) !important;
+  padding: 10px 8px !important;
+}
+/* nav leaf rows: soft rounded, frosted hover; the ACTIVE leaf is a
+   lifted orange-tinted glass slab with a glowing signal rail. */
+.aw-shell .aw-sidebar__leaf {
+  border-radius: var(--ctl-radius, 12px) !important;
+  margin: 1px 2px !important;
+  width: calc(100% - 4px) !important;
+}
+.aw-shell .aw-sidebar__leaf:hover { background: var(--ctl-surf) !important; }
+.aw-shell .aw-sidebar__leaf[aria-current="page"] {
+  background: linear-gradient(180deg, var(--glass-accent-fill), var(--glass-accent-fill-2)) !important;
+  border: 1px solid var(--glass-accent-line) !important;
+  box-shadow: 0 1px 0 var(--glass-edge) inset !important;
+}
+.aw-shell .aw-sidebar__leaf[aria-current="page"]::before {
+  background: var(--accent) !important;
+  box-shadow: 0 0 8px var(--accent-glow) !important;
+  border-radius: var(--radius-full, 9999px) !important;
+}
+.aw-shell .aw-sidebar__group-title--toggle:hover { background: var(--ctl-surf) !important; border-radius: var(--ctl-radius-sm, 10px) !important; }
+.aw-shell .aw-sidebar__leaf-key {
+  background: var(--ctl-surf) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-sm, 4px) !important;
+}
+
+/* ---- Panels / cards = frosted glass slabs (soft radius + shadow +
+   edge highlight). The v3 panel = a .glass-card wrapper or a bare
+   .aw-panel; both get the frost. ---- */
+.aw-shell .glass-card {
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--glass-radius, 18px) !important;
+  box-shadow: var(--glass-card-shadow) !important;
+  position: relative;
+}
+.aw-shell .glass-card:hover {
+  border-color: var(--ctl-focus-border) !important;
+  box-shadow: var(--ctl-lift-shadow), var(--glass-card-shadow) !important;
+}
+/* 1px top edge highlight on the frosted panes (the reference ::before
+   hairline) — drawn for panels/cards/the topbar+sidebar bars. */
+.aw-shell .glass-card::after,
+.aw-shell .aw-topbar::before,
+.aw-shell .aw-sidebar::before {
+  content: "" !important;
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-edge), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+.aw-shell .aw-topbar,
+.aw-shell .aw-sidebar { position: relative; }
+
+/* panel headers, subtab strips, filter rows, kpi / scoring strips ride
+   the frosted fill (set above) with a soft-radius top so they tuck
+   into the rounded panel corner. The dense hairline dividers stay (as
+   the glass border tone) so tables remain scannable. */
+.aw-shell .aw-panel-head,
+.aw-shell .aw-subtabs,
+.aw-shell .aw-filter-row,
+.aw-shell .aw-scoring-strip,
+.aw-shell .aw-kpi-grid {
+  border-color: var(--glass-border) !important;
+}
+/* grid wrappers: the 1px separators soften to the glass border tone,
+   and the inner panel cells go transparent so the parent frost reads
+   through (no double-blur stacking). */
+.aw-shell .aw-grid { background: var(--glass-border) !important; }
+.aw-shell .aw-grid > .aw-panel { background: transparent !important; }
+.aw-shell .aw-mini-grid { background: transparent !important; border-color: var(--glass-border) !important; }
+.aw-shell .aw-mini,
+.aw-shell .aw-kpi,
+.aw-shell .aw-score { border-color: var(--glass-border) !important; }
+
+/* ---- Tables: frosted header, transparent rows so the panel glass
+   shows through, soft orange hover + active rail. ---- */
+.aw-shell .aw-dt thead th,
+.aw-shell .aw-dt thead th:last-child {
+  background: var(--ctl-surf) !important;
+  border-bottom-color: var(--glass-border) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  backdrop-filter: var(--glass-blur) !important;
+}
+.aw-shell .aw-dt tbody tr { border-bottom-color: var(--glass-border) !important; }
+.aw-shell .aw-dt tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--fg-3) 3%, transparent) !important;
+}
+.aw-shell .aw-dt tbody tr:hover {
+  background: var(--accent-dim) !important;
+}
+.aw-shell .aw-dt tbody tr[aria-selected="true"] {
+  background: var(--glass-accent-fill-2) !important;
+}
+
+/* ---- soft-rounded chrome + chips + dots throughout the admin ---- */
+.aw-shell .aw-chip {
+  background: var(--ctl-surf) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--ctl-radius-sm, 10px) !important;
+}
+.aw-shell .aw-chip:hover {
+  border-color: var(--ctl-focus-border) !important;
+  background: var(--ctl-surf-hover) !important;
+}
+.aw-shell .aw-chip[data-on="true"] {
+  border-color: var(--glass-accent-line) !important;
+  background: var(--glass-accent-fill-2) !important;
+  color: var(--accent) !important;
+}
+.aw-shell .aw-filter-row__search,
+.aw-shell .aw-view-tabs,
+.aw-shell .aw-subtabs button {
+  border-radius: var(--ctl-radius-sm, 10px) !important;
+}
+.aw-shell .aw-filter-row__search {
+  background: var(--ctl-surf) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+.aw-shell .aw-filter-row__search:focus {
+  border-color: var(--ctl-focus-border) !important;
+  box-shadow: var(--ctl-focus-ring) !important;
+}
+
+/* active subtab gets the orange accent (already accent-colored) with a
+   soft underline glow instead of a hard 1px line. */
+.aw-shell .aw-subtabs button[aria-selected="true"]::after {
+  background: var(--accent) !important;
+  box-shadow: 0 0 8px var(--accent-glow) !important;
+  border-radius: var(--radius-full, 9999px) !important;
+}
+
+/* ---- re-skin the FLAT industrial control overrides above into the
+   soft glass language: buttons, inputs, status badges keep their token
+   colors but gain soft radii + frosted fills so they match the rest of
+   the app. (These selectors were flattened to radius 0 earlier in this
+   file; the glass layer re-rounds + re-frosts them.) ---- */
+.aw-shell .status-badge {
+  border-radius: var(--radius-chip, 6px) !important;
+  background: var(--ctl-surf) !important;
+  border-color: var(--glass-border) !important;
+}
+.aw-shell .ap-btn-primary,
+.aw-shell button.btn-primary,
+.aw-shell button[class*="bg-primary-5"],
+.aw-shell button[class*="bg-primary-6"],
+.aw-shell button[class*="bg-blue-5"],
+.aw-shell button[class*="bg-blue-6"],
+.aw-shell a[class*="bg-primary-5"],
+.aw-shell a[class*="bg-blue-5"] {
+  background: var(--glass-accent-fill) !important;
+  border: 1px solid var(--glass-accent-line) !important;
+  color: var(--accent) !important;
+  border-radius: var(--ctl-radius, 12px) !important;
+  box-shadow: var(--ctl-primary-glow), 0 1px 0 var(--glass-edge) inset !important;
+  transition: transform 0.16s ease, box-shadow 0.18s ease, background 0.18s ease !important;
+}
+.aw-shell .ap-btn-primary:hover,
+.aw-shell button.btn-primary:hover,
+.aw-shell button[class*="bg-primary-5"]:hover,
+.aw-shell button[class*="bg-blue-5"]:hover {
+  transform: translateY(-1px) !important;
+  background: var(--glass-accent-fill) !important;
+  box-shadow: var(--ctl-primary-glow-h), 0 1px 0 var(--glass-edge) inset !important;
+}
+.aw-shell .ap-icon-btn {
+  border-radius: var(--ctl-radius-sm, 10px) !important;
+  background: var(--ctl-surf) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+.aw-shell .ap-icon-btn:hover {
+  border-color: var(--ctl-focus-border) !important;
+  background: var(--ctl-surf-hover) !important;
+}
+
+/* form controls: frosted fill + soft radius + orange focus ring (these
+   were flattened to radius 0 above; re-soften them for the glass world). */
+.aw-shell input[type="text"],
+.aw-shell input[type="search"],
+.aw-shell input[type="email"],
+.aw-shell input[type="number"],
+.aw-shell input[type="password"],
+.aw-shell select,
+.aw-shell textarea {
+  background: var(--ctl-surf) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--ctl-radius, 12px) !important;
+}
+.aw-shell input:focus,
+.aw-shell select:focus,
+.aw-shell textarea:focus {
+  border-color: var(--ctl-focus-border) !important;
+  background: var(--ctl-surf-hover) !important;
+  box-shadow: var(--ctl-focus-ring) !important;
+}
+
+/* re-enable soft glass radii the flat layer zeroed out (rounded-* +
+   glass-card pills) so nested chrome reads as soft glass, not boxes. */
+.aw-shell .rounded-lg,
+.aw-shell .rounded-xl { border-radius: var(--glass-radius, 18px) !important; }
+.aw-shell .rounded-md,
+.aw-shell .rounded { border-radius: var(--ctl-radius, 12px) !important; }
+
+/* links / interactive accents → signal orange (already --accent, but
+   make the hover affordance explicit + warm). */
+.aw-shell .aw-panel-head__right a:hover,
+.aw-shell .aw-topbar__crumb--head { color: var(--accent) !important; }
+
+/* WHY: the admin console was the last surface still wearing the old flat
+   industrial styling. This layer composes the shared theme.css glass
+   tokens (--glass-* / --ctl-* / aurora) onto the admin's structural
+   surfaces so the whole product reads as ONE Terminal Glass design —
+   frosted panes, soft radii, signal-orange accents — with theme.css
+   remaining the sole token source of truth. */

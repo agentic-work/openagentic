@@ -60,21 +60,13 @@ body {
 /* ============================================================
    E. USER MESSAGE BUBBLE
    ============================================================ */
-/* Existing MessageBubble wraps user content in a div with
-   `background: var(--user-accent-primary)` inline. Shift to mockup
-   bubble styling: bg-2, line-2 border, 14px radius, 12/16 padding,
-   right-aligned, max 640px. */
-[data-message-role='user'] .inline-block > .group > div:not(.absolute):not(.flex) {
-  background: var(--bg-2) !important;
-  color: var(--fg-0) !important;
-  border: 1px solid var(--line-2);
-  border-radius: 14px !important;
-  padding: 12px 16px !important;
-  box-shadow: var(--mk-shadow-sm);
-  max-width: 640px;
-  font-size: 14px;
-  line-height: 1.55;
-}
+/* User-bubble styling now lives entirely in theme.css `.glass-bubble-user`
+   (the Terminal-Glass orange-tinted glass bubble + 5px bottom-right notch).
+   The previous rule here painted a flat grey `--bg-2`/`--line-2` box with
+   `!important`, which (a) overrode the glass treatment and (b) — because its
+   `div:not(.absolute):not(.flex)` selector also matched the timestamp meta
+   row — rendered the timestamp as a SECOND bordered box. Removed so the SOT
+   `.glass-bubble-user` class is the single source of the bubble look. */
 
 /* ============================================================
    F. COST PILL — mockup style, violet surface with live dot

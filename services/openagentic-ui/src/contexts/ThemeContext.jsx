@@ -121,12 +121,21 @@ export const ThemeProvider = ({ children }) => {
       // (agenticwork-derived) build; reset it once so the OSS build shows its own
       // visual identity. Explicit non-default accents are preserved.
       try {
-        const VER = 'oa-brand-2';
+        // oa-brand-3: also clear the stale legacy 'amber' admin token that the
+        // old Orange→amber mapping wrote to localStorage['openagentic-accent']
+        // (and data-accent), which forced --color-accent to #ffb547 over the
+        // brand signal. applyAccentColor re-derives the correct token on mount.
+        const VER = 'oa-brand-3';
         if (localStorage.getItem('oa-theme-version') !== VER) {
           const cur = JSON.parse(localStorage.getItem('ac-accent-color') || 'null');
           const isOldDefault = !cur || cur.name === 'Dark Blue' ||
             ['#1E40AF', '#0A84FF', '#007AFF', '#3B82F6'].includes(cur.primary);
           if (isOldDefault) localStorage.setItem('ac-accent-color', JSON.stringify(accentColors[0]));
+          // Drop a stale 'amber' admin token left by the previous Orange→amber
+          // mapping so it can't override the brand signal on first paint.
+          if (localStorage.getItem('openagentic-accent') === 'amber') {
+            localStorage.removeItem('openagentic-accent');
+          }
           localStorage.setItem('oa-theme-version', VER);
         }
       } catch { /* ignore */ }
@@ -201,7 +210,11 @@ export const ThemeProvider = ({ children }) => {
       'Green': 'green',
       'Teal': 'teal',
       'Amber': 'amber',
-      'Orange': 'amber',
+      // Brand default — route the signal-orange accent to its OWN admin token
+      // (= #FF5722) instead of the stale legacy 'amber' (#ffb547). Mapping
+      // Orange→amber previously forced html[data-accent="amber"] to win over
+      // --user-accent and painted the whole app amber.
+      'Orange': 'orange',
       'Violet': 'violet',
       'Purple': 'violet',
       'Magenta': 'magenta',

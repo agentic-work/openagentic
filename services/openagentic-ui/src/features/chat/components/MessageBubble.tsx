@@ -1053,20 +1053,22 @@ const MessageBubble = memo(function MessageBubble({
                   >
                     {message.content}
                   </div>
-                  {/* Mockup 03 pattern — meta-row under user bubble:
-                      `HH:MM · YYYY-MM-DD`. Keeps the bubble clean and
-                      gives the user-identity + time context the mockup
-                      shows for security/audit trails. */}
+                  {/* Terminal-Glass: timestamp is a SMALL subtle muted line
+                      just under the bubble — NOT its own bordered box. The
+                      bubble's frosting + accent border live in
+                      `.glass-bubble-user` (theme.css, the token SOT). */}
                   {message.timestamp && (
                     <div
                       data-testid="user-message-meta"
                       style={{
-                        marginTop: 4,
-                        fontSize: 10,
-                        color: 'var(--fg-3, var(--cm-text-muted))',
+                        marginTop: 5,
+                        fontSize: 10.5,
+                        color: 'var(--color-fg-subtle)',
                         fontFamily: 'var(--font-mono)',
                         fontVariantNumeric: 'tabular-nums',
                         textAlign: 'right',
+                        background: 'transparent',
+                        border: 'none',
                       }}
                     >
                       {(() => {

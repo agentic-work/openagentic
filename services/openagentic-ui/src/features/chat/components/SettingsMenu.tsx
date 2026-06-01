@@ -114,15 +114,9 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
             transition={{ duration: 0.15 }}
             className={
               isExpanded
-                ? 'fixed z-[10002] rounded-lg shadow-xl min-w-[280px] bottom-20 left-3 w-[304px]'
-                : 'fixed z-[10002] rounded-lg shadow-xl min-w-[280px] bottom-20 left-[72px] w-[280px]'
+                ? 'glass fixed z-[10002] min-w-[280px] bottom-20 left-3 w-[304px]'
+                : 'glass fixed z-[10002] min-w-[280px] bottom-20 left-[72px] w-[280px]'
             }
-            style={{
-              backgroundColor: 'var(--color-surface)',
-              borderWidth: '1px',
-              borderStyle: 'solid',
-              borderColor: 'var(--color-border)',
-            }}
           >
             {/* User Section */}
             <div
