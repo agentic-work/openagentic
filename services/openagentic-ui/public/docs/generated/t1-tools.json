@@ -4,7 +4,7 @@
   "description": "Canonical agentic primitives — the Layer-2 chatmode catalog. Every chat turn ships these 16 meta-tools.",
   "icon": "brain",
   "category": "core",
-  "generatedAt": "2026-05-13T20:48:20.563Z",
+  "generatedAt": "2026-06-01T13:39:05.778Z",
   "sourceFiles": [
     "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
   ],
@@ -28,6 +28,13 @@
           "description": "What kind of agent you need, in plain language. e.g.",
           "type": "t1-tool",
           "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
+        },
+        {
+          "id": "MEMORY_SEARCH_TOOL_DEF",
+          "name": "memory_search",
+          "description": "Search the user\\",
+          "type": "t1-tool",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
         }
       ]
     },
@@ -40,7 +47,7 @@
         {
           "id": "TASK_TOOL",
           "name": "Task",
-          "description": "A short (3-5 word) human-readable label for the sub-task.",
+          "description": "Azure IAM audit",
           "type": "t1-tool",
           "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
         },
@@ -91,13 +98,6 @@
           "id": "WEB_FETCH_TOOL",
           "name": "web_fetch",
           "description": "Absolute URL to fetch. Must be http:// or https://. Server enforces SSRF denylist (no IMDS, no metadata endpoints, no RFC1918, no *.svc.cluster.local).",
-          "type": "t1-tool",
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
-        },
-        {
-          "id": "SYNTH_TOOL",
-          "name": "synth",
-          "description": "Python source code to execute. Must be self-contained — no implicit imports beyond Python stdlib + declared capabilities.",
           "type": "t1-tool",
           "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
         }
@@ -164,6 +164,70 @@
           "id": "REQUEST_CLARIFICATION_TOOL",
           "name": "request_clarification",
           "description": "The clarifying question to ask the user. Be specific and",
+          "type": "t1-tool",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
+        }
+      ]
+    },
+    {
+      "id": "other",
+      "title": "Other",
+      "description": "Other T1 primitives",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "includeTaskTool",
+          "name": "includetasktool",
+          "description": "T1 primitive: includeTaskTool",
+          "type": "t1-tool",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
+        },
+        {
+          "id": "RAG",
+          "name": "rag",
+          "description": "T1 primitive: RAG",
+          "type": "t1-tool",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
+        },
+        {
+          "id": "BOTH",
+          "name": "both",
+          "description": "T1 primitive: BOTH",
+          "type": "t1-tool",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
+        },
+        {
+          "id": "T1",
+          "name": "t1",
+          "description": "T1 primitive: T1",
+          "type": "t1-tool",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
+        },
+        {
+          "id": "NOT",
+          "name": "not",
+          "description": "T1 primitive: NOT",
+          "type": "t1-tool",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
+        },
+        {
+          "id": "AND",
+          "name": "and",
+          "description": "T1 primitive: AND",
+          "type": "t1-tool",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
+        },
+        {
+          "id": "MEMORIZE_TOOL",
+          "name": "memorize",
+          "description": "Short stable identifier for the memory (e.g.",
+          "type": "t1-tool",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
+        },
+        {
+          "id": "GENERATE_IMAGE_TOOL",
+          "name": "generate_image",
+          "description": "Detailed natural-language description of the image to generate.",
           "type": "t1-tool",
           "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
         }

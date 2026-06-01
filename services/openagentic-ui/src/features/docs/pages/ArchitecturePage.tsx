@@ -28,7 +28,7 @@ const fullArchitectureDiagram: DiagramDefinition = {
     { id: 'openai', label: 'OpenAI', shape: 'cloud', color: 'green' },
     { id: 'ollama', label: 'Ollama', shape: 'cloud', color: 'gray' },
     // MCP Proxy
-    { id: 'mcp-proxy', label: 'MCP Proxy', description: '16 MCP servers', shape: 'server', color: 'orange' },
+    { id: 'mcp-proxy', label: 'MCP Proxy', description: '14 MCP servers', shape: 'server', color: 'orange' },
     // Agent Proxy
     { id: 'openagentic-proxy', label: 'Agent Proxy', description: 'Sub-agents', shape: 'server', color: 'purple' },
     // Workflow Engine

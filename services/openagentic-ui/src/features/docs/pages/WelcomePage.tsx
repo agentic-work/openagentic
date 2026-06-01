@@ -60,7 +60,7 @@ const architectureDiagram: DiagramDefinition = {
     { id: 'memory', label: 'Memory', description: 'Conversation context', shape: 'rounded', color: 'purple' },
     { id: 'prompt', label: 'Prompt Builder', description: 'System prompt assembly', shape: 'rounded', color: 'indigo' },
     { id: 'router', label: 'Model Router', description: 'Capability + budget caps', shape: 'diamond', color: 'orange' },
-    { id: 'mcp-proxy', label: 'MCP Proxy', description: '16 MCP servers', shape: 'server', color: 'orange' },
+    { id: 'mcp-proxy', label: 'MCP Proxy', description: '14 MCP servers', shape: 'server', color: 'orange' },
     { id: 'openagentic-proxy', label: 'Agent Proxy', description: '11 agent types', shape: 'server', color: 'purple' },
     { id: 'completion', label: 'LLM Completion', description: 'Multi-provider', shape: 'rounded', color: 'green' },
     { id: 'response', label: 'Response', description: 'Streaming to client', shape: 'rounded', color: 'primary' },
@@ -124,30 +124,6 @@ const modes: ModeData[] = [
         <circle cx="16" cy="14" r="1.5" fill="url(#chatGrad)" />
         <circle cx="22" cy="14" r="1.5" fill="url(#chatGrad)" />
         <path d="M10 23L7 27V23H10Z" fill="url(#chatGrad)" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Code',
-    tagline: 'Browser-based IDE with AI pair programming in isolated sandboxes.',
-    bullets: [
-      'Three-panel layout: explorer, editor, terminal',
-      'Kubernetes-isolated execution environments',
-      'Full language support with AI code assistance',
-    ],
-    gradient: 'linear-gradient(135deg, #22C55E, #4ADE80)',
-    glowColor: 'rgba(34, 197, 94, 0.35)',
-    iconSvg: (
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-        <defs>
-          <linearGradient id="codeGrad" x1="0" y1="0" x2="32" y2="32">
-            <stop offset="0%" stopColor="#22C55E" />
-            <stop offset="100%" stopColor="#4ADE80" />
-          </linearGradient>
-        </defs>
-        <rect x="3" y="5" width="26" height="22" rx="3" stroke="url(#codeGrad)" strokeWidth="2" fill="none" />
-        <polyline points="9,14 14,18 9,22" stroke="url(#codeGrad)" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-        <line x1="17" y1="22" x2="23" y2="22" stroke="url(#codeGrad)" strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -400,7 +376,7 @@ const WelcomePage: React.FC = () => {
 
         {/* Hero content */}
         <div style={{ position: 'relative', zIndex: 1 }}>
-          {/* 1. Animated [openagentic] wordmark — same per-char brand chord as the codemode boot splash */}
+          {/* 1. Animated [openagentic] wordmark — per-char brand chord */}
           <div
             style={{
               display: 'flex',

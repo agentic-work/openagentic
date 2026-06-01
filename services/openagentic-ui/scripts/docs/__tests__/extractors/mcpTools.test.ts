@@ -11,7 +11,7 @@ async function listMcpDirs(): Promise<string[]> {
   const entries = await readdir(mcpsRoot);
   const dirs: string[] = [];
   for (const name of entries) {
-    if (!name.startsWith('openagentic-')) continue;
+    if (!/^oap-.*-mcp$/.test(name)) continue;
     const s = await stat(resolve(mcpsRoot, name));
     if (s.isDirectory()) dirs.push(name);
   }
@@ -24,15 +24,15 @@ describe('mcpTools extractor (real source)', () => {
 
   beforeAll(async () => {
     realDirs = await listMcpDirs();
-    const extractor = mcpTools({ rootGlob: 'services/mcps/openagentic-*' });
+    const extractor = mcpTools({ rootGlob: 'services/mcps/oap-*-mcp' });
     manifest = await extractor(REPO_ROOT);
   });
 
-  it('discovers at least 10 openagentic-* MCP server directories', () => {
+  it('discovers at least 10 oap-*-mcp MCP server directories', () => {
     expect(realDirs.length).toBeGreaterThanOrEqual(10);
   });
 
-  it('produces a section id matching every openagentic-* dir that has server.py', () => {
+  it('produces a section id matching every oap-*-mcp dir that has server.py', () => {
     const sectionIds = manifest.sections.map((s) => s.id).sort();
     for (const id of sectionIds) {
       expect(realDirs).toContain(id);

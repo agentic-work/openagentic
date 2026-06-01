@@ -229,7 +229,7 @@ function getDomainProse(domain: string, manifest: DocManifest | null): string | 
       return `The Data Loss Prevention (DLP) scanner is a security layer that inspects all data flowing through the platform -- tool inputs, tool results, LLM outputs, user messages, and workflow node data. It applies ${totalItems} detection rules across five categories (credentials, PII, infrastructure secrets, compliance data, and prompt injection attempts). Each rule carries a severity level that maps to an enforcement action: low-severity matches are flagged and allowed through, medium matches trigger automatic redaction, and high or critical matches block the request entirely.`;
 
     case 'api-routes':
-      return `This reference documents every HTTP endpoint exposed by the OpenAgentic API server. Routes are grouped by their source file and cover authentication, chat, code mode, admin management, MCP proxying, workflows, and more. Each entry shows the HTTP method, path, and originating source file. For interactive exploration, the Swagger UI is also available at the bottom of this page.`;
+      return `This reference documents every HTTP endpoint exposed by the OpenAgentic API server. Routes are grouped by their source file and cover authentication, chat, admin management, MCP proxying, workflows, and more. Each entry shows the HTTP method, path, and originating source file. For interactive exploration, the Swagger UI is also available at the bottom of this page.`;
 
     default:
       return manifest?.description || null;

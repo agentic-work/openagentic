@@ -43,7 +43,7 @@ interface ServiceRow {
   status: 'available' | 'progressing' | 'unavailable' | 'unknown';
   lastTransitionTime: string | null;
   labels: Record<string, string>;
-  category: 'core' | 'data' | 'mcp' | 'agent' | 'codemode' | 'auxiliary';
+  category: 'core' | 'data' | 'mcp' | 'agent' | 'auxiliary';
   edges: string[];
 }
 interface ClusterResponse {
@@ -59,7 +59,6 @@ const CATEGORY_STYLE: Record<ServiceRow['category'], { bg: string; border: strin
   data:       { bg: '#3f1d4a', border: '#a855f7', label: 'Data' },
   mcp:        { bg: '#1f3a2a', border: '#10b981', label: 'MCP' },
   agent:      { bg: '#3a2e1d', border: '#f59e0b', label: 'Agent' },
-  codemode:   { bg: '#2d1f3a', border: '#8b5cf6', label: 'CodeMode' },
   auxiliary:  { bg: '#2a2a2a', border: '#6b7280', label: 'Aux' },
 };
 
@@ -148,7 +147,7 @@ function layout(services: ServiceRow[]): { nodes: Node[]; edges: Edge[] } {
     if (!byCategory.has(s.category)) byCategory.set(s.category, []);
     byCategory.get(s.category)!.push(s);
   }
-  const order: ServiceRow['category'][] = ['core', 'mcp', 'agent', 'codemode', 'data', 'auxiliary'];
+  const order: ServiceRow['category'][] = ['core', 'mcp', 'agent', 'data', 'auxiliary'];
   const nodes: Node[] = [];
   const positionByName = new Map<string, { x: number; y: number }>();
   let col = 0;

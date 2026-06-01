@@ -1,6 +1,7 @@
 {
-  "generatedAt": "2026-04-06T02:45:21.353Z",
-  "version": "0.6.0",
+  "generatedAt": "2026-06-01T13:39:05.781Z",
+  "version": "0.1.0",
+  "codename": "First Light",
   "categories": [
     {
       "id": "core",
@@ -40,304 +41,84 @@
   ],
   "manifests": [
     {
-      "domain": "agent-types",
-      "title": "Agent System",
-      "description": "Agent types, model configurations, execution metrics, and admin settings for the OpenAgentic multi-agent platform.",
-      "category": "agents",
-      "file": "agent-types.json",
-      "sectionCount": 5,
-      "itemCount": 71,
-      "adminOnly": false
-    },
-    {
-      "domain": "dlp-scanner",
-      "title": "DLP Scanner",
-      "description": "Data Loss Prevention scanner with 55 detection rules across 5 categories, scanning at 5 points in the data flow.",
-      "category": "security",
-      "file": "dlp-scanner.json",
-      "sectionCount": 9,
-      "itemCount": 74,
-      "adminOnly": false
-    },
-    {
       "domain": "mcp-servers",
-      "title": "MCP Tools",
-      "description": "23 MCP servers providing 165 tools for cloud management, observability, GitHub, knowledge, and platform administration.",
+      "title": "MCP Servers",
+      "description": "Model Context Protocol servers and their tools",
       "category": "tools",
       "file": "mcp-servers.json",
-      "sectionCount": 24,
-      "itemCount": 188,
+      "sectionCount": 14,
+      "itemCount": 223,
       "adminOnly": false
     },
     {
-      "domain": "chat-pipeline",
-      "title": "Chat Pipeline",
-      "description": "Chat message processing pipeline with 16 stages handling authentication, validation, prompt engineering, MCP tools, completion, and response streaming.",
-      "category": "core",
-      "file": "chat-pipeline.json",
-      "sectionCount": 3,
-      "itemCount": 34,
-      "adminOnly": false
-    },
-    {
-      "domain": "llm-providers",
-      "title": "LLM Providers",
-      "description": "Multi-provider LLM routing with 8 provider types, failover, load balancing, and per-provider metrics.",
-      "category": "core",
-      "file": "llm-providers.json",
-      "sectionCount": 6,
-      "itemCount": 47,
-      "adminOnly": false
-    },
-    {
-      "domain": "authentication",
-      "title": "Authentication",
-      "description": "Unified token validation supporting 4 token types across 6 auth provider configurations.",
-      "category": "core",
-      "file": "authentication.json",
-      "sectionCount": 4,
-      "itemCount": 19,
-      "adminOnly": false
-    },
-    {
-      "domain": "agent-orchestration",
-      "title": "Agent Orchestration",
-      "description": "Multi-agent orchestration with 4 execution patterns, 4 aggregation strategies, and adaptive turn limits per role.",
-      "category": "agents",
-      "file": "agent-orchestration.json",
-      "sectionCount": 8,
-      "itemCount": 84,
-      "adminOnly": false
-    },
-    {
-      "domain": "agent-configuration",
-      "title": "Agent Configuration",
-      "description": "Agent spawn configuration with 11 role prompts, sub-agent lifecycle, and tier-based model routing.",
-      "category": "agents",
-      "file": "agent-configuration.json",
-      "sectionCount": 5,
-      "itemCount": 57,
-      "adminOnly": false
-    },
-    {
-      "domain": "semantic-tools",
-      "title": "Semantic Tool Selection",
-      "description": "Intelligent tool selection with 3-tier search, intent-priority routing, and score-gap cutoff (max 15 tools per request).",
-      "category": "tools",
-      "file": "semantic-tools.json",
-      "sectionCount": 4,
-      "itemCount": 17,
-      "adminOnly": false
-    },
-    {
-      "domain": "oat-synth",
-      "title": "OAT Synth",
-      "description": "Dynamic tool synthesis framework: natural language intent to synthesized tool with human-in-the-loop approval, risk classification, and user credential injection.",
-      "category": "tools",
-      "file": "oat-synth.json",
-      "sectionCount": 11,
-      "itemCount": 46,
-      "adminOnly": false
-    },
-    {
-      "domain": "workflow-engine",
-      "title": "Workflow Engine",
-      "description": "Workflow execution engine with 45 node types across 9 categories, supporting retry, fallback, circuit breakers, and human approval gates.",
+      "domain": "flow-templates",
+      "title": "Flow Templates",
+      "description": "Pre-built Flow templates seeded into the workflow engine, source-derived from the seed directory.",
       "category": "workflows",
-      "file": "workflow-engine.json",
-      "sectionCount": 17,
-      "itemCount": 100,
-      "adminOnly": false
-    },
-    {
-      "domain": "workflow-scheduling",
-      "title": "Workflow Scheduling",
-      "description": "Cron-based workflow scheduling with setInterval polling, 5-field cron expression parsing, and configurable throughput limits.",
-      "category": "workflows",
-      "file": "workflow-scheduling.json",
-      "sectionCount": 4,
-      "itemCount": 30,
-      "adminOnly": false
-    },
-    {
-      "domain": "hitl-approvals",
-      "title": "HITL Approvals",
-      "description": "Human-in-the-loop approval store for tool call gating with timeout, resolve, and cleanup lifecycle.",
-      "category": "core",
-      "file": "hitl-approvals.json",
-      "sectionCount": 4,
-      "itemCount": 15,
-      "adminOnly": false
-    },
-    {
-      "domain": "audit-trail",
-      "title": "Audit Trail",
-      "description": "Immutable audit logging with 33 entry fields, query types, and hash-chain tamper detection.",
-      "category": "security",
-      "file": "audit-trail.json",
-      "sectionCount": 3,
-      "itemCount": 37,
-      "adminOnly": true
-    },
-    {
-      "domain": "api-routes",
-      "title": "API Routes",
-      "description": "702 HTTP routes across 199 route files, organized by directory.",
-      "category": "core",
-      "file": "api-routes.json",
-      "sectionCount": 21,
-      "itemCount": 702,
-      "adminOnly": false
-    },
-    {
-      "domain": "database-schema",
-      "title": "Database Schema",
-      "description": "Prisma schema with 169 models, 2602 fields, and 255 relations.",
-      "category": "infrastructure",
-      "file": "database-schema.json",
-      "sectionCount": 3,
-      "itemCount": 338,
-      "adminOnly": false
-    },
-    {
-      "domain": "env-variables",
-      "title": "Environment & Secrets",
-      "description": "Helm values configuration and application secret definitions.",
-      "category": "infrastructure",
-      "file": "env-variables.json",
-      "sectionCount": 2,
-      "itemCount": 69,
-      "adminOnly": true
-    },
-    {
-      "domain": "deployment",
-      "title": "Deployment Configuration",
-      "description": "Helm chart with 12 services, autoscaling, ingress, and pod disruption budgets.",
-      "category": "infrastructure",
-      "file": "deployment.json",
-      "sectionCount": 4,
-      "itemCount": 27,
-      "adminOnly": true
-    },
-    {
-      "domain": "observability",
-      "title": "Observability Dashboards",
-      "description": "12 Grafana dashboards with 138 panels covering service health, LLM performance, logs, and platform metrics.",
-      "category": "infrastructure",
-      "file": "observability.json",
-      "sectionCount": 13,
-      "itemCount": 150,
-      "adminOnly": true
-    },
-    {
-      "domain": "code-mode",
-      "title": "Code Mode (OpenAgentic)",
-      "description": "OpenAgentic manager with 14 classes, 78 interfaces, and 14 WebSocket handlers.",
-      "category": "ui",
-      "file": "code-mode.json",
-      "sectionCount": 3,
-      "itemCount": 106,
-      "adminOnly": false
-    },
-    {
-      "domain": "admin-portal",
-      "title": "Admin Portal",
-      "description": "Admin portal with 0 navigation sections and 0 views.",
-      "category": "ui",
-      "file": "admin-portal.json",
+      "file": "flow-templates.json",
       "sectionCount": 1,
-      "itemCount": 0,
-      "adminOnly": true
-    },
-    {
-      "domain": "composable-prompts",
-      "title": "Composable Prompt System",
-      "description": "Modular prompt composition with 29 seed modules, multi-stage pipeline, and slider-controlled budget allocation.",
-      "category": "core",
-      "file": "composable-prompts.json",
-      "sectionCount": 6,
-      "itemCount": 32,
+      "itemCount": 4,
       "adminOnly": false
     },
     {
-      "domain": "sse-stream-events",
-      "title": "SSE Stream Events",
-      "description": "0 normalized stream event types across 0 categories, with 5 type guards.",
-      "category": "core",
-      "file": "sse-stream-events.json",
-      "sectionCount": 2,
-      "itemCount": 5,
+      "domain": "node-types",
+      "title": "Workflow Node Types",
+      "description": "Registered Flow canvas node types, source-derived from the workflow-engine node registry.",
+      "category": "workflows",
+      "file": "node-types.json",
+      "sectionCount": 7,
+      "itemCount": 66,
       "adminOnly": false
     },
     {
-      "domain": "openagentic-cli",
-      "title": "OpenAgentic CLI",
-      "description": "Interactive terminal-based AI coding assistant with Ink UI, tool execution, and multi-model support.",
-      "category": "ui",
-      "file": "openagentic-cli.json",
-      "sectionCount": 5,
-      "itemCount": 1126,
-      "adminOnly": false
-    },
-    {
-      "domain": "llm-sdk",
-      "title": "OpenAgentic LLM SDK",
-      "description": "TypeScript SDK for interacting with the OpenAgentic LLM API, including provider-specific adapters for Bedrock and Vertex.",
-      "category": "tools",
-      "file": "llm-sdk.json",
+      "domain": "deployed-services",
+      "title": "Deployed Services",
+      "description": "Services deployed by the compose stack, source-derived from docker-compose.yml.",
+      "category": "infrastructure",
+      "file": "deployed-services.json",
       "sectionCount": 4,
-      "itemCount": 499,
-      "adminOnly": false
-    },
-    {
-      "domain": "ghostpilot",
-      "title": "GhostPilot",
-      "description": "Headless browser testing and UX automation tool with Express API, WebSocket control, and Puppeteer-based browser interaction.",
-      "category": "tools",
-      "file": "ghostpilot.json",
-      "sectionCount": 4,
-      "itemCount": 88,
-      "adminOnly": false
-    },
-    {
-      "domain": "mcp-proxy",
-      "title": "MCP Proxy Service",
-      "description": "MCP proxy service with 30 API routes, 24 classes, and 49 management functions.",
-      "category": "tools",
-      "file": "mcp-proxy.json",
-      "sectionCount": 3,
-      "itemCount": 103,
-      "adminOnly": false
-    },
-    {
-      "domain": "agent-frameworks",
-      "title": "Agent Frameworks (CrewAI & LangGraph)",
-      "description": "Agent orchestration frameworks with 78 documented components across 15 CrewAI and 14 LangGraph source files.",
-      "category": "agents",
-      "file": "agent-frameworks.json",
-      "sectionCount": 5,
-      "itemCount": 78,
-      "adminOnly": false
-    },
-    {
-      "domain": "openagentic-synth",
-      "title": "OAT Executor",
-      "description": "Open Agent Tool executor with 22 documented components across 6 source files.",
-      "category": "tools",
-      "file": "openagentic-synth.json",
-      "sectionCount": 4,
-      "itemCount": 22,
+      "itemCount": 14,
       "adminOnly": false
     },
     {
       "domain": "helm-templates",
-      "title": "Helm Chart Templates",
-      "description": "158 Kubernetes resources across 21 template groups in the OpenAgentic Helm chart.",
+      "title": "Helm Templates",
+      "description": "Kubernetes templates in the platform Helm chart",
       "category": "infrastructure",
       "file": "helm-templates.json",
-      "sectionCount": 21,
-      "itemCount": 158,
-      "adminOnly": true
+      "sectionCount": 1,
+      "itemCount": 13,
+      "adminOnly": false
+    },
+    {
+      "domain": "api-routes",
+      "title": "API Routes",
+      "description": "HTTP routes registered across the API",
+      "category": "core",
+      "file": "api-routes.json",
+      "sectionCount": 14,
+      "itemCount": 580,
+      "adminOnly": false
+    },
+    {
+      "domain": "t1-tools",
+      "title": "T1 Primitives",
+      "description": "Canonical agentic primitives — the Layer-2 chatmode catalog. Every chat turn ships these 16 meta-tools.",
+      "category": "core",
+      "file": "t1-tools.json",
+      "sectionCount": 7,
+      "itemCount": 24,
+      "adminOnly": false
+    },
+    {
+      "domain": "feature-flags",
+      "title": "Feature Availability",
+      "description": "Build-time feature flags that determine what ships in the UI.",
+      "category": "core",
+      "file": "feature-flags.json",
+      "sectionCount": 1,
+      "itemCount": 5,
+      "adminOnly": false
     }
   ]
 }

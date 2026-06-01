@@ -73,7 +73,6 @@ const grafanaDashboards = [
   { name: 'Redis Metrics', description: 'Cache hit rates, memory usage, and connection counts.' },
   { name: 'DLP & Security', description: 'DLP scan rates, violation counts, and blocked content categories.' },
   { name: 'User Activity', description: 'Active sessions, message rates, and feature usage distribution.' },
-  { name: 'Code Mode', description: 'Sandbox provisioning times, active sessions, and resource usage.' },
 ];
 
 const prometheusEndpoints = [

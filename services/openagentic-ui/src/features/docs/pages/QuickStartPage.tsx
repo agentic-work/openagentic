@@ -26,7 +26,7 @@ const steps = [
   {
     number: '5',
     title: 'Explore Tools and Agents',
-    body: 'Ask the AI to use specific tools ("search the web for...", "check our Kubernetes pods", "analyze this CSV"). The platform has 16 MCP tool servers and 11 agent types available. Mention what you need and the system matches the right tool.',
+    body: 'Ask the AI to use specific tools ("search the web for...", "check our Kubernetes pods", "analyze this CSV"). The platform has 14 MCP tool servers and 11 agent types available. Mention what you need and the system matches the right tool.',
   },
 ];
 

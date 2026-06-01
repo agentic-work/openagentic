@@ -55,8 +55,11 @@ describe('docs page renders every generated manifest without crashing', () => {
     cleanup();
   });
 
-  it('loads ≥ 30 generated manifest JSON files from disk', () => {
-    expect(docs.length).toBeGreaterThanOrEqual(30);
+  it('loads every generated manifest JSON from disk (one per DOMAINS entry)', () => {
+    // The unified generator (scripts/docs/manifest.ts → DOMAINS) emits one
+    // manifest per source-derived domain. Pin a sane floor so an accidental
+    // domain drop is caught, without hardcoding the exact count.
+    expect(docs.length).toBeGreaterThanOrEqual(8);
   });
 
   it.each([] as Array<[string, any]>)(

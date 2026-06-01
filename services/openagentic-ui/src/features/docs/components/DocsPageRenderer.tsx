@@ -16,7 +16,6 @@ const ChatModePage = React.lazy(() => import('../pages/ChatModePage'));
 // 2026-04-19 — IntelligenceSliderPage deleted (task #144, slider rip).
 const AgentDelegationPage = React.lazy(() => import('../pages/AgentDelegationPage'));
 const ArtifactsPage = React.lazy(() => import('../pages/ArtifactsPage'));
-const SandboxSecurityPage = React.lazy(() => import('../pages/SandboxSecurityPage'));
 const FlowBuilderPage = React.lazy(() => import('../pages/FlowBuilderPage'));
 const NodeTypesPage = React.lazy(() => import('../pages/NodeTypesPage'));
 const SchedulingTriggersPage = React.lazy(() => import('../pages/SchedulingTriggersPage'));
@@ -66,7 +65,6 @@ const PAGE_COMPONENTS: Record<string, React.LazyExoticComponent<React.FC<any>>> 
   // 2026-04-19 — intelligence-slider route removed (task #144).
   'agents-delegation': AgentDelegationPage,
   'artifacts': ArtifactsPage,
-  // Code Mode  'sandbox-security': SandboxSecurityPage,
   // Flows
   'flows-builder': FlowBuilderPage,
   'node-types': NodeTypesPage,
@@ -157,7 +155,7 @@ export const docsNavigation: DocsNavCategory[] = [
     icon: 'tool',
     pages: [
       { id: 'mcp-overview', title: 'What is MCP?', description: 'Model Context Protocol' },
-      { id: 'available-tools', title: 'Available Tools', description: '16 MCP servers' },
+      { id: 'available-tools', title: 'Available Tools', description: '14 MCP servers' },
       { id: 'tool-execution', title: 'Tool Execution', description: 'How tools run securely' },
     ],
   },

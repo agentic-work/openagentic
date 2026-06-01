@@ -11,6 +11,12 @@ export interface TsConstExportConfig {
   category: string;
   path: string;
   exportName: string;
+  /**
+   * When the named export is an object literal (`export const X = { a: ..., b: ... }`)
+   * rather than an array, set this to emit one DocItem per top-level key, using
+   * the preceding `//` comment as the description.
+   */
+  objectExport?: boolean;
 }
 
 export function tsConstExport(config: TsConstExportConfig): Extractor {
@@ -19,7 +25,49 @@ export function tsConstExport(config: TsConstExportConfig): Extractor {
     const src = await readFile(abs, 'utf-8');
     const items: DocItem[] = [];
 
-    if (config.exportName === '*') {
+    if (config.objectExport) {
+      // export const NAME = { ... } as const;  → one item per top-level key
+      const objRe = new RegExp(
+        `export\\s+const\\s+${config.exportName}\\s*[:=]\\s*\\{([\\s\\S]*?)\\}\\s*(?:as\\s+const)?\\s*;`,
+      );
+      const objMatch = src.match(objRe);
+      if (!objMatch) {
+        throw new Error(
+          `tsConstExport: ${config.exportName} (object) not found in ${config.path}`,
+        );
+      }
+      const body = objMatch[1];
+      const lines = body.split('\n');
+      let pendingComment = '';
+      // top-level key = exactly two-space indent + `key:` (skips nested call args)
+      const keyRe = /^ {2}([a-zA-Z_$][\w$]*)\s*:/;
+      for (const line of lines) {
+        const commentMatch = line.match(/^\s*\/\/\s?(.*)$/);
+        if (commentMatch) {
+          const text = commentMatch[1].trim();
+          if (text) pendingComment = pendingComment ? `${pendingComment} ${text}` : text;
+          continue;
+        }
+        const keyMatch = line.match(keyRe);
+        if (keyMatch) {
+          const key = keyMatch[1];
+          items.push({
+            id: key,
+            name: key,
+            description: (pendingComment || `Feature flag: ${key}`)
+              .split('\n')[0]
+              .trim()
+              .slice(0, 280),
+            type: 'feature-flag',
+            sourceFile: relative(basePath, abs),
+          });
+          pendingComment = '';
+          continue;
+        }
+        // blank line resets the pending comment so it only attaches to the next key
+        if (line.trim() === '') pendingComment = '';
+      }
+    } else if (config.exportName === '*') {
       // Two-pass: find every `export const NAME` start, then for each
       // slice the source from that point up to the next top-level statement
       // (or end of file). Avoids the lookahead-at-EOF bug in single-pass regex.

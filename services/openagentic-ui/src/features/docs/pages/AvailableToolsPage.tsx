@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useDocsStore } from '@/stores/useDocsStore';
 
 // ============================================================================
 // ANIMATION VARIANTS
@@ -133,14 +134,6 @@ const mcpServers: MCPServer[] = [
     color: '#64748b',
   },
   {
-    name: 'OpenAgentic',
-    id: 'oap-openagentic-mcp',
-    description: 'Code Mode tools for AI-assisted development. File operations, terminal commands, workspace management, and code analysis.',
-    category: 'Development',
-    capabilities: ['File read/write', 'Terminal execution', 'Workspace search', 'Diff generation', 'Code analysis'],
-    color: '#22c55e',
-  },
-  {
     name: 'Agent Architect',
     id: 'oap-agent-architect-mcp',
     description: 'Meta-agent for designing and building new agents. Generates agent configurations, prompt templates, and tool selections based on requirements.',
@@ -150,14 +143,34 @@ const mcpServers: MCPServer[] = [
   },
 ];
 
-// Group by category
-const categories = Array.from(new Set(mcpServers.map((s) => s.category)));
-
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
 const AvailableToolsPage: React.FC = () => {
+  // Source-derived facts: prefer the build-time-generated mcp-servers manifest
+  // (scanned from services/mcps/oap-*-mcp) so the count + server list ALWAYS
+  // match the current release. The hardcoded `mcpServers` array above is only a
+  // friendly-metadata fallback (categories/colors) for offline rendering.
+  const { loadManifest, loadedManifests } = useDocsStore();
+  useEffect(() => {
+    if (!loadedManifests.has('mcp-servers')) {
+      loadManifest('mcp-servers').catch(() => {});
+    }
+  }, [loadManifest, loadedManifests]);
+
+  // Authoritative server count from the generated manifest (one section per MCP).
+  const serverCount = useMemo(() => {
+    const m = loadedManifests.get('mcp-servers');
+    return m?.sections.length ?? mcpServers.length;
+  }, [loadedManifests]);
+
+  // Group by category (fallback metadata).
+  const categories = useMemo(
+    () => Array.from(new Set(mcpServers.map((s) => s.category))),
+    [],
+  );
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
       <motion.div custom={0} variants={sectionVariants} initial="hidden" animate="visible">
@@ -165,7 +178,7 @@ const AvailableToolsPage: React.FC = () => {
           Available Tools
         </h1>
         <p className="text-lg leading-relaxed mb-6" style={{ color: 'var(--color-textSecondary)' }}>
-          OpenAgentic connects to {mcpServers.length} MCP servers spanning cloud providers,
+          OpenAgentic connects to {serverCount} MCP servers spanning cloud providers,
           observability tools, development platforms, and internal services. Each server exposes
           multiple tools that the AI can use to answer questions and perform actions.
         </p>
@@ -287,7 +300,7 @@ const AvailableToolsPage: React.FC = () => {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
-              { label: 'Dynamic synthesis', detail: 'Tool code is generated and sandboxed at runtime' },
+              { label: 'Dynamic synthesis', detail: 'OAT generates the tool implementation and runs it in the isolated synth-executor service' },
               { label: 'Schema validation', detail: 'Generated tools have typed inputs and outputs' },
               { label: 'Security review', detail: 'OAT tools pass DLP scanning before execution' },
               { label: 'Session-scoped', detail: 'Synthesized tools exist only for the current session' },

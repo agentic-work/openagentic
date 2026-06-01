@@ -402,7 +402,7 @@ export const DocsBrainIcon: React.FC<IconProps> = ({ size = 20, className = '', 
 
 /**
  * DocsCodeIcon - Gradient green to cyan, code brackets shape
- * Use: Code mode, development, API references
+ * Use: development, API references
  */
 export const DocsCodeIcon: React.FC<IconProps> = ({ size = 20, className = '', style }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>

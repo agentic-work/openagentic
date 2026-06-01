@@ -30,9 +30,8 @@ const settingCategories = [
   {
     category: 'Platform',
     settings: [
-      { name: 'Feature Flags', desc: 'Enable or disable platform features: Code Mode, Flows, specific MCP servers, agent types.' },
+      { name: 'Feature Flags', desc: 'Enable or disable platform features: Flows, specific MCP servers, agent types, tool synthesis.' },
       { name: 'Embedding Model', desc: 'Select the embedding model used for RAG and tool selection vector search.' },
-      { name: 'Sandbox Limits', desc: 'Configure Kubernetes sandbox resource limits: CPU, memory, storage, and timeout per session.' },
     ],
   },
 ];

@@ -38,7 +38,7 @@ const moduleTypes = [
   },
   {
     type: 'Mode Modules',
-    description: 'Mode-specific instructions activated based on the current interface: chat mode, code mode, or flow mode. Each mode module tailors the AI\'s behavior for the active context (e.g., code mode adds IDE-aware instructions).',
+    description: 'Mode-specific instructions activated based on the current interface: chat mode or flow mode. Each mode module tailors the AI\'s behavior for the active context.',
   },
   {
     type: 'Capability Modules',

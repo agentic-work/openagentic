@@ -1,0 +1,199 @@
+{
+  "domain": "deployed-services",
+  "title": "Deployed Services",
+  "description": "Services deployed by the compose stack, source-derived from docker-compose.yml.",
+  "icon": "infra",
+  "category": "infrastructure",
+  "generatedAt": "2026-06-01T13:39:05.720Z",
+  "sourceFiles": [
+    "docker-compose.yml"
+  ],
+  "sections": [
+    {
+      "id": "core",
+      "title": "Core Platform",
+      "description": "3 core service(s)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "api",
+          "name": "api",
+          "description": "Service `api` (image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-api:${OPENAGENTIC_TAG:-latest})",
+          "type": "compose-service",
+          "properties": {
+            "category": "core",
+            "image": "${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-api:${OPENAGENTIC_TAG:-latest}"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
+        {
+          "id": "ui",
+          "name": "ui",
+          "description": "Service `ui` (image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-ui:${OPENAGENTIC_TAG:-latest})",
+          "type": "compose-service",
+          "properties": {
+            "category": "core",
+            "image": "${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-ui:${OPENAGENTIC_TAG:-latest}"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
+        {
+          "id": "workflows",
+          "name": "workflows",
+          "description": "Service `workflows` (image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-workflows:${OPENAGENTIC_TAG:-latest})",
+          "type": "compose-service",
+          "properties": {
+            "category": "core",
+            "image": "${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-workflows:${OPENAGENTIC_TAG:-latest}"
+          },
+          "sourceFile": "docker-compose.yml"
+        }
+      ]
+    },
+    {
+      "id": "mcp",
+      "title": "MCP / Tooling",
+      "description": "1 mcp service(s)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "mcp-proxy",
+          "name": "mcp-proxy",
+          "description": "Service `mcp-proxy` (image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-mcp-proxy:${OPENAGENTIC_TAG:-latest})",
+          "type": "compose-service",
+          "properties": {
+            "category": "mcp",
+            "image": "${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-mcp-proxy:${OPENAGENTIC_TAG:-latest}"
+          },
+          "sourceFile": "docker-compose.yml"
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "title": "Datastores",
+      "description": "5 data service(s)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "etcd",
+          "name": "etcd",
+          "description": "Service `etcd` (image: quay.io/coreos/etcd:v3.5.18)",
+          "type": "compose-service",
+          "properties": {
+            "category": "data",
+            "image": "quay.io/coreos/etcd:v3.5.18"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
+        {
+          "id": "milvus",
+          "name": "milvus",
+          "description": "Service `milvus` (image: milvusdb/milvus:v2.4.15)",
+          "type": "compose-service",
+          "properties": {
+            "category": "data",
+            "image": "milvusdb/milvus:v2.4.15"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
+        {
+          "id": "minio",
+          "name": "minio",
+          "description": "Service `minio` (image: minio/minio:RELEASE.2024-12-18T13-15-44Z)",
+          "type": "compose-service",
+          "properties": {
+            "category": "data",
+            "image": "minio/minio:RELEASE.2024-12-18T13-15-44Z"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
+        {
+          "id": "postgres",
+          "name": "postgres",
+          "description": "Service `postgres` (image: pgvector/pgvector:pg16)",
+          "type": "compose-service",
+          "properties": {
+            "category": "data",
+            "image": "pgvector/pgvector:pg16"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
+        {
+          "id": "redis",
+          "name": "redis",
+          "description": "Service `redis` (image: redis:7-alpine)",
+          "type": "compose-service",
+          "properties": {
+            "category": "data",
+            "image": "redis:7-alpine"
+          },
+          "sourceFile": "docker-compose.yml"
+        }
+      ]
+    },
+    {
+      "id": "auxiliary",
+      "title": "Auxiliary",
+      "description": "5 auxiliary service(s)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "ollama",
+          "name": "ollama",
+          "description": "Service `ollama` (image: ollama/ollama:latest)",
+          "type": "compose-service",
+          "properties": {
+            "category": "auxiliary",
+            "image": "ollama/ollama:latest"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
+        {
+          "id": "ollama-init",
+          "name": "ollama-init",
+          "description": "Service `ollama-init` (image: ollama/ollama:latest)",
+          "type": "compose-service",
+          "properties": {
+            "category": "auxiliary",
+            "image": "ollama/ollama:latest"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
+        {
+          "id": "proxy",
+          "name": "proxy",
+          "description": "Service `proxy` (image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-proxy:${OPENAGENTIC_TAG:-latest})",
+          "type": "compose-service",
+          "properties": {
+            "category": "auxiliary",
+            "image": "${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-proxy:${OPENAGENTIC_TAG:-latest}"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
+        {
+          "id": "searxng",
+          "name": "searxng",
+          "description": "Service `searxng` (image: searxng/searxng:latest)",
+          "type": "compose-service",
+          "properties": {
+            "category": "auxiliary",
+            "image": "searxng/searxng:latest"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
+        {
+          "id": "synth",
+          "name": "synth",
+          "description": "Service `synth` (image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-synth:${OPENAGENTIC_TAG:-latest})",
+          "type": "compose-service",
+          "properties": {
+            "category": "auxiliary",
+            "image": "${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-synth:${OPENAGENTIC_TAG:-latest}"
+          },
+          "sourceFile": "docker-compose.yml"
+        }
+      ]
+    }
+  ]
+}

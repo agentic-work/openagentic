@@ -4,63 +4,44 @@
   "description": "HTTP routes registered across the API",
   "icon": "route",
   "category": "core",
-  "generatedAt": "2026-05-13T20:48:20.616Z",
+  "generatedAt": "2026-06-01T13:39:05.768Z",
   "sourceFiles": [
     "services/openagentic-api/src/routes/account-linking.ts",
-    "services/openagentic-api/src/routes/admin-agent-schedules.ts",
     "services/openagentic-api/src/routes/admin-agents.ts",
     "services/openagentic-api/src/routes/admin-aif-metrics.ts",
     "services/openagentic-api/src/routes/admin-analytics.ts",
     "services/openagentic-api/src/routes/admin-api-tokens.ts",
-    "services/openagentic-api/src/routes/admin-audit-chat.ts",
-    "services/openagentic-api/src/routes/admin-audit-logs.ts",
-    "services/openagentic-api/src/routes/admin-audit.ts",
-    "services/openagentic-api/src/routes/admin-chargeback.ts",
-    "services/openagentic-api/src/routes/admin-code.ts",
     "services/openagentic-api/src/routes/admin-context-metrics.ts",
-    "services/openagentic-api/src/routes/admin-credential-audit.ts",
-    "services/openagentic-api/src/routes/admin-dashboard-metrics.ts",
+    "services/openagentic-api/src/routes/admin-dashboard-counts.ts",
     "services/openagentic-api/src/routes/admin-embeddings.ts",
-    "services/openagentic-api/src/routes/admin-feedback.ts",
-    "services/openagentic-api/src/routes/admin-flow-audit.ts",
     "services/openagentic-api/src/routes/admin-integrations.ts",
     "services/openagentic-api/src/routes/admin-kpis.ts",
-    "services/openagentic-api/src/routes/admin-mcp-access.ts",
     "services/openagentic-api/src/routes/admin-mcp-inspector.ts",
     "services/openagentic-api/src/routes/admin-mcp-logs.ts",
-    "services/openagentic-api/src/routes/admin-mcp-tool-access.ts",
     "services/openagentic-api/src/routes/admin-mcp-tools.ts",
     "services/openagentic-api/src/routes/admin-messages.ts",
-    "services/openagentic-api/src/routes/admin-metrics.ts",
     "services/openagentic-api/src/routes/admin-missing-routes.ts",
     "services/openagentic-api/src/routes/admin-network.ts",
     "services/openagentic-api/src/routes/admin-ollama.ts",
     "services/openagentic-api/src/routes/admin-portal-enhanced.ts",
-    "services/openagentic-api/src/routes/admin-rate-limits.ts",
-    "services/openagentic-api/src/routes/admin-rbac-system-prompts.ts",
+    "services/openagentic-api/src/routes/admin-prompting.ts",
+    "services/openagentic-api/src/routes/admin-prompts.ts",
     "services/openagentic-api/src/routes/admin-roles.ts",
+    "services/openagentic-api/src/routes/admin-service-prompts.ts",
     "services/openagentic-api/src/routes/admin-synth.ts",
     "services/openagentic-api/src/routes/admin-system.ts",
     "services/openagentic-api/src/routes/admin-teams.ts",
-    "services/openagentic-api/src/routes/admin-test-harness.ts",
-    "services/openagentic-api/src/routes/admin-tiered-fc.ts",
+    "services/openagentic-api/src/routes/admin-techniques.ts",
     "services/openagentic-api/src/routes/admin-tools.ts",
-    "services/openagentic-api/src/routes/admin-usage-analytics.ts",
-    "services/openagentic-api/src/routes/admin-user-activity.ts",
     "services/openagentic-api/src/routes/admin-user-context.ts",
-    "services/openagentic-api/src/routes/admin-user-permissions.ts",
-    "services/openagentic-api/src/routes/admin-webhook-security.ts",
     "services/openagentic-api/src/routes/admin-workflow-secrets.ts",
     "services/openagentic-api/src/routes/admin.ts",
-    "services/openagentic-api/src/routes/openagentic.ts",
     "services/openagentic-api/src/routes/agents.ts",
     "services/openagentic-api/src/routes/artifacts.ts",
     "services/openagentic-api/src/routes/auth.ts",
-    "services/openagentic-api/src/routes/awcode.ts",
     "services/openagentic-api/src/routes/background-jobs.ts",
     "services/openagentic-api/src/routes/capabilities.ts",
-    "services/openagentic-api/src/routes/code-mode-provisioning.ts",
-    "services/openagentic-api/src/routes/code-plugins.ts",
+    "services/openagentic-api/src/routes/chat.ts",
     "services/openagentic-api/src/routes/data-sources.ts",
     "services/openagentic-api/src/routes/embed.ts",
     "services/openagentic-api/src/routes/embeddings.ts",
@@ -75,7 +56,10 @@
     "services/openagentic-api/src/routes/monitoring-websocket.ts",
     "services/openagentic-api/src/routes/obo.ts",
     "services/openagentic-api/src/routes/openai-compatible.ts",
+    "services/openagentic-api/src/routes/orchestrate.ts",
+    "services/openagentic-api/src/routes/prompt-templates.ts",
     "services/openagentic-api/src/routes/settings.ts",
+    "services/openagentic-api/src/routes/setup.ts",
     "services/openagentic-api/src/routes/storage.ts",
     "services/openagentic-api/src/routes/synth.ts",
     "services/openagentic-api/src/routes/system-config.ts",
@@ -96,6 +80,7 @@
     "services/openagentic-api/src/routes/memory-vector/memories.ts",
     "services/openagentic-api/src/routes/internal/agent-persistence.ts",
     "services/openagentic-api/src/routes/internal/agent-search.ts",
+    "services/openagentic-api/src/routes/internal/embed.ts",
     "services/openagentic-api/src/routes/internal/hitl-policy.ts",
     "services/openagentic-api/src/routes/internal/refresh-models.ts",
     "services/openagentic-api/src/routes/internal/result-storage.ts",
@@ -103,19 +88,6 @@
     "services/openagentic-api/src/routes/google-auth/index.ts",
     "services/openagentic-api/src/routes/file-attachment/uploads.ts",
     "services/openagentic-api/src/routes/docs/index.ts",
-    "services/openagentic-api/src/routes/code-ws/chat.ts",
-    "services/openagentic-api/src/routes/code-ws/events.ts",
-    "services/openagentic-api/src/routes/code-ws/progress.ts",
-    "services/openagentic-api/src/routes/code-ws/resolve.ts",
-    "services/openagentic-api/src/routes/code-ws/terminal.ts",
-    "services/openagentic-api/src/routes/code-mode/boot-events.handler.ts",
-    "services/openagentic-api/src/routes/code-mode/chat-stream.handler.ts",
-    "services/openagentic-api/src/routes/code-mode/collections.route.ts",
-    "services/openagentic-api/src/routes/code-mode/internal-bucket-seed.route.ts",
-    "services/openagentic-api/src/routes/code-mode/internal-codemode-model.route.ts",
-    "services/openagentic-api/src/routes/code-mode/internal-user-storage.route.ts",
-    "services/openagentic-api/src/routes/code-mode/preview-proxy.handler.ts",
-    "services/openagentic-api/src/routes/code-mode/relay-ws.handler.ts",
     "services/openagentic-api/src/routes/chat/index.ts",
     "services/openagentic-api/src/routes/chat/stream-tail.route.ts",
     "services/openagentic-api/src/routes/chat/user-feedback.ts",
@@ -123,27 +95,29 @@
     "services/openagentic-api/src/routes/azure-integration/admin.ts",
     "services/openagentic-api/src/routes/azure-integration/auth.ts",
     "services/openagentic-api/src/routes/azure-integration/events.ts",
+    "services/openagentic-api/src/routes/analytics-monitoring/prompt-metrics.ts",
     "services/openagentic-api/src/routes/analytics-monitoring/usage.ts",
     "services/openagentic-api/src/routes/ai-ml-services/models.ts",
-    "services/openagentic-api/src/routes/admin/agent-metrics.ts",
+    "services/openagentic-api/src/routes/advanced-prompting/prompts.ts",
     "services/openagentic-api/src/routes/admin/agentic-loops.ts",
     "services/openagentic-api/src/routes/admin/auth-access.ts",
     "services/openagentic-api/src/routes/admin/chat-loop-config.ts",
-    "services/openagentic-api/src/routes/admin/codemode.ts",
     "services/openagentic-api/src/routes/admin/dlp.ts",
     "services/openagentic-api/src/routes/admin/enriched-tools.ts",
     "services/openagentic-api/src/routes/admin/grafana-proxy.ts",
+    "services/openagentic-api/src/routes/admin/health.ts",
     "services/openagentic-api/src/routes/admin/llm-providers.ts",
     "services/openagentic-api/src/routes/admin/mcp-management.ts",
     "services/openagentic-api/src/routes/admin/multi-model.ts",
     "services/openagentic-api/src/routes/admin/permissions.ts",
+    "services/openagentic-api/src/routes/admin/pipeline-config.ts",
     "services/openagentic-api/src/routes/admin/pipeline-control.ts",
     "services/openagentic-api/src/routes/admin/pipeline.ts",
     "services/openagentic-api/src/routes/admin/prom-proxy.ts",
+    "services/openagentic-api/src/routes/admin/prompt-modules.ts",
     "services/openagentic-api/src/routes/admin/registry-tombstones.ts",
     "services/openagentic-api/src/routes/admin/router-tuning.ts",
     "services/openagentic-api/src/routes/admin/shared-kb.ts",
-    "services/openagentic-api/src/routes/admin/slo.ts",
     "services/openagentic-api/src/routes/admin/v3-extras-misc.ts",
     "services/openagentic-api/src/routes/admin/v3-extras-mutations.ts",
     "services/openagentic-api/src/routes/admin/v3-extras.ts",
@@ -177,28 +151,6 @@
             "path": "/accounts/unlink-azure"
           },
           "sourceFile": "services/openagentic-api/src/routes/account-linking.ts"
-        },
-        {
-          "id": "GET-_",
-          "name": "GET /",
-          "description": "GET /",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-agent-schedules.ts"
-        },
-        {
-          "id": "POST-_",
-          "name": "POST /",
-          "description": "POST /",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-agent-schedules.ts"
         },
         {
           "id": "GET-_",
@@ -443,402 +395,6 @@
           "sourceFile": "services/openagentic-api/src/routes/admin-api-tokens.ts"
         },
         {
-          "id": "POST-_api_admin_audit_chat",
-          "name": "POST /api/admin/audit/chat",
-          "description": "POST /api/admin/audit/chat",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/api/admin/audit/chat"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit-chat.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit_chat_suggestions",
-          "name": "GET /api/admin/audit/chat/suggestions",
-          "description": "GET /api/admin/audit/chat/suggestions",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit/chat/suggestions"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit-chat.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit-logs",
-          "name": "GET /api/admin/audit-logs",
-          "description": "GET /api/admin/audit-logs",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit-logs"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit-logs.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit-logs_stats",
-          "name": "GET /api/admin/audit-logs/stats",
-          "description": "GET /api/admin/audit-logs/stats",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit-logs/stats"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit-logs.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit-logs_errors",
-          "name": "GET /api/admin/audit-logs/errors",
-          "description": "GET /api/admin/audit-logs/errors",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit-logs/errors"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit-logs.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit-logs_sessions",
-          "name": "GET /api/admin/audit-logs/sessions",
-          "description": "GET /api/admin/audit-logs/sessions",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit-logs/sessions"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit-logs.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit-logs_export",
-          "name": "GET /api/admin/audit-logs/export",
-          "description": "GET /api/admin/audit-logs/export",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit-logs/export"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit-logs.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit-logs_sessions__sessionId",
-          "name": "GET /api/admin/audit-logs/sessions/:sessionId",
-          "description": "GET /api/admin/audit-logs/sessions/:sessionId",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit-logs/sessions/:sessionId"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit-logs.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit_logs_stream",
-          "name": "GET /api/admin/audit/logs/stream",
-          "description": "GET /api/admin/audit/logs/stream",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit/logs/stream"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit_logs",
-          "name": "GET /api/admin/audit/logs",
-          "description": "GET /api/admin/audit/logs",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit/logs"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit_user__userId_summary",
-          "name": "GET /api/admin/audit/user/:userId/summary",
-          "description": "GET /api/admin/audit/user/:userId/summary",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit/user/:userId/summary"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit_logs__logId",
-          "name": "GET /api/admin/audit/logs/:logId",
-          "description": "GET /api/admin/audit/logs/:logId",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit/logs/:logId"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit_stats",
-          "name": "GET /api/admin/audit/stats",
-          "description": "GET /api/admin/audit/stats",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit/stats"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit_export",
-          "name": "GET /api/admin/audit/export",
-          "description": "GET /api/admin/audit/export",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit/export"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit_ml-training-data",
-          "name": "GET /api/admin/audit/ml-training-data",
-          "description": "GET /api/admin/audit/ml-training-data",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit/ml-training-data"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit.ts"
-        },
-        {
-          "id": "DELETE-_api_admin_audit_sessions__sessionId_permanent",
-          "name": "DELETE /api/admin/audit/sessions/:sessionId/permanent",
-          "description": "DELETE /api/admin/audit/sessions/:sessionId/permanent",
-          "type": "http-route",
-          "properties": {
-            "method": "DELETE",
-            "path": "/api/admin/audit/sessions/:sessionId/permanent"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-audit.ts"
-        },
-        {
-          "id": "GET-_budgets",
-          "name": "GET /budgets",
-          "description": "GET /budgets",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/budgets"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-chargeback.ts"
-        },
-        {
-          "id": "GET-_groups",
-          "name": "GET /groups",
-          "description": "GET /groups",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/groups"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-chargeback.ts"
-        },
-        {
-          "id": "GET-_users",
-          "name": "GET /users",
-          "description": "GET /users",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/users"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_storage-backends",
-          "name": "GET /storage-backends",
-          "description": "GET /storage-backends",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/storage-backends"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_runtime_health",
-          "name": "GET /runtime/health",
-          "description": "GET /runtime/health",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/runtime/health"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_runtime_metrics",
-          "name": "GET /runtime/metrics",
-          "description": "GET /runtime/metrics",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/runtime/metrics"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_sessions_metrics_enhanced",
-          "name": "GET /sessions/metrics/enhanced",
-          "description": "GET /sessions/metrics/enhanced",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/sessions/metrics/enhanced"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_metrics_system",
-          "name": "GET /metrics/system",
-          "description": "GET /metrics/system",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/metrics/system"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_metrics_websocket",
-          "name": "GET /metrics/websocket",
-          "description": "GET /metrics/websocket",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/metrics/websocket"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_stats",
-          "name": "GET /stats",
-          "description": "GET /stats",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/stats"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_system-prompt",
-          "name": "GET /system-prompt",
-          "description": "GET /system-prompt",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/system-prompt"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "DELETE-_system-prompt",
-          "name": "DELETE /system-prompt",
-          "description": "DELETE /system-prompt",
-          "type": "http-route",
-          "properties": {
-            "method": "DELETE",
-            "path": "/system-prompt"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_settings",
-          "name": "GET /settings",
-          "description": "GET /settings",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/settings"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_milvus_collections",
-          "name": "GET /milvus/collections",
-          "description": "GET /milvus/collections",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/milvus/collections"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_milvus_stats",
-          "name": "GET /milvus/stats",
-          "description": "GET /milvus/stats",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/milvus/stats"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "POST-_milvus_batch-create",
-          "name": "POST /milvus/batch-create",
-          "description": "POST /milvus/batch-create",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/milvus/batch-create"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "POST-_milvus_batch-optimize",
-          "name": "POST /milvus/batch-optimize",
-          "description": "POST /milvus/batch-optimize",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/milvus/batch-optimize"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_milvus_health",
-          "name": "GET /milvus/health",
-          "description": "GET /milvus/health",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/milvus/health"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_exec_info",
-          "name": "GET /exec/info",
-          "description": "GET /exec/info",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/exec/info"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
-          "id": "GET-_exec_pods",
-          "name": "GET /exec/pods",
-          "description": "GET /exec/pods",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/exec/pods"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-code.ts"
-        },
-        {
           "id": "GET-_context_compaction-log",
           "name": "GET /context/compaction-log",
           "description": "GET /context/compaction-log",
@@ -883,37 +439,15 @@
           "sourceFile": "services/openagentic-api/src/routes/admin-context-metrics.ts"
         },
         {
-          "id": "GET-_api_admin_audit_credentials",
-          "name": "GET /api/admin/audit/credentials",
-          "description": "GET /api/admin/audit/credentials",
+          "id": "GET-_counts",
+          "name": "GET /counts",
+          "description": "GET /counts",
           "type": "http-route",
           "properties": {
             "method": "GET",
-            "path": "/api/admin/audit/credentials"
+            "path": "/counts"
           },
-          "sourceFile": "services/openagentic-api/src/routes/admin-credential-audit.ts"
-        },
-        {
-          "id": "GET-_api_admin_audit_credentials_stats",
-          "name": "GET /api/admin/audit/credentials/stats",
-          "description": "GET /api/admin/audit/credentials/stats",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/audit/credentials/stats"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-credential-audit.ts"
-        },
-        {
-          "id": "GET-_api_admin_dashboard_metrics",
-          "name": "GET /api/admin/dashboard/metrics",
-          "description": "GET /api/admin/dashboard/metrics",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/dashboard/metrics"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-dashboard-metrics.ts"
+          "sourceFile": "services/openagentic-api/src/routes/admin-dashboard-counts.ts"
         },
         {
           "id": "GET-_config",
@@ -947,94 +481,6 @@
             "path": "/test"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin-embeddings.ts"
-        },
-        {
-          "id": "GET-_stats",
-          "name": "GET /stats",
-          "description": "GET /stats",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/stats"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-feedback.ts"
-        },
-        {
-          "id": "GET-_by-model",
-          "name": "GET /by-model",
-          "description": "GET /by-model",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/by-model"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-feedback.ts"
-        },
-        {
-          "id": "GET-_by-user",
-          "name": "GET /by-user",
-          "description": "GET /by-user",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/by-user"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-feedback.ts"
-        },
-        {
-          "id": "GET-_recent",
-          "name": "GET /recent",
-          "description": "GET /recent",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/recent"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-feedback.ts"
-        },
-        {
-          "id": "GET-_trends",
-          "name": "GET /trends",
-          "description": "GET /trends",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/trends"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-feedback.ts"
-        },
-        {
-          "id": "GET-_model-accuracy",
-          "name": "GET /model-accuracy",
-          "description": "GET /model-accuracy",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/model-accuracy"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-feedback.ts"
-        },
-        {
-          "id": "GET-_api_admin_flows_audit-logs",
-          "name": "GET /api/admin/flows/audit-logs",
-          "description": "GET /api/admin/flows/audit-logs",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/flows/audit-logs"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-flow-audit.ts"
-        },
-        {
-          "id": "GET-_api_admin_flows_audit-logs_csv",
-          "name": "GET /api/admin/flows/audit-logs.csv",
-          "description": "GET /api/admin/flows/audit-logs.csv",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/flows/audit-logs.csv"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-flow-audit.ts"
         },
         {
           "id": "GET-_integrations",
@@ -1079,116 +525,6 @@
             "path": "/api/admin/flows/:id/kpis"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin-kpis.ts"
-        },
-        {
-          "id": "GET-_policies",
-          "name": "GET /policies",
-          "description": "GET /policies",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/policies"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-mcp-access.ts"
-        },
-        {
-          "id": "GET-_default-policies",
-          "name": "GET /default-policies",
-          "description": "GET /default-policies",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/default-policies"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-mcp-access.ts"
-        },
-        {
-          "id": "POST-_policies",
-          "name": "POST /policies",
-          "description": "POST /policies",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/policies"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-mcp-access.ts"
-        },
-        {
-          "id": "PUT-_policies__id",
-          "name": "PUT /policies/:id",
-          "description": "PUT /policies/:id",
-          "type": "http-route",
-          "properties": {
-            "method": "PUT",
-            "path": "/policies/:id"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-mcp-access.ts"
-        },
-        {
-          "id": "DELETE-_policies__id",
-          "name": "DELETE /policies/:id",
-          "description": "DELETE /policies/:id",
-          "type": "http-route",
-          "properties": {
-            "method": "DELETE",
-            "path": "/policies/:id"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-mcp-access.ts"
-        },
-        {
-          "id": "PUT-_default-policies__policy_type",
-          "name": "PUT /default-policies/:policy_type",
-          "description": "PUT /default-policies/:policy_type",
-          "type": "http-route",
-          "properties": {
-            "method": "PUT",
-            "path": "/default-policies/:policy_type"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-mcp-access.ts"
-        },
-        {
-          "id": "GET-_servers",
-          "name": "GET /servers",
-          "description": "GET /servers",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/servers"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-mcp-access.ts"
-        },
-        {
-          "id": "GET-_access-summary__azure_group_id",
-          "name": "GET /access-summary/:azure_group_id",
-          "description": "GET /access-summary/:azure_group_id",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/access-summary/:azure_group_id"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-mcp-access.ts"
-        },
-        {
-          "id": "POST-_test-access",
-          "name": "POST /test-access",
-          "description": "POST /test-access",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/test-access"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-mcp-access.ts"
-        },
-        {
-          "id": "POST-_accessible-servers",
-          "name": "POST /accessible-servers",
-          "description": "POST /accessible-servers",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/accessible-servers"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-mcp-access.ts"
         },
         {
           "id": "GET-_mcp-inspector",
@@ -1290,17 +626,6 @@
           "sourceFile": "services/openagentic-api/src/routes/admin-mcp-logs.ts"
         },
         {
-          "id": "GET-_tools",
-          "name": "GET /tools",
-          "description": "GET /tools",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/tools"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-mcp-tool-access.ts"
-        },
-        {
           "id": "GET-_status",
           "name": "GET /status",
           "description": "GET /status",
@@ -1334,72 +659,6 @@
           "sourceFile": "services/openagentic-api/src/routes/admin-messages.ts"
         },
         {
-          "id": "GET-_mcp",
-          "name": "GET /mcp",
-          "description": "GET /mcp",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/mcp"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-metrics.ts"
-        },
-        {
-          "id": "GET-_llm",
-          "name": "GET /llm",
-          "description": "GET /llm",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/llm"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-metrics.ts"
-        },
-        {
-          "id": "GET-_services",
-          "name": "GET /services",
-          "description": "GET /services",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/services"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-metrics.ts"
-        },
-        {
-          "id": "GET-_redis",
-          "name": "GET /redis",
-          "description": "GET /redis",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/redis"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-metrics.ts"
-        },
-        {
-          "id": "GET-_milvus",
-          "name": "GET /milvus",
-          "description": "GET /milvus",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/milvus"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-metrics.ts"
-        },
-        {
-          "id": "GET-_vector-usage",
-          "name": "GET /vector-usage",
-          "description": "GET /vector-usage",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/vector-usage"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-metrics.ts"
-        },
-        {
           "id": "GET-_mcp_health",
           "name": "GET /mcp/health",
           "description": "GET /mcp/health",
@@ -1418,6 +677,28 @@
           "properties": {
             "method": "GET",
             "path": "/mcp-tools/status"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-missing-routes.ts"
+        },
+        {
+          "id": "GET-_cluster_services",
+          "name": "GET /cluster/services",
+          "description": "GET /cluster/services",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/cluster/services"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-missing-routes.ts"
+        },
+        {
+          "id": "GET-_agenticode_api-keys",
+          "name": "GET /agenticode/api-keys",
+          "description": "GET /agenticode/api-keys",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/agenticode/api-keys"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin-missing-routes.ts"
         },
@@ -1708,48 +989,257 @@
           "sourceFile": "services/openagentic-api/src/routes/admin-portal-enhanced.ts"
         },
         {
-          "id": "GET-_",
-          "name": "GET /",
-          "description": "GET /",
+          "id": "GET-_current",
+          "name": "GET /current",
+          "description": "GET /current",
           "type": "http-route",
           "properties": {
             "method": "GET",
-            "path": "/"
+            "path": "/current"
           },
-          "sourceFile": "services/openagentic-api/src/routes/admin-rate-limits.ts"
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompting.ts"
         },
         {
-          "id": "GET-_tiers",
-          "name": "GET /tiers",
-          "description": "GET /tiers",
+          "id": "GET-_rag-stats",
+          "name": "GET /rag-stats",
+          "description": "GET /rag-stats",
           "type": "http-route",
           "properties": {
             "method": "GET",
-            "path": "/tiers"
+            "path": "/rag-stats"
           },
-          "sourceFile": "services/openagentic-api/src/routes/admin-rate-limits.ts"
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompting.ts"
         },
         {
-          "id": "GET-_stats",
-          "name": "GET /stats",
-          "description": "GET /stats",
+          "id": "GET-_workflow-steps",
+          "name": "GET /workflow-steps",
+          "description": "GET /workflow-steps",
           "type": "http-route",
           "properties": {
             "method": "GET",
-            "path": "/stats"
+            "path": "/workflow-steps"
           },
-          "sourceFile": "services/openagentic-api/src/routes/admin-rate-limits.ts"
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompting.ts"
         },
         {
-          "id": "GET-_",
-          "name": "GET /",
-          "description": "GET /",
+          "id": "GET-_execution-metrics",
+          "name": "GET /execution-metrics",
+          "description": "GET /execution-metrics",
           "type": "http-route",
           "properties": {
             "method": "GET",
-            "path": "/"
+            "path": "/execution-metrics"
           },
-          "sourceFile": "services/openagentic-api/src/routes/admin-rbac-system-prompts.ts"
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompting.ts"
+        },
+        {
+          "id": "GET-_system-prompts",
+          "name": "GET /system-prompts",
+          "description": "GET /system-prompts",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/system-prompts"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "GET-_system-prompts__id",
+          "name": "GET /system-prompts/:id",
+          "description": "GET /system-prompts/:id",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/system-prompts/:id"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "POST-_system-prompts",
+          "name": "POST /system-prompts",
+          "description": "POST /system-prompts",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/system-prompts"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "PUT-_system-prompts__id",
+          "name": "PUT /system-prompts/:id",
+          "description": "PUT /system-prompts/:id",
+          "type": "http-route",
+          "properties": {
+            "method": "PUT",
+            "path": "/system-prompts/:id"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "DELETE-_system-prompts__id",
+          "name": "DELETE /system-prompts/:id",
+          "description": "DELETE /system-prompts/:id",
+          "type": "http-route",
+          "properties": {
+            "method": "DELETE",
+            "path": "/system-prompts/:id"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "GET-_templates",
+          "name": "GET /templates",
+          "description": "GET /templates",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/templates"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "GET-_templates__id",
+          "name": "GET /templates/:id",
+          "description": "GET /templates/:id",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/templates/:id"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "POST-_templates",
+          "name": "POST /templates",
+          "description": "POST /templates",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/templates"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "PUT-_templates__id",
+          "name": "PUT /templates/:id",
+          "description": "PUT /templates/:id",
+          "type": "http-route",
+          "properties": {
+            "method": "PUT",
+            "path": "/templates/:id"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "DELETE-_templates__id",
+          "name": "DELETE /templates/:id",
+          "description": "DELETE /templates/:id",
+          "type": "http-route",
+          "properties": {
+            "method": "DELETE",
+            "path": "/templates/:id"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "GET-_categories",
+          "name": "GET /categories",
+          "description": "GET /categories",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/categories"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "GET-_users",
+          "name": "GET /users",
+          "description": "GET /users",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/users"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "POST-_templates__id_set-default",
+          "name": "POST /templates/:id/set-default",
+          "description": "POST /templates/:id/set-default",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/templates/:id/set-default"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "POST-_templates__id_assign",
+          "name": "POST /templates/:id/assign",
+          "description": "POST /templates/:id/assign",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/templates/:id/assign"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "DELETE-_templates__id_assign__userId",
+          "name": "DELETE /templates/:id/assign/:userId",
+          "description": "DELETE /templates/:id/assign/:userId",
+          "type": "http-route",
+          "properties": {
+            "method": "DELETE",
+            "path": "/templates/:id/assign/:userId"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "GET-_templates__id_assignments",
+          "name": "GET /templates/:id/assignments",
+          "description": "GET /templates/:id/assignments",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/templates/:id/assignments"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "GET-_users__userId_templates",
+          "name": "GET /users/:userId/templates",
+          "description": "GET /users/:userId/templates",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/users/:userId/templates"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "GET-_my-template",
+          "name": "GET /my-template",
+          "description": "GET /my-template",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/my-template"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
+        },
+        {
+          "id": "POST-_templates_sync",
+          "name": "POST /templates/sync",
+          "description": "POST /templates/sync",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/templates/sync"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompts.ts"
         },
         {
           "id": "GET-_",
@@ -1761,6 +1251,17 @@
             "path": "/"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin-roles.ts"
+        },
+        {
+          "id": "GET-_",
+          "name": "GET /",
+          "description": "GET /",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-service-prompts.ts"
         },
         {
           "id": "GET-_config",
@@ -1972,70 +1473,92 @@
           "sourceFile": "services/openagentic-api/src/routes/admin-teams.ts"
         },
         {
-          "id": "POST-_run",
-          "name": "POST /run",
-          "description": "POST /run",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/run"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-test-harness.ts"
-        },
-        {
-          "id": "GET-_results",
-          "name": "GET /results",
-          "description": "GET /results",
+          "id": "GET-_techniques",
+          "name": "GET /techniques",
+          "description": "GET /techniques",
           "type": "http-route",
           "properties": {
             "method": "GET",
-            "path": "/results"
+            "path": "/techniques"
           },
-          "sourceFile": "services/openagentic-api/src/routes/admin-test-harness.ts"
+          "sourceFile": "services/openagentic-api/src/routes/admin-techniques.ts"
         },
         {
-          "id": "POST-_cleanup",
-          "name": "POST /cleanup",
-          "description": "POST /cleanup",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/cleanup"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-test-harness.ts"
-        },
-        {
-          "id": "GET-_",
-          "name": "GET /",
-          "description": "GET /",
+          "id": "GET-_techniques__id",
+          "name": "GET /techniques/:id",
+          "description": "GET /techniques/:id",
           "type": "http-route",
           "properties": {
             "method": "GET",
-            "path": "/"
+            "path": "/techniques/:id"
           },
-          "sourceFile": "services/openagentic-api/src/routes/admin-tiered-fc.ts"
+          "sourceFile": "services/openagentic-api/src/routes/admin-techniques.ts"
         },
         {
-          "id": "GET-_stats",
-          "name": "GET /stats",
-          "description": "GET /stats",
+          "id": "PUT-_techniques__id",
+          "name": "PUT /techniques/:id",
+          "description": "PUT /techniques/:id",
+          "type": "http-route",
+          "properties": {
+            "method": "PUT",
+            "path": "/techniques/:id"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-techniques.ts"
+        },
+        {
+          "id": "DELETE-_techniques__id",
+          "name": "DELETE /techniques/:id",
+          "description": "DELETE /techniques/:id",
+          "type": "http-route",
+          "properties": {
+            "method": "DELETE",
+            "path": "/techniques/:id"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-techniques.ts"
+        },
+        {
+          "id": "GET-_techniques_preferences__userId",
+          "name": "GET /techniques/preferences/:userId",
+          "description": "GET /techniques/preferences/:userId",
           "type": "http-route",
           "properties": {
             "method": "GET",
-            "path": "/stats"
+            "path": "/techniques/preferences/:userId"
           },
-          "sourceFile": "services/openagentic-api/src/routes/admin-tiered-fc.ts"
+          "sourceFile": "services/openagentic-api/src/routes/admin-techniques.ts"
         },
         {
-          "id": "POST-_clear-cache",
-          "name": "POST /clear-cache",
-          "description": "POST /clear-cache",
+          "id": "PUT-_techniques_preferences__userId",
+          "name": "PUT /techniques/preferences/:userId",
+          "description": "PUT /techniques/preferences/:userId",
+          "type": "http-route",
+          "properties": {
+            "method": "PUT",
+            "path": "/techniques/preferences/:userId"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-techniques.ts"
+        },
+        {
+          "id": "GET-_techniques_statistics",
+          "name": "GET /techniques/statistics",
+          "description": "GET /techniques/statistics",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/techniques/statistics"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-techniques.ts"
+        },
+        {
+          "id": "POST-_techniques_test",
+          "name": "POST /techniques/test",
+          "description": "POST /techniques/test",
           "type": "http-route",
           "properties": {
             "method": "POST",
-            "path": "/clear-cache"
+            "path": "/techniques/test"
           },
-          "sourceFile": "services/openagentic-api/src/routes/admin-tiered-fc.ts"
+          "sourceFile": "services/openagentic-api/src/routes/admin-techniques.ts"
         },
         {
           "id": "GET-_tools_readonly",
@@ -2060,61 +1583,6 @@
           "sourceFile": "services/openagentic-api/src/routes/admin-tools.ts"
         },
         {
-          "id": "GET-_api_admin_analytics_usage",
-          "name": "GET /api/admin/analytics/usage",
-          "description": "GET /api/admin/analytics/usage",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/analytics/usage"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-usage-analytics.ts"
-        },
-        {
-          "id": "GET-_api_admin_analytics_usage__userId",
-          "name": "GET /api/admin/analytics/usage/:userId",
-          "description": "GET /api/admin/analytics/usage/:userId",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/analytics/usage/:userId"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-usage-analytics.ts"
-        },
-        {
-          "id": "GET-_api_admin_workflows_cost",
-          "name": "GET /api/admin/workflows/cost",
-          "description": "GET /api/admin/workflows/cost",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/workflows/cost"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-usage-analytics.ts"
-        },
-        {
-          "id": "GET-_live",
-          "name": "GET /live",
-          "description": "GET /live",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/live"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-activity.ts"
-        },
-        {
-          "id": "GET-_stream",
-          "name": "GET /stream",
-          "description": "GET /stream",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/stream"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-activity.ts"
-        },
-        {
           "id": "GET-_overview",
           "name": "GET /overview",
           "description": "GET /overview",
@@ -2135,226 +1603,6 @@
             "path": "/retention"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin-user-context.ts"
-        },
-        {
-          "id": "GET-_api_admin_user-management",
-          "name": "GET /api/admin/user-management",
-          "description": "GET /api/admin/user-management",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/user-management"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "GET-_api_admin_user-management__userId_permissions",
-          "name": "GET /api/admin/user-management/:userId/permissions",
-          "description": "GET /api/admin/user-management/:userId/permissions",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/user-management/:userId/permissions"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "PUT-_api_admin_user-management__userId_permissions",
-          "name": "PUT /api/admin/user-management/:userId/permissions",
-          "description": "PUT /api/admin/user-management/:userId/permissions",
-          "type": "http-route",
-          "properties": {
-            "method": "PUT",
-            "path": "/api/admin/user-management/:userId/permissions"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "DELETE-_api_admin_user-management__userId_permissions",
-          "name": "DELETE /api/admin/user-management/:userId/permissions",
-          "description": "DELETE /api/admin/user-management/:userId/permissions",
-          "type": "http-route",
-          "properties": {
-            "method": "DELETE",
-            "path": "/api/admin/user-management/:userId/permissions"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "GET-_api_admin_groups_permissions",
-          "name": "GET /api/admin/groups/permissions",
-          "description": "GET /api/admin/groups/permissions",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/groups/permissions"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "PUT-_api_admin_groups__groupId_permissions",
-          "name": "PUT /api/admin/groups/:groupId/permissions",
-          "description": "PUT /api/admin/groups/:groupId/permissions",
-          "type": "http-route",
-          "properties": {
-            "method": "PUT",
-            "path": "/api/admin/groups/:groupId/permissions"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "DELETE-_api_admin_groups__groupId_permissions",
-          "name": "DELETE /api/admin/groups/:groupId/permissions",
-          "description": "DELETE /api/admin/groups/:groupId/permissions",
-          "type": "http-route",
-          "properties": {
-            "method": "DELETE",
-            "path": "/api/admin/groups/:groupId/permissions"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "GET-_api_admin_permissions_templates",
-          "name": "GET /api/admin/permissions/templates",
-          "description": "GET /api/admin/permissions/templates",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/permissions/templates"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "PUT-_api_admin_permissions_templates__name",
-          "name": "PUT /api/admin/permissions/templates/:name",
-          "description": "PUT /api/admin/permissions/templates/:name",
-          "type": "http-route",
-          "properties": {
-            "method": "PUT",
-            "path": "/api/admin/permissions/templates/:name"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "GET-_api_admin_permissions_check",
-          "name": "GET /api/admin/permissions/check",
-          "description": "GET /api/admin/permissions/check",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/permissions/check"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "POST-_api_admin_permissions_cache_clear",
-          "name": "POST /api/admin/permissions/cache/clear",
-          "description": "POST /api/admin/permissions/cache/clear",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/api/admin/permissions/cache/clear"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "GET-_api_admin_permissions_available-llms",
-          "name": "GET /api/admin/permissions/available-llms",
-          "description": "GET /api/admin/permissions/available-llms",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/permissions/available-llms"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "GET-_api_admin_permissions_available-mcps",
-          "name": "GET /api/admin/permissions/available-mcps",
-          "description": "GET /api/admin/permissions/available-mcps",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/permissions/available-mcps"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "GET-_api_admin_user-management__userId_scope-status",
-          "name": "GET /api/admin/user-management/:userId/scope-status",
-          "description": "GET /api/admin/user-management/:userId/scope-status",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/user-management/:userId/scope-status"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "POST-_api_admin_user-management__userId_unlock",
-          "name": "POST /api/admin/user-management/:userId/unlock",
-          "description": "POST /api/admin/user-management/:userId/unlock",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/api/admin/user-management/:userId/unlock"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "POST-_api_admin_user-management__userId_reset-warnings",
-          "name": "POST /api/admin/user-management/:userId/reset-warnings",
-          "description": "POST /api/admin/user-management/:userId/reset-warnings",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/api/admin/user-management/:userId/reset-warnings"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "GET-_api_admin_user-management_locked",
-          "name": "GET /api/admin/user-management/locked",
-          "description": "GET /api/admin/user-management/locked",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/user-management/locked"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "GET-_api_admin_user-management__userId_effective-permissions",
-          "name": "GET /api/admin/user-management/:userId/effective-permissions",
-          "description": "GET /api/admin/user-management/:userId/effective-permissions",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/admin/user-management/:userId/effective-permissions"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-user-permissions.ts"
-        },
-        {
-          "id": "GET-_config",
-          "name": "GET /config",
-          "description": "GET /config",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/config"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-webhook-security.ts"
-        },
-        {
-          "id": "GET-_platforms",
-          "name": "GET /platforms",
-          "description": "GET /platforms",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/platforms"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-webhook-security.ts"
         },
         {
           "id": "GET-_stores",
@@ -2564,72 +1812,6 @@
             "path": "/context/limits"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin.ts"
-        },
-        {
-          "id": "GET-_config",
-          "name": "GET /config",
-          "description": "GET /config",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/config"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/openagentic.ts"
-        },
-        {
-          "id": "GET-_health",
-          "name": "GET /health",
-          "description": "GET /health",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/health"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/openagentic.ts"
-        },
-        {
-          "id": "POST-_chat",
-          "name": "POST /chat",
-          "description": "POST /chat",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/chat"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/openagentic.ts"
-        },
-        {
-          "id": "GET-_status",
-          "name": "GET /status",
-          "description": "GET /status",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/status"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/openagentic.ts"
-        },
-        {
-          "id": "GET-_sessions",
-          "name": "GET /sessions",
-          "description": "GET /sessions",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/sessions"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/openagentic.ts"
-        },
-        {
-          "id": "GET-_sessions_persisted",
-          "name": "GET /sessions/persisted",
-          "description": "GET /sessions/persisted",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/sessions/persisted"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/openagentic.ts"
         },
         {
           "id": "GET-_",
@@ -2929,160 +2111,6 @@
           "sourceFile": "services/openagentic-api/src/routes/auth.ts"
         },
         {
-          "id": "POST-_sessions",
-          "name": "POST /sessions",
-          "description": "POST /sessions",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/sessions"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
-          "id": "PATCH-_sessions__sessionId",
-          "name": "PATCH /sessions/:sessionId",
-          "description": "PATCH /sessions/:sessionId",
-          "type": "http-route",
-          "properties": {
-            "method": "PATCH",
-            "path": "/sessions/:sessionId"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
-          "id": "POST-_sessions__sessionId_stop",
-          "name": "POST /sessions/:sessionId/stop",
-          "description": "POST /sessions/:sessionId/stop",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/sessions/:sessionId/stop"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
-          "id": "GET-_sessions__sessionId",
-          "name": "GET /sessions/:sessionId",
-          "description": "GET /sessions/:sessionId",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/sessions/:sessionId"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
-          "id": "POST-_sessions__sessionId_messages",
-          "name": "POST /sessions/:sessionId/messages",
-          "description": "POST /sessions/:sessionId/messages",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/sessions/:sessionId/messages"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
-          "id": "POST-_sessions__sessionId_messages_batch",
-          "name": "POST /sessions/:sessionId/messages/batch",
-          "description": "POST /sessions/:sessionId/messages/batch",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/sessions/:sessionId/messages/batch"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
-          "id": "GET-_sessions__sessionId_messages",
-          "name": "GET /sessions/:sessionId/messages",
-          "description": "GET /sessions/:sessionId/messages",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/sessions/:sessionId/messages"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
-          "id": "GET-_users__userId_sessions",
-          "name": "GET /users/:userId/sessions",
-          "description": "GET /users/:userId/sessions",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/users/:userId/sessions"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
-          "id": "POST-_knowledge_search",
-          "name": "POST /knowledge/search",
-          "description": "POST /knowledge/search",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/knowledge/search"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
-          "id": "POST-_knowledge_context",
-          "name": "POST /knowledge/context",
-          "description": "POST /knowledge/context",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/knowledge/context"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
-          "id": "POST-_solutions_search",
-          "name": "POST /solutions/search",
-          "description": "POST /solutions/search",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/solutions/search"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
-          "id": "POST-_solutions_share",
-          "name": "POST /solutions/share",
-          "description": "POST /solutions/share",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/solutions/share"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
-          "id": "GET-_knowledge_stats",
-          "name": "GET /knowledge/stats",
-          "description": "GET /knowledge/stats",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/knowledge/stats"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
-          "id": "POST-_sessions__sessionId_index",
-          "name": "POST /sessions/:sessionId/index",
-          "description": "POST /sessions/:sessionId/index",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/sessions/:sessionId/index"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/awcode.ts"
-        },
-        {
           "id": "GET-_api_background-jobs",
           "name": "GET /api/background-jobs",
           "description": "GET /api/background-jobs",
@@ -3237,70 +2265,125 @@
           "sourceFile": "services/openagentic-api/src/routes/capabilities.ts"
         },
         {
-          "id": "GET-_status",
-          "name": "GET /status",
-          "description": "GET /status",
+          "id": "GET-_chat_sessions",
+          "name": "GET /chat/sessions",
+          "description": "GET /chat/sessions",
           "type": "http-route",
           "properties": {
             "method": "GET",
-            "path": "/status"
+            "path": "/chat/sessions"
           },
-          "sourceFile": "services/openagentic-api/src/routes/code-mode-provisioning.ts"
+          "sourceFile": "services/openagentic-api/src/routes/chat.ts"
         },
         {
-          "id": "POST-_start",
-          "name": "POST /start",
-          "description": "POST /start",
+          "id": "GET-_chat_sessions__sessionId",
+          "name": "GET /chat/sessions/:sessionId",
+          "description": "GET /chat/sessions/:sessionId",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/chat/sessions/:sessionId"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/chat.ts"
+        },
+        {
+          "id": "POST-_chat_sessions",
+          "name": "POST /chat/sessions",
+          "description": "POST /chat/sessions",
           "type": "http-route",
           "properties": {
             "method": "POST",
-            "path": "/start"
+            "path": "/chat/sessions"
           },
-          "sourceFile": "services/openagentic-api/src/routes/code-mode-provisioning.ts"
+          "sourceFile": "services/openagentic-api/src/routes/chat.ts"
         },
         {
-          "id": "GET-_progress",
-          "name": "GET /progress",
-          "description": "GET /progress",
+          "id": "PATCH-_chat_sessions__sessionId",
+          "name": "PATCH /chat/sessions/:sessionId",
+          "description": "PATCH /chat/sessions/:sessionId",
+          "type": "http-route",
+          "properties": {
+            "method": "PATCH",
+            "path": "/chat/sessions/:sessionId"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/chat.ts"
+        },
+        {
+          "id": "DELETE-_chat_sessions__sessionId",
+          "name": "DELETE /chat/sessions/:sessionId",
+          "description": "DELETE /chat/sessions/:sessionId",
+          "type": "http-route",
+          "properties": {
+            "method": "DELETE",
+            "path": "/chat/sessions/:sessionId"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/chat.ts"
+        },
+        {
+          "id": "GET-_chat_sessions__sessionId_messages",
+          "name": "GET /chat/sessions/:sessionId/messages",
+          "description": "GET /chat/sessions/:sessionId/messages",
           "type": "http-route",
           "properties": {
             "method": "GET",
-            "path": "/progress"
+            "path": "/chat/sessions/:sessionId/messages"
           },
-          "sourceFile": "services/openagentic-api/src/routes/code-mode-provisioning.ts"
+          "sourceFile": "services/openagentic-api/src/routes/chat.ts"
         },
         {
-          "id": "GET-_list",
-          "name": "GET /list",
-          "description": "GET /list",
+          "id": "POST-_chat_messages",
+          "name": "POST /chat/messages",
+          "description": "POST /chat/messages",
           "type": "http-route",
           "properties": {
-            "method": "GET",
-            "path": "/list"
+            "method": "POST",
+            "path": "/chat/messages"
           },
-          "sourceFile": "services/openagentic-api/src/routes/code-mode-provisioning.ts"
+          "sourceFile": "services/openagentic-api/src/routes/chat.ts"
         },
         {
-          "id": "GET-_plugins_installed",
-          "name": "GET /plugins/installed",
-          "description": "GET /plugins/installed",
+          "id": "POST-_chat_stream",
+          "name": "POST /chat/stream",
+          "description": "POST /chat/stream",
           "type": "http-route",
           "properties": {
-            "method": "GET",
-            "path": "/plugins/installed"
+            "method": "POST",
+            "path": "/chat/stream"
           },
-          "sourceFile": "services/openagentic-api/src/routes/code-plugins.ts"
+          "sourceFile": "services/openagentic-api/src/routes/chat.ts"
         },
         {
-          "id": "GET-_plugins_marketplaces",
-          "name": "GET /plugins/marketplaces",
-          "description": "GET /plugins/marketplaces",
+          "id": "POST-_chat_knowledge_ingest",
+          "name": "POST /chat/knowledge/ingest",
+          "description": "POST /chat/knowledge/ingest",
           "type": "http-route",
           "properties": {
-            "method": "GET",
-            "path": "/plugins/marketplaces"
+            "method": "POST",
+            "path": "/chat/knowledge/ingest"
           },
-          "sourceFile": "services/openagentic-api/src/routes/code-plugins.ts"
+          "sourceFile": "services/openagentic-api/src/routes/chat.ts"
+        },
+        {
+          "id": "POST-_chat_knowledge_search",
+          "name": "POST /chat/knowledge/search",
+          "description": "POST /chat/knowledge/search",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/chat/knowledge/search"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/chat.ts"
+        },
+        {
+          "id": "DELETE-_chat_sessions",
+          "name": "DELETE /chat/sessions",
+          "description": "DELETE /chat/sessions",
+          "type": "http-route",
+          "properties": {
+            "method": "DELETE",
+            "path": "/chat/sessions"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/chat.ts"
         },
         {
           "id": "GET-_data-sources",
@@ -3754,6 +2837,72 @@
           "sourceFile": "services/openagentic-api/src/routes/openai-compatible.ts"
         },
         {
+          "id": "POST-_api_orchestrate_plan",
+          "name": "POST /api/orchestrate/plan",
+          "description": "POST /api/orchestrate/plan",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/api/orchestrate/plan"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/orchestrate.ts"
+        },
+        {
+          "id": "POST-_api_orchestrate_execute",
+          "name": "POST /api/orchestrate/execute",
+          "description": "POST /api/orchestrate/execute",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/api/orchestrate/execute"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/orchestrate.ts"
+        },
+        {
+          "id": "POST-_api_orchestrate_stream",
+          "name": "POST /api/orchestrate/stream",
+          "description": "POST /api/orchestrate/stream",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/api/orchestrate/stream"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/orchestrate.ts"
+        },
+        {
+          "id": "POST-_api_orchestrate_analyze",
+          "name": "POST /api/orchestrate/analyze",
+          "description": "POST /api/orchestrate/analyze",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/api/orchestrate/analyze"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/orchestrate.ts"
+        },
+        {
+          "id": "GET-_api_orchestrate_domains",
+          "name": "GET /api/orchestrate/domains",
+          "description": "GET /api/orchestrate/domains",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/api/orchestrate/domains"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/orchestrate.ts"
+        },
+        {
+          "id": "GET-_categories",
+          "name": "GET /categories",
+          "description": "GET /categories",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/categories"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/prompt-templates.ts"
+        },
+        {
           "id": "GET-_user_settings",
           "name": "GET /user/settings",
           "description": "GET /user/settings",
@@ -3818,6 +2967,17 @@
             "path": "/test-azure"
           },
           "sourceFile": "services/openagentic-api/src/routes/settings.ts"
+        },
+        {
+          "id": "GET-_status",
+          "name": "GET /status",
+          "description": "GET /status",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/status"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/setup.ts"
         },
         {
           "id": "POST-_api_storage_token",
@@ -4289,6 +3449,17 @@
           "properties": {
             "method": "GET",
             "path": "/internal/node-schemas"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/workflows.ts"
+        },
+        {
+          "id": "GET-_agent-tools",
+          "name": "GET /agent-tools",
+          "description": "GET /agent-tools",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/agent-tools"
           },
           "sourceFile": "services/openagentic-api/src/routes/workflows.ts"
         },
@@ -5054,6 +4225,17 @@
           "sourceFile": "services/openagentic-api/src/routes/internal/agent-search.ts"
         },
         {
+          "id": "POST-_api_internal_embed",
+          "name": "POST /api/internal/embed",
+          "description": "POST /api/internal/embed",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/api/internal/embed"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/internal/embed.ts"
+        },
+        {
           "id": "GET-_api_internal_hitl_policy",
           "name": "GET /api/internal/hitl/policy",
           "description": "GET /api/internal/hitl/policy",
@@ -5362,165 +4544,6 @@
             "path": "/docs/info"
           },
           "sourceFile": "services/openagentic-api/src/routes/docs/index.ts"
-        }
-      ]
-    },
-    {
-      "id": "routes_code-ws",
-      "title": "routes/code-ws",
-      "description": "Routes registered in routes/code-ws",
-      "adminOnly": false,
-      "items": [
-        {
-          "id": "GET-_api_code_ws_chat",
-          "name": "GET /api/code/ws/chat",
-          "description": "GET /api/code/ws/chat",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/code/ws/chat"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/code-ws/chat.ts"
-        },
-        {
-          "id": "GET-_api_code_ws_events",
-          "name": "GET /api/code/ws/events",
-          "description": "GET /api/code/ws/events",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/code/ws/events"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/code-ws/events.ts"
-        },
-        {
-          "id": "GET-_api_code_ws_progress",
-          "name": "GET /api/code/ws/progress",
-          "description": "GET /api/code/ws/progress",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/code/ws/progress"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/code-ws/progress.ts"
-        },
-        {
-          "id": "GET-_api_code_ws_resolve",
-          "name": "GET /api/code/ws/resolve",
-          "description": "GET /api/code/ws/resolve",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/code/ws/resolve"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/code-ws/resolve.ts"
-        },
-        {
-          "id": "GET-_api_code_ws_terminal",
-          "name": "GET /api/code/ws/terminal",
-          "description": "GET /api/code/ws/terminal",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/code/ws/terminal"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/code-ws/terminal.ts"
-        }
-      ]
-    },
-    {
-      "id": "routes_code-mode",
-      "title": "routes/code-mode",
-      "description": "Routes registered in routes/code-mode",
-      "adminOnly": false,
-      "items": [
-        {
-          "id": "GET-_api_code_v2_boot-events",
-          "name": "GET /api/code/v2/boot-events",
-          "description": "GET /api/code/v2/boot-events",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/code/v2/boot-events"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/code-mode/boot-events.handler.ts"
-        },
-        {
-          "id": "GET-_api_code_v2_ws_chat",
-          "name": "GET /api/code/v2/ws/chat",
-          "description": "GET /api/code/v2/ws/chat",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/code/v2/ws/chat"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/code-mode/chat-stream.handler.ts"
-        },
-        {
-          "id": "GET-_api_code-mode_collections",
-          "name": "GET /api/code-mode/collections",
-          "description": "GET /api/code-mode/collections",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/code-mode/collections"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/code-mode/collections.route.ts"
-        },
-        {
-          "id": "POST-_api_internal_code-mode_seed-bucket-subdir",
-          "name": "POST /api/internal/code-mode/seed-bucket-subdir",
-          "description": "POST /api/internal/code-mode/seed-bucket-subdir",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/api/internal/code-mode/seed-bucket-subdir"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/code-mode/internal-bucket-seed.route.ts"
-        },
-        {
-          "id": "GET-_api_internal_codemode-default-model",
-          "name": "GET /api/internal/codemode-default-model",
-          "description": "GET /api/internal/codemode-default-model",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/internal/codemode-default-model"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/code-mode/internal-codemode-model.route.ts"
-        },
-        {
-          "id": "POST-_api_internal_code-mode_ensure-user-bucket",
-          "name": "POST /api/internal/code-mode/ensure-user-bucket",
-          "description": "POST /api/internal/code-mode/ensure-user-bucket",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/api/internal/code-mode/ensure-user-bucket"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/code-mode/internal-user-storage.route.ts"
-        },
-        {
-          "id": "POST-_api_internal_code-mode_preview-port",
-          "name": "POST /api/internal/code-mode/preview-port",
-          "description": "POST /api/internal/code-mode/preview-port",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/api/internal/code-mode/preview-port"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/code-mode/preview-proxy.handler.ts"
-        },
-        {
-          "id": "GET-_api_code_v2_ws_chat",
-          "name": "GET /api/code/v2/ws/chat",
-          "description": "GET /api/code/v2/ws/chat",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/code/v2/ws/chat"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/code-mode/relay-ws.handler.ts"
         }
       ]
     },
@@ -6127,6 +5150,28 @@
       "adminOnly": false,
       "items": [
         {
+          "id": "GET-_prompt-metrics",
+          "name": "GET /prompt-metrics",
+          "description": "GET /prompt-metrics",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/prompt-metrics"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/analytics-monitoring/prompt-metrics.ts"
+        },
+        {
+          "id": "GET-_prompt-metrics__sessionId",
+          "name": "GET /prompt-metrics/:sessionId",
+          "description": "GET /prompt-metrics/:sessionId",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/prompt-metrics/:sessionId"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/analytics-monitoring/prompt-metrics.ts"
+        },
+        {
           "id": "GET-_usage",
           "name": "GET /usage",
           "description": "GET /usage",
@@ -6236,33 +5281,96 @@
       ]
     },
     {
+      "id": "routes_advanced-prompting",
+      "title": "routes/advanced-prompting",
+      "description": "Routes registered in routes/advanced-prompting",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "GET-_generate",
+          "name": "GET /generate",
+          "description": "GET /generate",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/generate"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/advanced-prompting/prompts.ts"
+        },
+        {
+          "id": "POST-_optimize",
+          "name": "POST /optimize",
+          "description": "POST /optimize",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/optimize"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/advanced-prompting/prompts.ts"
+        },
+        {
+          "id": "POST-_test",
+          "name": "POST /test",
+          "description": "POST /test",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/test"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/advanced-prompting/prompts.ts"
+        },
+        {
+          "id": "GET-_templates_suggested",
+          "name": "GET /templates/suggested",
+          "description": "GET /templates/suggested",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/templates/suggested"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/advanced-prompting/prompts.ts"
+        },
+        {
+          "id": "POST-_analyze",
+          "name": "POST /analyze",
+          "description": "POST /analyze",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/analyze"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/advanced-prompting/prompts.ts"
+        },
+        {
+          "id": "GET-_techniques",
+          "name": "GET /techniques",
+          "description": "GET /techniques",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/techniques"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/advanced-prompting/prompts.ts"
+        },
+        {
+          "id": "POST-_chain",
+          "name": "POST /chain",
+          "description": "POST /chain",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/chain"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/advanced-prompting/prompts.ts"
+        }
+      ]
+    },
+    {
       "id": "routes_admin",
       "title": "routes/admin",
       "description": "Routes registered in routes/admin",
       "adminOnly": false,
       "items": [
-        {
-          "id": "GET-_agents_metrics_fleet",
-          "name": "GET /agents/metrics/fleet",
-          "description": "GET /agents/metrics/fleet",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/agents/metrics/fleet"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/agent-metrics.ts"
-        },
-        {
-          "id": "GET-_agents_metrics_by-agent",
-          "name": "GET /agents/metrics/by-agent",
-          "description": "GET /agents/metrics/by-agent",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/agents/metrics/by-agent"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/agent-metrics.ts"
-        },
         {
           "id": "GET-_admin_agentic_dashboard",
           "name": "GET /admin/agentic/dashboard",
@@ -6539,105 +5647,6 @@
           "sourceFile": "services/openagentic-api/src/routes/admin/chat-loop-config.ts"
         },
         {
-          "id": "GET-_admin_codemode_skills",
-          "name": "GET /admin/codemode/skills",
-          "description": "GET /admin/codemode/skills",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/admin/codemode/skills"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/codemode.ts"
-        },
-        {
-          "id": "GET-_admin_codemode_plugins",
-          "name": "GET /admin/codemode/plugins",
-          "description": "GET /admin/codemode/plugins",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/admin/codemode/plugins"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/codemode.ts"
-        },
-        {
-          "id": "GET-_admin_codemode_mcp-servers",
-          "name": "GET /admin/codemode/mcp-servers",
-          "description": "GET /admin/codemode/mcp-servers",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/admin/codemode/mcp-servers"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/codemode.ts"
-        },
-        {
-          "id": "POST-_admin_codemode_sync",
-          "name": "POST /admin/codemode/sync",
-          "description": "POST /admin/codemode/sync",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/admin/codemode/sync"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/codemode.ts"
-        },
-        {
-          "id": "GET-_admin_codemode_sync_status",
-          "name": "GET /admin/codemode/sync/status",
-          "description": "GET /admin/codemode/sync/status",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/admin/codemode/sync/status"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/codemode.ts"
-        },
-        {
-          "id": "GET-_admin_codemode_settings",
-          "name": "GET /admin/codemode/settings",
-          "description": "GET /admin/codemode/settings",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/admin/codemode/settings"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/codemode.ts"
-        },
-        {
-          "id": "PUT-_admin_codemode_settings",
-          "name": "PUT /admin/codemode/settings",
-          "description": "PUT /admin/codemode/settings",
-          "type": "http-route",
-          "properties": {
-            "method": "PUT",
-            "path": "/admin/codemode/settings"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/codemode.ts"
-        },
-        {
-          "id": "GET-_admin_codemode_global-settings",
-          "name": "GET /admin/codemode/global-settings",
-          "description": "GET /admin/codemode/global-settings",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/admin/codemode/global-settings"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/codemode.ts"
-        },
-        {
-          "id": "GET-_admin_codemode_config-bundle",
-          "name": "GET /admin/codemode/config-bundle",
-          "description": "GET /admin/codemode/config-bundle",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/admin/codemode/config-bundle"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/codemode.ts"
-        },
-        {
           "id": "GET-_dlp_rules",
           "name": "GET /dlp/rules",
           "description": "GET /dlp/rules",
@@ -6724,6 +5733,28 @@
             "path": "/grafana"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin/grafana-proxy.ts"
+        },
+        {
+          "id": "GET-_prompts",
+          "name": "GET /prompts",
+          "description": "GET /prompts",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/prompts"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/health.ts"
+        },
+        {
+          "id": "GET-_system",
+          "name": "GET /system",
+          "description": "GET /system",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/system"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/health.ts"
         },
         {
           "id": "GET-_llm-providers",
@@ -6869,13 +5900,13 @@
           "sourceFile": "services/openagentic-api/src/routes/admin/llm-providers.ts"
         },
         {
-          "id": "GET-_admin_mcp_servers",
-          "name": "GET /admin/mcp/servers",
-          "description": "GET /admin/mcp/servers",
+          "id": "GET-_api_admin_mcp_servers",
+          "name": "GET /api/admin/mcp/servers",
+          "description": "GET /api/admin/mcp/servers",
           "type": "http-route",
           "properties": {
             "method": "GET",
-            "path": "/admin/mcp/servers"
+            "path": "/api/admin/mcp/servers"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin/mcp-management.ts"
         },
@@ -6902,57 +5933,68 @@
           "sourceFile": "services/openagentic-api/src/routes/admin/mcp-management.ts"
         },
         {
-          "id": "POST-_admin_mcp_servers",
-          "name": "POST /admin/mcp/servers",
-          "description": "POST /admin/mcp/servers",
+          "id": "POST-_api_admin_mcp_servers",
+          "name": "POST /api/admin/mcp/servers",
+          "description": "POST /api/admin/mcp/servers",
           "type": "http-route",
           "properties": {
             "method": "POST",
-            "path": "/admin/mcp/servers"
+            "path": "/api/admin/mcp/servers"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin/mcp-management.ts"
         },
         {
-          "id": "PATCH-_admin_mcp_servers__serverId",
-          "name": "PATCH /admin/mcp/servers/:serverId",
-          "description": "PATCH /admin/mcp/servers/:serverId",
+          "id": "PATCH-_api_admin_mcp_servers__serverId",
+          "name": "PATCH /api/admin/mcp/servers/:serverId",
+          "description": "PATCH /api/admin/mcp/servers/:serverId",
           "type": "http-route",
           "properties": {
             "method": "PATCH",
-            "path": "/admin/mcp/servers/:serverId"
+            "path": "/api/admin/mcp/servers/:serverId"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin/mcp-management.ts"
         },
         {
-          "id": "DELETE-_admin_mcp_servers__serverId",
-          "name": "DELETE /admin/mcp/servers/:serverId",
-          "description": "DELETE /admin/mcp/servers/:serverId",
+          "id": "DELETE-_api_admin_mcp_servers__serverId",
+          "name": "DELETE /api/admin/mcp/servers/:serverId",
+          "description": "DELETE /api/admin/mcp/servers/:serverId",
           "type": "http-route",
           "properties": {
             "method": "DELETE",
-            "path": "/admin/mcp/servers/:serverId"
+            "path": "/api/admin/mcp/servers/:serverId"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin/mcp-management.ts"
         },
         {
-          "id": "POST-_admin_mcp_sync",
-          "name": "POST /admin/mcp/sync",
-          "description": "POST /admin/mcp/sync",
+          "id": "POST-_api_admin_mcp_sync",
+          "name": "POST /api/admin/mcp/sync",
+          "description": "POST /api/admin/mcp/sync",
           "type": "http-route",
           "properties": {
             "method": "POST",
-            "path": "/admin/mcp/sync"
+            "path": "/api/admin/mcp/sync"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin/mcp-management.ts"
         },
         {
-          "id": "POST-_admin_mcp_servers__serverId_test",
-          "name": "POST /admin/mcp/servers/:serverId/test",
-          "description": "POST /admin/mcp/servers/:serverId/test",
+          "id": "POST-_api_admin_mcp_servers__serverId_test",
+          "name": "POST /api/admin/mcp/servers/:serverId/test",
+          "description": "POST /api/admin/mcp/servers/:serverId/test",
           "type": "http-route",
           "properties": {
             "method": "POST",
-            "path": "/admin/mcp/servers/:serverId/test"
+            "path": "/api/admin/mcp/servers/:serverId/test"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/mcp-management.ts"
+        },
+        {
+          "id": "POST-_api_admin_mcp_servers_manifest",
+          "name": "POST /api/admin/mcp/servers/manifest",
+          "description": "POST /api/admin/mcp/servers/manifest",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/api/admin/mcp/servers/manifest"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin/mcp-management.ts"
         },
@@ -7067,6 +6109,50 @@
           "sourceFile": "services/openagentic-api/src/routes/admin/permissions.ts"
         },
         {
+          "id": "GET-_pipeline-config",
+          "name": "GET /pipeline-config",
+          "description": "GET /pipeline-config",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/pipeline-config"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/pipeline-config.ts"
+        },
+        {
+          "id": "POST-_pipeline-config_reset",
+          "name": "POST /pipeline-config/reset",
+          "description": "POST /pipeline-config/reset",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/pipeline-config/reset"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/pipeline-config.ts"
+        },
+        {
+          "id": "GET-_pipeline-config_stages",
+          "name": "GET /pipeline-config/stages",
+          "description": "GET /pipeline-config/stages",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/pipeline-config/stages"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/pipeline-config.ts"
+        },
+        {
+          "id": "GET-_pipeline-config_models",
+          "name": "GET /pipeline-config/models",
+          "description": "GET /pipeline-config/models",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/pipeline-config/models"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/pipeline-config.ts"
+        },
+        {
           "id": "GET-_config",
           "name": "GET /config",
           "description": "GET /config",
@@ -7155,6 +6241,39 @@
           "sourceFile": "services/openagentic-api/src/routes/admin/prom-proxy.ts"
         },
         {
+          "id": "GET-_modules",
+          "name": "GET /modules",
+          "description": "GET /modules",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/modules"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/prompt-modules.ts"
+        },
+        {
+          "id": "POST-_modules",
+          "name": "POST /modules",
+          "description": "POST /modules",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/modules"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/prompt-modules.ts"
+        },
+        {
+          "id": "GET-_effectiveness",
+          "name": "GET /effectiveness",
+          "description": "GET /effectiveness",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/effectiveness"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/prompt-modules.ts"
+        },
+        {
           "id": "GET-_registry_tombstones",
           "name": "GET /registry/tombstones",
           "description": "GET /registry/tombstones",
@@ -7219,28 +6338,6 @@
             "path": "/search"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin/shared-kb.ts"
-        },
-        {
-          "id": "GET-_",
-          "name": "GET /",
-          "description": "GET /",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/slo.ts"
-        },
-        {
-          "id": "POST-_",
-          "name": "POST /",
-          "description": "POST /",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/slo.ts"
         },
         {
           "id": "GET-_cluster_health",

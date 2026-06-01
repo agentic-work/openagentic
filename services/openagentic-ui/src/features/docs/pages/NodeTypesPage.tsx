@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useDocsStore } from '@/stores/useDocsStore';
 
 // ============================================================================
 // ANIMATION VARIANTS
@@ -49,7 +50,6 @@ const nodeCategories: NodeCategory[] = [
       { name: 'llm_completion', description: 'Send a prompt to any configured LLM provider and receive a completion. Supports system prompts, temperature, max tokens, and JSON mode.', inputs: 'prompt, system_prompt, model, temperature', outputs: 'completion, tokens_used, finish_reason' },
       { name: 'openagentic_llm', description: 'Use the OpenAgentic platform LLM with SmartModelRouter capability scoring and per-user × per-model budget caps.', inputs: 'prompt, model_override', outputs: 'completion, model_used' },
       { name: 'synth', description: 'Synthesize tool for generating structured outputs from multiple inputs.', inputs: 'inputs[], synthesis_config', outputs: 'synthesized_result' },
-      { name: 'openagentic', description: 'Execute code tasks using the OpenAgentic sandboxed code execution environment.', inputs: 'task, language, context', outputs: 'result, files[]' },
     ],
   },
   {
@@ -121,7 +121,22 @@ const nodeCategories: NodeCategory[] = [
 // ============================================================================
 
 const NodeTypesPage: React.FC = () => {
-  const totalNodes = nodeCategories.reduce((sum, cat) => sum + cat.nodes.length, 0);
+  // Source-derived count: the build-time-generated node-types manifest is
+  // scanned from the workflow-engine registry (register() list minus the
+  // removed-node denylist), so the headline count always matches the release.
+  const { loadManifest, loadedManifests } = useDocsStore();
+  useEffect(() => {
+    if (!loadedManifests.has('node-types')) {
+      loadManifest('node-types').catch(() => {});
+    }
+  }, [loadManifest, loadedManifests]);
+
+  const fallbackTotal = nodeCategories.reduce((sum, cat) => sum + cat.nodes.length, 0);
+  const totalNodes = useMemo(() => {
+    const m = loadedManifests.get('node-types');
+    if (!m) return fallbackTotal;
+    return m.sections.reduce((sum, s) => sum + s.items.length, 0);
+  }, [loadedManifests, fallbackTotal]);
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">

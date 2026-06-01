@@ -33,7 +33,6 @@ const MODULES: SeedModule[] = [
   { name: 'artifact-inhibitor',    cat: 'core',       prio: 96, snippet: "User didn't ask for a chart — answer in plain text and tables.", always: true, excludesIntent: ['visualization'] },
   { name: 'follow-up-suggestions', cat: 'core',       prio: 95, snippet: 'Answer exactly what was asked. End with one short follow-up question.', always: true },
   { name: 'chat-mode',             cat: 'mode',       prio: 90, snippet: 'For direct asks call the most specific native tool. Reach for delegate_to_agents only when the user asks for orchestration.', requiresMode: ['chat'] },
-  { name: 'code-mode',             cat: 'mode',       prio: 90, snippet: 'You are a coding assistant. Write clean, tested production code. Run tests after.', requiresMode: ['code'] },
   { name: 'thinking-guidance',     cat: 'capability', prio: 85, snippet: 'Use extended thinking for complex problems. Plan first, execute second.', requiresCapability: ['thinking'] },
   { name: 'react-reasoning',       cat: 'capability', prio: 84, snippet: 'THINK → ACT → OBSERVE → REFLECT for tool-using tasks.', requiresCapability: ['tools'] },
   { name: 'tool-calling-strategy', cat: 'capability', prio: 80, snippet: 'Prefer the most specific tool. Run independent calls in parallel.', requiresCapability: ['tools'] },
@@ -44,7 +43,7 @@ const MODULES: SeedModule[] = [
 interface Example {
   label: string;
   text: string;
-  intents: { mode: 'chat' | 'code'; visualization: boolean; 'long-form'?: boolean; thinking: boolean; tools: boolean };
+  intents: { mode: 'chat'; visualization: boolean; 'long-form'?: boolean; thinking: boolean; tools: boolean };
   response: string;
   followup: string;
 }
@@ -65,13 +64,6 @@ const EXAMPLES: Example[] = [
     followup: 'Want the same view scoped to last 7 days, or grouped by tag?',
   },
   {
-    label: 'code mode help',
-    text:  'code: explain the WebSocket relay flow',
-    intents: { mode: 'code', visualization: false, thinking: true, tools: true },
-    response: 'Reading services/openagentic-api/src/codemode/relay.ts… The relay accepts a browser WS, opens a daemon WS, and pumps frames bidirectionally.',
-    followup: 'Want me to trace a specific frame type, or write a disconnect-path test?',
-  },
-  {
     label: 'long-form scholarly',
     text:  'write a 2000-word whitepaper on prompt-module composition',
     intents: { mode: 'chat', visualization: false, 'long-form': true, thinking: true, tools: false },
@@ -88,7 +80,6 @@ const COLOR_BY_NAME: Record<string, string> = {
   'artifact-inhibitor':    '#8a7558',
   'follow-up-suggestions': '#998060',
   'chat-mode':             '#a88a64',
-  'code-mode':             '#a88a64',
   'thinking-guidance':     '#b6926a',
   'react-reasoning':       '#a47855',
   'tool-calling-strategy': '#8e5d3f',

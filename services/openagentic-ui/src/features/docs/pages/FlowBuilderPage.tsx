@@ -103,9 +103,8 @@ const FlowBuilderPage: React.FC = () => {
       color: '#8b5cf6',
       nodes: [
         { name: 'llm_completion', description: 'Send a prompt to any configured model and get a completion' },
-        { name: 'openagentic_llm', description: 'Use the platform LLM with SmartRouter and intelligence slider' },
+        { name: 'openagentic_llm', description: 'Use the platform LLM with SmartRouter capability-based model selection' },
         { name: 'synth', description: 'Synthesize structured outputs from multiple inputs' },
-        { name: 'openagentic', description: 'Sandboxed code execution environment' },
       ],
     },
     {

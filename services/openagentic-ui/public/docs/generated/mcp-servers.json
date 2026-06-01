@@ -4,18 +4,20 @@
   "description": "Model Context Protocol servers and their tools",
   "icon": "tool",
   "category": "tools",
-  "generatedAt": "2026-05-13T20:48:20.554Z",
+  "generatedAt": "2026-06-01T13:39:05.696Z",
   "sourceFiles": [
     "services/mcps/oap-admin-mcp/server.py",
     "services/mcps/oap-admin-mcp/src/admin_mcp_server/server.py",
     "services/mcps/oap-agent-architect-mcp/server.py",
-    "services/mcps/oap-openagentic-mcp/server.py",
+    "services/mcps/oap-alertmanager-mcp/server.py",
+    "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py",
     "services/mcps/oap-aws-mcp/server.py",
     "services/mcps/oap-azure-mcp/src/server.py",
     "services/mcps/oap-gcp-mcp/src/server.py",
     "services/mcps/oap-github-mcp/server.py",
     "services/mcps/oap-incident-mcp/server.py",
     "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py",
+    "services/mcps/oap-knowledge-mcp/server.py",
     "services/mcps/oap-kubernetes-mcp/server.py",
     "services/mcps/oap-kubernetes-mcp/src/kubernetes_mcp_server/server.py",
     "services/mcps/oap-loki-mcp/server.py",
@@ -113,80 +115,100 @@
       ]
     },
     {
-      "id": "oap-openagentic-mcp",
-      "title": "oap-openagentic-mcp",
-      "description": "oap-openagentic-mcp",
+      "id": "oap-alertmanager-mcp",
+      "title": "oap-alertmanager-mcp",
+      "description": "oap-alertmanager-mcp",
       "adminOnly": false,
       "items": [
         {
-          "id": "oap-openagentic-mcp--execute_code",
-          "name": "execute_code",
-          "description": "Execute code in the user's workspace. COPY THESE EXAMPLES EXACTLY:",
+          "id": "oap-alertmanager-mcp--alertmanager_get_alerts",
+          "name": "alertmanager_get_alerts",
+          "description": "Get current alerts from Alertmanager.",
           "type": "mcp-tool",
           "properties": {
-            "params": "code: Optional[str] = None,\n    language: str = \"python\",\n    user_id: str = \"default\",\n    filename: Optional[str] = None,\n    working_directory: Optional[str] = None,\n    timeout_seconds: int = 60,\n    cmd: Optional[str] = None,\n    source: Optional[str] = None,\n    script: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None  # Injected by MCP proxy, ignored here"
+            "params": "active: bool = Field(default=True, description=\"Include active alerts\"),\n    silenced: bool = Field(default=False, description=\"Include silenced alerts\"),\n    inhibited: bool = Field(default=False, description=\"Include inhibited alerts\"),\n    filter: Optional[str] = Field(default=None, description=\"Label filter (e.g., 'severity=critical', 'alertname=HighMemory')\")"
           },
-          "sourceFile": "services/mcps/oap-openagentic-mcp/server.py"
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
         },
         {
-          "id": "oap-openagentic-mcp--run_shell_command",
-          "name": "run_shell_command",
-          "description": "Execute a shell command in the user's workspace.",
+          "id": "oap-alertmanager-mcp--alertmanager_get_alert_groups",
+          "name": "alertmanager_get_alert_groups",
+          "description": "Get alerts grouped by their labels.",
           "type": "mcp-tool",
           "properties": {
-            "params": "command: str,\n    user_id: str = \"default\",\n    working_directory: Optional[str] = None,\n    timeout_seconds: int = 60,\n    meta: Optional[Dict[str, Any]] = None  # Injected by MCP proxy with userEmail"
+            "params": ""
           },
-          "sourceFile": "services/mcps/oap-openagentic-mcp/server.py"
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
         },
         {
-          "id": "oap-openagentic-mcp--write_file",
-          "name": "write_file",
-          "description": "Write content to a file in the user's workspace.",
+          "id": "oap-alertmanager-mcp--alertmanager_get_silences",
+          "name": "alertmanager_get_silences",
+          "description": "Get all silences from Alertmanager.",
           "type": "mcp-tool",
           "properties": {
-            "params": "filepath: str,\n    content: str,\n    user_id: str = \"default\",\n    meta: Optional[Dict[str, Any]] = None  # Injected by MCP proxy, ignored here"
+            "params": "filter: Optional[str] = Field(default=None, description=\"Label filter for silences\")"
           },
-          "sourceFile": "services/mcps/oap-openagentic-mcp/server.py"
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
         },
         {
-          "id": "oap-openagentic-mcp--read_file",
-          "name": "read_file",
-          "description": "Read content from a file in the user's workspace.",
+          "id": "oap-alertmanager-mcp--alertmanager_create_silence",
+          "name": "alertmanager_create_silence",
+          "description": "Create a silence for an alert.",
           "type": "mcp-tool",
           "properties": {
-            "params": "filepath: str,\n    user_id: str = \"default\",\n    meta: Optional[Dict[str, Any]] = None  # Injected by MCP proxy, ignored here"
+            "params": "alertname: str = Field(description=\"Alert name to silence (exact match)\"),\n    duration: str = Field(default=\"2h\", description=\"Duration of silence (e.g., '30m', '2h', '1d')\"),\n    comment: str = Field(description=\"Reason for silencing this alert\"),\n    created_by: str = Field(default=\"OpenAgentic AI\", description=\"Who is creating this silence\"),\n    additional_matchers: Optional[str] = Field(default=None, description=\"Additional matchers as JSON array, e.g., '[{\\\"name\\\":\\\"severity\\\",\\\"value\\\":\\\"warning\\\"}]'\")"
           },
-          "sourceFile": "services/mcps/oap-openagentic-mcp/server.py"
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
         },
         {
-          "id": "oap-openagentic-mcp--list_files",
-          "name": "list_files",
-          "description": "List files in a directory in the user's workspace.",
+          "id": "oap-alertmanager-mcp--alertmanager_delete_silence",
+          "name": "alertmanager_delete_silence",
+          "description": "Delete/expire a silence.",
           "type": "mcp-tool",
           "properties": {
-            "params": "directory: str = \".\",\n    user_id: str = \"default\",\n    recursive: bool = False,\n    meta: Optional[Dict[str, Any]] = None  # Injected by MCP proxy, ignored here"
+            "params": "silence_id: str = Field(description=\"ID of the silence to delete/expire\")"
           },
-          "sourceFile": "services/mcps/oap-openagentic-mcp/server.py"
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
         },
         {
-          "id": "oap-openagentic-mcp--get_session_info",
-          "name": "get_session_info",
-          "description": "Get information about the user's OpenAgentic session.",
+          "id": "oap-alertmanager-mcp--alertmanager_silence_by_labels",
+          "name": "alertmanager_silence_by_labels",
+          "description": "Create a silence matching multiple labels.",
           "type": "mcp-tool",
           "properties": {
-            "params": "user_id: str = \"default\", meta: Optional[Dict[str, Any]] = None"
+            "params": "labels: str = Field(description=\"JSON object of label matchers (e.g., '{\\\"namespace\\\":\\\"staging\\\",\\\"severity\\\":\\\"warning\\\"}')\"),\n    duration: str = Field(default=\"2h\", description=\"Duration of silence\"),\n    comment: str = Field(description=\"Reason for silencing\"),\n    created_by: str = Field(default=\"OpenAgentic AI\", description=\"Who is creating this silence\"),\n    is_regex: bool = Field(default=False, description=\"Treat label values as regex patterns\")"
           },
-          "sourceFile": "services/mcps/oap-openagentic-mcp/server.py"
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
         },
         {
-          "id": "oap-openagentic-mcp--stop_session",
-          "name": "stop_session",
-          "description": "Stop a user's OpenAgentic session.",
+          "id": "oap-alertmanager-mcp--alertmanager_get_receivers",
+          "name": "alertmanager_get_receivers",
+          "description": "Get all configured notification receivers.",
           "type": "mcp-tool",
           "properties": {
-            "params": "user_id: str, session_id: Optional[str] = None, meta: Optional[Dict[str, Any]] = None"
+            "params": ""
           },
-          "sourceFile": "services/mcps/oap-openagentic-mcp/server.py"
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
+        },
+        {
+          "id": "oap-alertmanager-mcp--alertmanager_status",
+          "name": "alertmanager_status",
+          "description": "Get Alertmanager cluster status.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
+        },
+        {
+          "id": "oap-alertmanager-mcp--alertmanager_summary",
+          "name": "alertmanager_summary",
+          "description": "Get a quick summary of current alert status.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
         }
       ]
     },
@@ -1937,6 +1959,54 @@
             "params": ""
           },
           "sourceFile": "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-knowledge-mcp",
+      "title": "oap-knowledge-mcp",
+      "description": "oap-knowledge-mcp",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oap-knowledge-mcp--search_tool_documentation",
+          "name": "search_tool_documentation",
+          "description": "Search for tool usage documentation and guidance.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: str, top_k: int = 5"
+          },
+          "sourceFile": "services/mcps/oap-knowledge-mcp/server.py"
+        },
+        {
+          "id": "oap-knowledge-mcp--get_tool_examples",
+          "name": "get_tool_examples",
+          "description": "Get detailed usage examples for a specific tool.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "tool_name: str"
+          },
+          "sourceFile": "services/mcps/oap-knowledge-mcp/server.py"
+        },
+        {
+          "id": "oap-knowledge-mcp--suggest_tools_for_task",
+          "name": "suggest_tools_for_task",
+          "description": "Given a task description, suggest which tools to use and how.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "task_description: str = \"\", task: str = \"\""
+          },
+          "sourceFile": "services/mcps/oap-knowledge-mcp/server.py"
+        },
+        {
+          "id": "oap-knowledge-mcp--list_available_mcps",
+          "name": "list_available_mcps",
+          "description": "List all available MCP servers and their capabilities.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/mcps/oap-knowledge-mcp/server.py"
         }
       ]
     },

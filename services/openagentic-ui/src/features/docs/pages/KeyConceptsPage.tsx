@@ -40,7 +40,7 @@ const concepts: Concept[] = [
     icon: DocsToolIcon,
     summary: 'A standardized protocol for connecting AI models to external tools and data sources.',
     detail:
-      'MCP is an open protocol that defines how language models discover, invoke, and receive results from external tools. OpenAgentic runs 16 MCP servers that provide access to Azure, AWS, Kubernetes, GitHub, Jira, databases, web search, file systems, and more. Tools are selected automatically via vector similarity matching.',
+      'MCP is an open protocol that defines how language models discover, invoke, and receive results from external tools. OpenAgentic runs 14 MCP servers that provide access to Azure, AWS, Kubernetes, GitHub, databases, web search, knowledge bases, and more. Tools are selected automatically via vector similarity matching.',
     linkPage: 'what-is-mcp',
   },
   {

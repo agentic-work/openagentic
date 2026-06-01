@@ -35,7 +35,7 @@ const securityDiagram: DiagramDefinition = {
 
 const permissionRoles = [
   { role: 'viewer', description: 'Read-only access to chat history and shared workflows. Cannot send messages, create flows, or access admin features. Ideal for stakeholders who need visibility without interaction.' },
-  { role: 'user', description: 'Standard platform access. Can use chat, code mode, and run existing workflows. Cannot create agents, configure MCP servers, or access admin settings.' },
+  { role: 'user', description: 'Standard platform access. Can use chat and run existing workflows. Cannot create agents, configure MCP servers, or access admin settings.' },
   { role: 'power_user', description: 'Extended access including workflow creation, agent playground, and API key generation. Can create and manage their own workflows and test agent configurations.' },
   { role: 'admin', description: 'Full admin console access. Can manage providers, agents, MCP servers, users, and security settings. Cannot modify super_admin accounts or platform deployment configuration.' },
   { role: 'super_admin', description: 'Unrestricted access. Can modify all settings including other admin accounts, deployment configuration, and platform-level security policies. Reserved for platform operators.' },
@@ -52,7 +52,7 @@ const rateLimitConfig = [
   { limit: 'Requests per Minute', description: 'Maximum API requests per user per minute. Separate limits for chat messages, tool calls, and admin operations. Exceeding the limit returns HTTP 429.' },
   { limit: 'Tokens per Day', description: 'Maximum LLM tokens a user can consume per 24-hour period. Applies across all providers and models. Resets at midnight UTC.' },
   { limit: 'Concurrent Sessions', description: 'Maximum simultaneous active sessions per user. Prevents resource exhaustion from excessive parallelism.' },
-  { limit: 'File Upload Size', description: 'Maximum size for file uploads in chat and code mode. Applies per-file and per-request aggregate.' },
+  { limit: 'File Upload Size', description: 'Maximum size for file uploads in chat. Applies per-file and per-request aggregate.' },
 ];
 
 const networkSecurityFeatures = [

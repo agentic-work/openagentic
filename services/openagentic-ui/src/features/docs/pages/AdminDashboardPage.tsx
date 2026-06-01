@@ -35,7 +35,6 @@ const metricSummaries = [
   { label: 'Total Users', description: 'Count of unique users who have accessed the platform. Includes active and inactive accounts.' },
   { label: 'Chat Sessions', description: 'Total chat sessions initiated across all users. A session begins when a user starts a new conversation.' },
   { label: 'Messages', description: 'Cumulative message count across all sessions. Includes both user messages and AI responses.' },
-  { label: 'Code Sessions', description: 'Number of Openagentic sessions opened. Tracks unique sandbox environments provisioned.' },
   { label: 'Flow Executions', description: 'Total workflow executions completed or in progress. Covers manual triggers, cron schedules, and webhook invocations.' },
   { label: 'Agent Runs', description: 'Total agent delegation invocations. Counts each time the orchestrator delegates to a specialist agent.' },
 ];
@@ -47,7 +46,6 @@ const dashboardTabs = [
   { name: 'Flows & Agents', description: 'Workflow execution metrics and agent delegation analytics. Line charts track execution counts, success rates, and average duration. Agent utilization heatmap by type.' },
   { name: 'MCP & Tools', description: 'MCP server health and tool execution metrics. Shows tool call volume, success rates, and latency percentiles. Top tools ranked by usage. Server availability timeline.' },
   { name: 'Infrastructure', description: 'System health metrics including API response times, database connection pools, Redis cache hit rates, queue depths, and Kubernetes pod status across namespaces.' },
-  { name: 'Openagentic', description: 'Code mode analytics: active sessions, pod provisioning times, resource utilization per sandbox, and session duration distributions.' },
 ];
 
 const timeRanges = [

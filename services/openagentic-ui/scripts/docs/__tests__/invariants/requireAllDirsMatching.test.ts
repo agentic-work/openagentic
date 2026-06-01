@@ -27,16 +27,16 @@ function manifestWithSectionIds(sectionIds: string[]): DocManifest {
 
 describe('requireAllDirsMatching (real source)', () => {
   it('passes when every matching dir has a corresponding section', async () => {
-    const inv = requireAllDirsMatching('services/mcps/openagentic-*', { idFrom: 'dirname' });
+    const inv = requireAllDirsMatching('services/mcps/oap-*-mcp', { idFrom: 'dirname' });
     const dirs = (await readdir(resolve(REPO_ROOT, 'services/mcps'))).filter((d) =>
-      d.startsWith('openagentic-'),
+      /^oap-.*-mcp$/.test(d),
     );
     const result = await inv(manifestWithSectionIds(dirs), REPO_ROOT);
     expect(result.ok).toBe(true);
   });
 
   it('fails listing missing dirs', async () => {
-    const inv = requireAllDirsMatching('services/mcps/openagentic-*', { idFrom: 'dirname' });
+    const inv = requireAllDirsMatching('services/mcps/oap-*-mcp', { idFrom: 'dirname' });
     const result = await inv(manifestWithSectionIds(['oap-azure-mcp']), REPO_ROOT);
     expect(result.ok).toBe(false);
     expect(result.missing!.length).toBeGreaterThan(0);
