@@ -1,38 +1,21 @@
 /** @type {import('tailwindcss').Config} */
+//
+// TRANSITIONAL legacy bridge (Phase 0 of the ONE-SOT theme migration).
+//
+// The authoritative token source is now src/styles/theme.css (Tailwind v4
+// `@theme`). This JS config is loaded by theme.css via `@config` ONLY to keep
+// the existing 900+ files' legacy utility names (bg-surface, text-text-secondary,
+// bg-bg-1, border-line-1, bg-pri, …) resolving to the canonical vars during the
+// migration. Every `colors:` entry below points at a `var(--color-*)` that
+// theme.css defines and flips per [data-theme]; no literal palette lives here.
+// The v4 engine needs no `safelist` (removed) — utilities are scanned from
+// content + reachable via @config. This whole color block is deleted once the
+// call sites are codemodded to the new utilities.
 export default {
-  darkMode: 'class', // Enable dark mode with 'dark' class on html element
+  darkMode: ['selector', '[data-theme="dark"]'], // single switch: [data-theme]
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  safelist: [
-    // Preserve background color overrides
-    { pattern: /^bg-(white|gray|slate|zinc)(-\d+)?$/ },
-    { pattern: /^hover:bg-(gray|slate)(-\d+)?$/, variants: ['hover'] },
-    // M3 Expressive tokens (task #160) — opted in explicitly because they
-    // are often composed dynamically (e.g. `bg-surface-${n}`) so would
-    // otherwise be tree-shaken.
-    'rounded-pill', 'rounded-btn', 'rounded-card', 'rounded-panel',
-    'rounded-message', 'rounded-toast', 'rounded-input', 'rounded-input-sm',
-    'rounded-popover', 'rounded-table',
-    'bg-surface-0', 'bg-surface-1', 'bg-surface-2', 'bg-surface-3', 'bg-surface-4',
-    'shadow-soft-sm', 'shadow-soft', 'shadow-soft-md', 'shadow-soft-lg',
-    'ease-emphasized', 'ease-standard',
-    // Task #166 — mockup v0.6.7 utility classes registered in
-    // styles/mockup-v067.css. Safelisted because they are often composed
-    // dynamically or referenced from CSS-vars rather than authored
-    // directly in JSX, so Tailwind's content scanner won't find them.
-    'bg-bg-0', 'bg-bg-1', 'bg-bg-2', 'bg-bg-3', 'bg-bg-4',
-    'text-fg-0', 'text-fg-1', 'text-fg-2', 'text-fg-3',
-    'border-line-1', 'border-line-2', 'border-line-3',
-    'text-accent', 'bg-accent', 'bg-accent-soft', 'border-accent-line',
-    // admin-v2 Control Plane utility classes (see colors.pri/ln/ok/warn/err/hot)
-    { pattern: /^(bg|text|border|ring|shadow|fill|stroke)-pri(-[23])?$/ },
-    { pattern: /^(bg|text|border)-ln-[1-3]$/ },
-    'bg-ok', 'text-ok', 'border-ok',
-    'bg-warn', 'text-warn', 'border-warn',
-    'bg-err', 'text-err', 'border-err',
-    'bg-hot', 'text-hot',
   ],
   theme: {
     extend: {

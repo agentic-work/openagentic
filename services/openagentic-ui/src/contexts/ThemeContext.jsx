@@ -160,6 +160,11 @@ export const ThemeProvider = ({ children }) => {
   // 2026-04-30 — see docs/superpowers/specs/2026-04-30-chatmode-ux-parity-punchlist.md.
   const applyAccentColor = (accent) => {
     const root = document.documentElement;
+    // CANONICAL single accent driver (theme.css SOT). --color-accent and its
+    // soft/line tints all derive from --user-accent via color-mix, so this one
+    // write repaints accent everywhere.
+    root.style.setProperty('--user-accent', accent.primary);
+    // Legacy accent vars (still read by 900+ files) — kept during Phase 0.
     root.style.setProperty('--user-accent-primary', accent.primary);
     root.style.setProperty('--user-accent-secondary', accent.secondary);
     root.style.setProperty('--user-accent-color', accent.primary);
@@ -228,41 +233,30 @@ export const ThemeProvider = ({ children }) => {
   // Global themes are just 'dark' and 'light'
   const cssOnlyThemes = [];
 
-  // Apply theme to CSS variables
+  // Apply theme. The SINGLE switch: theme.css owns every --color-* and flips
+  // them off [data-theme]. ThemeContext therefore only sets the attribute —
+  // it no longer writes a full --color-* object inline (that was the old
+  // duplicate palette; theme.css is now the SOT). The .dark/.light class is
+  // kept solely because a few third-party components key off it; it drives no
+  // first-party CSS anymore.
   const applyTheme = (themeName) => {
     const root = document.documentElement;
 
-    // Set data attribute for CSS-variable-based themes and styling hooks
+    // Set data attribute — the canonical theme switch.
     root.setAttribute('data-theme', themeName);
 
-    if (cssOnlyThemes.includes(themeName)) {
-      // CSS-only themes: clear any inline style overrides so CSS selectors take effect
-      // These themes define all variables via [data-theme="..."] selectors
-      const themeConfig = themes['dark']; // Use dark as base to know which vars to clear
-      Object.keys(themeConfig).forEach((key) => {
-        root.style.removeProperty(`--color-${key}`);
-      });
+    // Defensive cleanup: remove any stale inline --color-* overrides written by
+    // older builds so theme.css's [data-theme] values take effect.
+    Object.keys(themes.dark).forEach((key) => {
+      root.style.removeProperty(`--color-${key}`);
+    });
 
-      // All CSS-only themes use dark base for Tailwind
+    if (themeName === 'light') {
+      root.classList.remove('dark');
+      root.classList.add('light');
+    } else {
       root.classList.add('dark');
       root.classList.remove('light');
-    } else {
-      const themeConfig = themes[themeName];
-
-      // Apply all theme variables as inline styles
-      Object.entries(themeConfig).forEach(([key, value]) => {
-        const cssVarName = `--color-${key}`;
-        root.style.setProperty(cssVarName, value);
-      });
-
-      // Add/remove 'dark' class for Tailwind dark mode
-      if (themeName === 'dark') {
-        root.classList.add('dark');
-        root.classList.remove('light');
-      } else {
-        root.classList.remove('dark');
-        root.classList.add('light');
-      }
     }
 
     // Preserve any existing body classes (tailwind, plugins) and replace

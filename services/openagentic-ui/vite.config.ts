@@ -1,10 +1,15 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  // Tailwind v4 CSS-first: the @tailwindcss/vite plugin processes the
+  // `@import "tailwindcss"` + `@theme` SOT in src/styles/theme.css. This
+  // replaces the v3 PostCSS `tailwindcss` plugin (now removed from
+  // postcss.config.js; autoprefixer stays for vendor prefixing).
+  plugins: [tailwindcss(), react()],
   // Serve public folder (includes docs)
   publicDir: 'public',
   resolve: {

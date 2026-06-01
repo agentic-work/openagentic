@@ -1,10 +1,15 @@
 /* @imports MUST precede all other statements (besides @charset/empty @layer)
-   per CSS spec. PostCSS enforces this hard — @font-face above @import
-   silently drops the @imports (bug #191). Order:
-     1. @imports (theme tokens + mockup + admin + codemode)
-     2. @tailwind directives (PostCSS processes these)
-     3. @font-face blocks (self-hosted fonts)
-     4. Rest of the file (design tokens, utilities, etc). */
+   per CSS spec. Order:
+     1. @imports (legacy theme tokens + mockup + admin + codemode)
+     2. @font-face blocks (self-hosted fonts)
+     3. Rest of the file (design tokens, utilities, etc).
+
+   Tailwind itself is no longer pulled in here. Under the ONE-SOT migration,
+   `@import "tailwindcss"` (base+components+utilities) is provided by
+   src/styles/theme.css, imported FIRST in main.tsx — so the canonical
+   @theme tokens win over these legacy files. The old
+   `@tailwind base/components/utilities` directives were removed (v4
+   CSS-first; the @tailwindcss/vite plugin emits the layers from theme.css). */
 @import './styles/themes/catppuccin-mocha.css';
 @import './styles/themes/terminal-green.css';
 @import './styles/themes/tokyo-night.css';
@@ -15,10 +20,6 @@
 @import './styles/admin-v2-accents.css';
 @import './styles/admin-overhaul.css';
 @import './styles/admin-v3-overrides.css';
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 /* ──────────────────────────────────────────────────────────────────────────
    Self-hosted editorial fonts (your environment airgap-safe — no Google Fonts, no CDN).
