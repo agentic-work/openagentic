@@ -10,6 +10,7 @@ import logging
 import os
 import subprocess
 import signal
+import time
 import httpx
 import uuid
 import redis
@@ -179,6 +180,10 @@ class MCPServer:
         self.process: Optional[subprocess.Popen] = None
         self.status = MCPServerStatus.STOPPED
         self.last_error: Optional[str] = None
+        # Serialize stdio exchanges: requests now run in worker threads
+        # (asyncio.to_thread), so concurrent calls must not interleave
+        # writes/reads on the single stdin/stdout pipe pair.
+        self._io_lock = asyncio.Lock()
 
     async def start(self):
         """Start the MCP server process"""
@@ -218,28 +223,50 @@ class MCPServer:
                 # Forward subprocess stderr to parent logger so tool call logs are visible
                 self._stderr_task = asyncio.create_task(self._forward_stderr())
 
-                # Initialize the MCP server (required by MCP protocol)
+                # Initialize the MCP server (required by MCP protocol).
+                #
+                # Some servers do non-trivial work before they can answer the
+                # stdio `initialize` handshake (the bundled admin MCP connects to
+                # Postgres/Milvus on boot). With a single attempt + a blocking
+                # readline, a server that is a few seconds slow to respond reads
+                # back an empty line ("Empty response from MCP server") and gets
+                # mis-classified as failed — even though it is alive and will be
+                # fully ready a moment later.
+                #
+                # Run the handshake (with retry over a generous, configurable
+                # window) in ONE worker thread so only a single thread ever
+                # reads stdout — no orphaned-reader race. As long as the process
+                # stays alive we keep the server RUNNING; only a process that
+                # actually exits is marked failed. tools/list is re-issued lazily
+                # later (list_all_tools), so a server that finishes initializing
+                # after this window still gets indexed.
+                init_timeout_s = float(os.getenv("MCP_STDIO_INIT_TIMEOUT", "30"))
+                init_retry_delay_s = float(os.getenv("MCP_STDIO_INIT_RETRY_DELAY", "1.5"))
+                # Hard outer cap a bit above the retry window: guards against a
+                # truly wedged server whose readline() never returns. If we trip
+                # this, the orphaned reader thread is still blocked on stdout, so
+                # we mark the server FAILED to keep real requests from colliding
+                # with it (a later restart re-spawns a clean process).
+                hard_cap_s = init_timeout_s + 10.0
                 try:
-                    init_request = {
-                        "jsonrpc": "2.0",
-                        "id": 0,
-                        "method": "initialize",
-                        "params": {
-                            "protocolVersion": "2024-11-05",
-                            "capabilities": {},
-                            "clientInfo": {
-                                "name": "mcp-proxy",
-                                "version": "1.0.0"
-                            }
-                        }
-                    }
-                    init_response = await self.send_request(init_request)
-                    if "error" in init_response:
-                        logger.warning(f"MCP server {self.config.name} initialization returned error: {init_response['error']}")
-                    else:
-                        logger.info(f"MCP server {self.config.name} initialized successfully")
-                except Exception as e:
-                    logger.warning(f"Failed to initialize MCP server {self.config.name}: {e}")
+                    async with self._io_lock:
+                        await asyncio.wait_for(
+                            asyncio.to_thread(
+                                self._initialize_handshake_sync,
+                                init_timeout_s,
+                                init_retry_delay_s,
+                            ),
+                            timeout=hard_cap_s,
+                        )
+                except asyncio.TimeoutError:
+                    self.last_error = f"initialize handshake hung beyond {hard_cap_s:.0f}s"
+                    self.status = MCPServerStatus.FAILED
+                    logger.error(f"MCP server {self.config.name} initialize hung; marking failed: {self.last_error}")
+
+                # NOTE: we deliberately do NOT set FAILED on a merely-slow
+                # handshake (handled inside _initialize_handshake_sync). A
+                # live-but-slow server stays RUNNING so it remains routable and
+                # its tools get picked up on the next tools/list.
             else:
                 stderr = self.process.stderr.read() if self.process.stderr else "No error output"
                 self.last_error = f"Process exited immediately: {stderr}"
@@ -275,9 +302,15 @@ class MCPServer:
                 self.process.kill()
             self.status = MCPServerStatus.STOPPED
 
-    async def send_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        """Send MCP request to server"""
-        if self.status != MCPServerStatus.RUNNING or not self.process:
+    def _send_request_sync(self, request: Dict[str, Any]) -> Dict[str, Any]:
+        """Synchronous JSON-RPC-over-stdio exchange (BLOCKING).
+
+        This is the blocking core. It MUST be run off the event loop
+        (asyncio.to_thread) — never called directly on the loop, or a slow
+        server response freezes the whole proxy. send_request() is the async
+        wrapper that callers should use.
+        """
+        if not self.process:
             raise RuntimeError(f"MCP server {self.config.name} is not running")
 
         try:
@@ -327,6 +360,72 @@ class MCPServer:
                 self.last_error = f"Process died: {stderr}"
             raise
 
+    def _initialize_handshake_sync(self, timeout_s: float, retry_delay_s: float) -> bool:
+        """Perform the MCP `initialize` handshake with bounded retry (BLOCKING).
+
+        Runs entirely in one worker thread (see start()) so only a single
+        thread ever reads stdout — avoids the orphaned-reader race that a
+        per-attempt asyncio.wait_for(to_thread(...)) would create.
+
+        Returns True if initialize succeeded. Sets status=FAILED only if the
+        process actually exits; a merely-slow server is left RUNNING.
+        """
+        init_request = {
+            "jsonrpc": "2.0",
+            "id": 0,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "mcp-proxy", "version": "1.0.0"},
+            },
+        }
+        deadline = time.monotonic() + timeout_s
+        attempt = 0
+        while True:
+            attempt += 1
+            # A process that exited is a real failure — stop and mark it.
+            if self.process is None or self.process.poll() is not None:
+                stderr = self.process.stderr.read() if (self.process and self.process.stderr) else "No error output"
+                self.last_error = f"Process exited during initialize: {stderr}"
+                self.status = MCPServerStatus.FAILED
+                logger.error(f"MCP server {self.config.name} died during initialize: {self.last_error}")
+                return False
+            try:
+                init_response = self._send_request_sync(init_request)
+                if "error" in init_response:
+                    logger.warning(f"MCP server {self.config.name} initialization returned error: {init_response['error']}")
+                else:
+                    logger.info(f"MCP server {self.config.name} initialized successfully (attempt {attempt})")
+                return True
+            except Exception as e:
+                # _send_request_sync already marks FAILED if the process died.
+                if self.status == MCPServerStatus.FAILED:
+                    return False
+                if time.monotonic() >= deadline:
+                    logger.warning(
+                        f"MCP server {self.config.name} did not complete initialize within "
+                        f"{timeout_s:.0f}s ({attempt} attempts, last error: {e}); "
+                        f"leaving RUNNING — tools will be indexed lazily once ready"
+                    )
+                    return False
+                logger.info(
+                    f"MCP server {self.config.name} not ready for initialize yet "
+                    f"(attempt {attempt}: {e}); retrying in {retry_delay_s:.1f}s"
+                )
+                time.sleep(retry_delay_s)
+
+    async def send_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+        """Send MCP request to server (async wrapper).
+
+        Offloads the blocking stdio exchange to a worker thread so a slow
+        server response does not block the asyncio event loop.
+        """
+        if self.status != MCPServerStatus.RUNNING or not self.process:
+            raise RuntimeError(f"MCP server {self.config.name} is not running")
+        async with self._io_lock:
+            return await asyncio.to_thread(self._send_request_sync, request)
+
 class MCPManager:
     def __init__(self, redis_client: Optional[redis.Redis] = None):
         self.servers: Dict[str, Union[MCPServer, RemoteMCPServer]] = {}
@@ -370,18 +469,25 @@ class MCPManager:
                 # The admin server reads DATABASE_URL (and best-effort REDIS_*/MILVUS_*)
                 # from the proxy environment; pass them through explicitly so the
                 # subprocess can connect for its system-observability read tools.
-                openagentic_admin_env = {
-                    "DATABASE_URL": os.getenv("DATABASE_URL", ""),
-                    "REDIS_URL": os.getenv("REDIS_URL", ""),
-                    "REDIS_HOST": os.getenv("REDIS_HOST", ""),
-                    "REDIS_PORT": os.getenv("REDIS_PORT", ""),
-                    "REDIS_PASSWORD": os.getenv("REDIS_PASSWORD", ""),
-                    "MILVUS_HOST": os.getenv("MILVUS_HOST", ""),
-                    "MILVUS_PORT": os.getenv("MILVUS_PORT", ""),
-                    "API_BASE_URL": os.getenv("API_BASE_URL", ""),
-                    "OPENAGENTIC_API_URL": os.getenv("OPENAGENTIC_API_URL", ""),
-                    "LOG_LEVEL": "info",
-                }
+                #
+                # IMPORTANT: only forward vars that are actually SET in the proxy
+                # env. Forwarding an empty string (e.g. MILVUS_HOST="") OVERRIDES
+                # the admin server's own sane fallback ("milvus"/"redis") with "",
+                # which makes pymilvus fall back to localhost:19530 and BLOCK ~10s
+                # before raising. Even though that connect now runs off the stdio
+                # event loop (admin lifespan fix), feeding empty hosts here just
+                # guarantees a failed connect + noisy 10s stall — so omit unset
+                # vars and let the server default them.
+                _admin_passthrough = (
+                    "DATABASE_URL", "REDIS_URL", "REDIS_HOST", "REDIS_PORT",
+                    "REDIS_PASSWORD", "MILVUS_HOST", "MILVUS_PORT",
+                    "API_BASE_URL", "OPENAGENTIC_API_URL",
+                )
+                openagentic_admin_env = {"LOG_LEVEL": "info"}
+                for _k in _admin_passthrough:
+                    _v = os.getenv(_k)
+                    if _v:  # only forward when set & non-empty
+                        openagentic_admin_env[_k] = _v
                 self.servers["openagentic_admin"] = MCPServer(MCPServerConfig(
                     name="openagentic_admin",
                     command=["fastmcp", "run", "-t", "stdio", "/app/mcp-servers/oap-admin-mcp/server.py"],
@@ -870,6 +976,22 @@ class MCPManager:
             raise ValueError("Server configuration must include 'name'")
         if not command:
             raise ValueError("Server configuration must include 'command'")
+
+        # BUILTIN sentinel: the API persists an in-process "builtin" MCP
+        # (agentic-memory-mcp) and pushes its config to the proxy along with
+        # the real external servers. There is no 'builtin' executable to spawn —
+        # attempting it produced "[Errno 2] No such file or directory: 'builtin'".
+        # Treat it as a managed no-op so the proxy doesn't try to Popen it.
+        if (isinstance(command, str) and command.strip().lower() == "builtin") or \
+           (isinstance(command, list) and len(command) == 1 and str(command[0]).strip().lower() == "builtin"):
+            logger.info(f"Skipping spawn for builtin (in-process) MCP server: {name}")
+            return {
+                "name": name,
+                "status": "builtin",
+                "command": command if isinstance(command, list) else [command],
+                "enabled": config.get("enabled", True),
+                "transport": "builtin",
+            }
 
         # Check if server already exists
         if name in self.servers:

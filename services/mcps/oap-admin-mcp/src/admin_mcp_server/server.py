@@ -65,10 +65,30 @@ async def lifespan(app):
     logger.info("ADMIN USERS ONLY - Non-admin users will be rejected")
     logger.info("=" * 80)
 
-    # Initialize connections on startup
-    await init_connections()
+    # Initialize connections WITHOUT blocking the stdio event loop.
+    #
+    # init_connections() makes SYNCHRONOUS, blocking network calls
+    # (psycopg2.connect, pymilvus connections.connect). When the configured
+    # MILVUS_HOST/REDIS_HOST is wrong/empty, pymilvus falls back to
+    # localhost:19530 and blocks ~10s before raising. Doing that directly on
+    # the asyncio loop here freezes FastMCP's stdio transport so it cannot
+    # answer the proxy's `initialize` handshake in time — the proxy then reads
+    # an empty stdout line, declares the server "failed", and no admin tools
+    # get indexed. (See mcp_manager StdioMCPServer.start handshake.)
+    #
+    # Fire-and-forget on a background thread instead: the server becomes
+    # ready to answer `initialize`/`tools/list` immediately, and the DB
+    # connections finish (or fail-soft) shortly after. Tool handlers already
+    # guard for missing connections.
+    async def _init_connections_background():
+        try:
+            await asyncio.to_thread(_init_connections_blocking)
+        except Exception as e:
+            logger.warning(f"⚠️ Background connection init failed: {e} - tools degrade gracefully")
 
-    logger.info("✅ Admin MCP Server ready - waiting for requests")
+    asyncio.create_task(_init_connections_background())
+
+    logger.info("✅ Admin MCP Server ready - waiting for requests (connections initializing in background)")
 
     yield  # Server runs here
 
@@ -120,8 +140,15 @@ class DatabaseConfig:
             "password": os.getenv("MILVUS_PASSWORD", "")
         }
 
-async def init_connections():
-    """Initialize all database connections"""
+def _init_connections_blocking():
+    """Initialize all database connections (SYNCHRONOUS / BLOCKING).
+
+    This performs blocking network I/O (redis ping, pymilvus connect,
+    psycopg2 connect). It MUST NOT be awaited directly on an asyncio event
+    loop that also serves a transport — run it in a worker thread (see
+    lifespan) or via asyncio.to_thread. The async init_connections() wrapper
+    below preserves the original call sites (e.g. main()).
+    """
     global redis_client, prisma_client, _connections_initialized
 
     if _connections_initialized:
@@ -179,6 +206,14 @@ async def init_connections():
 
     _connections_initialized = True
     logger.info("✅ Connection initialization complete")
+
+async def init_connections():
+    """Async wrapper around the blocking connection initializer.
+
+    Runs the blocking connects in a worker thread so callers awaiting this
+    coroutine (e.g. main() via asyncio.run) do not block the event loop.
+    """
+    await asyncio.to_thread(_init_connections_blocking)
 
 async def cleanup_connections():
     """Cleanup all database connections"""
