@@ -28,6 +28,13 @@ spec:
         app: mcp-proxy
     spec:
       enableServiceLinks: false
+      {{- if .Values.mcps.kubernetes.enabled }}
+      # Bind the read-only RBAC SA (templates/mcp-proxy-rbac.yaml) so the
+      # in-cluster Kubernetes MCP gets a projected SA token to authenticate
+      # against the apiserver. Token automount is on by default.
+      serviceAccountName: mcp-proxy
+      automountServiceAccountToken: true
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -69,12 +76,19 @@ spec:
               value: "true"
             - name: OpenAgentic_GCP_MCP_DISABLED
               value: "true"
+            # In-cluster ops MCPs — ON by default for the ops ICP (no external
+            # creds: k8s uses the pod SA token + read RBAC, prometheus queries
+            # the in-cluster prometheus service). Toggle via .Values.mcps.*.
             - name: OpenAgentic_KUBERNETES_MCP_DISABLED
-              value: "true"
+              value: {{ not .Values.mcps.kubernetes.enabled | quote }}
+            - name: OPENAGENTIC_NAMESPACE
+              value: {{ .Release.Namespace | quote }}
             - name: OpenAgentic_GITHUB_MCP_DISABLED
               value: "true"
             - name: OpenAgentic_PROMETHEUS_MCP_DISABLED
-              value: "true"
+              value: {{ not .Values.mcps.prometheus.enabled | quote }}
+            - name: PROMETHEUS_URL
+              value: {{ .Values.mcps.prometheus.url | default "http://prometheus:9090" | quote }}
             - name: OpenAgentic_LOKI_MCP_DISABLED
               value: "true"
             - name: OpenAgentic_ALERTMANAGER_MCP_DISABLED

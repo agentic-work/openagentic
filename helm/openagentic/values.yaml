@@ -74,8 +74,21 @@ milvus:
   image: milvusdb/milvus:v2.4.15
 
 # Which MCP servers the proxy spawns. web/knowledge/admin need no creds.
+# `enabled` is the legacy comma-string (kept for back-compat / UI display).
+# The real on/off switch is the per-MCP `OpenAgentic_<NAME>_MCP_DISABLED` env
+# flag in templates/mcp-proxy.yaml, which is templated off the structured
+# per-MCP toggles below.
 mcps:
-  enabled: "web,knowledge,admin"
+  enabled: "web,knowledge,admin,kubernetes,prometheus"
+  # In-cluster ops MCPs — ON by default for the ops ICP (no external creds).
+  # kubernetes: uses the mcp-proxy pod ServiceAccount token + read-only RBAC
+  #   (templates/mcp-proxy-rbac.yaml). Set enabled:false to ship no RBAC.
+  kubernetes:
+    enabled: true
+  # prometheus: queries the in-cluster prometheus service. No creds, no RBAC.
+  prometheus:
+    enabled: true
+    url: "http://prometheus:9090"
 
 # Per-service resource requests/limits. Tuned small; raise for production load.
 resources:
