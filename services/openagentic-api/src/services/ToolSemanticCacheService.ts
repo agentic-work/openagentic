@@ -19,6 +19,7 @@ import { redis as redisService } from './redis.js';
 import { getRedisClient } from '../utils/redis-client.js';
 import type { ProviderManager } from './llm-providers/ProviderManager.js';
 import { extractToolTags } from '../utils/toolTagExtractor.js';
+import { capEmbeddingInput, EMBEDDING_INPUT_MAX_CHARS } from './embeddingInputCap.js';
 import { randomUUID, createHash } from 'crypto';
 import { mintInterServiceSystemToken } from './llm-providers/util/mintInterServiceSystemToken.js';
 import { classifyMilvusHealth, MilvusRecoveringError } from '../utils/milvusHealth.js';
@@ -171,6 +172,42 @@ interface CachedTool {
 export interface ToolSearchResult extends Tool {
   score: number;
   relevance: number;
+}
+
+/**
+ * Build the combined embedding INPUT text for a single tool, capped to the
+ * embedding model's safe budget.
+ *
+ * This is the indexer-layer cap for the discovery catalog (`mcp_tools_cache` —
+ * the collection that `tool_search`/`searchTools` and `getTool` read). It
+ * reuses the shared `embeddingInputCap` helper so a single pathological tool
+ * description (e.g. aws_knowledge `read_documentation`, ~50k chars) cannot push
+ * the embed call past the model's context window and 500 the whole indexing
+ * run — the live failure that left `mcp_tools_cache` empty on open-dev
+ * (2026-06-01) so `tool_search` returned nothing and no model could discover or
+ * call any MCP tool.
+ *
+ * Ordering is deliberate: `Tool: <name>` leads, then the description, then the
+ * synthetic queries. Truncation keeps the leading (most-discriminative) text —
+ * the name and the one-line "what it does" carry the signal a search query
+ * matches against; the exhaustive parameter prose in the tail adds little
+ * ranking value. Pure + null-safe so it can never throw inside the indexer.
+ */
+export function buildToolEmbeddingText(
+  toolName: string,
+  description: string | undefined | null,
+  syntheticQueries: string[] | undefined | null,
+): string {
+  const name = typeof toolName === 'string' ? toolName : String(toolName ?? '');
+  const desc =
+    typeof description === 'string' && description.length > 0
+      ? description
+      : `Tool: ${name}`;
+  const queries = Array.isArray(syntheticQueries) ? syntheticQueries.join(' ') : '';
+  const combined = [`Tool: ${name}`, desc, queries]
+    .filter((part) => part && part.length > 0)
+    .join('\n');
+  return capEmbeddingInput(combined, EMBEDDING_INPUT_MAX_CHARS);
 }
 
 /**
@@ -928,13 +965,40 @@ export class ToolSemanticCacheService {
           const syntheticQueriesString = syntheticQueries.join(',');
 
           // Generate SINGLE combined embedding (Milvus v2.3.x compatible)
-          // Combines: tool name + description + synthetic queries for comprehensive matching
-          const combinedText = [
-            `Tool: ${tool.name}`,
+          // Combines: tool name + description + synthetic queries for comprehensive matching.
+          // The input is capped at the indexer layer (buildToolEmbeddingText →
+          // embeddingInputCap) so one pathological description can't blow the
+          // embed model's context window. RESILIENCE: a single tool's embedding
+          // failure must NEVER reject the whole batch (a rejected Promise.all
+          // here zeroes the entire mcp_tools_cache catalog — the open-dev
+          // 2026-06-01 failure where tool_search returned nothing). On failure
+          // we fall back to a zero vector so the tool STILL lands in the
+          // collection (discoverable by exact-name getTool + lexical/tag
+          // search); only its semantic vector is degraded.
+          const combinedText = buildToolEmbeddingText(
+            tool.name,
             description,
-            syntheticQueries.join(' ')
-          ].join('\n');
-          const embedding = await this.generateEmbedding(combinedText);
+            syntheticQueries,
+          );
+          let embedding: number[];
+          try {
+            embedding = await this.generateEmbedding(combinedText);
+          } catch (embedErr: any) {
+            const dim = EMBEDDING_DIMENSIONS > 0 ? EMBEDDING_DIMENSIONS : 0;
+            if (dim <= 0) {
+              // No known dimension yet — cannot synthesize an aligned zero
+              // vector, so this single tool genuinely cannot be indexed. Propagate
+              // (initialize() always sets EMBEDDING_DIMENSIONS before indexing, so
+              // this is an unreachable safety branch in practice).
+              throw embedErr;
+            }
+            embedding = new Array<number>(dim).fill(0);
+            this.logger.error({
+              toolName: tool.name,
+              error: embedErr?.message,
+              combinedTextLength: combinedText.length,
+            }, '[EMBEDDING] ⚠️ Embedding failed for one tool — inserting with zero-vector so the catalog is not zeroed (tool still discoverable by exact name / lexical)');
+          }
 
           // Log embedding for first 3 tools
           if (index < 3) {

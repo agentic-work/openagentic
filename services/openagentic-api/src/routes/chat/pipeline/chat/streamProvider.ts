@@ -250,6 +250,24 @@ export function makeStreamProvider(
             const finishMapped = translateOpenAIFinishChunk(chunk);
             if (finishMapped) {
               providerSuppliedTerminal = true;
+              // Sev-0 (2026-06-01) — Ollama native tool calls ride a
+              // SINGLE OpenAI-shape chunk that carries BOTH
+              // `delta.tool_calls` AND `finish_reason:'tool_calls'`
+              // (OllamaProvider.ts:859-880 "Emitting stored native tool
+              // calls at stream completion"). The short-circuit below
+              // would `yield finishMapped; continue;` and SKIP
+              // `normalizer.consume(chunk)`, dropping the tool name +
+              // arguments entirely. chatLoop then sees stop_reason='tool_use'
+              // with ZERO tool_use blocks → no dispatch, no tool_result,
+              // and the model says "I'm not seeing a tool response". Extract
+              // the inline tool_calls into canonical tool_use_start/
+              // tool_use_complete events BEFORE yielding the terminator so
+              // chatLoop's dispatch (+ audit + approval gate) fires. The
+              // Bedrock bare-finish path (empty delta) extracts nothing and
+              // behaves exactly as before.
+              for (const e of extractInlineToolCalls(chunk, toolBlockState)) {
+                yield e;
+              }
               if (finishMapped.type === 'message_stop') {
                 // Q1-fix-5: never downgrade. Bedrock's bare message_stop
                 // (no stop_reason field on the raw event) becomes
@@ -614,8 +632,97 @@ function translateOpenAIFinishChunk(chunk: unknown): StreamEvent | null {
   return { type: 'message_stop', stop_reason: mapped };
 }
 
+/**
+ * Sev-0 (2026-06-01) — extract OpenAI-shape `delta.tool_calls` that ride
+ * the SAME chunk as a `finish_reason` terminator into canonical V3
+ * tool_use events.
+ *
+ * The OllamaProvider emits native tool calls as a single chunk:
+ *   { choices: [{ delta: { tool_calls: [{ index, id, type:'function',
+ *       function: { name, arguments } }] }, finish_reason: 'tool_calls' }] }
+ *
+ * The caller intercepts that chunk via `translateOpenAIFinishChunk`
+ * (which keys off `finish_reason`) and short-circuits past
+ * `normalizer.consume(chunk)`. Without this extraction the tool name +
+ * arguments are silently dropped and chatLoop ends the turn with a
+ * `stop_reason='tool_use'` but no tool_use block to dispatch.
+ *
+ * For each tool_call this emits a `tool_use_start` (id + name) followed
+ * immediately by a `tool_use_complete` (id + name + PARSED input) — the
+ * same V3 events the normalizer path produces for cleanly-streamed
+ * tool_use blocks, so chatLoop's existing dispatch logic runs unchanged.
+ * `arguments` is OpenAI-shape: a JSON STRING (parsed here), or already an
+ * object on some providers (passed through). Malformed JSON degrades to
+ * `{ _raw }` exactly like the normalizer's content_block_stop handling.
+ *
+ * Registers each block in `toolBlockState` then deletes it after the
+ * complete, so the post-stream backstop (toolBlockState.size > 0) does
+ * NOT double-emit a second tool_use_complete for the same call.
+ *
+ * Returns [] when the chunk carries no inline tool_calls (the Bedrock
+ * bare-finish-chunk case) — that path is unchanged.
+ */
+function extractInlineToolCalls(
+  chunk: unknown,
+  toolBlockState: Map<number, { id: string; name: string; partialJson: string }>,
+): StreamEvent[] {
+  if (!chunk || typeof chunk !== 'object') return [];
+  const choices = (chunk as { choices?: unknown }).choices;
+  if (!Array.isArray(choices) || choices.length === 0) return [];
+  const delta = (choices[0] as { delta?: unknown })?.delta;
+  if (!delta || typeof delta !== 'object') return [];
+  const toolCalls = (delta as { tool_calls?: unknown }).tool_calls;
+  if (!Array.isArray(toolCalls) || toolCalls.length === 0) return [];
+
+  const out: StreamEvent[] = [];
+  for (let i = 0; i < toolCalls.length; i++) {
+    const tc = toolCalls[i] as {
+      index?: unknown;
+      id?: unknown;
+      function?: { name?: unknown; arguments?: unknown };
+    };
+    const name = typeof tc?.function?.name === 'string' ? tc.function.name : '';
+    // Skip nameless fragments — a tool_use with no name can't be dispatched
+    // and would only produce a confusing unknown-tool error downstream.
+    if (!name) continue;
+    const id =
+      typeof tc?.id === 'string' && tc.id.length > 0
+        ? tc.id
+        : `call_${Date.now()}_${i}`;
+
+    // Parse OpenAI-shape arguments (JSON string) → object. Object/empty
+    // pass through. Malformed JSON degrades to { _raw } so dispatch sees a
+    // well-formed object and the downstream malformed-args guard can act.
+    const rawArgs = tc?.function?.arguments;
+    let input: unknown;
+    if (typeof rawArgs === 'string') {
+      try {
+        input = rawArgs.length > 0 ? JSON.parse(rawArgs) : {};
+      } catch {
+        input = { _raw: rawArgs };
+      }
+    } else if (rawArgs && typeof rawArgs === 'object') {
+      input = rawArgs;
+    } else {
+      input = {};
+    }
+
+    // Use a high synthetic block index so we never collide with real
+    // content_block indices the normalizer may have registered this turn.
+    const blockIndex = 100000 + i;
+    toolBlockState.set(blockIndex, { id, name, partialJson: '' });
+    out.push({ type: 'tool_use_start', id, name });
+    out.push({ type: 'tool_use_complete', id, name, input });
+    // Delete immediately so the post-stream open-block backstop does not
+    // synthesize a duplicate tool_use_complete for this same call.
+    toolBlockState.delete(blockIndex);
+  }
+  return out;
+}
+
 // Test seams — exported only for unit tests in __tests__/streamProvider.contentFilter.test.ts
 // and similar. Do NOT import these from production code; the real
 // path goes through makeStreamProvider/streamProvider.
 export const __testing__mapStopReason = mapStopReason;
 export const __testing__translateOpenAIFinishChunk = translateOpenAIFinishChunk;
+export const __testing__extractInlineToolCalls = extractInlineToolCalls;
