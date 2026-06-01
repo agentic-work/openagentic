@@ -17,6 +17,11 @@ import type { Logger } from 'pino';
 import { pino } from 'pino';
 import { LLMMetricsService } from './LLMMetricsService.js';
 import { capEmbeddingDimForHnsw, truncateVectorToColumnDim } from './halfvecHnswCap.js';
+import {
+  EMBEDDING_INPUT_MAX_CHARS,
+  capEmbeddingInput,
+  shrinkEmbeddingInput,
+} from './embeddingInputCap.js';
 
 export type EmbeddingProvider = 'azure-openai' | 'aws-bedrock' | 'vertex-ai' | 'openai-compatible' | 'ollama';
 
@@ -774,11 +779,18 @@ export class UniversalEmbeddingService {
     let embedding: number[];
     let usage: any = undefined;
 
+    // Hard cap the INPUT before it ever reaches a provider. A single very long
+    // input (e.g. aws_knowledge read_documentation) otherwise 500s with
+    // "the input length exceeds the context length" and — in the batch indexer
+    // — zeroes out the entire tool catalog. Truncation is safe for semantic
+    // search: leading text is the most discriminative. See embeddingInputCap.ts.
+    const safeText = capEmbeddingInput(text);
+
     switch (this.provider) {
       case 'azure-openai':
       case 'openai-compatible':
         const response = await this.azureClient!.embeddings.create({
-          input: text,
+          input: safeText,
           model: this.config.azureDeployment || this.config.model!
         });
         embedding = response.data[0].embedding;
@@ -786,15 +798,15 @@ export class UniversalEmbeddingService {
         break;
 
       case 'aws-bedrock':
-        embedding = await this.generateBedrockEmbedding(text);
+        embedding = await this.generateBedrockEmbedding(safeText);
         break;
 
       case 'vertex-ai':
-        embedding = await this.generateVertexEmbedding(text);
+        embedding = await this.generateVertexEmbedding(safeText);
         break;
 
       case 'ollama':
-        embedding = await this.generateOllamaEmbedding(text);
+        embedding = await this.generateOllamaEmbeddingSafe(safeText);
         break;
 
       default:
@@ -973,9 +985,15 @@ export class UniversalEmbeddingService {
             break;
 
           case 'ollama':
-            // Ollama doesn't support batch, process one by one
+            // Ollama doesn't support batch, process one by one.
+            // Each input is INPUT-capped + retried-on-overflow so ONE
+            // pathological description (read_documentation) can't 500 the
+            // whole batch and zero out the tool catalog. A still-failing
+            // input gets a zero-vector placeholder rather than aborting —
+            // the batch length MUST stay aligned with the tool array so the
+            // caller's index→tool mapping in MCPToolIndexingService holds.
             for (const text of batch) {
-              const embedding = await this.generateOllamaEmbedding(text);
+              const embedding = await this.generateOllamaEmbeddingSafe(text);
               allEmbeddings.push(embedding);
             }
             break;
@@ -1153,6 +1171,66 @@ export class UniversalEmbeddingService {
     }
 
     return data.embedding;
+  }
+
+  /**
+   * Robust Ollama embedding: input-cap, then shrink-and-retry on a context
+   * overflow, then a zero-vector last resort. A single oversized/pathological
+   * input must NEVER fail the whole batch (which would leave the MCP tool
+   * catalog empty — the live failure on open-dev 2026-06-01).
+   *
+   * Retry trigger is narrow: only the provider's context-overflow signal
+   * ("input length exceeds the context length" / HTTP 500 from the embed
+   * endpoint). Other errors (network, model-not-found) propagate so they're
+   * not silently swallowed.
+   */
+  private async generateOllamaEmbeddingSafe(text: string): Promise<number[]> {
+    let budget: number = EMBEDDING_INPUT_MAX_CHARS;
+    let attemptText = capEmbeddingInput(text, budget);
+
+    // First attempt at the normal cap, then up to a few shrink-halving retries.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        return await this.generateOllamaEmbedding(attemptText);
+      } catch (err: any) {
+        const msg = String(err?.message || '');
+        const isContextOverflow =
+          /exceeds the context length/i.test(msg) ||
+          /input length/i.test(msg) ||
+          /\b500\b/.test(msg);
+
+        if (!isContextOverflow) {
+          // Not a length problem — don't mask real errors.
+          throw err;
+        }
+
+        const prevLen = attemptText.length;
+        budget = Math.floor(budget / 2);
+        attemptText = shrinkEmbeddingInput(attemptText, prevLen);
+
+        this.logger.warn({
+          attempt: attempt + 1,
+          prevLen,
+          newLen: attemptText.length,
+          model: this.getModelName(),
+        }, '[EMBED] Ollama context overflow — shrinking input and retrying (single input will not fail the batch)');
+
+        // If we can't shrink any further, stop retrying.
+        if (attemptText.length >= prevLen) break;
+      }
+    }
+
+    // Last resort: a single bad input must not zero the whole catalog. Return a
+    // zero vector at the configured dimension so the batch index→tool mapping
+    // stays aligned. The tool still lands in the store via lexical/exact-name
+    // lookup; only its semantic vector is degraded (rare, single tool).
+    const dim = capEmbeddingDimForHnsw(this.dimensions || 768);
+    this.logger.error({
+      textPreview: text.substring(0, 120),
+      model: this.getModelName(),
+      dim,
+    }, '[EMBED] Ollama embedding still failing after shrink retries — emitting zero-vector placeholder so the rest of the batch indexes');
+    return new Array(dim).fill(0);
   }
 
   /**
