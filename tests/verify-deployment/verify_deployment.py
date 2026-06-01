@@ -448,6 +448,41 @@ def _looks_like_assistant_text(stream: str) -> bool:
     return len(stream.strip()) > 20
 
 
+def assistant_text(stream: str) -> str:
+    """Reassemble the assistant's final visible text from a streamed chat turn.
+
+    The chat stream emits the answer one token at a time as separate
+    ``content_block_delta`` / ``text_delta`` JSON envelopes (and the model's
+    tokenizer freely splits a single word — e.g. ``verify-deployment-123`` is
+    emitted as ``verify`` ``-de`` ``ployment`` ``-`` ``123``). A naive substring
+    check against the *raw* SSE stream therefore never sees a multi-token string
+    contiguously. Concatenate the text_delta payloads so assertions run against
+    the actual answer the user would read, not the wire framing.
+    """
+    if not stream:
+        return ""
+    parts: list[str] = []
+    for line in stream.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("data:"):
+            line = line[len("data:"):].strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            evt = json.loads(line)
+        except (ValueError, TypeError):
+            continue
+        delta = evt.get("delta")
+        if isinstance(delta, dict) and delta.get("type") in (None, "text_delta") \
+                and isinstance(delta.get("text"), str):
+            parts.append(delta["text"])
+        elif evt.get("type") == "text_delta" and isinstance(evt.get("text"), str):
+            parts.append(evt["text"])
+    return "".join(parts)
+
+
 def phase_chat(http: Http, rows: list[Row]) -> None:
     banner("CHAT — a real streamed assistant turn")
     _, stream = chat_turn(http, "In one short sentence, say hello and confirm you are online.")
@@ -705,12 +740,16 @@ def phase_memory(http: Http, rows: list[Row]) -> None:
     _, recall = chat_turn(
         http, "What is my deployment verification codeword? Answer with just the codeword.",
         session_id=sid2)
-    if secret in recall:
+    # The codeword is streamed token-by-token across separate text_delta envelopes
+    # (the tokenizer splits the hyphenated string), so it is never contiguous in the
+    # raw SSE bytes — reassemble the assistant's answer before asserting recall.
+    answer = assistant_text(recall)
+    if secret in answer or secret in recall:
         rows.append(Row("MEMORY", Status.PASS, "recalled codeword across sessions"))
         ok("codeword recalled in a NEW session")
     else:
         rows.append(Row("MEMORY", Status.FAIL,
-                        f"codeword not recalled in new session: {recall[:160]}"))
+                        f"codeword not recalled in new session: {(answer or recall)[:160]}"))
         fail("codeword not recalled cross-session")
 
 

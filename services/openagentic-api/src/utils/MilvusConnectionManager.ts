@@ -26,7 +26,12 @@ export class MilvusConnectionManager {
   private circuitOpen = false;
 
   constructor(logger: Logger) {
-    this.logger = logger;
+    // Defensive: never crash on a null/undefined logger. The /api/health lazy
+    // reconnect historically constructed `new MilvusConnectionManager(null)`,
+    // and the first connect() attempt's `this.logger.info(...)` threw a
+    // TypeError before any reconnect could succeed — forcing a false
+    // 'not_initialized'. Callers now pass a real logger, but guard regardless.
+    this.logger = logger ?? (console as unknown as Logger);
     this.address = process.env.MILVUS_ADDRESS ||
       `${process.env.MILVUS_HOST || 'milvus-standalone'}:${process.env.MILVUS_PORT || '19530'}`;
     this.username = process.env.MILVUS_USERNAME || process.env.MILVUS_USER;

@@ -11,7 +11,8 @@ import type { Logger } from 'pino';
 import { prisma } from '../utils/prisma.js';
 import { RAGHealthCheckService } from '../services/RAGHealthCheck.js';
 import { MCPHealthCheckService } from '../services/MCPHealthCheck.js';
-import { getMilvusConnectionManager, setMilvusConnectionManager } from '../utils/MilvusConnectionManager.js';
+import { getMilvusConnectionManager, getMilvusClient, setMilvusConnectionManager } from '../utils/MilvusConnectionManager.js';
+import { resolveMilvusHealthStatus } from '../utils/milvusHealthProbe.js';
 const healthRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // Use fastify.log directly without casting
   const logger = fastify.log;
@@ -57,40 +58,38 @@ const healthRoutes: FastifyPluginAsync = async (fastify, opts) => {
         redisStatus = redis?.isConnected() ? 'connected' : 'disconnected';
       } catch { redisStatus = 'error'; }
 
-      // Milvus connectivity — actually probe the connection, not just check global variable
+      // Milvus connectivity — probe the SAME canonical signals the running
+      // server actually populates (setMilvusClient singleton + global
+      // milvusVectorService, mirroring server.ts:930), with a REAL checkHealth
+      // ping. The old probe only read getMilvusConnectionManager() (never set
+      // by the boot path) + fastify.app (decorateApp is never called) and then
+      // crashed in a lazy reconnect constructed with a null logger — forcing a
+      // false 'not_initialized' while Milvus was actually serving.
       let milvusStatus = 'not_configured';
       try {
         const mgr = getMilvusConnectionManager();
-        if (mgr && mgr.isConnected()) {
-          // Try a real operation with timeout to confirm connectivity
-          const client = mgr.getClient();
-          if (client) {
-            const healthResult = await Promise.race([
-              client.checkHealth(),
-              new Promise<null>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
-            ]);
-            milvusStatus = (healthResult && (healthResult as any).isHealthy) ? 'connected' : 'unhealthy';
-          } else {
-            milvusStatus = 'not_initialized';
-          }
-        } else if (fastify.app?.milvusVectorService) {
-          milvusStatus = 'connected';
-        } else {
-          // Try lazy reconnection
-          try {
+        const mgrClient = mgr && mgr.isConnected() ? mgr.getClient() : null;
+        milvusStatus = await resolveMilvusHealthStatus({
+          getClient: () =>
+            mgrClient ||
+            getMilvusClient() ||
+            (global as any).milvusClient ||
+            null,
+          getVectorService: () =>
+            (global as any).milvusVectorService ||
+            fastify.app?.milvusVectorService ||
+            null,
+          // Lazy reconnect uses a REAL logger (the historic null-logger crash
+          // is what forced the false 'not_initialized').
+          reconnect: async () => {
             const { MilvusConnectionManager } = await import('../utils/MilvusConnectionManager.js');
-            const newMgr = new MilvusConnectionManager(null as any);
+            const newMgr = new MilvusConnectionManager(fastify.log as any);
             const client = await newMgr.connect(2, 2000);
-            if (client) {
-              setMilvusConnectionManager(newMgr);
-              milvusStatus = 'reconnected';
-            } else {
-              milvusStatus = 'not_initialized';
-            }
-          } catch {
-            milvusStatus = 'not_initialized';
-          }
-        }
+            if (client) setMilvusConnectionManager(newMgr);
+            return client;
+          },
+          timeoutMs: 3000,
+        });
       } catch { milvusStatus = 'error'; }
 
       const response = {
@@ -320,60 +319,41 @@ const healthRoutes: FastifyPluginAsync = async (fastify, opts) => {
       results.overall_healthy = false;
     }
 
-    // Milvus Vector health check — actually probe connectivity, not just check global
+    // Milvus Vector health check — probe the canonical live signals
+    // (setMilvusClient singleton + global milvusVectorService) with a REAL
+    // checkHealth ping, identical to the basic /api/health probe so the two
+    // routes never disagree. The old block only consulted the connection-manager
+    // singleton (never populated by the boot path) + fastify.app (decorateApp
+    // is never called), so it under-reported a serving Milvus.
     try {
-      const { MilvusConnectionManager } = await import('../utils/MilvusConnectionManager.js');
       const milvusManager = getMilvusConnectionManager();
-
-      if (milvusManager && milvusManager.isConnected()) {
-        // Try a real operation with timeout to confirm connectivity
-        const client = milvusManager.getClient();
-        if (client) {
-          const healthResult = await Promise.race([
-            client.checkHealth(),
-            new Promise<null>((_, reject) => setTimeout(() => reject(new Error('Milvus health check timeout (5s)')), 5000)),
-          ]);
-          if (healthResult && (healthResult as any).isHealthy) {
-            results.checks.vector_storage = {
-              healthy: true,
-              details: { status: 'connected', service: 'MilvusVectorService', live_check: true }
-            };
-          } else {
-            results.checks.vector_storage = {
-              healthy: false,
-              details: { status: 'unhealthy', service: 'MilvusVectorService', live_check: true }
-            };
-          }
-        } else {
-          results.checks.vector_storage = {
-            healthy: false,
-            details: { status: 'client_null', service: 'MilvusVectorService' }
-          };
-        }
-      } else if (fastify.app?.milvusVectorService) {
-        // Fallback: AppContext service exists but no connection manager
-        results.checks.vector_storage = {
-          healthy: true,
-          details: { status: 'connected', service: 'MilvusVectorService', live_check: false }
-        };
-      } else {
-        // Try lazy reconnection
-        try {
+      const mgrClient = milvusManager && milvusManager.isConnected() ? milvusManager.getClient() : null;
+      const vectorStatus = await resolveMilvusHealthStatus({
+        getClient: () =>
+          mgrClient ||
+          getMilvusClient() ||
+          (global as any).milvusClient ||
+          null,
+        getVectorService: () =>
+          (global as any).milvusVectorService ||
+          fastify.app?.milvusVectorService ||
+          null,
+        reconnect: async () => {
+          const { MilvusConnectionManager } = await import('../utils/MilvusConnectionManager.js');
           const mgr = new MilvusConnectionManager(logger as any);
           const client = await mgr.connect(3, 2000);
-          if (client) {
-            setMilvusConnectionManager(mgr);
-            results.checks.vector_storage = {
-              healthy: true,
-              details: { status: 'reconnected', service: 'MilvusVectorService', live_check: true }
-            };
-          }
-        } catch (reconnectErr: any) {
-          results.checks.vector_storage = {
-            healthy: false,
-            details: { status: 'not_initialized', service: 'MilvusVectorService', reconnect_error: reconnectErr.message }
-          };
-        }
+          if (client) setMilvusConnectionManager(mgr);
+          return client;
+        },
+        timeoutMs: 5000,
+      });
+      const vectorHealthy = vectorStatus === 'connected' || vectorStatus === 'reconnected';
+      results.checks.vector_storage = {
+        healthy: vectorHealthy,
+        details: { status: vectorStatus, service: 'MilvusVectorService', live_check: true }
+      };
+      if (!vectorHealthy) {
+        results.overall_healthy = false;
       }
     } catch (error) {
       results.checks.vector_storage = {

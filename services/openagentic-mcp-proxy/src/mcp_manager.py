@@ -348,14 +348,46 @@ class MCPManager:
 
         # OpenAgentic Admin MCP Server - System administration tools (PostgreSQL, Redis, Milvus, health)
         # IMPORTANT: This server is ONLY for admin users - access enforced by proxy
-        openagentic_admin_url = os.getenv("OpenAgentic_ADMIN_MCP_URL", "")
-        if openagentic_admin_url and not os.getenv("OpenAgentic_ADMIN_MCP_DISABLED", "false").lower() == "true":
-            self.servers["openagentic_admin"] = RemoteMCPServer(RemoteMCPServerConfig(
-                name="openagentic_admin",
-                url=openagentic_admin_url,
-                mcp_path="/mcp",  # Uses http_transport's POST /mcp endpoint
-            ))
-            logger.info(f"OpenAgentic Admin MCP server configured as REMOTE at {openagentic_admin_url} (ADMIN USERS ONLY)")
+        # Two registration modes:
+        #   * REMOTE  — if OpenAgentic_ADMIN_MCP_URL is set, attach to an externally
+        #               hosted admin MCP over HTTP (legacy / split-deployment path).
+        #   * STDIO   — default. Spawn the bundled admin MCP as a FastMCP stdio
+        #               subprocess (same pattern as the kubernetes MCP below) so its
+        #               tools are indexed into the discovery catalog and callable in
+        #               chat out-of-the-box. Without this, no URL means the admin
+        #               server is never registered, never indexed, and the model can
+        #               never call an admin tool.
+        if not os.getenv("OpenAgentic_ADMIN_MCP_DISABLED", "false").lower() == "true":
+            openagentic_admin_url = os.getenv("OpenAgentic_ADMIN_MCP_URL", "")
+            if openagentic_admin_url:
+                self.servers["openagentic_admin"] = RemoteMCPServer(RemoteMCPServerConfig(
+                    name="openagentic_admin",
+                    url=openagentic_admin_url,
+                    mcp_path="/mcp",  # Uses http_transport's POST /mcp endpoint
+                ))
+                logger.info(f"OpenAgentic Admin MCP server configured as REMOTE at {openagentic_admin_url} (ADMIN USERS ONLY)")
+            else:
+                # The admin server reads DATABASE_URL (and best-effort REDIS_*/MILVUS_*)
+                # from the proxy environment; pass them through explicitly so the
+                # subprocess can connect for its system-observability read tools.
+                openagentic_admin_env = {
+                    "DATABASE_URL": os.getenv("DATABASE_URL", ""),
+                    "REDIS_URL": os.getenv("REDIS_URL", ""),
+                    "REDIS_HOST": os.getenv("REDIS_HOST", ""),
+                    "REDIS_PORT": os.getenv("REDIS_PORT", ""),
+                    "REDIS_PASSWORD": os.getenv("REDIS_PASSWORD", ""),
+                    "MILVUS_HOST": os.getenv("MILVUS_HOST", ""),
+                    "MILVUS_PORT": os.getenv("MILVUS_PORT", ""),
+                    "API_BASE_URL": os.getenv("API_BASE_URL", ""),
+                    "OPENAGENTIC_API_URL": os.getenv("OPENAGENTIC_API_URL", ""),
+                    "LOG_LEVEL": "info",
+                }
+                self.servers["openagentic_admin"] = MCPServer(MCPServerConfig(
+                    name="openagentic_admin",
+                    command=["fastmcp", "run", "-t", "stdio", "/app/mcp-servers/oap-admin-mcp/server.py"],
+                    env=openagentic_admin_env
+                ))
+                logger.info("OpenAgentic Admin MCP server configured (Python/FastMCP stdio - ADMIN USERS ONLY)")
 
         # OpenAgentic Kubernetes MCP Server - Kubernetes cluster administration
         # IMPORTANT: This server is ONLY for admin users - access is enforced by proxy
