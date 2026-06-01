@@ -338,11 +338,17 @@ body {
    Removed here (with its stale cold-grey + violet literal fallbacks) to keep
    a single definition site. */
 
-/* Glassmorphic Utilities */
+/* Glassmorphic Utilities.
+ * This .glass lives in @layer utilities, which OUTRANKS theme.css's .glass
+ * (@layer components) — so it is the effective backdrop-filter for every glass
+ * surface. It previously read var(--color-blur) (undefined → backdrop-filter:none),
+ * which silently killed ALL frosting app-wide. Point it at the real --glass-blur
+ * token from theme.css (set on BOTH standard + -webkit) so the Terminal Glass
+ * surfaces actually frost. */
 @layer utilities {
   .glass {
-    backdrop-filter: var(--color-blur) saturate(180%);
-    -webkit-backdrop-filter: var(--color-blur) saturate(180%);
+    backdrop-filter: var(--glass-blur, blur(22px) saturate(1.4));
+    -webkit-backdrop-filter: var(--glass-blur, blur(22px) saturate(1.4));
   }
 
   .glass-border {
