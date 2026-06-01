@@ -1683,10 +1683,20 @@ export async function chatLoop(
       const userPromptHint = extractLatestUserText(messages);
       const baseDispatchCtx = userPromptHint
         ? { ...runCtx, userPromptHint }
-        : runCtx;
-      const dispatchCtx = block
+        : { ...runCtx };
+      const dispatchCtx: any = block
         ? { ...baseDispatchCtx, toolUseId: block.id }
         : baseDispatchCtx;
+      // Single-pass audit handoff: when the before_tool_call hook already
+      // audited this call (sets __oa_audit_done on `after`), forward the flag
+      // onto the per-call dispatch ctx so the dispatch-seam audit
+      // (dispatchTool.ts) skips and we never write two rows. dispatchCtx is a
+      // fresh per-call object (spread above), so the flag never leaks across
+      // tool calls. When the hook DIDN'T run (deps.hooks undefined — the live
+      // failure mode), the flag is absent and the dispatch seam audits.
+      if ((after as Record<string, unknown>).__oa_audit_done === true) {
+        dispatchCtx.__oa_audit_done = true;
+      }
       const result = await deps.dispatch(dispatchCtx, {
         name: after.toolName,
         input: after.arguments,

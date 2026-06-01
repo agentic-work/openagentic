@@ -29,6 +29,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { makeDispatch } from '../dispatchTool.js';
 
+// Live-seam audit+gate (2026-05-31) now runs at the top of dispatchBody for
+// EVERY tool call. Mock prisma so the append-only audit INSERT succeeds in
+// this DB-less unit-test env, and force the mutating gate OFF (synth_execute
+// classifies MUTATING) so these back-compat assertions still exercise the
+// synth arms without pausing on a human-approval await.
+vi.mock('../../../../../utils/prisma.js', () => ({
+  prisma: {
+    toolCallAuditLog: { create: vi.fn().mockResolvedValue({ id: 'audit-synth' }), updateMany: vi.fn() },
+    systemConfiguration: {
+      findFirst: vi.fn().mockResolvedValue({ value: { gateMutating: false, timeoutMs: 300000 } }),
+      create: vi.fn(),
+    },
+  },
+}));
+
 // Stub inner dispatcher so we can detect fall-through (must NEVER be
 // called for `synth` or `synth_execute`).
 vi.mock('../dispatchChatToolCall.js', async () => {

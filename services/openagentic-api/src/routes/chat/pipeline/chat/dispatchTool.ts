@@ -46,6 +46,18 @@ import { executeSynthExecute, type SynthExecuteInput } from '../../../../service
 import { executeSynthOBO } from '../../../../services/SynthOBODispatcher.js';
 import type { SynthInput } from '../../../../services/SynthTool.js';
 import type { SynthOBOBrokerLike } from '../../../../services/SynthOBODispatcher.js';
+// Live-wiring fix (2026-05-31) — audit EVERY tool call + gate the mutating
+// ones at the dispatch seam the live runChat→chatLoop path ALWAYS calls. The
+// priority-11 before_tool_call hook does the same, but only fires when
+// `deps.hooks` resolves to a populated HookRunner; on the live OSS build that
+// resolution is fragile and the hook silently no-ops (live evidence:
+// tool_search executed, audit-log total:0). `runAuditAndGate` is single-pass —
+// it skips when the hook already audited this dispatch ctx (alreadyAudited).
+import {
+  runAuditAndGate,
+  alreadyAudited,
+  markAudited,
+} from '../../../../services/approval/auditAndGate.js';
 import { getAgentMemoryService } from '../../../../services/AgentMemoryService.js';
 import { getMilvusMemoryService } from '../../../../services/MilvusMemoryService.js';
 import { getSynthExecutorClient } from '../../../../services/SynthExecutorClient.js';
@@ -198,6 +210,42 @@ async function dispatchBody(
   const innerCall: ChatToolCall = { name: call.name, input: call.input };
   {
     const startedAt = Date.now();
+
+    // ─── Audit + approval gate (live seam) ──────────────────────────────
+    // Audit EVERY tool call to the append-only tool_call_audit_log and, for
+    // MUTATING calls (per classifyTool) with the gate ON, pause for human
+    // approval via the ApprovalRegistry + an `approval_required` SSE event.
+    // READ calls (tool_search, get_*, list_*, web search) are audited
+    // decision='auto' and NEVER gated, so chat never hangs.
+    //
+    // Single-pass: if the priority-11 before_tool_call hook already audited
+    // THIS dispatch ctx, skip (alreadyAudited) so we never write two rows for
+    // one call. When the hook never ran (the live failure mode this fix
+    // targets), THIS is the path that records the row.
+    if (!alreadyAudited(ctx)) {
+      const gate = await runAuditAndGate({
+        toolName: call.name,
+        serverName: (ctx as any)?.serverName,
+        args: (call.input ?? {}) as Record<string, unknown>,
+        userId: (ctx as any)?.user?.id ?? (ctx as any)?.userId,
+        sessionId: ctx.sessionId,
+        messageId: (ctx as any)?.messageId ?? (ctx as any)?.toolUseId,
+        origin: 'chat',
+        emit: typeof (ctx as any)?.emit === 'function'
+          ? (e: string, d: unknown) => (ctx as any).emit(e, d)
+          : undefined,
+        logger: ctx.logger as any,
+      });
+      markAudited(ctx);
+      if (!gate.allowed) {
+        // Denied / timed-out MUTATING call — synthesize a tool failure so the
+        // model sees the block reason and the loop continues (no execution).
+        return {
+          ok: false,
+          error: gate.blockReason ?? `tool '${call.name}' blocked by approval gate`,
+        };
+      }
+    }
 
     // Phase 9 — adapter-owned meta-tool dispatch arms. Intercepted BEFORE
     // the fall-through to dispatchChatToolCall so this adapter owns the
