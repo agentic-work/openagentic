@@ -279,19 +279,19 @@
   --glass-card-shadow: 0 16px 40px -22px rgba(0,0,0,.7),
                        0 1px 0 var(--glass-edge) inset;
   /* aurora bloom stack — signal-orange radial blooms that slowly drift */
-  --aurora-1:  color-mix(in srgb, var(--brand-signal) 42%, transparent);
-  --aurora-2:  color-mix(in srgb, var(--brand-signal-soft) 28%, transparent);
-  --aurora-3:  color-mix(in srgb, var(--brand-signal-soft) 20%, transparent);
-  --aurora-4:  color-mix(in srgb, var(--brand-signal) 16%, transparent);
+  --aurora-1:  color-mix(in srgb, var(--color-accent) 42%, transparent);
+  --aurora-2:  color-mix(in srgb, color-mix(in srgb, var(--color-accent) 56%, #ffffff) 28%, transparent);
+  --aurora-3:  color-mix(in srgb, color-mix(in srgb, var(--color-accent) 56%, #ffffff) 20%, transparent);
+  --aurora-4:  color-mix(in srgb, var(--color-accent) 16%, transparent);
   --aurora-opacity: 0.9;
   --aurora-blur:    40px;
   --grain-opacity:  0.05;
   --vignette:  radial-gradient(120% 120% at 50% 40%, transparent 55%, rgba(0,0,0,.45));
   /* on-glass accent tints (user/assistant bubbles, chips, send button) */
-  --glass-accent-fill:   color-mix(in srgb, var(--brand-signal) 20%, transparent);
-  --glass-accent-fill-2: color-mix(in srgb, var(--brand-signal) 12%, transparent);
-  --glass-accent-line:   color-mix(in srgb, var(--brand-signal) 30%, transparent);
-  --glass-accent-glow:   color-mix(in srgb, var(--brand-signal) 50%, transparent);
+  --glass-accent-fill:   color-mix(in srgb, var(--color-accent) 20%, transparent);
+  --glass-accent-fill-2: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --glass-accent-line:   color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --glass-accent-glow:   color-mix(in srgb, var(--color-accent) 50%, transparent);
 
   /* ── Glass CONTROL tokens (Button / Input / StatusBadge / Card primitives) ──
    * Re-skinned chrome surfaces: soft radii, frosted fills, the signal-orange
@@ -303,22 +303,22 @@
   --ctl-surf:          color-mix(in srgb, var(--brand-paper) 7%, transparent);
   --ctl-surf-hover:    color-mix(in srgb, var(--brand-paper) 11%, transparent);
   /* primary = the orange gradient send button from the reference */
-  --ctl-primary-grad:  linear-gradient(180deg, var(--brand-signal-soft), var(--brand-signal));
-  --ctl-primary-fg:    color-mix(in srgb, var(--brand-on-accent) 88%, var(--brand-signal));
-  --ctl-primary-glow:  0 6px 22px -6px color-mix(in srgb, var(--brand-signal) 70%, transparent);
-  --ctl-primary-glow-h:0 12px 30px -6px color-mix(in srgb, var(--brand-signal) 78%, transparent);
+  --ctl-primary-grad:  linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 56%, #ffffff), var(--color-accent));
+  --ctl-primary-fg:    color-mix(in srgb, var(--brand-on-accent) 88%, var(--color-accent));
+  --ctl-primary-glow:  0 6px 22px -6px color-mix(in srgb, var(--color-accent) 70%, transparent);
+  --ctl-primary-glow-h:0 12px 30px -6px color-mix(in srgb, var(--color-accent) 78%, transparent);
   /* danger uses the error hue in the same glass language */
   --ctl-danger-grad:   linear-gradient(180deg,
                           color-mix(in srgb, var(--brand-error) 85%, white),
                           var(--brand-error));
   --ctl-danger-glow:   0 6px 22px -6px color-mix(in srgb, var(--brand-error) 60%, transparent);
   /* glow-lift hover for secondary/ghost/chips (warm soft shadow + orange edge) */
-  --ctl-lift-shadow:   0 10px 24px -12px color-mix(in srgb, var(--brand-signal) 50%, transparent),
+  --ctl-lift-shadow:   0 10px 24px -12px color-mix(in srgb, var(--color-accent) 50%, transparent),
                        0 1px 0 var(--glass-edge) inset;
   --ctl-edge:          var(--glass-edge);
   /* orange focus ring (replaces the brutalist hard offset focus) */
-  --ctl-focus-ring:    0 0 0 3px color-mix(in srgb, var(--brand-signal) 30%, transparent);
-  --ctl-focus-border:  color-mix(in srgb, var(--brand-signal) 55%, transparent);
+  --ctl-focus-ring:    0 0 0 3px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --ctl-focus-border:  color-mix(in srgb, var(--color-accent) 55%, transparent);
 }
 
 [data-theme="light"] {
@@ -371,19 +371,19 @@
                        0 1px 0 var(--glass-edge) inset;
   /* Stronger peach/orange bloom for Warm Frost — gives the frosted surfaces
    * something with color + depth to blur, so they read as glass (was too faint). */
-  --aurora-1:  color-mix(in srgb, var(--brand-signal) 34%, transparent);
-  --aurora-2:  color-mix(in srgb, var(--brand-signal-soft) 34%, transparent);
-  --aurora-3:  color-mix(in srgb, var(--brand-signal-soft) 26%, transparent);
-  --aurora-4:  color-mix(in srgb, var(--brand-signal) 16%, transparent);
+  --aurora-1:  color-mix(in srgb, var(--color-accent) 34%, transparent);
+  --aurora-2:  color-mix(in srgb, color-mix(in srgb, var(--color-accent) 56%, #ffffff) 34%, transparent);
+  --aurora-3:  color-mix(in srgb, color-mix(in srgb, var(--color-accent) 56%, #ffffff) 26%, transparent);
+  --aurora-4:  color-mix(in srgb, var(--color-accent) 16%, transparent);
   --aurora-opacity: 0.8;
   --aurora-blur:    48px;
   --grain-opacity:  0.04;
   --vignette:  radial-gradient(120% 120% at 50% 40%, transparent 60%, color-mix(in srgb, var(--brand-ink) 8%, transparent));
   /* on-glass accent tints */
-  --glass-accent-fill:   color-mix(in srgb, var(--brand-signal) 16%, transparent);
-  --glass-accent-fill-2: color-mix(in srgb, var(--brand-signal) 9%, transparent);
-  --glass-accent-line:   color-mix(in srgb, var(--brand-signal) 34%, transparent);
-  --glass-accent-glow:   color-mix(in srgb, var(--brand-signal) 40%, transparent);
+  --glass-accent-fill:   color-mix(in srgb, var(--color-accent) 16%, transparent);
+  --glass-accent-fill-2: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  --glass-accent-line:   color-mix(in srgb, var(--color-accent) 34%, transparent);
+  --glass-accent-glow:   color-mix(in srgb, var(--color-accent) 40%, transparent);
 
   /* ── Glass CONTROL tokens — Warm Frost (light) variants ─────────────────────
    * Same control language on paper: frosted cream chrome, ink labels, the same
@@ -394,19 +394,19 @@
   /* frosted cream neutral fill over paper (mostly opaque so ink reads) */
   --ctl-surf:          color-mix(in srgb, var(--brand-paper-lift) 70%, transparent);
   --ctl-surf-hover:    color-mix(in srgb, var(--brand-paper-lift) 92%, transparent);
-  --ctl-primary-grad:  linear-gradient(180deg, var(--brand-signal-soft), var(--brand-signal));
+  --ctl-primary-grad:  linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 56%, #ffffff), var(--color-accent));
   --ctl-primary-fg:    var(--brand-on-accent);
-  --ctl-primary-glow:  0 6px 20px -8px color-mix(in srgb, var(--brand-signal) 55%, transparent);
-  --ctl-primary-glow-h:0 12px 28px -8px color-mix(in srgb, var(--brand-signal) 62%, transparent);
+  --ctl-primary-glow:  0 6px 20px -8px color-mix(in srgb, var(--color-accent) 55%, transparent);
+  --ctl-primary-glow-h:0 12px 28px -8px color-mix(in srgb, var(--color-accent) 62%, transparent);
   --ctl-danger-grad:   linear-gradient(180deg,
                           color-mix(in srgb, var(--brand-error-ink) 80%, white),
                           var(--brand-error-ink));
   --ctl-danger-glow:   0 6px 20px -8px color-mix(in srgb, var(--brand-error-ink) 45%, transparent);
-  --ctl-lift-shadow:   0 10px 22px -12px color-mix(in srgb, var(--brand-signal) 38%, transparent),
+  --ctl-lift-shadow:   0 10px 22px -12px color-mix(in srgb, var(--color-accent) 38%, transparent),
                        0 1px 0 var(--glass-edge) inset;
   --ctl-edge:          var(--glass-edge);
-  --ctl-focus-ring:    0 0 0 3px color-mix(in srgb, var(--brand-signal) 26%, transparent);
-  --ctl-focus-border:  color-mix(in srgb, var(--brand-signal) 60%, transparent);
+  --ctl-focus-ring:    0 0 0 3px color-mix(in srgb, var(--color-accent) 26%, transparent);
+  --ctl-focus-border:  color-mix(in srgb, var(--color-accent) 60%, transparent);
 }
 
 /* ============================================================================
