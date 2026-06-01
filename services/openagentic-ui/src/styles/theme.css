@@ -123,6 +123,16 @@
   /* sub-agent hash anchors (colorHashForId djb2 → one of four) */
   --cat-agent-c: #F59E0B;  --cat-agent-g: #22C55E;
   --cat-agent-s: #FF453A;  --cat-agent-k: #FF5722;
+  /* chat-surface sub-agent anchors (chatmode-v2 djb2 scale; cooler set) */
+  --cat-cm-agent-c: #f59e0b;  --cat-cm-agent-g: #10b981;
+  --cat-cm-agent-s: #ef4444;  --cat-cm-agent-k: #3b82f6;
+  /* tool-domain identity chips (cloud / k8s / filesystem) — dark + light ink */
+  --cat-domain-cloud: #38bdf8;  --cat-domain-cloud-ink: #0284c7;
+  --cat-domain-k8s:   #a78bfa;  --cat-domain-k8s-ink:   #7c3aed;
+  --cat-domain-fs:    #f59e0b;  --cat-domain-fs-ink:    #d97706;
+  /* thinking-stream identity (violet) — dark + light ink */
+  --cat-thinking:      #a78bfa;  --cat-thinking-ink:      #7c3aed;
+  --cat-thinking-soft: #c4b5fd;  --cat-thinking-soft-ink: #5b21b6;
   /* code-mode named-accent presets (admin data-accent picker) */
   --cat-accent-gcp:     #5ec8ff;
   --cat-accent-green:   #3ec77c;
@@ -352,6 +362,11 @@
   --surface-4: var(--color-surface-2);
   /* alpha-blend driver for the focus ring (was a stale blue literal) */
   --primary-rgb: 255, 87, 34;
+  /* --- soft blur-shadow scale (design-tokens.css used to own --shadow-soft-*).
+         Derives alpha from --color-shadow so it stays theme-aware. --- */
+  --shadow-soft-sm: 0 2px 8px  color-mix(in srgb, var(--color-shadow) 8%,  transparent);
+  --shadow-soft-md: 0 8px 24px color-mix(in srgb, var(--color-shadow) 12%, transparent);
+  --shadow-soft-lg: 0 16px 48px color-mix(in srgb, var(--color-shadow) 18%, transparent);
 
   /* --- mockup-v067 / chatmode-v2 namespace (--bg-* / --fg-* / --line-* / --accent) --- */
   --bg-0: var(--color-bg);       --bg-1: var(--color-surface);    --bg-2: var(--color-surface-2);
@@ -378,14 +393,82 @@
   --cm-success:     var(--color-ok);
   --cm-error:       var(--color-err);
   --cm-warning:     var(--color-warn);
+  --cm-bg-3: var(--color-surface-2);  --cm-bg-4: var(--color-surface-2);
+  --cm-line-3: var(--color-rule-strong);
+  --cm-border:  var(--color-rule);    --cm-surface: var(--color-surface);
+  --cm-ok:   var(--color-ok);   --cm-warn: var(--color-warn);
+  --cm-err:  var(--color-err);  --cm-info: var(--color-nfo);
+  --cm-radius-sm: var(--radius-sm); --cm-radius-md: var(--radius-sm);
+  --cm-radius-lg: var(--radius-chip); --cm-shadow-sm: var(--shadow-xs);
+  /* chat-surface categorical identity + glow (was raw literals in chatmode-v2.css) */
+  --cm-agent-c: var(--cat-cm-agent-c);  --cm-agent-g: var(--cat-cm-agent-g);
+  --cm-agent-s: var(--cat-cm-agent-s);  --cm-agent-k: var(--cat-cm-agent-k);
+  --cm-cloud: var(--cat-domain-cloud);  --cm-k8s: var(--cat-domain-k8s);  --cm-fs: var(--cat-domain-fs);
+  --cm-cloud-soft: color-mix(in srgb, var(--cat-domain-cloud) 10%, transparent);
+  --cm-k8s-soft:   color-mix(in srgb, var(--cat-domain-k8s) 10%, transparent);
+  --cm-fs-soft:    color-mix(in srgb, var(--cat-domain-fs) 10%, transparent);
+  --cm-cloud-line: color-mix(in srgb, var(--cat-domain-cloud) 25%, transparent);
+  --cm-k8s-line:   color-mix(in srgb, var(--cat-domain-k8s) 25%, transparent);
+  --cm-fs-line:    color-mix(in srgb, var(--cat-domain-fs) 25%, transparent);
+  --cm-thinking:      var(--cat-thinking);
+  --cm-thinking-soft: var(--cat-thinking-soft);
+  --cm-thinking-glow: color-mix(in srgb, var(--cat-thinking) 40%, transparent);
+  --cm-info-glow: color-mix(in srgb, var(--color-nfo) 40%, transparent);
+  --cm-ok-glow:   color-mix(in srgb, var(--color-ok) 40%, transparent);
+  --cm-warn-glow: color-mix(in srgb, var(--color-warn) 40%, transparent);
+  --cm-err-glow:  color-mix(in srgb, var(--color-err) 40%, transparent);
+  --cm-transcript-max-width: 902px;
   --ap-bg:     var(--color-surface); --ap-fg: var(--color-fg);   --ap-border: var(--color-rule);
   --ap-fg-0:   var(--color-fg);      --ap-fg-3: var(--color-fg-subtle);
   --v3-surface:var(--color-surface); --v3-fg: var(--color-fg);   --v3-border: var(--color-rule);
+
+  /* --- code-mode default surface tokens (used OUTSIDE .code-mode). The
+         opt-in editor themes under styles/themes/*.css scope their own
+         --cm-* under .code-mode[data-cm-theme]; this default tier derives
+         from the canonical palette so un-themed code surfaces match brand. --- */
+  --cm-bg-tertiary: var(--color-surface-2);
+
+  /* --- inline `code` chip + fenced-code chrome (was raw Apple-grey literals) --- */
+  --code-bg:     color-mix(in srgb, var(--color-fg) 8%, transparent);
+  --code-border: color-mix(in srgb, var(--color-fg) 15%, transparent);
+  --code-text:   var(--color-fg);
+
+  /* --- callout banners: info/success/warning/error bg+border tints derive
+         from the canonical status tokens (was raw Apple rgba literals) --- */
+  --callout-info-bg:     color-mix(in srgb, var(--color-nfo) 8%, transparent);
+  --callout-info-border: color-mix(in srgb, var(--color-nfo) 30%, transparent);
+  --callout-success-bg:     color-mix(in srgb, var(--color-ok) 8%, transparent);
+  --callout-success-border: color-mix(in srgb, var(--color-ok) 30%, transparent);
+  --callout-warning-bg:     color-mix(in srgb, var(--color-warn) 8%, transparent);
+  --callout-warning-border: color-mix(in srgb, var(--color-warn) 30%, transparent);
+  --callout-error-bg:     color-mix(in srgb, var(--color-err) 8%, transparent);
+  --callout-error-border: color-mix(in srgb, var(--color-err) 30%, transparent);
+
+  /* --- thinking blocks: violet-coded, derive from the thinking identity hue --- */
+  --thinking-bg:           color-mix(in srgb, var(--cat-thinking) 5%, transparent);
+  --thinking-border:       color-mix(in srgb, var(--cat-thinking) 20%, transparent);
+  --thinking-border-light: color-mix(in srgb, var(--cat-thinking) 10%, transparent);
+  --thinking-accent:       color-mix(in srgb, var(--cat-thinking) 30%, transparent);
 
   /* --- glow accent colors (decorative; map to brand status/accent, no neon) --- */
   --purple-glow: var(--color-accent);
   --blue-glow:   var(--color-nfo);
   --pink-glow:   var(--color-accent);
+
+  /* --- mock-widget (--mw-*) namespace: inline artifacts (kpi_grid, sankey,
+         mermaid_flow, bar_chart …) read these so they inherit the user's
+         theme+accent. Thin aliases over --cm-* (already theme-aware). Was an
+         index.css :root block with stale cold-grey + violet literals. --- */
+  --mw-bg-0: var(--cm-bg-0); --mw-bg-1: var(--cm-bg-1); --mw-bg-2: var(--cm-bg-2);
+  --mw-bg-3: var(--cm-bg-2); --mw-bg-4: var(--cm-bg-2);
+  --mw-fg-0: var(--cm-fg-0); --mw-fg-1: var(--cm-fg-1); --mw-fg-2: var(--cm-fg-2);
+  --mw-fg-3: var(--cm-fg-3);
+  --mw-accent:      var(--cm-accent);
+  --mw-accent-soft: var(--cm-accent-soft);
+  --mw-accent-line: var(--cm-accent-line);
+  --mw-line-1:      var(--cm-line-1);
+  --mw-success: var(--cm-success); --mw-danger: var(--cm-error);
+  --mw-warning: var(--cm-warning); --mw-info:   var(--color-nfo);
 
   /* ============================================================================
    * CATEGORICAL ALIASES — legacy --provider-*/--cap-*/--tier-*/--toast-*/--agent-*
@@ -436,6 +519,15 @@
   --tier-economy:   var(--cat-tier-economy-ink);
   --tier-balanced:  var(--cat-tier-balanced-ink);
   --tier-premium:   var(--cat-tier-premium-ink);
+  /* chat-surface domain/thinking identity lift for paper contrast */
+  --cm-cloud: var(--cat-domain-cloud-ink);  --cm-k8s: var(--cat-domain-k8s-ink);  --cm-fs: var(--cat-domain-fs-ink);
+  --cm-thinking:      var(--cat-thinking-ink);
+  --cm-thinking-soft: var(--cat-thinking-soft-ink);
+  --cm-thinking-glow: color-mix(in srgb, var(--cat-thinking-ink) 30%, transparent);
+  --cm-info-glow: color-mix(in srgb, var(--color-nfo) 30%, transparent);
+  --cm-ok-glow:   color-mix(in srgb, var(--color-ok) 30%, transparent);
+  --cm-warn-glow: color-mix(in srgb, var(--color-warn) 30%, transparent);
+  --cm-err-glow:  color-mix(in srgb, var(--color-err) 30%, transparent);
 }
 
 /* ============================================================================

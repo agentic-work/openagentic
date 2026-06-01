@@ -208,15 +208,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         className="fixed top-0 h-full z-[1000] flex flex-col m-2 ml-0 mr-0"
         style={{ left: leftOffsetPx }}
       >
-        <div className="h-full flex flex-col relative sidebar-glass">
+        <div className="h-full flex flex-col relative bg-surface border-r-2 border-rule-strong shadow-hard">
         {/* Header Section with Logo, Search and Toggle */}
-        <div className="flex items-center justify-between px-3 py-4 border-b border-[var(--color-border)]">
+        <div className="flex items-center justify-between px-3 py-4 border-b-2 border-rule-strong">
           {/* Panel Toggle Button - Proper sidebar icon */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsExpanded(!isExpanded)}
-            className="button-glass p-2 rounded-lg"
+            className="bg-surface text-fg border-2 border-rule-strong rounded-none p-2 transition-colors hover:bg-surface-2"
             title={isExpanded ? "Close Sidebar" : "Open Sidebar"}
           >
             <motion.div
@@ -256,7 +256,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowSearchBox(!showSearchBox)}
-              className="button-glass p-2 rounded-lg text-secondary"
+              className="bg-surface text-fg-muted border-2 border-rule-strong rounded-none p-2 transition-colors hover:bg-surface-2"
               title="Search Chats"
             >
               <Search size={20} />
@@ -272,25 +272,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="overflow-hidden px-3 pb-3 border-b"
-              style={{ borderColor: 'var(--color-border)' }}
+              className="overflow-hidden px-3 pb-3 border-b-2 border-rule-strong"
             >
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-fg-subtle" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search chats..."
-                  className="w-full pl-9 pr-3 py-2 text-sm rounded-lg transition-all focus:outline-none focus:ring-1"
-                  style={{
-                    // These tokens are hex values, not "R G B" triples — apply
-                    // them directly. Wrapping a hex in rgb() produces invalid
-                    // CSS that the browser silently drops (see ChatInputBar fix).
-                    backgroundColor: 'var(--color-surfaceSecondary)',
-                    color: 'var(--text-primary)',
-                    borderColor: 'var(--color-border)',
-                  }}
+                  className="w-full pl-9 pr-3 py-2 text-sm rounded-input bg-surface-2 text-fg border-2 border-rule-strong transition-colors focus:outline-none focus:border-accent"
                   autoFocus
                 />
               </div>
@@ -308,19 +299,18 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           const widthPercent = 100 / modeCount;
 
           return (
-            <div className="px-3 py-2 border-b border-[var(--color-border)]">
+            <div className="px-3 py-2 border-b-2 border-rule-strong">
               <div className={`
-                relative flex items-center p-0.5 rounded-lg
-                bg-[var(--color-surface)] border border-[var(--color-border)]
+                relative flex items-center p-0.5 rounded-none
+                bg-surface border-2 border-rule-strong
                 ${isExpanded ? '' : 'flex-col'}
               `}>
                 {/* Sliding background indicator - uses user accent color */}
                 <motion.div
                   className={`
-                    absolute rounded-md
+                    absolute rounded-none bg-accent
                     ${isExpanded ? 'top-0.5 bottom-0.5' : 'left-0.5 right-0.5'}
                   `}
-                  style={{ backgroundColor: 'var(--user-accent-primary, var(--color-primary))' }}
                   initial={false}
                   animate={isExpanded ? {
                     left: `calc(${activeIndex * widthPercent}% + 2px)`,
@@ -340,18 +330,17 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 <button
                   onClick={() => onAppModeChange('chat')}
                   className={`
-                    relative z-10 flex items-center gap-1.5 rounded-md transition-colors duration-200
+                    relative z-10 flex items-center gap-1.5 rounded-none transition-colors duration-200
                     ${isExpanded ? 'flex-1 px-3 py-1.5 justify-center' : 'p-2'}
                     ${appMode === 'chat'
-                      ? ''
-                      : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                      ? 'text-on-accent'
+                      : 'text-fg-muted hover:text-fg'
                     }
                   `}
-                  style={appMode === 'chat' ? { color: 'var(--color-on-accent)' } : undefined}
                   title="Chat Mode"
                 >
                   <MessageSquare size={isExpanded ? 14 : 16} />
-                  {isExpanded && <span className="text-sm font-medium">Chat</span>}
+                  {isExpanded && <span className="btn-label text-xs">Chat</span>}
                 </button>
 
                 {/* Flows mode button - shown if canUseFlows */}
@@ -359,18 +348,17 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   <button
                     onClick={() => onAppModeChange('flows')}
                     className={`
-                      relative z-10 flex items-center gap-1.5 rounded-md transition-colors duration-200
+                      relative z-10 flex items-center gap-1.5 rounded-none transition-colors duration-200
                       ${isExpanded ? 'flex-1 px-3 py-1.5 justify-center' : 'p-2'}
                       ${appMode === 'flows'
-                        ? ''
-                        : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                        ? 'text-on-accent'
+                        : 'text-fg-muted hover:text-fg'
                       }
                     `}
-                    style={appMode === 'flows' ? { color: 'var(--color-on-accent)' } : undefined}
                     title="Flows Mode - Visual Workflow Builder"
                   >
                     <Workflow size={isExpanded ? 14 : 16} />
-                    {isExpanded && <span className="text-sm font-medium">Flows</span>}
+                    {isExpanded && <span className="btn-label text-xs">Flows</span>}
                   </button>
                 )}
               </div>
@@ -416,7 +404,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     button.dataset.disabled = 'false';
                   }, 500);
                 }}
-                className={`button-glass flex items-center gap-3 p-2 rounded-lg text-secondary ${
+                className={`flex items-center gap-3 p-2 rounded-none bg-accent text-on-accent border-2 border-rule-strong shadow-hard-sm transition-[transform,box-shadow] active:translate-x-[2px] active:translate-y-[2px] active:shadow-hard-xs ${
                   isExpanded ? 'w-full justify-start' : 'justify-center'
                 }`}
                 title={!isExpanded ? 'New Chat' : undefined}
@@ -428,7 +416,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -10 }}
-                      className="font-medium whitespace-nowrap"
+                      className="btn-label text-xs whitespace-nowrap"
                     >
                       New Chat
                     </motion.span>
@@ -459,7 +447,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     exit={{ opacity: 0 }}
                     className="px-6 py-2 flex items-center justify-between"
                   >
-                    <h3 className="text-sm font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                    <h3 className="eyebrow text-fg-subtle">
                       {searchQuery ? `Found ${filteredSessions.length}` : 'Recent'}
                     </h3>
                     {sessions.length > 0 && !searchQuery && (
@@ -472,9 +460,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                             sessions.forEach(session => onSessionDelete(session.id));
                           }
                         }}
-                        className="text-xs px-2 py-1 rounded transition-all flex items-center gap-1"
+                        className="btn-label text-[10px] px-2 py-1 rounded-none border-2 border-rule-strong text-err transition-all flex items-center gap-1"
                         style={{
-                          color: 'var(--color-error)',
                           backgroundColor: 'transparent'
                         }}
                         onMouseEnter={(e) => {
@@ -516,26 +503,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   const showHeader = isExpanded && !searchQuery && thisGroup !== prevGroup;
                   return (<React.Fragment key={`frag-${session.id}-${index}`}>
                   {showHeader && (
-                    <div
-                      className="px-1 pt-3 pb-1"
-                      style={{
-                        fontSize: 10,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                        color: 'var(--color-fg-subtle)',
-                        fontWeight: 500,
-                      }}
-                    >
+                    <div className="eyebrow px-1 pt-3 pb-1 text-fg-subtle">
                       {thisGroup}
                     </div>
                   )}
                   <div key={`${session.id}-${index}`} className="relative mb-1">
                     <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      className={`group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors hover:bg-theme-bg-secondary ${
+                      className={`group flex items-center gap-2 p-2 rounded-none border-2 cursor-pointer transition-colors ${
                         currentSessionId === session.id
-                          ? 'bg-theme-bg-secondary text-theme-text-primary'
-                          : 'text-theme-text-secondary hover:text-theme-text-primary'
+                          ? 'bg-surface-2 text-fg border-rule-strong'
+                          : 'text-fg-muted border-transparent hover:text-fg hover:bg-surface-2 hover:border-rule'
                       }`}
                       onClick={() => onSessionSelect(session.id)}
                     >
@@ -561,10 +538,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                             />
                           )}
                           {/* Tooltip on hover */}
-                          <div className="absolute left-full ml-2 px-2 py-1 bg-theme-bg-primary text-theme-text-primary text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                          <div className="absolute left-full ml-2 px-2 py-1 bg-surface text-fg text-xs rounded-none border-2 border-rule-strong shadow-hard-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                             {session.title || 'New Chat'}
                             {session.messageCount !== undefined && (
-                              <div className="text-theme-text-muted">
+                              <div className="text-fg-subtle">
                                 {session.messageCount} {session.messageCount === 1 ? 'message' : 'messages'}
                               </div>
                             )}
@@ -622,7 +599,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                               e.stopPropagation();
                               onShowDeleteConfirm(session.id);
                             }}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-error/20 hover:text-error transition-all text-theme-text-muted"
+                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-none hover:bg-err/20 hover:text-err transition-all text-fg-subtle"
                             title="Delete session"
                           >
                             <Trash2 size={14} />
@@ -638,7 +615,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                           initial={{ opacity: 0, x: 10, scale: 0.9 }}
                           animate={{ opacity: 1, x: 0, scale: 1 }}
                           exit={{ opacity: 0, x: 10, scale: 0.9 }}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 rounded-lg z-20 bg-theme-bg-primary p-2 shadow-lg border border-theme-border-primary"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 rounded-none z-20 bg-surface p-2 shadow-hard-sm border-2 border-rule-strong"
                         >
                           <motion.button
                             whileHover={{ scale: 1.05 }}
@@ -648,8 +625,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                               onSessionDelete(session.id);
                               onShowDeleteConfirm(null);
                             }}
-                            className="px-3 py-1.5 text-xs bg-error rounded-md hover:bg-error/80 transition-colors font-medium"
-                            style={{ color: 'var(--color-text)' }}
+                            className="btn-label px-3 py-1.5 text-[10px] bg-err text-on-accent border-2 border-rule-strong rounded-none hover:brightness-110 transition-all"
                           >
                             Delete
                           </motion.button>
@@ -660,7 +636,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                               e.stopPropagation();
                               onShowDeleteConfirm(null);
                             }}
-                            className="px-3 py-1.5 text-xs rounded-md transition-colors font-medium bg-theme-bg-secondary text-theme-text-secondary hover:bg-theme-bg-tertiary"
+                            className="btn-label px-3 py-1.5 text-[10px] rounded-none border-2 border-rule-strong transition-colors bg-surface text-fg-muted hover:bg-surface-2"
                           >
                             Cancel
                           </motion.button>
@@ -683,7 +659,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         )}
 
         {/* Bottom Section - Version + Settings (pinned to bottom) */}
-        <div className="relative border-t mt-auto shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+        <div className="relative border-t-2 border-rule-strong mt-auto shrink-0">
 
           {/* Version Badge */}
           {isExpanded && (

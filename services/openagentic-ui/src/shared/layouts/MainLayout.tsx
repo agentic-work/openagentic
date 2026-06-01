@@ -39,8 +39,9 @@ const Layout: React.FC<LayoutProps> = ({ children, theme, onNewChat, onToggleTok
     <div className="flex h-screen relative">
       {/* Background is now global in App.tsx via WebGLBackground */}
 
-      {/* Sidebar */}
-      <aside className="w-16 glass-adaptive flex flex-col items-center py-6 relative z-20">
+      {/* Sidebar — neo-brutalist field-guide rail: paper surface, 2px ink
+          right-rule, sharp-cornered nav cells, mono tooltips. */}
+      <aside className="w-16 bg-surface border-r-2 border-rule-strong flex flex-col items-center py-6 relative z-20">
         <nav className="space-y-2">
           {navItems.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path;
@@ -50,74 +51,71 @@ const Layout: React.FC<LayoutProps> = ({ children, theme, onNewChat, onToggleTok
               return (
                 <div key={path} className="relative group">
                   <motion.button
-                    whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={onToggleSidebar}
-                    className={`p-3 rounded-lg transition-all ${
+                    className={`p-3 rounded-none border-2 transition-colors ${
                       isActive
-                        ? 'theme-bg-secondary theme-text-primary'
-                        : 'theme-text-secondary hover:theme-text-primary hover:theme-bg-secondary/50'
+                        ? 'bg-accent text-on-accent border-rule-strong shadow-hard-xs'
+                        : 'bg-transparent text-fg-muted border-transparent hover:text-fg hover:bg-surface-2 hover:border-rule'
                     }`}
                   >
                     <Icon size={20} />
                   </motion.button>
-                  
+
                   {/* Tooltip */}
-                  <div className="absolute left-full ml-2 px-2 py-1 rounded theme-bg-tertiary theme-text-primary text-sm opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                  <div className="eyebrow absolute left-full ml-2 px-2 py-1 rounded-none border-2 border-rule-strong bg-surface text-fg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-hard-xs">
                     Toggle Chats
                   </div>
                 </div>
               );
             }
-            
+
             return (
               <Link
                 key={path}
                 to={path}
-                className="relative group"
+                className="relative group block"
                 title={label}
               >
                 <motion.div
-                  whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
-                  className={`p-3 rounded-lg transition-all ${
+                  className={`p-3 rounded-none border-2 transition-colors ${
                     isActive
-                      ? 'theme-bg-secondary theme-text-primary'
-                      : 'theme-text-secondary hover:theme-text-primary hover:theme-bg-secondary/50'
+                      ? 'bg-accent text-on-accent border-rule-strong shadow-hard-xs'
+                      : 'bg-transparent text-fg-muted border-transparent hover:text-fg hover:bg-surface-2 hover:border-rule'
                   }`}
                 >
                   <Icon size={20} />
                 </motion.div>
-                
+
                 {/* Tooltip */}
-                <div className="absolute left-full ml-2 px-2 py-1 rounded theme-bg-tertiary theme-text-primary text-sm opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">
+                <div className="eyebrow absolute left-full ml-2 px-2 py-1 rounded-none border-2 border-rule-strong bg-surface text-fg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-hard-xs">
                   {label}
                 </div>
               </Link>
             );
           })}
-          
+
           {/* Action buttons - moved here under chat icon */}
           {actionButtons.length > 0 && actionButtons.map(({ action, icon: Icon, label, active }) => (
                 <motion.div key={label} className="relative group">
                   <motion.button
-                    whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={action}
                     disabled={!action}
-                    className={`p-3 rounded-lg transition-all ${
+                    className={`p-3 rounded-none border-2 transition-colors ${
                       !action
-                        ? 'theme-text-muted cursor-not-allowed'
+                        ? 'text-fg-subtle border-transparent cursor-not-allowed'
                         : active
-                        ? 'bg-info theme-text-primary'
-                        : 'theme-text-secondary hover:theme-text-primary hover:theme-bg-secondary/50'
+                        ? 'bg-accent text-on-accent border-rule-strong shadow-hard-xs'
+                        : 'bg-transparent text-fg-muted border-transparent hover:text-fg hover:bg-surface-2 hover:border-rule'
                     }`}
                   >
                     <Icon size={20} />
                   </motion.button>
-                  
+
                   {/* Tooltip */}
-                  <div className="absolute left-full ml-2 px-2 py-1 rounded theme-bg-tertiary theme-text-primary text-sm opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                  <div className="eyebrow absolute left-full ml-2 px-2 py-1 rounded-none border-2 border-rule-strong bg-surface text-fg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-hard-xs">
                     {label}
                   </div>
                 </motion.div>
@@ -136,19 +134,18 @@ const Layout: React.FC<LayoutProps> = ({ children, theme, onNewChat, onToggleTok
               className="relative group block"
             >
               <motion.div
-                whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                className={`p-3 rounded-lg transition-all ${
+                className={`p-3 rounded-none border-2 transition-colors ${
                   location.pathname === '/admin'
-                    ? 'bg-error theme-text-primary'
-                    : 'theme-text-secondary hover:theme-text-primary hover:theme-bg-secondary/50'
+                    ? 'bg-err text-on-accent border-rule-strong shadow-hard-xs'
+                    : 'bg-transparent text-fg-muted border-transparent hover:text-fg hover:bg-surface-2 hover:border-rule'
                 }`}
               >
                 <Shield size={20} />
               </motion.div>
-              
+
               {/* Tooltip */}
-              <div className="absolute left-full ml-2 px-2 py-1 rounded theme-bg-tertiary theme-text-primary text-sm opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+              <div className="eyebrow absolute left-full ml-2 px-2 py-1 rounded-none border-2 border-rule-strong bg-surface text-fg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-hard-xs">
                 Admin Portal
               </div>
             </Link>
@@ -165,19 +162,18 @@ const Layout: React.FC<LayoutProps> = ({ children, theme, onNewChat, onToggleTok
             title="Settings (admin)"
           >
             <motion.div
-              whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className={`p-3 rounded-lg transition-all ${
+              className={`p-3 rounded-none border-2 transition-colors ${
                 location.pathname.startsWith('/admin')
-                  ? 'theme-bg-secondary theme-text-primary'
-                  : 'theme-text-secondary hover:theme-text-primary hover:theme-bg-secondary/50'
+                  ? 'bg-accent text-on-accent border-rule-strong shadow-hard-xs'
+                  : 'bg-transparent text-fg-muted border-transparent hover:text-fg hover:bg-surface-2 hover:border-rule'
               }`}
             >
               <SettingsIcon size={20} />
             </motion.div>
 
             {/* Tooltip */}
-            <div className="absolute left-full ml-2 px-2 py-1 rounded theme-bg-tertiary theme-text-primary text-sm opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">
+            <div className="eyebrow absolute left-full ml-2 px-2 py-1 rounded-none border-2 border-rule-strong bg-surface text-fg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-hard-xs">
               Settings
             </div>
           </Link>
@@ -187,7 +183,7 @@ const Layout: React.FC<LayoutProps> = ({ children, theme, onNewChat, onToggleTok
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden relative z-10">
         {/* Header with auth */}
-        <header className="glass-adaptive px-6 py-4 flex justify-end items-center relative z-10">
+        <header className="bg-surface border-b-2 border-rule-strong px-6 py-4 flex justify-end items-center relative z-10">
           {/* Auth component rendered here */}
         </header>
         

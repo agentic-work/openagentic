@@ -444,21 +444,20 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Unified Input Container — M3 Expressive (task #160):
-            rounded-input (28px), surface-1 bg, soft-sm resting shadow,
-            200ms ease-emphasized transitions. No glassmorphism — the
-            textured blur competes with the pill shape. */}
+        {/* Unified Input Container — NEO-BRUTALIST field-guide composer:
+            2px ink border (border-rule-strong), near-sharp corners
+            (rounded-input → 2px), surface bg, and a hard zero-blur offset
+            shadow (shadow-hard-sm). The whole box lifts to the accent border
+            + a tighter shadow on focus-within, mirroring the shared Input
+            primitive. Token-only — no raw color/shadow literals. */}
         <div
           className={clsx(
-            'relative bg-surface-1',
-            'transition-[border-color,box-shadow,background] duration-200 ease-emphasized',
-            isDragging && 'ring-2 ring-theme-accent/30'
+            'relative bg-surface',
+            'rounded-input border-2 border-rule-strong shadow-hard-sm',
+            'transition-[border-color,box-shadow,background] duration-150',
+            'focus-within:border-accent focus-within:shadow-hard-xs',
+            isDragging && 'border-accent'
           )}
-          style={{
-            border: isDragging ? undefined : '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-input)',
-            boxShadow: 'var(--shadow-soft-sm)',
-          }}
         >
           {/* Drag Overlay */}
           <AnimatePresence>
@@ -616,9 +615,12 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                     onClick={onStopGeneration}
                     aria-label="Stop generation"
                     className={clsx(
-                      'h-10 w-10 rounded-pill flex items-center justify-center',
-                      'transition-[background,transform] duration-200 ease-emphasized',
-                      'focus-visible:outline-none focus-visible:shadow-focus-ring'
+                      // Sharp brutalist square: 2px ink border + hard offset
+                      // shadow (tightens on press), zero radius.
+                      'h-10 w-10 rounded-none border-2 border-rule-strong shadow-hard-xs flex items-center justify-center',
+                      'transition-[background,box-shadow,transform] duration-150',
+                      'active:translate-x-[1px] active:translate-y-[1px]',
+                      'focus-visible:outline-none focus-visible:shadow-signal'
                     )}
                     style={{ backgroundColor: 'var(--color-err)', color: 'var(--color-on-accent)' }}
                   >
@@ -637,18 +639,20 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                     aria-label={showStopButton ? "Queue message" : "Send message"}
                     title={showStopButton ? "Queue this message for after current response" : "Send message"}
                     className={clsx(
-                      'h-10 w-10 rounded-pill flex items-center justify-center',
-                      'transition-[background,transform,opacity] duration-200 ease-emphasized',
-                      'focus-visible:outline-none focus-visible:shadow-focus-ring',
+                      // Sharp brutalist accent CTA: signal-orange fill, 2px
+                      // ink border, zero radius, hard offset shadow that
+                      // tightens with a 1px press nudge.
+                      'h-10 w-10 rounded-none border-2 border-rule-strong shadow-hard-xs flex items-center justify-center',
+                      'transition-[background,box-shadow,transform,opacity] duration-150',
+                      'active:translate-x-[1px] active:translate-y-[1px]',
+                      'focus-visible:outline-none focus-visible:shadow-signal',
                       (!hasContent && attachments.length === 0) && 'opacity-50 cursor-not-allowed'
                     )}
                     style={{
-                      backgroundColor: showStopButton
-                        ? 'var(--color-primary)'
-                        : hasContent
-                          ? 'var(--color-primary)'
-                          : 'var(--surface-3)',
-                      color: 'var(--cm-bg)',
+                      backgroundColor: showStopButton || hasContent
+                        ? 'var(--color-accent)'
+                        : 'var(--color-surface-2)',
+                      color: 'var(--color-on-accent)',
                     }}
                   >
                     <ArrowUp size={16} aria-hidden="true" strokeWidth={2.5} />

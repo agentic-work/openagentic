@@ -60,8 +60,7 @@ const SectionHeader: React.FC<{
 }> = ({ title, isOpen, onToggle, count, action }) => (
   <button
     onClick={onToggle}
-    className="w-full flex items-center justify-between px-4 py-2.5 text-[13px] font-semibold uppercase tracking-wider transition-colors hover:bg-[var(--color-surface)]"
-    style={{ color: 'var(--color-text-tertiary, #999)' }}
+    className="eyebrow w-full flex items-center justify-between px-4 py-2.5 text-fg-subtle border-b-2 border-rule-strong transition-colors hover:bg-surface-2 hover:text-fg"
   >
     <div className="flex items-center gap-1.5">
       <motion.div animate={{ rotate: isOpen ? 90 : 0 }} transition={{ duration: 0.15 }}>
@@ -69,7 +68,7 @@ const SectionHeader: React.FC<{
       </motion.div>
       {title}
       {count !== undefined && (
-        <span className="ml-1 px-1.5 py-0.5 rounded-full text-[13px] font-bold" style={{ background: 'var(--color-surface)', color: 'var(--color-text-secondary, #666)' }}>
+        <span className="eyebrow ml-1 px-1.5 py-0.5 rounded-none border-2 border-rule-strong bg-surface text-fg-muted">
           {count}
         </span>
       )}
@@ -299,7 +298,7 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
   const deployedWorkflows = useMemo(() => workflows.filter(w => w.status === 'active' && !w.is_template), [workflows]);
 
   const statusDot = (status: string) => {
-    const colors: Record<string, string> = { active: 'var(--color-success)', running: 'var(--color-warning)', paused: '#9c27b0', draft: 'var(--color-fg-muted)', archived: '#607d8b' };
+    const colors: Record<string, string> = { active: 'var(--color-success)', running: 'var(--color-warning)', paused: 'var(--color-accent)', draft: 'var(--color-fg-muted)', archived: 'var(--color-fg-subtle)' };
     return (
       <span
         className="inline-block w-2 h-2 rounded-full flex-shrink-0"
@@ -311,13 +310,12 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
   // Collapsed mode: just show icons
   if (!isExpanded) {
     return (
-      <div className="w-12 flex-shrink-0 flex flex-col items-center gap-2 pt-2 border-r" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-primary)' }}>
+      <div className="w-12 flex-shrink-0 flex flex-col items-center gap-2 pt-2 border-r-2 border-rule-strong bg-bg">
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={onCreateNew}
-          className="p-2 rounded-lg transition-colors"
-          style={{ color: 'var(--color-text-secondary)' }}
+          className="p-2 rounded-none border-2 border-rule-strong bg-accent text-on-accent shadow-hard-xs transition-colors"
           title="New Flow"
         >
           <Plus className="w-5 h-5" />
@@ -327,35 +325,30 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
   }
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-bg">
       {/* New Flow Button */}
       <div className="px-3 mb-1 mt-2">
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={onCreateNew}
-          className="button-glass flex items-center gap-3 p-2 rounded-lg text-secondary w-full justify-start"
+          className="flex items-center gap-3 p-2 rounded-none bg-accent text-on-accent border-2 border-rule-strong shadow-hard-sm transition-[transform,box-shadow] active:translate-x-[2px] active:translate-y-[2px] active:shadow-hard-xs w-full justify-start"
         >
           <Plus className="w-5 h-5 flex-shrink-0" />
-          <span className="font-medium whitespace-nowrap">New Flow</span>
+          <span className="btn-label text-xs whitespace-nowrap">New Flow</span>
         </motion.button>
       </div>
 
       {/* Search */}
       <div className="px-3 mb-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--color-text-tertiary, #999)' }} />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-fg-subtle" />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search flows..."
-            className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-1"
-            style={{
-              backgroundColor: 'var(--color-surface)',
-              borderColor: 'var(--color-border)',
-              color: 'var(--color-text)',
-            }}
+            className="w-full pl-8 pr-3 py-1.5 text-sm rounded-input bg-surface text-fg border-2 border-rule-strong focus:outline-none focus:border-accent transition-colors"
           />
         </div>
       </div>
@@ -388,12 +381,12 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
             >
               <div className="px-2 pb-2">
                 {executionsLoading && (
-                  <div className="text-xs px-2 py-1" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+                  <div className="text-xs px-2 py-1 text-fg-subtle">
                     Loading…
                   </div>
                 )}
                 {!executionsLoading && userExecutions.length === 0 && (
-                  <div className="text-xs px-2 py-1" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+                  <div className="text-xs px-2 py-1 text-fg-subtle">
                     No recent executions
                   </div>
                 )}
@@ -409,15 +402,15 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
                         }
                       }
                     }}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-xs transition-colors hover:bg-[var(--color-surface)]"
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-none border-2 border-transparent text-left text-xs transition-colors hover:bg-surface-2 hover:border-rule"
                   >
                     <span className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
                       {executionStatusIcon(exec.status)}
                     </span>
-                    <span className="flex-1 truncate" style={{ color: 'var(--color-text)' }}>
+                    <span className="flex-1 truncate text-fg">
                       {exec.workflow?.name || exec.workflow_name || exec.workflow_id || 'Workflow'}
                     </span>
-                    <span className="flex-shrink-0" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+                    <span className="flex-shrink-0 text-fg-subtle">
                       {exec.created_at ? timeAgo(exec.created_at) : ''}
                     </span>
                   </button>

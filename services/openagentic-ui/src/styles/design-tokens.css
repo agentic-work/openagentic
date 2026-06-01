@@ -39,25 +39,12 @@
   --radius-md: 12px;
   --radius-full: 9999px;
 
-  /* ── Primary RGB (for alpha-blended focus ring / tints) ───────────────── */
-  /* Parsed from --user-accent-primary = #1E40AF on first paint. */
-  --primary-rgb: 30, 64, 175;
-
-  /* ── Tonal surface scale — openagentics.io "terminal" warm-black (dark) ──
-     Warm near-black field-guide palette (vs cold M3 grey) so the OSS app reads
-     distinctly from enterprise agenticwork. surface-0 = page bg. */
-  --surface-0: #18130C;   /* terminal warm near-black */
-  --surface-1: #211A11;
-  --surface-2: #2C2418;
-  --surface-3: #392F20;
-  --surface-4: #473A29;
-
-  /* ── Soft shadow scale ─────────────────────────────────────────────────
-     Low opacity + heavy blur = gentle "float" without a hard edge.
-     Gemini / M3 Expressive style. */
-  --shadow-soft-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-soft-md: 0 8px 24px rgba(0, 0, 0, 0.12);
-  --shadow-soft-lg: 0 16px 48px rgba(0, 0, 0, 0.18);
+  /* --primary-rgb (focus-ring alpha driver), the --surface-0..4 tonal scale,
+     and the --shadow-soft-* scale are now defined ONCE in src/styles/theme.css
+     (the SOLE SOT) — surfaces derive from the canonical --color-* palette and
+     the soft shadows derive from --color-shadow, flipping per [data-theme].
+     The stale old-blue primary-rgb triple + raw surface/shadow literals
+     that used to live here are removed so there is one definition site. */
 
   /* ── Motion curves ────────────────────────────────────────────────────── */
   --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
@@ -112,21 +99,8 @@
   --transcript-max-width: 1140px;
 }
 
-/* ==========================================================================
-   LIGHT THEME OVERRIDES
-   ========================================================================== */
-[data-theme="light"] {
-  /* openagentics.io "paper" — warm bone-cream field-guide (light). */
-  --surface-0: #F4EFE6;   /* bone cream paper */
-  --surface-1: #EFE9DD;
-  --surface-2: #EBE5D8;
-  --surface-3: #E2DACB;
-  --surface-4: #DBD3BF;
-
-  --shadow-soft-sm: 0 1px 4px rgba(0, 0, 0, 0.04);
-  --shadow-soft-md: 0 6px 20px rgba(0, 0, 0, 0.06);
-  --shadow-soft-lg: 0 14px 40px rgba(0, 0, 0, 0.10);
-}
+/* LIGHT-THEME --surface-* / --shadow-soft-* overrides moved to theme.css
+   (the SOLE SOT); they flip per [data-theme] there. */
 
 /* ==========================================================================
    UTILITY CLASSES

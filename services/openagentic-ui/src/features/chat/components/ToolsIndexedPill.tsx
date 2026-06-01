@@ -102,15 +102,16 @@ export const ToolsIndexedPill: React.FC = () => {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 transition-colors text-sm hover:bg-theme-bg-secondary"
+        className="btn-label flex items-center gap-1.5 px-2.5 py-1.5 transition-colors hover:bg-surface-2"
         style={{
-          color: inSyncBad ? 'var(--color-warn, var(--cm-warning))' : 'var(--text-secondary)',
-          backgroundColor: 'var(--color-surfaceSecondary)',
-          border: '1px solid ' + (inSyncBad ? 'var(--color-warn, var(--cm-warning))' : 'var(--color-border)'),
-          borderRadius: 9999,
+          // Sharp brutalist tool pill: 2px ink border + sharp corners + mono
+          // uppercase tracked label. Token-only — no raw color/radius literals.
+          color: inSyncBad ? 'var(--color-warn)' : 'var(--color-fg-muted)',
+          backgroundColor: 'var(--color-surface)',
+          border: 'var(--border-w) solid ' + (inSyncBad ? 'var(--color-warn)' : 'var(--color-rule-strong)'),
+          borderRadius: 'var(--radius-card)',
           transform: 'translateZ(0)',
-          fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-          fontSize: 12,
+          fontSize: 'var(--text-eyebrow)',
           height: 32,
         }}
         title={

@@ -72,13 +72,7 @@ export const DocsSidebar: React.FC = () => {
   }, [searchQuery, isAdmin]);
 
   return (
-    <div
-      className="w-[260px] flex-shrink-0 border-r h-full flex flex-col"
-      style={{
-        borderColor: 'var(--color-border)',
-        backgroundColor: 'var(--color-surface)',
-      }}
-    >
+    <div className="w-[260px] flex-shrink-0 border-r-2 border-rule-strong h-full flex flex-col bg-surface">
       {/* Search */}
       <div className="px-3 pt-3 pb-2 flex-shrink-0">
         <div className="relative">
@@ -87,12 +81,7 @@ export const DocsSidebar: React.FC = () => {
             placeholder="Search docs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-3 py-2 pl-8 rounded-md text-sm outline-none"
-            style={{
-              backgroundColor: 'var(--color-surfaceSecondary)',
-              color: 'var(--color-text)',
-              border: '1px solid var(--color-border)',
-            }}
+            className="w-full px-3 py-2 pl-8 rounded-input text-sm outline-none bg-surface-2 text-fg border-2 border-rule-strong focus:border-accent transition-colors"
           />
           <div className="absolute left-2.5 top-2.5">
             <DocsSearchIcon size={14} />
@@ -103,7 +92,7 @@ export const DocsSidebar: React.FC = () => {
       {/* Navigation */}
       <div className="flex-1 overflow-y-auto px-2 pb-2 scrollbar-hide">
         {filteredNav.length === 0 && searchQuery && (
-          <div className="text-center py-8 text-xs" style={{ color: 'var(--color-textMuted)' }}>
+          <div className="text-center py-8 text-xs text-fg-subtle">
             No results for "{searchQuery}"
           </div>
         )}
@@ -118,8 +107,7 @@ export const DocsSidebar: React.FC = () => {
                 {/* Category header */}
                 <button
                   onClick={() => toggleCategory(cat.id)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-colors text-left mt-2"
-                  style={{ color: 'var(--color-textMuted)' }}
+                  className="eyebrow w-full flex items-center gap-2 px-2 py-1.5 rounded-none text-fg-subtle transition-colors text-left mt-2 hover:text-fg hover:bg-surface-2"
                 >
                   <DocsChevronIcon size={10} direction={isExpanded ? 'down' : 'right'} />
                   <CatIcon size={13} />
@@ -144,18 +132,11 @@ export const DocsSidebar: React.FC = () => {
                             <button
                               key={page.id}
                               onClick={() => navigateTo(page.id)}
-                              className="w-full flex items-start gap-2 px-3 py-2 rounded-md text-[13px] transition-all text-left group"
-                              style={{
-                                backgroundColor: isActive ? 'var(--color-primary)' : 'transparent',
-                                color: isActive ? 'white' : 'var(--color-text)',
-                                fontWeight: isActive ? 500 : 400,
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!isActive) e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)';
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
-                              }}
+                              className={`w-full flex items-start gap-2 px-3 py-2 rounded-none border-2 text-[13px] transition-all text-left group ${
+                                isActive
+                                  ? 'bg-accent text-on-accent border-rule-strong font-medium'
+                                  : 'bg-transparent text-fg border-transparent hover:bg-surface-2 hover:border-rule'
+                              }`}
                             >
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5">
@@ -165,10 +146,7 @@ export const DocsSidebar: React.FC = () => {
                                   )}
                                 </div>
                                 {!isActive && (
-                                  <div
-                                    className="text-[11px] truncate mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    style={{ color: 'var(--color-textMuted)' }}
-                                  >
+                                  <div className="text-[11px] truncate mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-fg-subtle">
                                     {page.description}
                                   </div>
                                 )}
@@ -187,10 +165,7 @@ export const DocsSidebar: React.FC = () => {
       </div>
 
       {/* Settings & More — pinned to bottom */}
-      <div
-        className="flex-shrink-0 border-t px-2 py-2"
-        style={{ borderColor: 'var(--color-border)' }}
-      >
+      <div className="flex-shrink-0 border-t-2 border-rule-strong px-2 py-2">
         <SettingsMenu
           isExpanded={true}
           currentTheme={theme || 'dark'}

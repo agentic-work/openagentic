@@ -58,6 +58,9 @@ interface FollowupChipButtonProps {
 function FollowupChipButton({ chip, onSubmit }: FollowupChipButtonProps): JSX.Element {
   const [hovered, setHovered] = React.useState(false);
   return (
+    // Sharp brutalist chip (not a rounded pill): 2px ink border + sharp
+    // corners + a hard zero-blur offset shadow that tightens on press, and
+    // the mono uppercase tracked .btn-label. Token-only — no raw literals.
     <button
       type="button"
       data-testid="followup-chip"
@@ -66,19 +69,21 @@ function FollowupChipButton({ chip, onSubmit }: FollowupChipButtonProps): JSX.El
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
+      className="btn-label"
       style={{
         appearance: 'none',
         cursor: 'pointer',
-        font: 'inherit',
-        fontSize: '0.875rem',
+        fontSize: 'var(--text-eyebrow)',
         lineHeight: 1.2,
-        padding: '6px 12px',
-        borderRadius: 'var(--cm-radius-md)',
-        border: '1px solid var(--cm-line-2)',
-        background: hovered ? 'var(--cm-accent-soft)' : 'var(--cm-bg-2)',
-        color: hovered ? 'var(--cm-accent)' : 'var(--cm-fg-1)',
+        padding: '7px 12px',
+        borderRadius: 'var(--radius-card)',
+        border: 'var(--border-w) solid var(--color-rule-strong)',
+        boxShadow: 'var(--shadow-xs)',
+        background: hovered ? 'var(--color-accent)' : 'var(--color-surface)',
+        color: hovered ? 'var(--color-on-accent)' : 'var(--color-fg)',
         textAlign: 'left',
-        transition: 'background-color 120ms ease, color 120ms ease, border-color 120ms ease',
+        transition:
+          'background-color 120ms ease, color 120ms ease, box-shadow 120ms ease, transform 120ms ease',
       }}
     >
       {chip.label}

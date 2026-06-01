@@ -116,58 +116,37 @@ export const StarterPrompts: React.FC<StarterPromptsProps> = ({
         transition={{ duration: 0.3 }}
         className="text-center mb-8"
       >
-        <h2
-          className="text-xl font-medium mb-2"
-          style={{ color: 'var(--color-text)' }}
-        >
+        {/* Mono tight-tracked display heading (field-guide brand signature). */}
+        <h2 className="display text-xl mb-2 text-fg">
           How can I help you today?
         </h2>
-        <p
-          className="text-sm"
-          style={{ color: 'var(--color-textMuted)' }}
-        >
+        {/* Mono uppercase tracked eyebrow marker. */}
+        <p className="eyebrow text-fg-subtle">
           Click a suggestion or type your own message
         </p>
       </motion.div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {STARTER_PROMPTS.map((prompt, index) => (
+          // Sharp brutalist suggestion card: 2px ink border + sharp corners +
+          // hard zero-blur offset shadow (tightens with a 2px press nudge on
+          // hover). Accent on hover comes from the brand accent token — no
+          // per-prompt raw color literal in the render path.
           <motion.button
             key={prompt.id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.03 }}
             onClick={() => onSelect(prompt)}
-            className="group p-4 rounded-xl text-left transition-all duration-200 hover:scale-[1.02]"
-            style={{
-              backgroundColor: 'var(--color-surfaceSecondary)',
-              border: '1px solid var(--color-border)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = prompt.accentColor;
-              e.currentTarget.style.backgroundColor = `${prompt.accentColor}10`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--color-border)';
-              e.currentTarget.style.backgroundColor = 'var(--color-surfaceSecondary)';
-            }}
+            className="group p-4 rounded-none border-2 border-rule-strong bg-surface text-fg shadow-hard-sm text-left transition-all duration-150 hover:border-accent hover:shadow-hard-xs hover:translate-x-[2px] hover:translate-y-[2px]"
           >
-            {/* Icon */}
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center mb-3 transition-colors"
-              style={{
-                backgroundColor: `${prompt.accentColor}20`,
-                color: prompt.accentColor,
-              }}
-            >
+            {/* Icon — accent-tinted square chip (sharp corners). */}
+            <div className="w-8 h-8 rounded-none border-2 border-rule-strong bg-accent-soft text-accent flex items-center justify-center mb-3 transition-colors">
               {prompt.icon}
             </div>
 
-            {/* Title */}
-            <p
-              className="text-sm font-medium line-clamp-2"
-              style={{ color: 'var(--color-text)' }}
-            >
+            {/* Title — mono uppercase tracked label. */}
+            <p className="btn-label text-xs line-clamp-2 text-fg">
               {prompt.title}
             </p>
           </motion.button>

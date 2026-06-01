@@ -990,13 +990,8 @@ const MessageBubble = memo(function MessageBubble({
                     onChange={(e) => onEditChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     aria-label="Edit message content"
-                    className="flex-1 px-4 py-2 rounded-2xl resize-none"
-                    style={{
-                      background: 'var(--user-accent-primary, var(--cm-accent))',
-                      color: 'var(--cm-bg)',
-                      border: '2px solid color-mix(in srgb, var(--cm-bg) 30%, transparent)',
-                      minHeight: '44px'
-                    }}
+                    className="flex-1 px-4 py-2 rounded-input border-2 border-rule-strong bg-surface text-fg shadow-hard-xs resize-none focus:outline-none focus:border-accent"
+                    style={{ minHeight: '44px' }}
                     autoFocus
                   />
                   <button
@@ -1024,13 +1019,9 @@ const MessageBubble = memo(function MessageBubble({
                     </div>
                   )}
                   <div
-                    className="rounded-[14px] px-4 py-3 text-left"
+                    className="rounded-none border-2 border-rule-strong bg-surface text-fg shadow-hard-sm px-4 py-3 text-left"
                     data-testid="user-message-bubble"
                     style={{
-                      background: 'var(--bg-2, var(--cm-bg-secondary))',
-                      color: 'var(--fg-0, var(--cm-text))',
-                      border: '1px solid var(--line-2, var(--cm-border))',
-                      boxShadow: 'var(--mk-shadow-sm)',
                       // Editorial typography — mirror codemode .cm-markdown.
                       // Inter first, tighter letter-spacing, full font-feature
                       // set for single-story 'a' + ligatures + tabular nums.

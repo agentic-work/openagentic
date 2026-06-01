@@ -17,6 +17,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import { DisclaimerModal } from './DisclaimerModal';
+import { Input } from '@/shared/ui/Input';
+import { Button } from '@/shared/ui/Button';
 import {
   isGoogleLoginEnabled,
   isMicrosoftLoginEnabled,
@@ -152,17 +154,15 @@ const Login: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Login Card */}
+        {/* Login Card — neo-brutalist field-guide panel: 2px ink border,
+            hard zero-blur offset shadow, sharp corners (radius 0). */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="relative">
-            {/* Card edge — warm hairline */}
-            <div className="absolute -inset-[1px] rounded-2xl" style={{ background: 'color-mix(in srgb, var(--brand-signal-soft) 18%, transparent)' }} />
-
-            <div className="relative p-8 border-ink shadow-hard" style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-card)' }}>
+            <div className="relative p-8 rounded-none border-2 border-rule-strong bg-surface shadow-hard">
               <AnimatePresence mode="wait">
                 {!showLocalForm ? (
                   <motion.div
@@ -173,7 +173,8 @@ const Login: React.FC = () => {
                     transition={{ duration: 0.2 }}
                   >
                     <div className="text-center mb-8">
-                      <h2 className="text-2xl mb-2" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: 'var(--tracking-h2)', color: 'var(--color-fg)' }}>
+                      <div className="eyebrow text-accent mb-3">⌥ § Sign in</div>
+                      <h2 className="display text-2xl mb-2 text-fg">
                         Welcome back
                       </h2>
                       <p className="text-sm text-fg-muted">
@@ -185,8 +186,7 @@ const Login: React.FC = () => {
                       <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="p-4 rounded-xl mb-6 flex items-start gap-3"
-                        style={{ background: 'color-mix(in srgb, var(--color-err) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-err) 20%, transparent)' }}
+                        className="p-4 rounded-none mb-6 flex items-start gap-3 border-2 border-err/40 bg-err/10"
                       >
                         <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-err)' }} />
                         <span className="text-sm" style={{ color: 'var(--color-err)' }}>{error}</span>
@@ -197,9 +197,8 @@ const Login: React.FC = () => {
                     {authConfig.microsoftEnabled && (
                       <motion.button
                         onClick={handleMicrosoftLogin}
-                        whileHover={{ scale: 1.01, backgroundColor: 'color-mix(in srgb, var(--color-fg) 8%, transparent)' }}
                         whileTap={{ scale: 0.99 }}
-                        className="w-full py-3.5 px-4 rounded-xl font-medium text-fg flex items-center justify-center gap-3 mb-3 transition-all duration-200 bg-fg/[0.06] border border-fg/15 hover:border-fg/25"
+                        className="btn-label w-full py-3.5 px-4 rounded-none text-fg flex items-center justify-center gap-3 mb-3 transition-[background,border,box-shadow,transform] duration-100 bg-surface-2 border-2 border-rule-strong shadow-hard-xs hover:bg-surface active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
                       >
                         <svg className="w-5 h-5" viewBox="0 0 21 21" fill="none">
                           <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
@@ -215,9 +214,8 @@ const Login: React.FC = () => {
                     {authConfig.googleEnabled && (
                       <motion.button
                         onClick={handleGoogleLogin}
-                        whileHover={{ scale: 1.01, backgroundColor: 'color-mix(in srgb, var(--color-fg) 8%, transparent)' }}
                         whileTap={{ scale: 0.99 }}
-                        className={`w-full py-3.5 px-4 rounded-xl font-medium text-fg flex items-center justify-center gap-3 transition-all duration-200 bg-fg/[0.06] border border-fg/15 hover:border-fg/25 ${enabledProviders === 1 ? '' : 'mb-4'}`}
+                        className={`btn-label w-full py-3.5 px-4 rounded-none text-fg flex items-center justify-center gap-3 transition-[background,border,box-shadow,transform] duration-100 bg-surface-2 border-2 border-rule-strong shadow-hard-xs hover:bg-surface active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${enabledProviders === 1 ? '' : 'mb-4'}`}
                       >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -232,9 +230,9 @@ const Login: React.FC = () => {
                     {/* Divider - only if local login is also enabled */}
                     {showDivider && (
                       <div className="flex items-center gap-4 my-6">
-                        <div className="flex-1 h-px bg-fg/10" />
-                        <span className="text-xs text-fg/55 uppercase tracking-wider">or</span>
-                        <div className="flex-1 h-px bg-fg/10" />
+                        <div className="flex-1 h-px bg-rule" />
+                        <span className="eyebrow text-fg-subtle">or</span>
+                        <div className="flex-1 h-px bg-rule" />
                       </div>
                     )}
 
@@ -242,9 +240,8 @@ const Login: React.FC = () => {
                     {authConfig.localEnabled && (
                       <motion.button
                         onClick={() => setShowLocalForm(true)}
-                        whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
-                        className="w-full py-3 px-4 rounded-xl font-medium text-fg/80 flex items-center justify-center gap-3 transition-all duration-200 border border-dashed border-fg/15 hover:border-fg/25 hover:text-fg hover:bg-fg/[0.04]"
+                        className="btn-label w-full py-3 px-4 rounded-none text-fg-muted flex items-center justify-center gap-3 transition-[color,background,border] duration-100 border-2 border-dashed border-rule hover:border-rule-strong hover:text-fg hover:bg-surface-2"
                       >
                         <Mail className="w-4 h-4" />
                         <span>Continue with Email</span>
@@ -266,14 +263,15 @@ const Login: React.FC = () => {
                         setEmail('');
                         setPassword('');
                       }}
-                      className="flex items-center gap-2 text-fg/70 hover:text-fg transition-colors mb-6 text-sm"
+                      className="btn-label flex items-center gap-2 text-fg-muted hover:text-fg transition-colors mb-6 text-xs"
                     >
                       <ArrowLeft className="w-4 h-4" />
                       Back to options
                     </button>
 
                     <div className="mb-6">
-                      <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-fg)' }}>
+                      <div className="eyebrow text-accent mb-3">⌥ § Email</div>
+                      <h2 className="display text-xl mb-1 text-fg">
                         Sign in with email
                       </h2>
                       <p className="text-sm text-fg-subtle">
@@ -285,8 +283,7 @@ const Login: React.FC = () => {
                       <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="p-4 rounded-xl mb-6 flex items-start gap-3"
-                        style={{ background: 'color-mix(in srgb, var(--color-err) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-err) 20%, transparent)' }}
+                        className="p-4 rounded-none mb-6 flex items-start gap-3 border-2 border-err/40 bg-err/10"
                       >
                         <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-err)' }} />
                         <span className="text-sm" style={{ color: 'var(--color-err)' }}>{error}</span>
@@ -294,57 +291,38 @@ const Login: React.FC = () => {
                     )}
 
                     <form onSubmit={handleLocalLogin} className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-fg/80 mb-2">
-                          Email
-                        </label>
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl outline-none transition-all focus:ring-2"
-                          style={{ background: 'color-mix(in srgb, var(--color-fg) 5%, transparent)', border: '1px solid var(--color-rule)', color: 'var(--color-fg)', fontFamily: 'var(--font-display)', ['--tw-ring-color' as any]: 'color-mix(in srgb, var(--color-accent) 30%, transparent)' }}
-                          placeholder="you@example.com"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-fg/80 mb-2">
-                          Password
-                        </label>
-                        <input
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl outline-none transition-all focus:ring-2"
-                          style={{ background: 'color-mix(in srgb, var(--color-fg) 5%, transparent)', border: '1px solid var(--color-rule)', color: 'var(--color-fg)', fontFamily: 'var(--font-display)', ['--tw-ring-color' as any]: 'color-mix(in srgb, var(--color-accent) 30%, transparent)' }}
-                          placeholder="Enter your password"
-                          required
-                        />
-                      </div>
-                      <motion.button
+                      <Input
+                        label="Email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        required
+                      />
+                      <Input
+                        label="Password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter your password"
+                        required
+                      />
+                      <Button
                         type="submit"
+                        variant="primary"
+                        size="lg"
                         disabled={isLoading}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        className="w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 mt-6 transition-all disabled:opacity-60 disabled:cursor-not-allowed relative overflow-hidden group"
-                        style={{
-                          background: 'linear-gradient(135deg, var(--color-accent) 0%, var(--brand-signal-ink) 100%)',
-                          color: 'var(--color-on-accent)',
-                          fontFamily: 'var(--font-display)',
-                          letterSpacing: 'var(--tracking-button)',
-                        }}
+                        className="w-full gap-2 mt-2"
                       >
-                        <div className="absolute inset-0 bg-fg/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                         {isLoading ? (
-                          <div className="w-5 h-5 border-2 border-fg/30 border-t-fg rounded-full animate-spin" />
+                          <div className="w-5 h-5 border-2 border-on-accent/30 border-t-on-accent rounded-full animate-spin" />
                         ) : (
                           <>
                             <Sparkles className="w-4 h-4" />
                             <span>Sign In</span>
                           </>
                         )}
-                      </motion.button>
+                      </Button>
                     </form>
                   </motion.div>
                 )}
@@ -359,7 +337,7 @@ const Login: React.FC = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
           onClick={() => {}}
-          className="w-full mt-6 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-fg/65 hover:text-fg/85 hover:bg-fg/[0.07] transition-all text-sm"
+          className="btn-label w-full mt-6 py-3 px-4 rounded-none flex items-center justify-center gap-2 text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors text-xs"
         >
           <HelpCircle className="w-4 h-4" />
           <span>Need help signing in?</span>

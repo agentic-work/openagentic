@@ -285,106 +285,16 @@
   --radius-full: 9999px;        /* Pills, avatars */
 
   /* ==========================================================================
-     CODE MODE DEFAULTS (dark mode - used outside .code-mode context)
+     CODE-MODE DEFAULTS + THINKING-BLOCK + LIGHT-THEME color palette:
+     ALL moved to src/styles/theme.css (the SOLE SOT). theme.css owns the
+     cm defaults (aliased to the canonical terminal palette), the code /
+     callout / thinking tints (derived from canonical status + the thinking
+     identity hue), and the full color light/dark palette (flipped per
+     data-theme). The Apple-grey / GitHub-dark / matrix-green raw literals
+     that used to live here — and a stale second light color palette that
+     OVERRODE theme.css because index.css loads after it — are removed so
+     there is exactly one definition site.
      ========================================================================== */
-  --cm-bg: #0d1117;
-  --cm-bg-secondary: #161b22;
-  --cm-bg-tertiary: #21262d;
-  --cm-border: #30363d;
-  --cm-text: #33FF33;             /* Bright terminal green */
-  --cm-text-secondary: #1aad1a;  /* Dimmer green */
-  --cm-text-muted: #0d7a0d;      /* Muted green */
-  --cm-accent: var(--user-accent-primary, #58a6ff);
-  --cm-success: #00FF41;  /* Vibrant matrix green - true accent color */
-  --cm-warning: #d29922;
-  --cm-error: #f85149;
-  --cm-info: #7DD3FC;  /* Lighter sky blue - distinguishable from copy highlight */
-
-  /* ==========================================================================
-     THINKING BLOCKS - Dark mode defaults
-     ========================================================================== */
-  --thinking-bg: rgba(139, 92, 246, 0.05);
-  --thinking-border: rgba(139, 92, 246, 0.2);
-  --thinking-border-light: rgba(139, 92, 246, 0.1);
-  --thinking-accent: rgba(139, 92, 246, 0.3);
-}
-
-/* ==========================================================================
-   LIGHT THEME - Apple-style light mode
-   ========================================================================== */
-[data-theme="light"] {
-  /* Surfaces - Gemini-inspired soft light (not harsh white) */
-  /* openagentics.io "paper" bone-cream + ink (light). */
-  --color-background: #F4EFE6;        /* bone cream paper */
-  --color-surface: #EFE9DD;           /* paper surface */
-  --color-surfaceSecondary: #FBF7F0;  /* lifted paper */
-  --color-surfaceTertiary: #EBE5D8;
-  --color-surfaceHover: #E2DACB;
-
-  /* Aliases for component compatibility */
-  --color-bg-primary: #F4EFE6;
-  --color-bg-secondary: #FBF7F0;
-  --color-bg-tertiary: #EBE5D8;
-
-  /* Text — near-black ink on paper */
-  --color-text: #0E0D0B;              /* ink */
-  --color-textSecondary: #2A2722;     /* secondary ink */
-  --color-textMuted: #7A6D5A;         /* clay muted */
-
-  --text-primary: #1F1F1F;
-  --text-secondary: #5F6368;
-  --text-tertiary: #80868B;
-  --text-muted: #9AA0A6;
-  --text-subtle: #BDC1C6;
-
-  /* Borders - subtle and warm */
-  --color-border: rgba(0, 0, 0, 0.10);
-  --color-borderHover: rgba(0, 0, 0, 0.18);
-
-  /* Shadows - softer */
-  --color-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --color-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
-
-  /* Code - using Apple light palette */
-  --code-bg: rgba(142, 142, 147, 0.08);
-  --code-border: rgba(142, 142, 147, 0.15);
-  --code-text: #000000;
-
-  /* Callouts - Apple light colors */
-  --callout-info-bg: rgba(10, 132, 255, 0.08);
-  --callout-info-border: rgba(10, 132, 255, 0.3);
-  --callout-success-bg: rgba(48, 209, 88, 0.08);
-  --callout-success-border: rgba(48, 209, 88, 0.3);
-  --callout-warning-bg: rgba(255, 159, 10, 0.08);
-  --callout-warning-border: rgba(255, 159, 10, 0.3);
-  --callout-error-bg: rgba(255, 69, 58, 0.08);
-  --callout-error-border: rgba(255, 69, 58, 0.3);
-
-  /* Light theme accent colors (Apple light colors) */
-  --accent-info: #007AFF;
-  --accent-success: #16A34A;
-  --accent-warning: #EA580C;
-  --accent-error: #FF3B30;
-
-  /* Code Mode fallbacks for light theme (used outside .code-mode context) */
-  --cm-bg: #ffffff;
-  --cm-bg-secondary: #f6f8fa;
-  --cm-bg-tertiary: #f0f3f6;
-  --cm-border: #d0d7de;
-  --cm-text: #1f2328;
-  --cm-text-secondary: #57606a;
-  --cm-text-muted: #8c959f;
-  --cm-accent: var(--color-primary, #0969da);
-  --cm-success: #00C853;  /* Vibrant green for light mode */
-  --cm-warning: #9a6700;
-  --cm-error: #d1242f;
-  --cm-info: #38BDF8;  /* Lighter blue for light mode */
-
-  /* Thinking blocks - light mode (visible on light backgrounds) */
-  --thinking-bg: rgba(139, 92, 246, 0.08);
-  --thinking-border: rgba(139, 92, 246, 0.25);
-  --thinking-border-light: rgba(139, 92, 246, 0.15);
-  --thinking-accent: rgba(139, 92, 246, 0.4);
 }
 
 /* Legacy `body.light-theme` / `body.dark-theme` overrides removed.
@@ -393,11 +303,18 @@
    tokenized theming and forced pure-black in light mode because
    ThemeContext still writes the class on <body> but not the token. */
 
-/* Base Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* Base Styles.
+ * Tailwind v4 preflight already resets margin + box-sizing in its (layered)
+ * base layer, which Tailwind utilities correctly override. This block used to
+ * be an UNLAYERED universal reset zeroing margin AND padding — and unlayered
+ * rules ALWAYS beat @layer utilities, so it silently zeroed every padding and
+ * margin utility app-wide (gap survived because nothing reset it). That cramped
+ * the whole UI under v4. Keep only box-sizing here, in @layer base so it can
+ * never out-rank utilities. */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
 }
 
 body {
@@ -410,48 +327,16 @@ body {
   color: var(--fg-0, #f8fafc);
 }
 
-/* Color definitions for glow effects */
-:root {
-  --purple-glow: #A855F7;
-  --blue-glow: #3B82F6;
-  --pink-glow: #EC4899;
-}
+/* Glow-effect tokens (--purple-glow / --blue-glow / --pink-glow) are now
+   defined ONCE in src/styles/theme.css (the SOLE SOT) and derive from the
+   canonical accent / status tokens — removed here to keep a single
+   definition site. */
 
-/* ─────────────────────────────────────────────────────────────────────────
- * Mock-widget palette — aliased onto the chatmode --cm-* theme tokens so
- * inline artifacts (kpi_grid, sankey_3col, mermaid_flow, bar_chart, etc.)
- * inherit the USER's selected theme + accent at runtime. Light/dark
- * cascade through automatically because --cm-* already has theme-aware
- * overrides. Status tints (success/danger/warning/info) stay semantic.
- *
- * Was: hardcoded mock-1 sediment palette that ignored the user accent.
- * Now: --mw-* are thin aliases over --cm-* (which flow through
- *      --user-accent-primary). One source of truth, one theme picker.
- * ───────────────────────────────────────────────────────────────────────── */
-:root {
-  --mw-bg-0: var(--cm-bg-0, #09090b);
-  --mw-bg-1: var(--cm-bg-1, #0f1012);
-  --mw-bg-2: var(--cm-bg-2, #16181c);
-  --mw-bg-3: var(--cm-bg-3, #1c1f24);
-  --mw-bg-4: var(--cm-bg-4, #242831);
-
-  --mw-fg-0: var(--cm-fg-0, #f8fafc);
-  --mw-fg-1: var(--cm-fg-1, #d4d4d8);
-  --mw-fg-2: var(--cm-fg-2, #a1a1aa);
-  --mw-fg-3: var(--cm-fg-3, #71717a);
-
-  --mw-accent: var(--cm-accent, #8b5cf6);
-  --mw-accent-soft: var(--cm-accent-soft, rgba(139, 92, 246, 0.14));
-  --mw-accent-line: var(--cm-accent-line, rgba(139, 92, 246, 0.32));
-
-  --mw-line-1: var(--cm-line-1, rgba(255, 255, 255, 0.06));
-
-  /* Status tints — semantic, do NOT track user accent. */
-  --mw-success: var(--cm-ok, #22c55e);
-  --mw-danger: var(--cm-err, #ef4444);
-  --mw-warning: var(--cm-warn, #f59e0b);
-  --mw-info: var(--cm-info, #38bdf8);
-}
+/* Mock-widget (--mw-*) palette moved to src/styles/theme.css (the SOLE SOT):
+   it aliases the chatmode --cm-* tokens so inline artifacts (kpi_grid,
+   sankey_3col, mermaid_flow, bar_chart, …) inherit the user's theme+accent.
+   Removed here (with its stale cold-grey + violet literal fallbacks) to keep
+   a single definition site. */
 
 /* Glassmorphic Utilities */
 @layer utilities {
@@ -776,11 +661,17 @@ body {
   color: white;
 }
 
-/* Smooth Transitions */
-* {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+/* Smooth Transitions — color/theme cross-fade only. Layered under @layer base
+ * so it can't out-rank Tailwind's transition/duration utilities (an unlayered
+ * `* { transition-duration:150ms }` overrode every transition-* utility, making
+ * intended motion feel wrong). Excludes transform so the brutalist button-press
+ * (active:translate) stays snappy. */
+@layer base {
+  *:not([class*="animate-"]):not([class*="transition-"]) {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
 }
 
 /* Focus Styles */
@@ -2857,17 +2748,13 @@ pre.shiki-fallback {
   --ap-warning: var(--color-warning);
   --ap-error: var(--color-error);
 
-  /* Override the v0.6.7 mockup's hardcoded violet --accent (#8b5cf6) so
-     the StateMachineToggle, AdminAI bar, and other primitives-v2
-     components that read var(--accent) follow the user's chosen accent
-     color instead of staying purple regardless of theme/accent. */
-  --accent: var(--user-accent-primary, var(--color-primary));
-  --accent-soft: color-mix(in srgb, var(--user-accent-primary, var(--color-primary)) 14%, transparent);
-  --accent-line: color-mix(in srgb, var(--user-accent-primary, var(--color-primary)) 32%, transparent);
+  /* --accent / --accent-soft / --accent-line are defined ONCE in theme.css
+     (they already derive from the user's chosen accent and flip per
+     [data-theme]); the old per-scope redefinition here is removed. */
   --ap-info: var(--accent-info);
-  --ap-info-soft: color-mix(in srgb, var(--accent-info, #5ac8fa) 14%, transparent);
+  --ap-info-soft: color-mix(in srgb, var(--accent-info) 14%, transparent);
   /* Foreground used on top of an accent-coloured surface (primary buttons). */
-  --ap-fg-on-accent: white;
+  --ap-fg-on-accent: var(--color-on-accent);
   --ap-purple: var(--color-primary);
   --ap-cyan: var(--color-secondary);
 

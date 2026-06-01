@@ -10,13 +10,9 @@
    tokens this file uniquely owns are derived from the SOT.
    ============================================================ */
 :root {
-  /* Sub-agent hash palette (4 anchors; colorHashForId maps agent ids
-     via djb2 → one of these four). theme-allow: a CATEGORICAL identity
-     palette (not theme surfaces), warm-tuned to the brand ramp. */
-  --agent-c: #F59E0B; /* amber  */
-  --agent-g: #22C55E; /* green  */
-  --agent-s: #FF453A; /* red    */
-  --agent-k: #FF5722; /* signal */
+  /* Sub-agent hash palette (--agent-c/g/s/k) is defined ONCE in theme.css
+     (the --cat-agent-* identity scale + its --agent-* aliases). Removed here
+     to keep a single definition site. */
 
   /* Mockup shape scale → brutalist sharp corners from the SOT. */
   --mk-radius-sm: var(--radius-sm, 4px);

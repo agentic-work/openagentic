@@ -69,21 +69,6 @@ const getModelDisplayName = (model: string): string => {
   return model.split('/').pop() || model;
 };
 
-// Get provider color based on model
-const getProviderColor = (model: string): { bg: string; text: string; border: string } => {
-  if (model.includes('claude')) {
-    return { bg: 'rgba(210, 140, 90, 0.1)', text: 'rgb(210, 140, 90)', border: 'rgba(210, 140, 90, 0.2)' };
-  }
-  if (model.includes('gpt') || model.includes('o1')) {
-    return { bg: 'rgba(116, 170, 156, 0.1)', text: 'rgb(116, 170, 156)', border: 'rgba(116, 170, 156, 0.2)' };
-  }
-  if (model.includes('gemini')) {
-    return { bg: 'rgba(66, 133, 244, 0.1)', text: 'rgb(66, 133, 244)', border: 'rgba(66, 133, 244, 0.2)' };
-  }
-  // Default for Ollama/local models
-  return { bg: 'rgba(147, 112, 219, 0.1)', text: 'rgb(147, 112, 219)', border: 'rgba(147, 112, 219, 0.2)' };
-};
-
 const InlineModelBadge: React.FC<InlineModelBadgeProps> = ({ model, theme }) => {
   if (!model) return null;
 
@@ -96,17 +81,18 @@ const InlineModelBadge: React.FC<InlineModelBadgeProps> = ({ model, theme }) => 
   const isRetired = liveModels.length > 0 && !liveModels.some(m => m.id === model);
 
   const displayName = getModelDisplayName(model);
-  const colors = getProviderColor(model);
 
   return (
+    // Sharp brutalist model pill: 2px ink border + sharp corners + the mono
+    // uppercase tracked .btn-label. Active = accent text on surface; retired =
+    // muted text. Token-only — no raw color/font literals (the per-provider
+    // rgba palette was dropped; provider identity reads via .btn-label tone).
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+      className="btn-label inline-flex items-center gap-1 px-2 py-0.5 rounded-none border-2 bg-surface"
       style={{
-        background: isRetired ? 'rgba(120,120,120,0.08)' : colors.bg,
-        color: isRetired ? 'rgb(140,140,140)' : colors.text,
-        border: `1px solid ${isRetired ? 'rgba(120,120,120,0.25)' : colors.border}`,
-        fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-        fontSize: '11px',
+        color: isRetired ? 'var(--color-fg-subtle)' : 'var(--color-accent)',
+        borderColor: isRetired ? 'var(--color-rule)' : 'var(--color-rule-strong)',
+        fontSize: 'var(--text-eyebrow)',
         opacity: isRetired ? 0.85 : 1,
       }}
       title={

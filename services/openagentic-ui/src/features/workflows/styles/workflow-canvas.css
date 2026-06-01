@@ -437,14 +437,16 @@
 
 .wf-handle.react-flow__handle-connecting {
   border-color: var(--color-warning) !important;
-  box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2), 0 0 10px rgba(255, 152, 0, 0.6) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-warning) 20%, transparent),
+              0 0 10px color-mix(in srgb, var(--color-warning) 60%, transparent) !important;
   animation: wf-handle-pulse 0.8s ease-in-out infinite !important;
-  --handle-glow-color: rgba(255, 152, 0, 0.3) !important;
+  --handle-glow-color: color-mix(in srgb, var(--color-warning) 30%, transparent) !important;
 }
 
 .wf-handle.react-flow__handle-valid {
   border-color: var(--color-success) !important;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2), 0 0 10px rgba(34, 197, 94, 0.6) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 20%, transparent),
+              0 0 10px color-mix(in srgb, var(--color-success) 60%, transparent) !important;
   background: rgba(34, 197, 94, 0.1) !important;
 }
 
