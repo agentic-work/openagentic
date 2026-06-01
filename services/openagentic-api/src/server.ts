@@ -953,6 +953,23 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register HITL approval routes');
   }
 
+  // Register mutating-tool approval gate (audit-log) approve/deny endpoints.
+  // POST /api/approvals/:auditId/{approve,deny} — resolves the in-process
+  // ApprovalRegistry Deferred + does the guarded pending→decided UPDATE.
+  // NOTE: server.ts (this file) is the live route-registration path in the OSS
+  // edition; the chat.plugin.ts wrapper that 7e6637539 edited is NOT registered
+  // here, so this route is wired directly to avoid a silent 404.
+  try {
+    const { approvalGateRoutes } = await import('./routes/chat/approval-gate.routes.js');
+    await server.register(async (instance) => {
+      instance.addHook('onRequest', authMiddleware);
+      await instance.register(approvalGateRoutes);
+    }, { prefix: '/api' });
+    loggers.routes.info('Approval-gate routes registered at /api/approvals/:auditId/{approve,deny} (authMiddleware)');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register approval-gate routes');
+  }
+
   // Register Settings routes
   await server.register(settingsRoutes, { prefix: '/api/settings' });
 
@@ -1110,6 +1127,19 @@ async function registerAllRoutes() {
     loggers.routes.info('Admin API Token Management routes registered at /api/admin/tokens/* with admin middleware');
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register admin API token routes');
+  }
+
+  // Register Admin Tool-Call Audit Log route — GET /api/admin/audit-log.
+  // Paged, filterable read of the append-only tool_call_audit_log. The route
+  // module applies adminMiddleware per-route (onRequest), so no wrapper hook
+  // here. NOTE: server.ts is the live registration path; the admin-audit.plugin
+  // wrapper that 7e6637539 edited is NOT registered, so this is wired directly.
+  try {
+    const { default: adminAuditLogRoutes } = await import('./routes/admin-audit-log.js');
+    await server.register(adminAuditLogRoutes, { prefix: '/api/admin' });
+    loggers.routes.info('Admin audit-log route registered at /api/admin/audit-log');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin audit-log route');
   }
 
   // Register Admin Prompting routes (techniques like Few-Shot, ReAct, etc.)
