@@ -64,6 +64,9 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
       ref={menuRef}
       data-testid="node-context-menu"
       role="menu"
+      // Terminal Glass: frosted context menu floating over the canvas via the
+      // .glass class. Was an opaque #161b22 menu. Position + text set inline.
+      className="glass"
       style={{
         position: 'fixed',
         left: x,
@@ -71,11 +74,8 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
         zIndex: 1000,
         minWidth: 180,
         padding: 4,
-        background: 'var(--color-bg-secondary, #161b22)',
-        border: '1px solid var(--color-border, #2a2a2a)',
-        borderRadius: 8,
-        boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
-        color: 'var(--color-text, #e6edf3)',
+        borderRadius: 'var(--radius-md, 12px)',
+        color: 'var(--color-text)',
         fontSize: 13,
       }}
     >
@@ -110,7 +110,7 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
               style={{
                 marginLeft: 16,
                 fontSize: 11,
-                color: 'var(--color-text-tertiary, #8b949e)',
+                color: 'var(--color-text-tertiary)',
                 fontFamily: 'var(--font-mono)',
               }}
             >

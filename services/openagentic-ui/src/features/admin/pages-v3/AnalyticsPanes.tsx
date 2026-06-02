@@ -99,25 +99,56 @@ interface RangeChartProps {
   scale?: number
   height?: number
   showLegend?: boolean
+  /**
+   * Metric noun for the calm present-but-zero note (e.g. "errors"). When the
+   * series IS present but every sample is zero, this is a legitimately-quiet
+   * healthy window — we render the chart as a flat ZERO LINE with a
+   * "no <metric> in this window" note instead of the misleading
+   * "awaiting data" placeholder (which should only mean the metric is ABSENT).
+   * Set on charts that are healthy when zero (errors, failures).
+   */
+  zeroMetric?: string
 }
+// Cards on the analytics page fill their grid row; a taller chart fills the
+// card so it is never a small letterboxed strip in a big frame.
+const RANGE_CHART_HEIGHT = 340
+
 const RangeChart: React.FC<RangeChartProps> = ({
   title, hint, query, window, variant = 'area', nameOf = labelName('model', 'provider'),
-  colors, yFormat, scale, height = 200, showLegend = true,
+  colors, yFormat, scale, height = RANGE_CHART_HEIGHT, showLegend = true, zeroMetric,
 }) => {
   const q = usePromRange(query, { minutes: WINDOW_MIN[window] })
   const { series, xLabels, hasData } = toAlignedSeries(q.data, nameOf, { scale, colors })
 
+  // Distinguish the two empty cases:
+  //   • metricPresent === false → the metric has NO samples at all (absent)
+  //     → "awaiting data" (it populates as that activity first happens).
+  //   • metricPresent === true && !hasData → present but every value is zero
+  //     → for healthy-when-zero metrics (zeroMetric set) draw a flat ZERO
+  //       LINE with a calm note; otherwise fall back to "awaiting data".
+  const metricPresent = series.length > 0
+  const presentButZero = metricPresent && !hasData
+  const renderZeroLine = presentButZero && !!zeroMetric
+
+  const chartNote =
+    !hasData && zeroMetric ? `no ${zeroMetric} in this window` : undefined
+
   return (
-    <Panel>
-      <PanelHead title={title} right={hint ? <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{hint}</span> : undefined} />
+    <Panel glass>
+      <PanelHead
+        title={title}
+        right={
+          (hint || chartNote) ? (
+            <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{chartNote ?? hint}</span>
+          ) : undefined
+        }
+      />
       {q.isLoading ? (
         <EmptyInline pad>loading…</EmptyInline>
       ) : q.isError ? (
         <EmptyInline pad>prom query failed</EmptyInline>
-      ) : !hasData ? (
-        <EmptyInline pad>awaiting data — populates as activity flows</EmptyInline>
-      ) : (
-        <div style={{ padding: '8px 12px' }}>
+      ) : hasData || renderZeroLine ? (
+        <div className="aw-chart-body" style={{ padding: '8px 12px' }}>
           <MetricChart
             variant={variant}
             series={series}
@@ -128,6 +159,8 @@ const RangeChart: React.FC<RangeChartProps> = ({
             expandTitle={title}
           />
         </div>
+      ) : (
+        <EmptyInline pad>awaiting data — populates as activity flows</EmptyInline>
       )}
     </Panel>
   )
@@ -144,23 +177,37 @@ const RankChart: React.FC<{ title: string; query: string; nameKey: string; color
     .sort((a, b) => b.value - a.value)
     .slice(0, 10)
   return (
-    <Panel>
+    <Panel glass>
       <PanelHead title={title} />
       {q.isLoading ? (
         <EmptyInline pad>loading…</EmptyInline>
       ) : data.length === 0 ? (
         <EmptyInline pad>awaiting data — populates as activity flows</EmptyInline>
       ) : (
-        <div style={{ padding: '8px 12px' }}>
-          <MetricChart variant="bar-h" data={data} height={Math.max(120, data.length * 26)} />
+        <div className="aw-chart-body" style={{ padding: '8px 12px' }}>
+          <MetricChart variant="bar-h" data={data} height={Math.max(240, data.length * 30)} />
         </div>
       )}
     </Panel>
   )
 }
 
-const Stack: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16 }}>{children}</div>
+const Stack: React.FC<{ children: React.ReactNode; minRow?: number }> = ({ children, minRow = 400 }) => (
+  <div
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+      // Rows are tall enough that the taller chart fills its glass card and the
+      // card never collapses to a small letterboxed strip. The panel stretches
+      // to the row height (aw-panel--glass { height: 100% }) so the chart body
+      // fills the remaining space under the header.
+      gridAutoRows: `minmax(${minRow}px, auto)`,
+      alignItems: 'stretch',
+      gap: 16,
+    }}
+  >
+    {children}
+  </div>
 )
 
 // Raw queries for metrics not in promQueries.ts (http_* / openagentic_* / v3_*).
@@ -199,7 +246,8 @@ export const LLMRouterPane: React.FC<{ window: TimeWindow }> = ({ window }) => (
       <RangeChart title="finish reasons / sec" window={window} variant="stacked-area"
         query={Q.finishReasonRate(window)} nameOf={labelName('finish_reason')} />
       <RangeChart title="errors / sec by class" window={window} variant="area"
-        query={Q.errorRateByClass(window)} nameOf={labelName('error_class')} colors={['err', 'warn']} />
+        query={Q.errorRateByClass(window)} nameOf={labelName('error_class')} colors={['err', 'warn']}
+        zeroMetric="errors" />
       <RangeChart title="router decision latency (ms)" window={window} variant="line"
         query={`histogram_quantile(0.95, sum by (le) (rate(openagentic_router_route_request_duration_ms_bucket[${rw(window)}])))`}
         nameOf={() => 'p95'} colors={['accent']} />
@@ -230,7 +278,7 @@ export const MCPToolsPane: React.FC<{ window: TimeWindow }> = ({ window }) => (
       <RankChart title="top tools (by call rate)" query={Q.topToolsByCount(window)} nameKey="tool_name" />
       <RangeChart title="tool calls / sec by outcome" window={window} variant="stacked-area"
         query={`sum by (outcome) (rate(gen_ai_tool_calls_total[${rw(window)}]))`} nameOf={labelName('outcome')}
-        colors={['ok', 'err']} />
+        colors={['ok', 'err']} zeroMetric="tool calls" />
     </Stack>
   </>
 )
@@ -257,13 +305,14 @@ export const InfraPerfPane: React.FC<{ window: TimeWindow }> = ({ window }) => (
 export const OverviewAnalytics: React.FC<{ window: TimeWindow }> = ({ window }) => (
   <>
     <SectionBar title="analytics" />
-    <Stack>
+    <Stack minRow={300}>
       <RangeChart title="request rate" window={window} variant="area"
-        query={Q.requestRate(window)} nameOf={() => 'req/s'} colors={['accent']} height={160} />
+        query={Q.requestRate(window)} nameOf={() => 'req/s'} colors={['accent']} height={240} />
       <RangeChart title="operation latency p95 (ms)" window={window} variant="line" yFormat="ms" scale={1000}
-        query={Q.operationDurationQuantile(window, 0.95)} nameOf={labelName('model')} height={160} />
+        query={Q.operationDurationQuantile(window, 0.95)} nameOf={labelName('model')} height={240} />
       <RangeChart title="error rate (%)" window={window} variant="area" yFormat="pct"
-        query={`(${Q.errorPercent(window)}) / 100`} nameOf={() => 'error %'} colors={['err']} height={160} />
+        query={`(${Q.errorPercent(window)}) / 100`} nameOf={() => 'error %'} colors={['err']} height={240}
+        zeroMetric="errors" />
     </Stack>
   </>
 )

@@ -58,6 +58,79 @@ function windowToHours(raw: unknown, def = 24): number {
   return unit === 'd' ? n * 24 : n;
 }
 
+// ---------------------------------------------------------------------------
+// Permission-rule helpers (shared with the PUT /permissions alias below).
+// Mirrors the validation + audit shape in routes/admin/permissions.ts so the
+// /api/admin/permissions alias behaves identically to the canonical
+// /api/admin/tool-permissions handler it delegates to.
+// ---------------------------------------------------------------------------
+const PERMISSION_VALID_BEHAVIORS = new Set(['allow', 'deny', 'ask']);
+const PERMISSION_VALID_SOURCES = new Set([
+  'userSettings',
+  'projectSettings',
+  'localSettings',
+  'flagSettings',
+  'policySettings',
+  'cliArg',
+  'command',
+  'session',
+]);
+
+function validatePermissionRule(
+  input: unknown,
+): { ok: true; rule: any } | { ok: false; error: string } {
+  if (!input || typeof input !== 'object') {
+    return { ok: false, error: 'rule must be an object' };
+  }
+  const r = input as Record<string, unknown>;
+  const source = typeof r.source === 'string' ? r.source : 'userSettings';
+  if (!PERMISSION_VALID_SOURCES.has(source)) {
+    return { ok: false, error: `source must be one of: ${[...PERMISSION_VALID_SOURCES].join(', ')}` };
+  }
+  const behavior = r.ruleBehavior ?? r.behavior;
+  if (typeof behavior !== 'string' || !PERMISSION_VALID_BEHAVIORS.has(behavior)) {
+    return { ok: false, error: 'ruleBehavior must be one of: allow, deny, ask' };
+  }
+  const ruleValue = r.ruleValue as Record<string, unknown> | undefined;
+  const toolName = ruleValue?.toolName ?? r.toolName;
+  if (typeof toolName !== 'string' || toolName.length === 0) {
+    return { ok: false, error: 'ruleValue.toolName must be a non-empty string' };
+  }
+  return {
+    ok: true,
+    rule: {
+      source,
+      ruleBehavior: behavior,
+      ruleValue: {
+        toolName,
+        ruleContent: typeof ruleValue?.ruleContent === 'string' ? ruleValue.ruleContent : undefined,
+      },
+    },
+  };
+}
+
+async function writePermissionAudit(
+  req: FastifyRequest,
+  opts: { action: string; resource_type: string; resource_id: string; details?: Record<string, any> },
+): Promise<void> {
+  const user = (req as any).user ?? {};
+  try {
+    await prisma.adminAuditLog.create({
+      data: {
+        admin_user_id: typeof user.id === 'string' ? user.id : null,
+        admin_email: typeof user.email === 'string' ? user.email : null,
+        ip_address: req.ip ?? null,
+        action: opts.action,
+        resource_type: opts.resource_type,
+        resource_id: opts.resource_id,
+        details: opts.details ?? {},
+      },
+    });
+  } catch (err: any) {
+    logger.warn({ err: err?.message, action: opts.action }, 'Failed to write admin_audit_log row');
+  }
+}
+
 function windowCutoff(raw: unknown, def = 24): Date {
   return new Date(Date.now() - windowToHours(raw, def) * 60 * 60 * 1000);
 }
@@ -284,6 +357,151 @@ const adminV3ExtrasRoutes: FastifyPluginAsync = async (fastify) => {
     } catch (error: any) {
       logger.error({ err: error, mcpServer }, 'Failed to fetch permissions for MCP server');
       return reply.code(500).send({ success: false, error: 'Failed to fetch permissions' });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 3a. GET /permissions/available-mcps
+  //     Grantable MCP servers for the per-user permission picker + the MCP
+  //     Fleet IAM cross-reference pane. Reflects the REAL fleet — the live
+  //     mcp-proxy servers (running built-ins, normalized to bare ids) UNIONed
+  //     with the known built-in catalog (so env-disabled built-ins are still
+  //     grantable) and any DB-registered admin-added servers. The DB registry
+  //     alone is empty for built-ins, so it can no longer be the source here.
+  //     Returns { servers: [{ id, name, description }] }.
+  // ─────────────────────────────────────────────────────────────────────────
+  fastify.get('/permissions/available-mcps', async (_request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { MCPSyncService } = await import('../../services/MCPSyncService.js');
+      const { normalizeMcpServerId, BUILTIN_MCP_CATALOG } = await import('../../services/mcpBuiltinCatalog.js');
+
+      const byId = new Map<string, { id: string; name: string; description: string | null }>();
+
+      // 1. Known built-in catalog (running OR available — all are grantable).
+      for (const def of Object.values(BUILTIN_MCP_CATALOG)) {
+        byId.set(def.id, { id: def.id, name: def.name, description: def.description });
+      }
+
+      // 2. Live proxy servers (running built-ins + user-connected remotes),
+      //    normalized to bare ids so they reconcile with the catalog.
+      try {
+        const sync = new MCPSyncService(logger);
+        const proxyServers = await sync.getMCPProxyServers();
+        for (const ps of proxyServers) {
+          const raw = String(ps.name ?? ps.id ?? '').trim();
+          if (!raw) continue;
+          const id = normalizeMcpServerId(raw) || raw.toLowerCase();
+          if (!byId.has(id)) {
+            byId.set(id, { id, name: id, description: ps.description ?? null });
+          }
+        }
+      } catch (e: any) {
+        logger.warn({ err: e?.message }, 'available-mcps: proxy fetch failed (non-fatal)');
+      }
+
+      // 3. DB-registered admin-added servers (anything not already covered).
+      const rows = await prisma.mCPServerConfig.findMany({
+        where: { enabled: true },
+        select: { id: true, name: true, description: true },
+        orderBy: { name: 'asc' },
+      });
+      for (const r of rows) {
+        const id = normalizeMcpServerId(r.id) || r.id;
+        if (!byId.has(id)) {
+          byId.set(id, { id, name: r.name, description: r.description ?? null });
+        }
+      }
+
+      const servers = Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+      return reply.send({ servers });
+    } catch (error: any) {
+      logger.error({ err: error }, 'Failed to list available MCP servers');
+      return reply.code(500).send({ success: false, error: 'Failed to list available MCP servers' });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 3b. GET /permissions/available-llms
+  //     Grantable LLM providers for the per-user permission picker. Source =
+  //     the LLMProvider registry (same rows as GET /api/admin/llm-providers).
+  //     Returns { providers: [{ id, name, display_name, provider_type }] }.
+  // ─────────────────────────────────────────────────────────────────────────
+  fastify.get('/permissions/available-llms', async (_request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const rows = await prisma.lLMProvider.findMany({
+        where: { deleted_at: null, enabled: true },
+        select: { id: true, name: true, display_name: true, provider_type: true },
+        orderBy: { display_name: 'asc' },
+      });
+      const providers = rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        display_name: r.display_name,
+        provider_type: r.provider_type,
+      }));
+      return reply.send({ providers });
+    } catch (error: any) {
+      logger.error({ err: error }, 'Failed to list available LLM providers');
+      return reply.code(500).send({ success: false, error: 'Failed to list available LLM providers' });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 3c. PUT /permissions  — thin alias of the live tool-permissions PUT.
+  //     The PermissionsPage saves the whole tool-permission rule set here.
+  //     Delegates to the SAME PermissionService.replaceAllRules used by the
+  //     canonical PUT /api/admin/tool-permissions handler.
+  //     Body: { rules: PermissionRule[] }
+  // ─────────────────────────────────────────────────────────────────────────
+  fastify.put('/permissions', async (request: FastifyRequest, reply: FastifyReply) => {
+    const body = request.body as { rules?: unknown } | null;
+    if (!body || !Array.isArray(body.rules)) {
+      return reply.code(400).send({ success: false, error: 'rules array required' });
+    }
+    try {
+      const { getPermissionService } = await import('../../services/PermissionService.js');
+      const validated: any[] = [];
+      for (const raw of body.rules) {
+        const v = validatePermissionRule(raw);
+        if (!v.ok) {
+          return reply.code(400).send({ success: false, error: `invalid rule: ${(v as { error: string }).error}` });
+        }
+        validated.push(v.rule);
+      }
+      const svc = getPermissionService(loggers.services as any);
+      svc.replaceAllRules(validated);
+      await writePermissionAudit(request, {
+        action: 'permission_rules_replaced',
+        resource_type: 'permission_rules',
+        resource_id: 'all',
+        details: { ruleCount: validated.length },
+      });
+      return reply.send({ success: true, count: validated.length });
+    } catch (error: any) {
+      logger.error({ err: error }, 'Failed to replace permission rules');
+      return reply.code(500).send({ success: false, error: 'Failed to replace permission rules' });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 3d. POST /permissions/reset  — thin alias of the live
+  //     POST /api/admin/tool-permissions/reset. Clears user rules back to the
+  //     seeded defaults via the same PermissionService.clearAllUserRules.
+  // ─────────────────────────────────────────────────────────────────────────
+  fastify.post('/permissions/reset', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { getPermissionService } = await import('../../services/PermissionService.js');
+      const svc = getPermissionService(loggers.services as any);
+      svc.clearAllUserRules();
+      await writePermissionAudit(request, {
+        action: 'permission_rules_reset',
+        resource_type: 'permission_rules',
+        resource_id: 'all',
+      });
+      return reply.send({ success: true });
+    } catch (error: any) {
+      logger.error({ err: error }, 'Failed to reset permission rules');
+      return reply.code(500).send({ success: false, error: 'Failed to reset permission rules' });
     }
   });
 

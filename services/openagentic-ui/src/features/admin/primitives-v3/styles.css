@@ -459,6 +459,7 @@
 .aw-dt tbody tr[data-status="ok"]    td:last-child { box-shadow: inset -2px 0 0 var(--ok); }
 .aw-dt tbody tr[data-status="warn"]  td:last-child { box-shadow: inset -2px 0 0 var(--warn); }
 .aw-dt tbody tr[data-status="err"]   td:last-child { box-shadow: inset -2px 0 0 var(--err); }
+.aw-dt tbody tr[data-status="info"]  td:last-child { box-shadow: inset -2px 0 0 color-mix(in srgb, var(--info) 55%, transparent); }
 .aw-dt tbody tr[data-status="idle"]  td:last-child { box-shadow: inset -2px 0 0 var(--fg-3); }
 
 /* B'-30: provider brand-color rail. Apply via data-provider-type
@@ -602,6 +603,26 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+/* Glass panel variant — the analytics chart cards. `.glass` (theme.css) paints
+   the frosted surface + radius + shadow; here we just make the panel header sit
+   on glass instead of the flat --bg-1 fill, and let the chart body fill the
+   remaining height of the card so the chart is never letterboxed. */
+.aw-panel--glass {
+  height: 100%;
+}
+.aw-panel--glass .aw-panel-head {
+  background: color-mix(in srgb, var(--glass-edge) 5%, transparent);
+  border-bottom: 1px solid var(--glass-border);
+}
+.aw-panel--glass .aw-chart-body {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+.aw-panel--glass .aw-chart-body > * {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .aw-panel-head {
   position: relative;

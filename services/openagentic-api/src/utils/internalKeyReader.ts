@@ -1,6 +1,6 @@
 /**
  * internalKeyReader — single source of truth for the
- * OPENAGENTIC_INTERNAL_KEY / CODE_MANAGER_INTERNAL_KEY value.
+ * OPENAGENTIC_INTERNAL_KEY value.
  *
  * Reads from a projected Secret file at INTERNAL_KEY_FILE_PATH (default
  * `/var/run/secrets/openagentic/internal-key`). When the file mtime
@@ -10,11 +10,10 @@
  * mounted the projected volume keep working.
  *
  * Architecture (#416): Vault holds the canonical value; ESO syncs Vault
- * to a k8s Secret; the Secret is mounted as a projected volume into
- * api + code-manager + exec pod templates. When Vault rotates, ESO
- * updates the Secret, kubelet refreshes the mounted file in ~60-90s,
- * and every consumer picks up the new value on its next handshake
- * without a single pod restart.
+ * to a k8s Secret; the Secret is mounted as a projected volume into the
+ * api pod template. When Vault rotates, ESO updates the Secret, kubelet
+ * refreshes the mounted file in ~60-90s, and every consumer picks up the
+ * new value on its next handshake without a single pod restart.
  */
 
 import { readFileSync, statSync } from 'node:fs';
@@ -29,8 +28,7 @@ interface CacheEntry {
 let cache: CacheEntry | null = null;
 
 function envFallback(): string {
-  return process.env.CODE_MANAGER_INTERNAL_KEY
-    || process.env.OPENAGENTIC_INTERNAL_KEY
+  return process.env.OPENAGENTIC_INTERNAL_KEY
     || process.env.INTERNAL_API_KEY
     || '';
 }

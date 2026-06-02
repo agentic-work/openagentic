@@ -97,14 +97,6 @@ export MCP_HOST=${MCP_HOST:-mcp-proxy}
 export MCP_PORT=${MCP_PORT:-3001}
 echo "MCP Proxy: http://${MCP_HOST}:${MCP_PORT}"
 
-# AWCode Manager configuration - routes to awcode-manager service for PTY terminal
-export EXEC_HOST=${EXEC_HOST:-awcode-manager}
-export EXEC_PORT=${EXEC_PORT:-3050}
-
-# Code-Server configuration - VS Code Web IDE
-export CODE_SERVER_HOST=${CODE_SERVER_HOST:-code-server}
-export CODE_SERVER_PORT=${CODE_SERVER_PORT:-8080}
-
 # Agent Proxy configuration - agent orchestration service
 export OPENAGENTIC_PROXY_HOST=${OPENAGENTIC_PROXY_HOST:-openagentic-proxy}
 export OPENAGENTIC_PROXY_PORT=${OPENAGENTIC_PROXY_PORT:-3300}
@@ -118,12 +110,6 @@ if [ -f /var/run/secrets/kubernetes.io/serviceaccount/namespace ]; then
 
     # Convert short hostnames to FQDN for nginx resolver
     # Only if they don't already contain dots (not already FQDN)
-    if ! echo "$EXEC_HOST" | grep -q '\.'; then
-        export EXEC_HOST="${EXEC_HOST}.${K8S_NAMESPACE}.svc.cluster.local"
-    fi
-    if ! echo "$CODE_SERVER_HOST" | grep -q '\.'; then
-        export CODE_SERVER_HOST="${CODE_SERVER_HOST}.${K8S_NAMESPACE}.svc.cluster.local"
-    fi
     if ! echo "$API_HOST" | grep -q '\.'; then
         export API_HOST="${API_HOST}.${K8S_NAMESPACE}.svc.cluster.local"
     fi
@@ -141,16 +127,9 @@ if [ -f /var/run/secrets/kubernetes.io/serviceaccount/namespace ]; then
     fi
 fi
 
-echo "AWCode Manager: http://${EXEC_HOST}:${EXEC_PORT}"
-echo "Code-Server: http://${CODE_SERVER_HOST}:${CODE_SERVER_PORT}"
-
 # Substitute environment variables in nginx config
 if [ -f /etc/nginx/conf.d/default.conf.template ]; then
     echo "Configuring nginx with environment variables..."
-    echo "  EXEC_HOST: ${EXEC_HOST}"
-    echo "  EXEC_PORT: ${EXEC_PORT}"
-    echo "  CODE_SERVER_HOST: ${CODE_SERVER_HOST}"
-    echo "  CODE_SERVER_PORT: ${CODE_SERVER_PORT}"
 
     # Detect DNS resolver from /etc/resolv.conf
     # In Docker: 127.0.0.11, in K8s: typically 10.43.0.10 or similar
@@ -161,7 +140,7 @@ if [ -f /etc/nginx/conf.d/default.conf.template ]; then
     export DNS_RESOLVER
     echo "  DNS_RESOLVER: ${DNS_RESOLVER}"
 
-    envsubst '${API_HOST} ${API_PORT} ${MCP_HOST} ${MCP_PORT} ${DOCS_HOST} ${DOCS_PORT} ${FRONTEND_SECRET} ${REDIS_COMMANDER_HOST} ${REDIS_COMMANDER_PORT} ${ATTU_HOST} ${ATTU_PORT} ${EXEC_HOST} ${EXEC_PORT} ${CODE_SERVER_HOST} ${CODE_SERVER_PORT} ${OPENAGENTIC_PROXY_HOST} ${OPENAGENTIC_PROXY_PORT} ${DNS_RESOLVER}' \
+    envsubst '${API_HOST} ${API_PORT} ${MCP_HOST} ${MCP_PORT} ${DOCS_HOST} ${DOCS_PORT} ${FRONTEND_SECRET} ${REDIS_COMMANDER_HOST} ${REDIS_COMMANDER_PORT} ${ATTU_HOST} ${ATTU_PORT} ${OPENAGENTIC_PROXY_HOST} ${OPENAGENTIC_PROXY_PORT} ${DNS_RESOLVER}' \
         < /etc/nginx/conf.d/default.conf.template \
         > /etc/nginx/conf.d/default.conf
     echo "nginx configuration complete"

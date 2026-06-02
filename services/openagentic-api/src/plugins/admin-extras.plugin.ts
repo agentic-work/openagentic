@@ -34,7 +34,7 @@
  *     - monitoringWebSocketRoutes    → /api/monitoring
  *
  *  4. adminMiscRoutesPlugin         — User-perms, auth-access, agenticode, health,
- *                                     system-config, internal routes, mcp-logs, awcode,
+ *                                     system-config, internal routes, mcp-logs,
  *                                     docs, background-jobs, integrations, DLP
  *     - adminUserPermissionsRoutes   → /api/admin/user-management/*
  *     - authAccessRoutes             → /api/admin/auth/* (adminMiddleware)
@@ -45,7 +45,6 @@
  *     - registerHitlPolicyRoutes     → /api/internal/hitl/policy
  *     - registerAgentPersistenceRoutes → /api/internal/agent-*
  *     - mcpLogsRoutes                → /api/mcp-logs/*
- *     - awcodeRoutes                 → /api/awcode/*
  *     - docsRoutes                   → /api/docs/*
  *     - backgroundJobsRoutes         → /api/background-jobs/* (authMiddleware)
  *     - adminIntegrationRoutes       → /api/admin/integrations/* (adminMiddleware)
@@ -135,7 +134,7 @@ const adminExtrasRoutesPluginImpl: FastifyPluginAsync<AdminExtrasRoutesPluginOpt
   // ── Sub-plugin 4: Admin Misc ──────────────────────────────────────────────
   // adminUserPermissionsRoutes, authAccessRoutes, agenticodeRoutes, healthRoutes,
   // systemConfigRoutes, registerResultStorageRoutes, registerHitlPolicyRoutes,
-  // registerAgentPersistenceRoutes, mcpLogsRoutes, awcodeRoutes, docsRoutes,
+  // registerAgentPersistenceRoutes, mcpLogsRoutes, docsRoutes,
   // backgroundJobsRoutes, adminIntegrationRoutes, dlpRoutes
   try {
     await fastify.register(adminMiscRoutesPlugin, {

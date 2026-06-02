@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 // Basic UI icons from lucide
 import {
   Users, Edit, Save, X, Search, Image, Code, Globe, Upload, Brain,
-  Unlock, Sparkles, FileText, Calendar, Terminal, Trash2,
+  Unlock, Sparkles, FileText, Calendar, Trash2,
   MessageSquare, Zap, Settings, Workflow
 } from '@/shared/icons';
 // Custom badass OpenAgentic icons
@@ -38,7 +38,6 @@ interface ApiPermissions {
   canUseFileUpload: boolean;
   canUseMemory: boolean;
   canUseRag: boolean;
-  canUseAwcode: boolean;
   source: 'user' | 'group' | 'default';
 }
 
@@ -89,7 +88,6 @@ interface UserPermission {
     file_upload: boolean;
     memory: boolean;
     rag: boolean;
-    awcode: boolean;
   };
   // Custom permissions flag
   hasCustomPermissions: boolean;
@@ -155,7 +153,6 @@ function mapApiUserToPermission(apiUser: ApiUser): UserPermission {
       file_upload: perms?.canUseFileUpload ?? true,
       memory: perms?.canUseMemory ?? true,
       rag: perms?.canUseRag ?? true,
-      awcode: perms?.canUseAwcode ?? false,
     },
     hasCustomPermissions: apiUser.hasCustomPermissions,
     permissionSource: perms?.source || 'default',
@@ -195,7 +192,6 @@ const UserPermissionsView: React.FC = () => {
   const [budgetLoading, setBudgetLoading] = useState(false);
   // New fields
   const [activeTab, setActiveTab] = useState<PermissionTab>('access');
-  const [editingCodeModeCli, setEditingCodeModeCli] = useState<string | null>(null);
   const [editingAdminNotes, setEditingAdminNotes] = useState<string>('');
   const [editingWorkflowsEnabled, setEditingWorkflowsEnabled] = useState(false);
   const [editingDailyRequestLimit, setEditingDailyRequestLimit] = useState<number | null>(null);
@@ -288,13 +284,11 @@ const UserPermissionsView: React.FC = () => {
           web_search: apiPerms.canUseWebSearch ?? true,
           file_upload: apiPerms.canUseFileUpload ?? true,
           memory: apiPerms.canUseMemory ?? true,
-          rag: apiPerms.canUseRag ?? true,
-          awcode: apiPerms.canUseAwcode ?? false
+          rag: apiPerms.canUseRag ?? true
         }
       } as any);
 
       // Set new field states
-      setEditingCodeModeCli(apiPerms.codeModeCli ?? null);
       setEditingAdminNotes(apiPerms.adminNotes ?? '');
       setEditingWorkflowsEnabled(apiPerms.workflowsEnabled ?? false);
       setEditingDailyRequestLimit(apiPerms.dailyRequestLimit ?? null);
@@ -353,7 +347,6 @@ const UserPermissionsView: React.FC = () => {
         canUseFileUpload: editingPermissions.feature_flags?.file_upload ?? true,
         canUseMemory: editingPermissions.feature_flags?.memory ?? true,
         canUseRag: editingPermissions.feature_flags?.rag ?? true,
-        canUseAwcode: editingPermissions.feature_flags?.awcode ?? false,
         adminNotes: editingAdminNotes || undefined,
       };
 
@@ -396,7 +389,6 @@ const UserPermissionsView: React.FC = () => {
     setEditingPermissions(null);
     setUserBudget(null);
     setEditingBudget(null);
-    setEditingCodeModeCli(null);
     setEditingAdminNotes('');
     setEditingWorkflowsEnabled(false);
     setEditingDailyRequestLimit(null);
@@ -723,9 +715,6 @@ const UserPermissionsView: React.FC = () => {
                       {user.feature_flags?.web_search && (
                         <span className="status-badge info">Web</span>
                       )}
-                      {user.feature_flags?.awcode && (
-                        <span className="status-badge success">Openagentic</span>
-                      )}
                     </div>
                   </td>
                   <td>
@@ -975,7 +964,6 @@ const UserPermissionsView: React.FC = () => {
                       { key: 'file_upload', label: 'File Upload', icon: <Upload size={16} />, color: 'var(--ap-warning)' },
                       { key: 'memory', label: 'Memory', icon: <Brain size={16} />, color: 'var(--ap-info)' },
                       { key: 'rag', label: 'RAG / Knowledge', icon: <Database size={16} />, color: 'var(--color-primary)' },
-                      { key: 'awcode', label: 'Openagentic', icon: <Terminal size={16} />, color: 'var(--ap-success)' },
                     ] as const).map(feature => (
                       <label
                         key={feature.key}
@@ -1211,19 +1199,6 @@ const UserPermissionsView: React.FC = () => {
             {/* === ADVANCED TAB === */}
             {activeTab === 'advanced' && (
               <div className="space-y-1">
-                <SlideInPanelSection title="Code Mode CLI" description="Which CLI backend to use for code mode sessions.">
-                  <select
-                    value={editingCodeModeCli || ''}
-                    onChange={(e) => setEditingCodeModeCli(e.target.value || null)}
-                    className="w-full px-3 py-2 rounded-lg text-sm"
-                    style={{ border: '1px solid var(--color-border)', backgroundColor: 'var(--color-background)', color: 'var(--color-text)' }}
-                  >
-                    <option value="">Use global default (Claude Code)</option>
-                    <option value="claude-code">Claude Code CLI</option>
-                    <option value="openagentic">OpenAgentic AI CLI</option>
-                  </select>
-                </SlideInPanelSection>
-
                 <SlideInPanelSection title="OpenAgenticflows Access" description="Allow this user to create and trigger workflow automations.">
                   <label className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors" style={{ border: '1px solid var(--color-border)' }}>
                     <input

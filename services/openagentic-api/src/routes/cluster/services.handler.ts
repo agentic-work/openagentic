@@ -60,7 +60,7 @@ interface ServiceRow {
   status: 'available' | 'progressing' | 'unavailable' | 'unknown';
   lastTransitionTime: string | null;
   labels: Record<string, string>;
-  category: 'core' | 'data' | 'mcp' | 'agent' | 'codemode' | 'auxiliary';
+  category: 'core' | 'data' | 'mcp' | 'agent' | 'auxiliary';
   edges: string[]; // outbound dependencies (other service names this one calls)
 }
 
@@ -68,7 +68,6 @@ const DISPLAY_NAMES: Record<string, string> = {
   'openagentic-api': 'API',
   'openagentic-ui': 'UI',
   'openagentic-mcp-proxy': 'MCP Proxy',
-  'openagentic-code-manager': 'Code Manager',
   'openagentic-openagentic-proxy': 'Agent Proxy',
   'openagentic-workflows': 'Workflows',
   'openagentic-synth-executor': 'Synth Executor',
@@ -86,7 +85,7 @@ function classify(name: string): ServiceRow['category'] {
   if (/^openagentic-(api|ui)$/.test(name)) return 'core';
   if (/^openagentic-(mcp-proxy|openagentic-)/.test(name)) return 'mcp';
   if (/^openagentic-(openagentic-proxy|workflows)$/.test(name)) return 'agent';
-  if (/^openagentic-(code-manager|synth-executor)/.test(name)) return 'codemode';
+  if (/^openagentic-synth-executor/.test(name)) return 'auxiliary';
   if (/^(milvus|pgvector|redis|.*minio)/.test(name)) return 'data';
   return 'auxiliary';
 }
@@ -96,8 +95,7 @@ function classify(name: string): ServiceRow['category'] {
 // usermin-minio vs minio) all link up cleanly without per-env hardcoding.
 const STATIC_EDGES: Record<string, string[]> = {
   'openagentic-ui': ['openagentic-api'],
-  'openagentic-api': ['pgvector-postgresql-primary', 'redis', 'milvus-standalone', 'openagentic-mcp-proxy', 'openagentic-openagentic-proxy', 'openagentic-code-manager', 'openagentic-workflows', 'openagentic-synth-executor', 'usermin-minio'],
-  'openagentic-code-manager': ['pgvector-postgresql-primary', 'usermin-minio'],
+  'openagentic-api': ['pgvector-postgresql-primary', 'redis', 'milvus-standalone', 'openagentic-mcp-proxy', 'openagentic-openagentic-proxy', 'openagentic-workflows', 'openagentic-synth-executor', 'usermin-minio'],
   'openagentic-openagentic-proxy': ['openagentic-mcp-proxy'],
   'openagentic-mcp-proxy': ['oap-openagentic-admin-mcp', 'oap-openagentic-azure-mcp', 'oap-openagentic-aws-mcp'],
   'openagentic-workflows': ['pgvector-postgresql-primary', 'openagentic-mcp-proxy'],

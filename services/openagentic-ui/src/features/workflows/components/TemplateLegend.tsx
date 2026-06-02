@@ -47,16 +47,17 @@ export const TemplateLegend: React.FC<Props> = ({ meta, variant = 'card', title,
   return (
     <div
       data-testid="template-legend"
+      // Panel variant rides the canvas/aurora → frosted Terminal Glass via the
+      // .glass class (background var(--glass-bg) + blur + soft border/shadow +
+      // top-edge highlight). Card variant stays chromeless inline. (panel was
+      // an opaque #161b22 slab.)
+      className={isPanel ? 'glass' : undefined}
       style={{
         display: 'flex',
         flexDirection: 'column',
         gap: sectionGap,
         padding: isPanel ? 16 : 0,
-        background: isPanel ? 'var(--color-bg-secondary, #161b22)' : 'transparent',
-        border: isPanel ? '1px solid var(--color-border, #30363d)' : 'none',
-        borderRadius: isPanel ? 12 : 0,
-        boxShadow: isPanel ? '0 8px 24px rgba(0,0,0,0.18)' : 'none',
-        color: 'var(--color-text, #e6edf3)',
+        color: 'var(--color-text)',
         fontSize: 13,
         lineHeight: 1.5,
         maxWidth: isPanel ? 420 : 'none',
@@ -72,7 +73,7 @@ export const TemplateLegend: React.FC<Props> = ({ meta, variant = 'card', title,
               About this workflow
             </div>
             {title && (
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text, #e6edf3)', letterSpacing: '-0.01em' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
                 {title}
               </div>
             )}
@@ -83,7 +84,7 @@ export const TemplateLegend: React.FC<Props> = ({ meta, variant = 'card', title,
               aria-label="Close legend"
               style={{
                 background: 'transparent', border: 'none', cursor: 'pointer',
-                color: 'var(--color-text-tertiary, #8b949e)', fontSize: 18, lineHeight: 1, padding: 4,
+                color: 'var(--color-text-tertiary)', fontSize: 18, lineHeight: 1, padding: 4,
               }}
             >
               x
@@ -94,13 +95,13 @@ export const TemplateLegend: React.FC<Props> = ({ meta, variant = 'card', title,
 
       {meta.purpose && (
         <Section heading="Purpose">
-          <p style={{ margin: 0, color: 'var(--color-text-secondary, #c9d1d9)' }}>{meta.purpose}</p>
+          <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>{meta.purpose}</p>
         </Section>
       )}
 
       {meta.useful_when && (
         <Section heading="When to use this">
-          <p style={{ margin: 0, color: 'var(--color-text-secondary, #c9d1d9)' }}>{meta.useful_when}</p>
+          <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>{meta.useful_when}</p>
         </Section>
       )}
 
@@ -108,7 +109,7 @@ export const TemplateLegend: React.FC<Props> = ({ meta, variant = 'card', title,
         <Section heading="How it works">
           <ol style={{ margin: 0, paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {meta.how_it_works.map((step, i) => (
-              <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', color: 'var(--color-text-secondary, #c9d1d9)' }}>
+              <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', color: 'var(--color-text-secondary)' }}>
                 <span style={{
                   flexShrink: 0,
                   minWidth: 22, height: 22,
@@ -129,7 +130,7 @@ export const TemplateLegend: React.FC<Props> = ({ meta, variant = 'card', title,
 
       {meta.expected_output && (
         <Section heading="What you'll get">
-          <p style={{ margin: 0, color: 'var(--color-text-secondary, #c9d1d9)' }}>{meta.expected_output}</p>
+          <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>{meta.expected_output}</p>
         </Section>
       )}
 
@@ -157,16 +158,16 @@ export const TemplateLegend: React.FC<Props> = ({ meta, variant = 'card', title,
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           paddingTop: 8, marginTop: 4,
-          borderTop: '1px solid var(--color-border, #30363d)',
-          fontSize: 10, color: 'var(--color-text-tertiary, #8b949e)', letterSpacing: 0.2,
+          borderTop: '1px solid var(--color-border)',
+          fontSize: 10, color: 'var(--color-text-tertiary)', letterSpacing: 0.2,
         }}>
           <div>{meta.version && <span>v{meta.version}</span>}</div>
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {(meta.tags ?? []).map((t) => (
               <span key={t} style={{
                 padding: '1px 6px', borderRadius: 4,
-                background: 'var(--color-bg-tertiary, rgba(255,255,255,0.04))',
-                color: 'var(--color-text-tertiary, #8b949e)',
+                background: 'color-mix(in srgb, var(--color-fg) 6%, transparent)',
+                color: 'var(--color-text-tertiary)',
                 fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 600,
               }}>{t}</span>
             ))}

@@ -107,12 +107,14 @@ export const NodePaletteDrawer: React.FC<NodePaletteDrawerProps> = ({
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -320, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="absolute left-0 top-0 bottom-0 z-40 flex flex-col"
+            // Terminal Glass: frosted palette drawer overlaying the canvas/aurora.
+            // The .glass class supplies the surface/blur/shadow + top-edge
+            // highlight; we square the right edge so it docks flush to the canvas.
+            className="glass absolute left-0 top-0 bottom-0 z-40 flex flex-col"
             style={{
               width: 320,
-              background: 'var(--color-bg-primary)',
-              borderRight: '1px solid var(--color-border)',
-              boxShadow: '4px 0 24px rgba(0,0,0,0.25)',
+              borderTopLeftRadius: 0,
+              borderBottomLeftRadius: 0,
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -268,7 +270,7 @@ const AgentGroup: React.FC<{ label: string; agents: any[] }> = ({ label, agents 
               {agent.display_name}
             </div>
             <div className="text-[11px] flex items-center gap-1" style={{ color: 'var(--color-text-tertiary)' }}>
-              <span className="px-1 rounded" style={{ background: 'var(--color-surface-secondary, #333)' }}>{agent.agent_type}</span>
+              <span className="px-1 rounded" style={{ background: 'var(--color-surface-secondary)' }}>{agent.agent_type}</span>
               {agent.tools_whitelist?.length > 0 && (
                 <span>{agent.tools_whitelist.length} tools</span>
               )}

@@ -92,7 +92,7 @@ WORKFLOWS_URL=http://openagentic-workflows:3000
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Chat/Code Mode UI                        │
+│                          Chat UI                             │
 │              "Create a research agent..."                    │
 └─────────────────────────────────────────────────────────────┘
                               │

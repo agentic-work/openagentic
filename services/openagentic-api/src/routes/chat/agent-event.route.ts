@@ -114,7 +114,7 @@ export async function agentEventRoute(fastify: FastifyInstance) {
       request: FastifyRequest<{ Body: AgentEventBody }>,
       reply: FastifyReply,
     ) => {
-      // Internal-service auth — same convention as code-manager ↔ api.
+      // Internal-service auth — the shared internal-key handshake convention.
       // Reads fresh on every request so projected-secret rotation (#416)
       // takes effect without a pod restart.
       const expected = getInternalKey();

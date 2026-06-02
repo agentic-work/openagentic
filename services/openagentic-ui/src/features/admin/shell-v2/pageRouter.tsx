@@ -52,8 +52,6 @@ const FlowCostsView = lazy(() =>
   import('../components/Workflows/FlowCostsView').then(m => ({ default: m.FlowCostsView })),
 )
 
-// Code Mode
-
 // Agents
 const AgentManagementView = lazy(() =>
   import('../components/Agents').then(m => ({ default: m.AgentManagementView })),

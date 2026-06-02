@@ -1243,12 +1243,10 @@ const MessageBubble = memo(function MessageBubble({
                     onDenyHitl={onDenyHitl}
                     streamingTables={streamingTables}
                     contentBlocks={
-                      // Phase 6 (2026-05-22) — StreamEngine deleted. AAS owns
-                      // ALL block types during the live stream via the React
-                      // path. The dual-painter split (engine paints simple +
-                      // AAS paints artifacts) is gone; AAS handles the full
-                      // chronology, and on finalize falls through to the
-                      // persisted `finalContentBlocks`.
+                      // AAS owns ALL block types during the live stream via the
+                      // React path: it handles the full chronology, and on
+                      // finalize falls through to the persisted
+                      // `finalContentBlocks`.
                       streamingContentBlocks && streamingContentBlocks.length > 0
                           ? streamingContentBlocks.map(block => ({
                               id: `stream-${block.index}`,
@@ -1320,9 +1318,8 @@ const MessageBubble = memo(function MessageBubble({
                   />
                     );
                   })()}
-                  {/* Phase 6 (2026-05-22) — StreamEngine handoff mount
-                      DELETED. AAS above handles the full chronology
-                      during the live stream via the React path. */}
+                  {/* AAS above handles the full chronology during the live
+                      stream via the React path. */}
                   </ArtifactErrorBoundary>
               )}
 

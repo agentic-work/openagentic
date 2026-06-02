@@ -530,10 +530,6 @@ interface ChatInputToolbarProps {
   // Model Badges toggle
   showModelBadges?: boolean;
   onToggleModelBadges?: () => void;
-  // OpenAgenticCode toggle
-  isCodeMode?: boolean;
-  onCodeModeToggle?: () => void;
-  canUseAwcode?: boolean;
   // Thinking mode toggle
   isThinkingEnabled?: boolean;
   onThinkingToggle?: () => void;
@@ -589,13 +585,22 @@ const GroundingToggleButton: React.FC<{ disabled?: boolean }> = ({ disabled }) =
         'hover:bg-theme-bg-secondary',
       )}
       style={{
-        color: enabled ? 'var(--cm-accent, var(--accent, var(--text-primary)))' : 'var(--text-secondary)',
+        // ON state must land on the REAL accent (--color-accent, which follows
+        // the user's picked accent). The prior terminal fallback was
+        // --text-primary, but --cm-accent/--accent are legacy-scoped and
+        // undefined in normal chat — so "on" resolved to the muted text color
+        // and looked identical to "off". Land on --color-accent + a glow so the
+        // lit state is unmistakable. Theme tokens only (CLAUDE.md rule 8b).
+        color: enabled ? 'var(--cm-accent, var(--accent, var(--color-accent)))' : 'var(--text-secondary)',
         border: enabled
-          ? '1px solid var(--cm-accent, var(--accent, var(--color-border)))'
+          ? '1px solid var(--cm-accent, var(--accent, var(--color-accent)))'
           : '1px solid transparent',
         backgroundColor: enabled
-          ? 'color-mix(in srgb, var(--cm-accent, var(--accent, var(--text-primary))) 12%, transparent)'
+          ? 'color-mix(in srgb, var(--cm-accent, var(--accent, var(--color-accent))) 22%, transparent)'
           : 'transparent',
+        boxShadow: enabled
+          ? '0 0 13px -1px color-mix(in srgb, var(--cm-accent, var(--accent, var(--color-accent))) 55%, transparent)'
+          : undefined,
       }}
       title={
         enabled
@@ -640,13 +645,19 @@ export const FollowupChipsToggleButton: React.FC<{ disabled?: boolean }> = ({ di
         'hover:bg-theme-bg-secondary',
       )}
       style={{
-        color: enabled ? 'var(--cm-accent, var(--accent, var(--text-primary)))' : 'var(--text-secondary)',
+        // Same lit-state fix as GroundingToggleButton: terminal fallback now
+        // --color-accent (not --text-primary) so ON is the real accent + glow,
+        // not a muted near-off color. Theme tokens only (CLAUDE.md rule 8b).
+        color: enabled ? 'var(--cm-accent, var(--accent, var(--color-accent)))' : 'var(--text-secondary)',
         border: enabled
-          ? '1px solid var(--cm-accent, var(--accent, var(--color-border)))'
+          ? '1px solid var(--cm-accent, var(--accent, var(--color-accent)))'
           : '1px solid transparent',
         backgroundColor: enabled
-          ? 'color-mix(in srgb, var(--cm-accent, var(--accent, var(--text-primary))) 12%, transparent)'
+          ? 'color-mix(in srgb, var(--cm-accent, var(--accent, var(--color-accent))) 22%, transparent)'
           : 'transparent',
+        boxShadow: enabled
+          ? '0 0 13px -1px color-mix(in srgb, var(--cm-accent, var(--accent, var(--color-accent))) 55%, transparent)'
+          : undefined,
       }}
       title={
         enabled
@@ -675,10 +686,6 @@ const ChatInputToolbar: React.FC<ChatInputToolbarProps> = ({
   // Model Badges toggle
   showModelBadges = true,
   onToggleModelBadges,
-  // OpenAgenticCode toggle
-  isCodeMode = false,
-  onCodeModeToggle,
-  canUseAwcode = false,
   // Thinking mode toggle
   isThinkingEnabled = true,
   onThinkingToggle,
@@ -790,8 +797,6 @@ const ChatInputToolbar: React.FC<ChatInputToolbarProps> = ({
         {/* MCP Servers puzzle button removed — MCP tools are auto-discovered by the pipeline */}
 
         {/* OAT / Tool Synthesis - removed YOLO mode, HITM enforced */}
-
-        {/* OpenAgenticCode button removed - use sidebar mode toggle instead (Ctrl+Shift+C) */}
 
         {/* Skills configuration moved to Admin Portal > Pipeline Settings */}
 

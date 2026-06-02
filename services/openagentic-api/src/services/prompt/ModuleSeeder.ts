@@ -98,15 +98,6 @@ const SEED_MODULES: SeedModule[] = [
       'Use tools proactively. Chain tool calls for complex tasks. Use delegate_to_agents for 2+ independent sub-tasks. Prefer the most specific native tool available.',
   },
   {
-    name: 'code-mode',
-    category: 'mode',
-    description: 'Behavior guidance for code/openagentic mode',
-    priority: 90,
-    injection: { requiresMode: ['code'] },
-    content:
-      'You are a coding assistant. Write clean, tested, production-quality code. Use the workspace filesystem for all code operations. Run tests after implementation.',
-  },
-  {
     name: 'flow-mode',
     category: 'mode',
     description: 'Behavior guidance for workflow/flow execution mode',

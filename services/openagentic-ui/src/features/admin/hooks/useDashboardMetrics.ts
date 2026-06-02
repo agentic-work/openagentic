@@ -344,32 +344,55 @@ export function useMcpServers() {
   )
 }
 
-// /api/admin/audit-logs returns { success, logs: AuditLogEntry[], pagination }
+// /api/admin/audit-logs returns { success, logs: AuditLogEntry[], pagination }.
+// The unified feed (activityAggregator) normalizes EVERY source table into this
+// one shape, so `type` is the full 8-source union — not just admin/user. Keep
+// this in lockstep with ActivityType in
+// services/openagentic-api/src/services/audit/activityAggregator.ts.
+export type AuditLogType =
+  | 'admin'
+  | 'user'
+  | 'tool-call'
+  | 'flow'
+  | 'agent'
+  | 'webhook'
+  | 'security'
+  | 'auth'
+
 export interface AuditLogEntry {
   id: string
-  type: 'admin' | 'user'
+  type: AuditLogType
   userId?: string | null
-  userName?: string
-  userEmail?: string
-  action?: string
-  resourceType?: string
-  resourceId?: string
-  query?: string
-  intent?: string
-  sessionId?: string
-  messageId?: string
-  mcpServer?: string
-  toolsCalled?: any
+  userName?: string | null
+  userEmail?: string | null
+  action?: string | null
+  resourceType?: string | null
+  resourceId?: string | null
+  query?: string | null
+  intent?: string | null
+  sessionId?: string | null
+  messageId?: string | null
+  mcpServer?: string | null
+  toolsCalled?: string[] | null
   success?: boolean
-  error?: string
-  ipAddress?: string
+  error?: string | null
+  ipAddress?: string | null
   timestamp: string
 }
 
 export interface AuditLogsResponse {
   success: boolean
   logs: AuditLogEntry[]
-  pagination?: { page: number; limit: number; totalPages: number; totalItems: number }
+  // The server pagination envelope is { page, limit, total, totalPages, hasMore }.
+  // Older callers read totalItems; keep both optional so neither breaks.
+  pagination?: {
+    page: number
+    limit: number
+    totalPages: number
+    total?: number
+    totalItems?: number
+    hasMore?: boolean
+  }
 }
 
 /** /api/admin/audit-logs feed for global tabs (no resource scope). */
@@ -937,157 +960,6 @@ export function useAgenticodeApiKeys() {
     ['agenticode-api-keys'],
     '/api/admin/agenticode/api-keys',
     { staleTime: 60_000, refetchInterval: 120_000 },
-  )
-}
-
-// ============================================================
-// Code Mode admin endpoints — feed CodeModeHubPage. All hooks are
-// permissive in their response shape: the API surface predates the
-// v3 page and uses different envelopes per endpoint. The hub page
-// renders an empty/error state when these resolve to 404 or to
-// undefined arrays so we never fabricate.
-// ============================================================
-export interface CodeModeFeatureSettings {
-  defaultSecurityLevel?: 'strict' | 'permissive' | 'minimal'
-  defaultNetworkEnabled?: boolean
-  networkDomainAllowlist?: string[]
-  filesystemReadPaths?: string[]
-  filesystemWritePaths?: string[]
-  maxSessionsPerUser?: number
-  sessionIdleTimeout?: number
-  sessionMaxLifetime?: number
-  storageQuotaEnabled?: boolean
-  defaultStorageLimitMb?: number
-  defaultCpuLimit?: number
-  defaultMemoryLimitMb?: number
-  enabledForNewUsers?: boolean
-  ghostpilotEnabled?: boolean
-  [key: string]: unknown
-}
-export interface CodeFeatureSettingsResponse {
-  settings?: CodeModeFeatureSettings
-}
-
-export function useCodeModeSettings() {
-  return useAdminQuery<CodeFeatureSettingsResponse>(
-    ['code-mode-settings'],
-    '/api/admin/code/settings',
-    { staleTime: 30_000, refetchInterval: 60_000 },
-  )
-}
-
-export interface CodeModeGlobalSettings {
-  lockdown?: boolean
-  internet?: boolean
-  [key: string]: unknown
-}
-export interface CodeModeGlobalSettingsResponse {
-  settings?: CodeModeGlobalSettings
-}
-
-export function useCodeModeGlobalSettings() {
-  return useAdminQuery<CodeModeGlobalSettingsResponse>(
-    ['code-mode-global-settings'],
-    '/api/admin/codemode/global-settings',
-    { staleTime: 30_000, refetchInterval: 60_000 },
-  )
-}
-
-export interface CodeModeMcpServerRow {
-  id: string
-  name?: string
-  description?: string
-  type?: 'stdio' | 'http' | string
-  command?: string
-  args?: string[]
-  url?: string
-  enabled: boolean
-  pluginSource?: string
-}
-export interface CodeModeMcpPolicy {
-  allowManagedMcpServersOnly?: boolean
-  // Legacy field names produced by GET /codemode/mcp-servers (config-bundle).
-  allowlist?: string[]
-  blocklist?: string[]
-  // New field names produced by PUT /codemode/mcp-policy (v3-extras-mutations).
-  allow?: string[]
-  deny?: string[]
-}
-export interface CodeModeMcpResponse {
-  servers?: CodeModeMcpServerRow[]
-  policy?: CodeModeMcpPolicy
-}
-
-export function useCodeModeMcp() {
-  return useAdminQuery<CodeModeMcpResponse>(
-    ['code-mode-mcp'],
-    '/api/admin/codemode/mcp-servers',
-    { staleTime: 30_000, refetchInterval: 60_000 },
-  )
-}
-
-export interface CodeModeSkillRow {
-  id: string
-  name?: string
-  description?: string
-  source?: string
-  tags?: string[]
-  enabled: boolean
-  createdAt?: string
-}
-export interface CodeModeSkillsResponse {
-  skills?: CodeModeSkillRow[]
-}
-
-export function useCodeModeSkills() {
-  return useAdminQuery<CodeModeSkillsResponse>(
-    ['code-mode-skills'],
-    '/api/admin/codemode/skills',
-    { staleTime: 30_000, refetchInterval: 60_000 },
-  )
-}
-
-export interface CodeModePluginRow {
-  id: string
-  name?: string
-  description?: string
-  version?: string
-  enabled: boolean
-}
-export interface CodeModePluginsResponse {
-  plugins?: CodeModePluginRow[]
-}
-
-export function useCodeModePlugins() {
-  return useAdminQuery<CodeModePluginsResponse>(
-    ['code-mode-plugins'],
-    '/api/admin/codemode/plugins',
-    { staleTime: 30_000, refetchInterval: 60_000 },
-  )
-}
-
-export interface CodeModeSessionRow {
-  id: string
-  userId: string
-  userName?: string
-  userEmail?: string
-  status: 'running' | 'idle' | 'stopped' | 'error' | string
-  model?: string
-  createdAt?: string
-  lastActivity?: string
-  tokenCount?: number
-  messageCount?: number
-  storageMB?: number
-}
-export interface CodeModeSessionsResponse {
-  sessions?: CodeModeSessionRow[]
-}
-
-export function useCodeModeSessions() {
-  return useAdminQuery<CodeModeSessionsResponse>(
-    ['code-mode-sessions'],
-    '/api/admin/code/sessions',
-    { staleTime: 10_000, refetchInterval: 10_000 },
   )
 }
 

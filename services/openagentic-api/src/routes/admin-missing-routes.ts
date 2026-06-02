@@ -187,8 +187,7 @@ export const capabilitiesRoutes: FastifyPluginAsync = async (fastify) => {
             toolCalling: mcpTools.length > 0,
             imageGeneration: !!process.env.IMAGE_GEN_MODEL,
             embeddings: !!process.env.EMBEDDING_MODEL,
-            rag: !!process.env.MILVUS_ADDRESS,
-            codeExecution: !!process.env.OPENAGENTIC_MANAGER_URL
+            rag: !!process.env.MILVUS_ADDRESS
           }
         }
       };

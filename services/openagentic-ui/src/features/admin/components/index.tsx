@@ -62,12 +62,6 @@ export {
 // Security - API tokens
 export { DeveloperAPIView } from './Security';
 
-// Code - Code mode management (legacy)
-export { AWCodeSessionsView, AWCodeSettingsView } from './Code';
-
-// CodeMode - New admin section (replaces Openagentic)
-export { CodeModeSettingsView, CodeModeMcpView, CodeModeSkillsView, CodeModeUsersView, CodeModeGlobalSettingsView } from './CodeMode';
-
 // Prompts — Phase E.6 (2026-05-10) ripped the composable prompt-module
 // admin surface alongside PromptComposer/PromptModuleRegistry. Only the
 // effectiveness analytics view remains.

@@ -418,10 +418,10 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
               padding: '10px 20px',
               fontSize: '14px',
               fontWeight: activeTab === tab.key ? 700 : 500,
-              color: activeTab === tab.key ? 'var(--color-primary, #2196f3)' : 'var(--color-text-secondary, #999)',
+              color: activeTab === tab.key ? 'var(--color-primary, #FF5722)' : 'var(--color-text-secondary, #999)',
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === tab.key ? '2px solid var(--color-primary, #2196f3)' : '2px solid transparent',
+              borderBottom: activeTab === tab.key ? '2px solid var(--color-primary, #FF5722)' : '2px solid transparent',
               cursor: 'pointer',
               transition: 'all 0.15s',
               display: 'flex',
@@ -470,7 +470,7 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                 </button>
                 <button
                   onClick={() => setShowForm(prev => !prev)}
-                  style={{ background: 'var(--color-primary, #2196f3)', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#fff' }}
+                  style={{ background: 'var(--color-primary, #FF5722)', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#fff' }}
                 >
                   <Plus className="w-4 h-4" /> Add Data Source
                 </button>

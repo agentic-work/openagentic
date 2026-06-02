@@ -1094,26 +1094,6 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register OpenAI-compatible routes');
   }
 
-  // Register Anthropic Messages API — POST /v1/messages
-  // The Claude Code CLI speaks the Anthropic Messages API exclusively.
-  // This routes ${ANTHROPIC_BASE_URL}/v1/messages calls through the platform's
-  // ProviderManager with Anthropic-to-internal translation and canonical SSE output.
-  try {
-    const { anthropicMessagesRoute } = await import('./routes/anthropic/messages.route.js');
-    await server.register(async (instance) => {
-      instance.addHook('preHandler', async (request, reply) => {
-        return authMiddleware(request, reply);
-      });
-      await instance.register(anthropicMessagesRoute, {
-        providerManager: providerManager as any,
-        logger: loggers.routes,
-      });
-    }, { prefix: '/v1' });
-    loggers.routes.info('Anthropic Messages API registered at POST /v1/messages');
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register Anthropic Messages routes');
-  }
-
   // NOTE: Most Admin routes are now registered via adminPlugin above (HIGH-001 refactoring)
   // Keeping some here temporarily until full migration is complete
 
@@ -1142,6 +1122,19 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register admin audit-log route');
   }
 
+  // Register Admin UNIFIED Audit Logs routes — GET /api/admin/audit-logs (plural)
+  // + /stats, /errors, /sessions, /export. Backs the previously-DEAD AuditLogsPage
+  // by UNIONing every audit source table (tool-call/user/admin/flow/agent/webhook/
+  // credential/DLP/workflow/auth) into the AuditLogEntry feed via activityAggregator.
+  // Routes apply adminMiddleware per-route (onRequest), so no wrapper hook here.
+  try {
+    const { default: adminAuditLogsRoutes } = await import('./routes/admin-audit-logs.js');
+    await server.register(adminAuditLogsRoutes, { prefix: '/api/admin' });
+    loggers.routes.info('Admin unified audit-logs routes registered at /api/admin/audit-logs (+ /stats,/errors,/sessions,/export)');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin unified audit-logs routes');
+  }
+
   // Register Admin Prompting routes (techniques like Few-Shot, ReAct, etc.)
   try {
     const { default: adminPromptingRoutes } = await import('./routes/admin-prompting.js');
@@ -1152,6 +1145,71 @@ async function registerAllRoutes() {
     loggers.routes.info('Admin prompting techniques routes registered at /api/admin/prompting with admin middleware');
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register admin prompting routes');
+  }
+
+  // ── NEW admin route plugins (dead-endpoint implementation workflow) ────────
+  // Each module self-applies adminMiddleware per-route (onRequest) and uses
+  // bare/self-prefixed paths, so they mount with prefix '/api/admin' exactly
+  // like adminAuditLogRoutes above. server.ts is the SOLE registration path —
+  // do NOT also register the admin-audit/admin-extras wrapper plugins (their
+  // routes are already served by the direct registrations in this file).
+
+  // Flows KPIs — GET /api/admin/flows/kpis and /api/admin/flows/:id/kpis
+  try {
+    const { default: adminKpisRoutes } = await import('./routes/admin-kpis.js');
+    await server.register(adminKpisRoutes, { prefix: '/api/admin' });
+    loggers.routes.info('Admin Flows KPI routes registered at /api/admin/flows/kpis (+ /flows/:id/kpis)');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin Flows KPI routes');
+  }
+
+  // LLM-performance + redis + milvus dashboard tiles
+  // GET /api/admin/metrics/llm/performance, /metrics/llm/performance-trends,
+  // /metrics/redis, /metrics/milvus
+  try {
+    const { default: adminMetricsExtraRoutes } = await import('./routes/admin-metrics-extra.js');
+    await server.register(adminMetricsExtraRoutes, { prefix: '/api/admin' });
+    loggers.routes.info('Admin metrics-extra routes registered at /api/admin/metrics/{llm/performance,llm/performance-trends,redis,milvus}');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin metrics-extra routes');
+  }
+
+  // Prompt-effectiveness pane — GET /api/admin/prompts/effectiveness.
+  // The route file handler is at '/', so the full prefix carries the path. The
+  // module has NO inline guard (so its unit test injects without auth), so the
+  // admin guard is applied here at the scope level.
+  try {
+    const { adminPromptAnalyticsRoutes } = await import('./routes/admin-prompt-analytics.js');
+    await server.register(async (instance) => {
+      instance.addHook('onRequest', adminMiddleware);
+      await instance.register(adminPromptAnalyticsRoutes);
+    }, { prefix: '/api/admin/prompts/effectiveness' });
+    loggers.routes.info('Admin prompt-effectiveness route registered at /api/admin/prompts/effectiveness with admin middleware');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin prompt-effectiveness route');
+  }
+
+  // Tiered function-calling config — GET/PUT /api/admin/tiered-fc
+  try {
+    const { default: adminTieredFcRoutes } = await import('./routes/admin-tiered-fc.js');
+    await server.register(adminTieredFcRoutes, { prefix: '/api/admin' });
+    loggers.routes.info('Admin tiered-fc routes registered at /api/admin/tiered-fc (GET/PUT)');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin tiered-fc routes');
+  }
+
+  // Service-prompts — GET/POST /api/admin/service-prompts (+ /:key, /:key/versions,
+  // /:key/rollback/:version). The module uses bare paths and has no inline guard,
+  // so it mounts under a '/api/admin/service-prompts' scope with the admin guard.
+  try {
+    const { default: adminServicePromptsRoutes } = await import('./routes/admin-service-prompts.js');
+    await server.register(async (instance) => {
+      instance.addHook('preHandler', adminMiddleware);
+      await instance.register(adminServicePromptsRoutes);
+    }, { prefix: '/api/admin/service-prompts' });
+    loggers.routes.info('Admin service-prompts routes registered at /api/admin/service-prompts/* with admin middleware');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin service-prompts routes');
   }
 
   // NOTE: Admin LLM Provider Management routes (deployment state, pause/resume, capabilities, credential rotation)

@@ -243,6 +243,12 @@ export class InitializationService {
     // Check if re-initialization is needed due to version changes
     const needsReinit = status.isInitialized ? await this.needsReinitialization(status) : false;
 
+    // Always shed legacy/phantom MCP rows (e.g. the 'agentic-memory-mcp' brand-scrub
+    // leak) BEFORE the already-initialized short-circuit below. Existing deployments
+    // were initialized before the phantom was removed, so the gated init never runs
+    // again — this unconditional pass is what actually deletes the stale row. Best-effort.
+    await this.cleanupLegacyMcpRows();
+
     // Skip if already initialized unless forced or version changed.
     // Legacy `promptsNeedReseeding` re-init trigger RIPPED 2026-05-11 along
     // with the PromptTemplate model (chatmode-rip Phase E final cleanup).
@@ -807,6 +813,28 @@ export class InitializationService {
    * Initialize MCP server configurations
    * This handles ALL MCP configuration initialization - MCP orchestrator only reads from this
    */
+  /**
+   * Delete legacy / phantom MCP rows on EVERY boot, BEFORE the already-initialized
+   * short-circuit in initialize(). The 'agentic-memory-mcp' brand-scrub-leak row was
+   * created by an old unconditional upsert; that upsert is gone, but existing DBs
+   * still carry the row and the gated init never runs again to shed it. This
+   * unconditional, best-effort pass removes it (and never throws into the boot path).
+   */
+  private async cleanupLegacyMcpRows(): Promise<void> {
+    const LEGACY_MEMORY_MCP_IDS = [
+      'memory-mcp', 'memory-simple', 'memory-builtin', 'memory-external', 'agentic-memory-mcp',
+    ];
+    try {
+      const del = await this.prisma.mCPServerConfig.deleteMany({ where: { id: { in: LEGACY_MEMORY_MCP_IDS } } });
+      await this.prisma.mCPInstance.deleteMany({ where: { server_id: { in: LEGACY_MEMORY_MCP_IDS } } });
+      if (del.count > 0) {
+        this.logger.info({ removed: del.count }, '🧹 Removed legacy/phantom MCP rows on boot');
+      }
+    } catch (err) {
+      this.logger.warn({ err }, 'Legacy MCP row cleanup failed (non-fatal)');
+    }
+  }
+
   private async initializeMCPServers(): Promise<void> {
     this.logger.info('🔧 Initializing MCP server configurations from environment...');
     
@@ -824,31 +852,36 @@ export class InitializationService {
         userIsolatedServers
       }, 'Parsed MCP configuration from environment');
 
-      // Clean up old memory MCP configs first
+      // Clean up old memory MCP configs first.
+      // 'agentic-memory-mcp' is a phantom row: the memory feature is in-process
+      // (reserved id `system-memory` in routes/chat/pipeline/mcp.stage.ts), so no
+      // DB MCP row is needed. The proxy cannot spawn its `command:'builtin'`
+      // sentinel and reports it as a permanently-down server in the Fleet. Delete
+      // it here on every boot so the row that already exists in live DBs is
+      // removed (we must not psql-delete the live DB directly).
+      const LEGACY_MEMORY_MCP_IDS = [
+        'memory-mcp', 'memory-simple', 'memory-builtin', 'memory-external', 'agentic-memory-mcp',
+      ];
       this.logger.info('🧹 Cleaning up old memory MCP configurations...');
       await this.prisma.mCPServerConfig.deleteMany({
         where: {
-          id: { in: ['memory-mcp', 'memory-simple', 'memory-builtin', 'memory-external'] }
+          id: { in: LEGACY_MEMORY_MCP_IDS }
         }
       });
       await this.prisma.mCPInstance.deleteMany({
         where: {
-          server_id: { in: ['memory-mcp', 'memory-simple', 'memory-builtin', 'memory-external'] }
+          server_id: { in: LEGACY_MEMORY_MCP_IDS }
         }
       });
 
       // ONLY define BUILTIN MCP servers here - external MCPs are discovered from mcp-proxy
       // Do NOT hardcode external MCPs (azure, aws, etc.) - they come from mcp-proxy
+      //
+      // NOTE: the memory feature is IN-PROCESS (reserved id `system-memory` in
+      // routes/chat/pipeline/mcp.stage.ts) — it is NOT an MCP server and needs no
+      // DB row. The old `agentic-memory-mcp` builtin entry has been removed; it
+      // only ever surfaced a permanently-down phantom in the admin MCP Fleet.
       const mcpServerDefinitions: Record<string, any> = {
-        'agentic-memory-mcp': {
-          name: 'Agentic Memory MCP',
-          command: 'builtin',  // Mark as builtin - not spawned externally
-          args: [],  // No args needed for builtin
-          user_isolated: true,  // Each user gets their own instance
-          require_obo: false,
-          capabilities: ['memory', 'knowledge', 'recall', 'vector', 'embedding', 'context-management'],
-          description: 'Per-user memory system with PostgreSQL, Redis, and Milvus integration'
-        }
         // NOTE: External MCPs (openagentic_azure, openagentic_admin, etc.) are NOT defined here
         // They are discovered dynamically from the mcp-proxy service via /api/mcp/servers
         // This prevents hardcoding and ensures the API reflects what mcp-proxy actually has
@@ -918,28 +951,11 @@ export class InitializationService {
         }
       }
 
-      // ALWAYS ensure agentic-memory-mcp exists as builtin
-      const agenticMemoryConfig = {
-        id: 'agentic-memory-mcp',
-        name: 'Agentic Memory MCP',
-        command: 'builtin',
-        args: [],
-        env: {},
-        enabled: true,  // Always enabled
-        require_obo: false,
-        user_isolated: true,
-        capabilities: ['memory', 'knowledge', 'recall', 'vector', 'embedding', 'context-management'],
-        metadata: {
-          isBuiltin: true,
-          description: 'Per-user memory system with PostgreSQL, Redis, and Milvus integration'
-        }
-      };
-
-      // Add agentic-memory-mcp if not already in configs
-      if (!configs.find(c => c.id === 'agentic-memory-mcp')) {
-        configs.push(agenticMemoryConfig);
-        this.logger.info('Added Agentic Memory MCP as builtin service');
-      }
+      // NOTE: we intentionally do NOT seed a memory MCP row here. The memory
+      // feature is in-process (`system-memory` in mcp.stage.ts) — no DB MCP row
+      // is needed, and the old `agentic-memory-mcp` builtin only ever produced a
+      // permanently-down phantom in the admin MCP Fleet (the proxy cannot spawn
+      // its `command:'builtin'` sentinel). It is deleted in the cleanup above.
 
       // Insert or update all configs
       for (const config of configs) {

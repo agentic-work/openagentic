@@ -1,7 +1,7 @@
 /**
  * ContextManagerService
  *
- * Singleton service that calculates token budgets per mode (chat/code/flow).
+ * Singleton service that calculates token budgets per mode (chat/flow).
  * Gets context window from ModelConfigurationService, falls back to model-catalogs,
  * then defaults to 32K. Applies allocation caps and redistributes slack to history.
  */
@@ -12,7 +12,6 @@ import { logger } from '../../utils/logger.js';
 import { TokenCounter } from './TokenCounter.js';
 import { CompactionEngine } from './CompactionEngine.js';
 import { ChatContextStrategy } from './strategies/ChatContextStrategy.js';
-import { CodeContextStrategy } from './strategies/CodeContextStrategy.js';
 import { FlowContextStrategy } from './strategies/FlowContextStrategy.js';
 import type {
   ContextMode,
@@ -38,17 +37,6 @@ const DEFAULT_BUDGET_CONFIGS: Record<ContextMode, BudgetConfig> = {
     responsePct: 0.20,
     responseCap: 16384,
     compactionThresholdPct: 0.85,
-  },
-  code: {
-    systemPromptPct: 0.10,
-    systemPromptCap: 4096,
-    toolsPct: 0.05,
-    toolsCap: 5120,
-    historyPct: 0.65,
-    responsePct: 0.20,
-    responseCap: 16384,
-    compactionThresholdPct: 0.80,
-    rollingCompactionInterval: 50,
   },
   flow: {
     systemPromptPct: 0.10,
@@ -80,7 +68,6 @@ class ContextManagerServiceClass {
   private overrides: Partial<Record<ContextMode, Partial<BudgetConfig>>> = {};
   private compactionEngine: CompactionEngine;
   private chatStrategy: ChatContextStrategy;
-  private codeStrategy: CodeContextStrategy | null = null;
   private flowStrategy: FlowContextStrategy;
 
   private constructor() {
@@ -138,18 +125,6 @@ class ContextManagerServiceClass {
   // Compaction public API
   // ---------------------------------------------------------------------------
 
-  private getCodeStrategy(): CodeContextStrategy {
-    if (!this.codeStrategy) {
-      this.codeStrategy = new CodeContextStrategy();
-    }
-    return this.codeStrategy;
-  }
-
-  private getCodeRollingInterval(): number {
-    const config = this.getMergedBudgetConfig('code');
-    return config.rollingCompactionInterval || 50;
-  }
-
   async compact(
     messages: any[],
     sessionId: string,
@@ -162,9 +137,6 @@ class ContextManagerServiceClass {
 
     let result: CompactResult;
     switch (mode) {
-      case 'code':
-        result = await this.getCodeStrategy().compact(messages, budget, toolTokenCount, existingSummary || null, this.getCodeRollingInterval());
-        break;
       case 'flow':
         result = await this.flowStrategy.compact(messages, budget, toolTokenCount, existingSummary || null);
         break;
@@ -232,7 +204,7 @@ class ContextManagerServiceClass {
       const totalCompactions = logs.length;
       const totalTokensFreed = logs.reduce((sum: number, l: any) => sum + l.tokens_freed, 0);
       const modelSwitches = logs.filter((l: any) => l.model_switched).length;
-      const byMode: Record<string, number> = { chat: 0, code: 0, flow: 0 };
+      const byMode: Record<string, number> = { chat: 0, flow: 0 };
       for (const l of logs) { byMode[l.mode] = (byMode[l.mode] || 0) + 1; }
       return { totalCompactions, totalTokensFreed, modelSwitches, byMode, recentLogs: logs.slice(0, 20) };
     } catch (err: any) {

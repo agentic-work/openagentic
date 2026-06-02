@@ -385,17 +385,29 @@ export class GenAITracer {
       });
     }
     if (this.prom) {
-      // Pull the model label off the span's attributes for the histograms.
-      // OTel API doesn't expose attributes on Span — but our caller flow
-      // always pairs recordUsage with a span we just opened in withChatSpan
-      // where model is in scope. We accept the label gap here as a small
-      // tax; the histograms still bucket the distribution by model when
-      // observed inside withChatSpan's fn callback (model is attr of the
-      // parent span). See production wire-in for the parameterized observe.
-      const model = ((span as unknown as { attributes?: Record<string, unknown> })
-        .attributes?.['gen_ai.request.model'] as string | undefined) ?? 'unknown';
+      // Model label for the prom histograms. Prefer the explicit
+      // `otelLabels.model` the caller threads through (the live streaming
+      // path via startChat().recordUsage always passes it) so
+      // gen_ai_usage_*_tokens_sum is attributable `by (model)` on the
+      // dashboard. OTel's Span interface does NOT expose `.attributes`,
+      // so the previous span-attribute read always collapsed to 'unknown'
+      // — leaving gen_ai_usage_cache_read_input_tokens_sum un-sliceable by
+      // model (it just never carried a real label). Fall back to the
+      // span-attribute hack only when no explicit model was supplied
+      // (withChatSpan's fn-callback path), then 'unknown'.
+      const model =
+        otelLabels?.model ??
+        ((span as unknown as { attributes?: Record<string, unknown> })
+          .attributes?.['gen_ai.request.model'] as string | undefined) ??
+        'unknown';
       this.prom.inputTokens.observe({ model }, usage.input);
       this.prom.outputTokens.observe({ model }, usage.output);
+      // cache_read_input_tokens — Anthropic / Bedrock prompt-cache hit
+      // indicator. Observe whenever the provider reported it (>= 0), so the
+      // gen_ai_usage_cache_read_input_tokens histogram series exists on
+      // /metrics for the dashboard's `..._sum` rate query. Providers that
+      // never report cache reads (Ollama) leave cacheRead undefined and are
+      // correctly elided — we never fabricate a zero.
       if (usage.cacheRead !== undefined) {
         this.prom.cacheReadTokens.observe({ model }, usage.cacheRead);
       }

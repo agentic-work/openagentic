@@ -310,7 +310,9 @@ export const Sidebar = ({ active, onSelect, onSignOut }: SidebarProps) => {
         style={{
           borderTop: '1px solid var(--line-1)',
           padding: '8px 0',
-          background: 'var(--bg-1)',
+          /* transparent so the frosted .aw-sidebar glass reads through the
+             footer band (the borderTop keeps it visually separated) */
+          background: 'transparent',
           position: 'relative',
         }}
       >

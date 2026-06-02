@@ -16,7 +16,6 @@ const SERVICE_MAP: Record<string, { component: string; displayName: string; crit
   api: { component: 'api', displayName: 'API Server', critical: true },
   ui: { component: 'ui', displayName: 'Frontend (UI)' },
   'mcp-proxy': { component: 'mcp-proxy', displayName: 'MCP Proxy' },
-  'code-manager': { component: 'code-manager', displayName: 'Code Manager' },
   'openagentic-proxy': { component: 'openagentic-proxy', displayName: 'Agent Proxy' },
   'synth-executor': { component: 'synth-executor', displayName: 'Synth Executor' },
   minio: { component: 'minio', displayName: 'MinIO Storage' },

@@ -6,7 +6,6 @@ interface ImportMetaEnv {
 
   // Build-time feature flags
   readonly VITE_FEATURE_OLLAMA?: string
-  readonly VITE_FEATURE_OPENAGENTIC?: string
   readonly VITE_FEATURE_MULTIMODEL?: string
   // 2026-04-19 — VITE_FEATURE_SLIDER removed (task #144, slider rip).
   readonly VITE_FEATURE_MCP?: string

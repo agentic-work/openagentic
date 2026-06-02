@@ -262,10 +262,8 @@ model User {
   updated_agentic_frameworks AgenticFramework[] @relation("AgenticFrameworkUpdater")
   user_roles             UserRole[]
   llm_requests           LLMRequestLog[]
-  awcode_sessions        AWCodeSession[]
   model_role_assignments ModelRoleAssignment[]
   multi_model_metrics    MultiModelMetrics[]
-  code_mode_provisioning CodeModeProvisioning?
   response_feedback      ResponseFeedback[]    // User's feedback on responses
   github_credential      UserGitHubCredential? // GitHub OAuth credentials for GitHub MCP
   documents              Document[]
@@ -423,58 +421,6 @@ model UserGitHubCredential {
   @@schema("public")
 }
 
-/// Code Mode environment provisioning status per user
-/// Tracks the setup state of a user's sandboxed dev environment
-model CodeModeProvisioning {
-  id      String @id @default(uuid())
-  user_id String @unique
-
-  // Provisioning status
-  status         String  @default("pending") // pending, provisioning, ready, failed, suspended
-  status_message String? // Human-readable status message
-
-  // Provisioning steps tracking
-  storage_provisioned Boolean @default(false)
-  storage_bucket      String? // MinIO/S3 bucket name or path
-  storage_quota_mb    Int     @default(1024) // 1GB default quota
-  storage_used_mb     Int     @default(0)
-
-  sandbox_provisioned Boolean @default(false)
-  sandbox_user_id     String? // OS-level sandbox user ID
-  sandbox_username    String? // OS-level sandbox username
-
-  vscode_provisioned Boolean @default(false)
-  vscode_settings    Json    @default("{}") // User's VSCode settings
-
-  openagentic_provisioned Boolean @default(false)
-  openagentic_model       String? // Default model for this user
-
-  // Environment details
-  environment_type String  @default("docker") // docker, kubernetes
-  node_name        String? // K8s node or Docker host
-  pod_name         String? // K8s pod name if applicable
-
-  // Lifecycle
-  provisioned_at   DateTime?
-  last_accessed_at DateTime?
-  suspended_at     DateTime?
-  suspended_reason String?
-
-  // Error tracking
-  last_error  String?
-  error_count Int     @default(0)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@index([status])
-  @@index([user_id])
-  @@map("code_mode_provisioning")
-  @@schema("public")
-}
-
 model UserSession {
   id               String   @id @default(uuid())
   user_id          String
@@ -593,12 +539,6 @@ model UserPermissions {
   can_use_file_upload      Boolean @default(true)
   can_use_memory           Boolean @default(true)
   can_use_rag              Boolean @default(true)
-  can_use_awcode           Boolean @default(false) // OpenAgenticCode feature access
-
-  // Code Mode CLI Preference
-  // null = use global default, 'openagentic' = OpenAgentic AI, 'claude-code' = Claude Code CLI
-  // All CLI tools connect exclusively through openagentic-api via SDK - no direct provider keys
-  code_mode_cli            String?
 
   // Intelligence Slider (0-100, null = use global default)
   // Controls cost/quality tradeoff for model routing
@@ -662,7 +602,6 @@ model PermissionTemplate {
   can_use_file_upload      Boolean @default(true)
   can_use_memory           Boolean @default(true)
   can_use_rag              Boolean @default(true)
-  can_use_awcode           Boolean @default(false) // OpenAgenticCode feature access
 
   is_default Boolean  @default(false)
   created_by String?
@@ -698,7 +637,6 @@ model GroupPermissions {
   can_use_file_upload      Boolean  @default(true)
   can_use_memory           Boolean  @default(true)
   can_use_rag              Boolean  @default(true)
-  can_use_awcode           Boolean  @default(false) // OpenAgenticCode feature access
 
   priority    Int      @default(1000) // Lower = higher priority
   admin_notes String?  @db.Text
@@ -3114,72 +3052,6 @@ model MultiModelMetrics {
 }
 
 // ============================================================================
-// AWCODE SESSIONS & MESSAGES (public schema)
-// For storing agentic-cli coding session logs
-// ============================================================================
-
-model AWCodeSession {
-  id               String    @id
-  user_id          String
-  workspace_path   String?
-  model            String?
-  pid              Int?
-  status           String    @default("running") // 'running' | 'stopped' | 'error'
-  title            String?
-  summary          String?   @db.Text
-  metadata         Json?     @default("{}")
-  message_count    Int       @default(0)
-  total_tokens     Int       @default(0)
-  total_cost       Decimal   @default(0) @db.Decimal(10, 6)
-  tool_calls_count Int       @default(0)
-  files_modified   String[]
-  started_at       DateTime  @default(now())
-  stopped_at       DateTime?
-  last_activity    DateTime  @default(now())
-  created_at       DateTime  @default(now())
-  updated_at       DateTime  @updatedAt
-
-  user     User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  messages AWCodeMessage[]
-
-  @@index([user_id])
-  @@index([status])
-  @@index([started_at])
-  @@map("awcode_sessions")
-  @@schema("public")
-}
-
-model AWCodeMessage {
-  id            String   @id @default(uuid())
-  session_id    String
-  role          String // 'user' | 'assistant' | 'system' | 'tool'
-  content       String?  @db.Text
-  raw_output    String?  @db.Text // Raw PTY output with ANSI codes
-  model         String?
-  tokens        Int?     @default(0)
-  tokens_input  Int?     @default(0)
-  tokens_output Int?     @default(0)
-  cost          Decimal? @default(0) @db.Decimal(10, 6)
-  metadata      Json?    @default("{}")
-  tool_calls    Json? // Tool calls initiated by this message
-  tool_results  Json? // Results from tool execution
-  tool_name     String? // For tool role messages
-  files_read    String[]
-  files_written String[]
-  thinking      String?  @db.Text // Chain of thought reasoning
-  duration_ms   Int? // Time to generate response
-  created_at    DateTime @default(now())
-
-  session AWCodeSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
-
-  @@index([session_id])
-  @@index([role])
-  @@index([created_at])
-  @@map("awcode_messages")
-  @@schema("public")
-}
-
-// ============================================================================
 // GOOGLE VERTEX CONTEXT CACHE (admin schema)
 // Tracks cached content on Google's servers for 90% cost savings
 // See: https://ai.google.dev/gemini-api/docs/caching
@@ -4123,7 +3995,8 @@ model WorkflowExecution {
   version   WorkflowVersion?     @relation(fields: [version_id], references: [id])
   starter   User?                @relation(fields: [started_by], references: [id])
   group     UserGroup?           @relation(fields: [group_id], references: [id])
-  approvals WorkflowApproval[]
+  approvals    WorkflowApproval[]
+  dataRequests WorkflowDataRequest[]
   logs      WorkflowExecutionLog[]
   tokenUsage TokenUsage[]
 
@@ -4174,6 +4047,52 @@ model WorkflowApproval {
   @@index([execution_id])
   @@index([status])
   @@map("workflow_approvals")
+  @@schema("public")
+}
+
+// HITL human_input / request_data — the typed DATA-REQUEST gate (sister of
+// WorkflowApproval). A human_input node persists one of these rows, pauses the
+// run, and emits a `needs_input` frame; POST /resume-execution validates the
+// user's submitted values against the stored fields[] and resumes the engine.
+model WorkflowDataRequest {
+  id           String @id @default(uuid())
+  execution_id String
+  node_id      String
+
+  // The typed form the user must fill (array of field descriptors).
+  fields      Json
+  title       String? @db.Text
+  description String? @db.Text
+
+  // Request configuration
+  timeout_seconds Int      @default(86400) // 24 hours
+  timeout_action  String   @default("fail") // fail | use_default
+  assign_to       String[] @default([]) // user ids or group names allowed to answer
+  channel         String   @default("chat") // chat | in_app | email | slack
+
+  // Status + result
+  status      String  @default("pending") // pending, provided, timeout
+  values      Json? // the user's submitted answers, keyed by field name
+  provided_by String? // user id who submitted
+
+  // Context (input snapshot + node results at suspend time)
+  context_data Json?
+
+  // Multi-tenant isolation (nullable / harmless in single-tenant OSS)
+  tenant_id String?
+
+  // Timing
+  created_at DateTime  @default(now())
+  timeout_at DateTime
+  decided_at DateTime?
+
+  // Relations
+  execution WorkflowExecution @relation(fields: [execution_id], references: [id], onDelete: Cascade)
+
+  @@index([execution_id])
+  @@index([status])
+  @@index([tenant_id])
+  @@map("workflow_data_requests")
   @@schema("public")
 }
 

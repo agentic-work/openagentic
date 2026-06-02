@@ -132,10 +132,10 @@ export function pickHealthProbeModel(
 /**
  * Convert Anthropic-shape messages to OpenAI chat-completions shape for AIF.
  *
- * Why this exists: openagentic CLI and the /v1/messages route forward
- * messages in Anthropic shape (content arrays with `tool_use`/`tool_result`
- * blocks). AIF's chat-completions API rejects that shape with strict
- * 400s. This converter:
+ * Why this exists: callers that forward messages in Anthropic shape
+ * (content arrays with `tool_use`/`tool_result` blocks) hit AIF's
+ * chat-completions API, which rejects that shape with strict 400s.
+ * This converter:
  *
  *   1. Splits `{role:'user', content:[{type:'tool_result',...}, ...]}`
  *      into one OpenAI `{role:'tool', tool_call_id, content}` per result.

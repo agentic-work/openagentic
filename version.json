@@ -8,7 +8,6 @@
     "ui": "0.1.0",
     "flowise": "2.2.0",
     "mcpProxy": "0.1.0",
-    "codeManager": "0.1.0",
     "openagenticProxy": "0.1.0"
   },
   "changelog": [
@@ -17,11 +16,11 @@
       "date": "2026-04-10",
       "codename": "Light It Up",
       "highlights": [
-        "Admin Test Harness (Bolt 7) \u2014 SSE-streaming system test suite for K8s, MCP, agents, chat, code mode",
+        "Admin Test Harness (Bolt 7) \u2014 SSE-streaming system test suite for K8s, MCP, agents, chat",
         "Artifact / diagram agent upgrade \u2014 production-quality HTML+CSS+JS, Mermaid removed",
         "Agent synthesis enforcement \u2014 raw JSON blocked from reaching users; Ollama format extraction",
         "Azure MCP creation tools \u2014 VNet, subnet, NSG, Application Gateway, Front Door verified end-to-end",
-        "Smart router sentinel fixes across chat + code mode pipelines",
+        "Smart router sentinel fixes across the chat pipeline",
         "Model Registry rebuilt from live SDK discovery; staleness banner removed",
         "TTFT optimization \u2014 Ollama warm-up + parallel MCP/Memory initialization",
         "Bob UC1\u2013UC5 all pass against live Azure; Bolt 4 full 24/24 workflow regression with 0 failures",
@@ -39,7 +38,7 @@
         "Dual-mode build pipeline \u2014 vendored or git-clone-via-PAT companion sources",
         "AIF Claude as a first-class provider with Anthropic-native SSE streaming",
         "Live-SDK Model Registry \u2014 Admin LLM Registry rebuilt from provider SDK discovery on every load",
-        "Smart router sentinel fix in both chat and code mode validation stages",
+        "Smart router sentinel fix in the chat validation stage",
         "Self-correction pipeline + ReAct loop with final-synthesis fallback",
         "Cloud_operations agent type with Azure OBO token propagation",
         "Prisma singleton sweep \u2014 fewer pg connections under load",
@@ -57,7 +56,7 @@
       "codename": "Overhaul",
       "highlights": [
         "Flows Enterprise Overhaul \u2014 Per-node/workflow/admin config hierarchy with 3-level governance",
-        "Unified Cross-Mode Memory \u2014 Chat, code, and flows share a single per-user context layer",
+        "Unified Cross-Mode Memory \u2014 Chat and flows share a single per-user context layer",
         "Error Handling Framework \u2014 Error edges, handler nodes, and error routing in workflow engine",
         "Workflow Versioning \u2014 Auto-snapshot on save, visual diff, version restore",
         "Agent Platform \u2014 Persona system, tool policy, visual cron scheduling",
@@ -76,7 +75,7 @@
         "Integration CRUD routes with webhook receivers and connection testing",
         "IntegrationsView admin UI with cards, logs, add/edit dialog",
         "LLMProviderManagement rewrite with provider cards, detail panels, capability matrix view",
-        "Recharts AreaChart/BarChart/PieChart added to PerformanceMetrics, EmbeddingMetrics, MonitoringView, CodeModeMetricsDashboard, ContextWindowMetrics, UserActivityDashboard, OATUsageStatsView, PromptMetrics, DashboardOverview",
+        "Recharts AreaChart/BarChart/PieChart added to PerformanceMetrics, EmbeddingMetrics, MonitoringView, ContextWindowMetrics, UserActivityDashboard, OATUsageStatsView, PromptMetrics, DashboardOverview",
         "AdminMetricCard with sparklines and trends across all admin views",
         "AdminFilterBar replacing manual select/filter UI in all views",
         "Legacy auth migration (useAuth/getAuthHeaders \u2192 apiRequest) in PerformanceMetrics, MonitoringView",
@@ -89,7 +88,7 @@
         "User context node type for cross-mode memory access in workflows",
         "Error edge type with red dashed styling and error output handles",
         "Workflow versioning: auto-snapshot on save, version history sidebar, visual diff, restore",
-        "UserContextService: unified cross-mode memory assembly from chat, code, workflows, memories",
+        "UserContextService: unified cross-mode memory assembly from chat, workflows, memories",
         "7 new API endpoints for user context CRUD, admin stats, workflow governance",
         "Auto-indexing: chat messages and workflow results indexed into unified context",
         "Per-user memory settings: source toggles, retention, context-in-chat/code toggles",
@@ -116,11 +115,10 @@
         "Added LLM-powered memory compaction (topic clustering, summarization, profile recompute)",
         "Added per-user model preferences in SmartModelRouter",
         "Added /api/user-memory/* API routes (entries, context, profile, ingest, purge)",
-        "Added auto-ingestion hooks (chat, tool, workflow, code, feedback)",
+        "Added auto-ingestion hooks (chat, tool, workflow, feedback)",
         "Added ExecutionResultsPanel resize handle (280-800px) and close button",
         "Added MCP tool node retry with graceful degradation",
-        "Added pre-upgrade backup and post-upgrade verification scripts",
-        "Added openagentic Claude Code feature parity (agent system, memory client, OAT CreateTool, /agents command)"
+        "Added pre-upgrade backup and post-upgrade verification scripts"
       ]
     },
     {
@@ -189,14 +187,12 @@
       "codename": "Atlas",
       "highlights": [
         "Live artifact streaming - artifacts render as they stream, not after completion",
-        "K8s warm container pool - instant Code Mode startup",
         "Flowise Google auth fix - workspace lookup via WorkspaceUser entity",
         "Unified version system across all components"
       ],
       "breaking": [],
       "features": [
         "StreamingArtifactRenderer component for live artifact preview",
-        "Warm pool management in K8sSessionManager",
         "Detailed JWT logging in Flowise middleware"
       ],
       "fixes": [
@@ -209,13 +205,11 @@
       "date": "2026-01-10",
       "codename": "Pioneer",
       "highlights": [
-        "Code Mode V2 with VSCode integration",
         "Intelligence Slider for model selection",
         "MCP Tools integration"
       ],
       "breaking": [],
       "features": [
-        "Full VSCode code-server integration",
         "Real-time workspace sync with MinIO/S3",
         "Multi-provider LLM support (Anthropic, OpenAI, Google, Azure, Ollama)"
       ],

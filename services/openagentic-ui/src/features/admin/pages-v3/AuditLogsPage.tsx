@@ -18,12 +18,10 @@ import {
   StatusDot,
   type Status,
 } from '../primitives-v3'
-import {
-  useAuditLogs,
-  type AuditLogEntry,
-} from '../hooks/useDashboardMetrics'
+import { type AuditLogEntry } from '../hooks/useDashboardMetrics'
 import { useAdminQuery } from '../hooks/useAdminQuery'
 import { apiEndpoint } from '../../../utils/api'
+import './AuditLogsPage.css'
 
 // ============================================================
 // Types
@@ -396,7 +394,7 @@ export const AuditLogsPage: React.FC<AuditLogsPageProps> = ({
   )
 
   return (
-    <>
+    <div className="aw-audit-glass">
       <PageHead
         title="Audit Logs"
         meta={meta}
@@ -563,7 +561,7 @@ export const AuditLogsPage: React.FC<AuditLogsPageProps> = ({
       >
         {detail && <EventDetail entry={detail} />}
       </SidePanel>
-    </>
+    </div>
   )
 }
 
@@ -586,7 +584,8 @@ const LiveFeed: React.FC<{
         <EmptyInline pad>failed to fetch /api/admin/audit-logs</EmptyInline>
       ) : rows.length === 0 ? (
         <EmptyInline pad>
-          no events match the current scope / resource / status / search filters
+          no activity in range — adjust the scope / resource / status / search
+          filters or widen the time window
         </EmptyInline>
       ) : (
         <Feed>

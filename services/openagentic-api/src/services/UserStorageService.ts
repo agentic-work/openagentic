@@ -579,10 +579,9 @@ export function createAxiosMinioAdminOps(
   // Axios is passed in so callers can await the dynamic import ONCE at
   // plugin-registration time. Previously this function used `require('axios')`
   // inside its body, which threw `require is not defined` under the ESM
-  // build — breaking every ensure-user-bucket call and stalling cm's
-  // codemode exec-pod boot. The plugin (codemode.plugin.ts) resolves the
-  // module via `await import('axios')` in its async registration body and
-  // hands us the default export here.
+  // build — breaking every ensure-user-bucket call. Callers resolve the
+  // module via `await import('axios')` in their async registration body and
+  // hand us the default export here.
   deps: { axios: typeof import('axios').default },
 ): MinioAdminOps {
   const { axios } = deps;

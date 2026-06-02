@@ -1,8 +1,21 @@
 import * as React from 'react'
 import './styles.css'
 
-export const Panel = ({ children }: { children: React.ReactNode }) => (
-  <div className="aw-panel">{children}</div>
+export const Panel = ({
+  children,
+  glass = false,
+  className,
+}: {
+  children: React.ReactNode
+  /** Frosted-glass surface (theme.css `.glass`) instead of the flat `--bg-0`
+   *  panel. Used by the analytics chart cards so they match the rest of the
+   *  glass admin console. The glass tokens live in the ONE-SOT theme.css. */
+  glass?: boolean
+  className?: string
+}) => (
+  <div className={['aw-panel', glass ? 'aw-panel--glass glass' : '', className].filter(Boolean).join(' ')}>
+    {children}
+  </div>
 )
 
 export interface PanelHeadProps {

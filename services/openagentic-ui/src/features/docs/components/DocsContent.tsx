@@ -397,7 +397,7 @@ const ChevronDown: React.FC<{ open: boolean; size?: number }> = ({ open, size = 
 const AgentTypeCard: React.FC<{ item: DocManifestItem; query: string }> = ({ item, query }) => (
   <div
     className="rounded-lg p-4 flex items-start gap-4"
-    style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+    style={{ backgroundColor: 'var(--ctl-surf)', border: '1px solid var(--glass-border)' }}
   >
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -437,7 +437,7 @@ const AgentTypeCard: React.FC<{ item: DocManifestItem; query: string }> = ({ ite
 const DLPRuleCard: React.FC<{ item: DocManifestItem; query: string }> = ({ item, query }) => (
   <div
     className="rounded-lg px-4 py-3 flex items-center gap-3"
-    style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+    style={{ backgroundColor: 'var(--ctl-surf)', border: '1px solid var(--glass-border)' }}
   >
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 flex-wrap">
@@ -464,7 +464,7 @@ const HttpRouteCard: React.FC<{ item: DocManifestItem; query: string }> = ({ ite
   return (
     <div
       className="rounded-lg px-4 py-2.5 flex items-center gap-3"
-      style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+      style={{ backgroundColor: 'var(--ctl-surf)', border: '1px solid var(--glass-border)' }}
     >
       <MethodBadge method={method} />
       <span className="text-sm font-mono truncate" style={{ color: 'var(--color-text)' }}>
@@ -486,7 +486,7 @@ const ModelConfigCard: React.FC<{ item: DocManifestItem; query: string }> = ({ i
   return (
     <div
       className="rounded-lg overflow-hidden"
-      style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+      style={{ backgroundColor: 'var(--ctl-surf)', border: '1px solid var(--glass-border)' }}
     >
       <div className="px-4 py-2.5 border-b" style={{ borderColor: 'var(--color-border)' }}>
         <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
@@ -529,7 +529,7 @@ const InterfaceFieldCard: React.FC<{ item: DocManifestItem; query: string }> = (
   return (
     <div
       className="rounded-lg px-4 py-2.5 flex items-center gap-3"
-      style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+      style={{ backgroundColor: 'var(--ctl-surf)', border: '1px solid var(--glass-border)' }}
     >
       <span className="text-sm font-mono font-medium" style={{ color: 'var(--color-text)' }}>
         <HighlightText text={item.name} query={query} />
@@ -558,7 +558,7 @@ const FlowStepCard: React.FC<{ item: DocManifestItem; query: string; index: numb
     </div>
     <div
       className="rounded-lg px-4 py-3 flex-1 mb-2"
-      style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+      style={{ backgroundColor: 'var(--ctl-surf)', border: '1px solid var(--glass-border)' }}
     >
       <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
         <HighlightText text={item.name} query={query} />
@@ -580,7 +580,7 @@ const FlowStepCard: React.FC<{ item: DocManifestItem; query: string; index: numb
 const McpServerCard: React.FC<{ item: DocManifestItem; query: string }> = ({ item, query }) => (
   <div
     className="rounded-lg px-4 py-3 flex items-center gap-3"
-    style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+    style={{ backgroundColor: 'var(--ctl-surf)', border: '1px solid var(--glass-border)' }}
   >
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--color-warning)', flexShrink: 0 }}>
       <rect x="2" y="3" width="20" height="6" rx="2" stroke="currentColor" strokeWidth="2" />
@@ -614,7 +614,7 @@ const McpToolCard: React.FC<{ item: DocManifestItem; query: string }> = ({ item,
   return (
     <div
       className="rounded-lg overflow-hidden"
-      style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+      style={{ backgroundColor: 'var(--ctl-surf)', border: '1px solid var(--glass-border)' }}
     >
       <button
         onClick={() => hasParams && setExpanded(!expanded)}
@@ -668,7 +668,7 @@ const McpToolCard: React.FC<{ item: DocManifestItem; query: string }> = ({ item,
 const DefaultCard: React.FC<{ item: DocManifestItem; query: string }> = ({ item, query }) => (
   <div
     className="rounded-lg px-4 py-3 flex items-start gap-3"
-    style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+    style={{ backgroundColor: 'var(--ctl-surf)', border: '1px solid var(--glass-border)' }}
   >
     <span
       className="text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 uppercase tracking-wide"
@@ -791,13 +791,7 @@ const TableOfContents: React.FC<{ sections: DocManifestSection[]; showSwagger?: 
   if (sections.length <= 1 && !showSwagger) return null;
 
   return (
-    <nav
-      className="rounded-lg px-4 py-3 mb-6"
-      style={{
-        backgroundColor: 'var(--color-surface)',
-        border: '1px solid var(--color-border)',
-      }}
-    >
+    <nav className="glass-card px-4 py-3 mb-6">
       <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-textMuted)' }}>
         On this page
       </div>
@@ -917,14 +911,10 @@ export const DocsContent: React.FC = () => {
     return (
       <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: 'var(--color-background)' }}>
         <div
-          className="rounded-xl overflow-hidden"
+          className="glass overflow-hidden"
           style={{
             width: 'min(640px, 90%)',
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            // Layered shadows + faint perspective tilt = subtle 3-D feel without parallax JS.
-            boxShadow:
-              '0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 60px -20px rgba(0,0,0,0.55), 0 12px 24px -10px rgba(0,0,0,0.35)',
+            // Faint perspective tilt = subtle 3-D feel without parallax JS.
             transform: 'perspective(1200px) rotateX(0.6deg)',
             transformStyle: 'preserve-3d',
           }}
@@ -939,7 +929,7 @@ export const DocsContent: React.FC = () => {
               backgroundSize: 'cover',
               backgroundPosition: 'center 30%',
               backgroundRepeat: 'no-repeat',
-              borderBottom: '1px solid var(--color-border)',
+              borderBottom: '1px solid var(--glass-border)',
               boxShadow: 'inset 0 -16px 24px -16px rgba(0,0,0,0.45)',
             }}
           >
@@ -1023,7 +1013,12 @@ export const DocsContent: React.FC = () => {
       {/* Breadcrumb bar */}
       <div
         className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b"
-        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
+        style={{
+          borderColor: 'var(--glass-border)',
+          background: 'var(--glass-bg)',
+          backdropFilter: 'var(--glass-blur)',
+          WebkitBackdropFilter: 'var(--glass-blur)',
+        }}
       >
         <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-textSecondary)' }}>
           <span>{

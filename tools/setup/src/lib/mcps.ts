@@ -3,10 +3,13 @@
  * (multi-select) and the per-MCP auth sub-step.
  *
  * Entries must match MCPs the proxy actually knows how to spawn (see
- * services/openagentic-mcp-proxy/src/mcp_manager.py). MCPs the proxy
- * has removed upstream (code, runbook, incident, agent-architect,
- * azure-cost) are intentionally absent — azure-cost lives inside the
- * consolidated azure MCP now.
+ * services/openagentic-mcp-proxy/src/mcp_manager.py initialize_servers).
+ * MCPs the proxy has removed upstream (code, runbook, incident,
+ * agent-architect, azure-cost, knowledge, alertmanager) are intentionally
+ * absent — azure-cost lives inside the consolidated azure MCP now, and
+ * knowledge is replaced by the per-tool _meta cascade. The proxy wires 9
+ * first-party built-ins: web, admin, aws, azure, gcp, kubernetes, github,
+ * prometheus, loki — this list must stay in lockstep with that set.
  *
  *   id           → wizard key + MCPS_ENABLED token
  *   disabledEnv  → the per-MCP "*_DISABLED" env var the proxy reads.
@@ -68,15 +71,6 @@ export const MCPS: McpDefinition[] = [
     label: 'Web',
     blurb: 'Search + page fetch (DuckDuckGo, no auth).',
     disabledEnv: 'OpenAgentic_WEB_MCP_DISABLED',
-    needsAuth: false,
-    authType: 'none',
-    defaultOn: true,
-  },
-  {
-    id: 'knowledge',
-    label: 'Knowledge',
-    blurb: 'RAG over your internal docs (uses the platform embeddings).',
-    disabledEnv: 'OpenAgentic_KNOWLEDGE_MCP_DISABLED',
     needsAuth: false,
     authType: 'none',
     defaultOn: true,
@@ -201,18 +195,6 @@ export const MCPS: McpDefinition[] = [
       { env: 'LOKI_URL',      label: 'Loki URL',      hint: 'https://loki.example.com' },
       { env: 'LOKI_USERNAME', label: 'Basic auth user (optional)' },
       { env: 'LOKI_PASSWORD', label: 'Basic auth pass (optional)', mask: true },
-    ],
-    defaultOn: false,
-  },
-  {
-    id: 'alertmanager',
-    label: 'Alertmanager',
-    blurb: 'Alert state + silences.',
-    disabledEnv: 'OpenAgentic_ALERTMANAGER_MCP_DISABLED',
-    needsAuth: true,
-    authType: 'fields',
-    envVars: [
-      { env: 'ALERTMANAGER_URL', label: 'Alertmanager URL' },
     ],
     defaultOn: false,
   },

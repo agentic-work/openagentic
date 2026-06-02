@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 
 // All feature flags on so all groups render
 vi.mock('../../../../config/featureFlags', () => ({
-  featureFlags: { mcp: true, synth: true, openagentic: true, adminV2: true, ollama: true, multiModel: true },
+  featureFlags: { mcp: true, synth: true, adminV2: true, ollama: true, multiModel: true },
 }))
 
 // Sidebar reads useTheme but isn't tested through the real ThemeProvider here.
@@ -23,14 +23,12 @@ vi.mock('../../../../shared/components/SettingsMenu', () => ({
 import { Sidebar } from '../Sidebar'
 
 describe('Sidebar', () => {
-  it('renders overview + all 11 group headers when all feature flags on', () => {
-    // Security & Access merged into System Management (#92, 2026-04-26),
-    // so 11 groups not 12.
+  it('renders overview + all group headers when all feature flags on', () => {
     render(<Sidebar active="overview" onNavigate={() => {}} />)
     expect(screen.getByRole('button', { name: /Dashboard Overview/ })).toBeInTheDocument()
-    ;['System Management','LLM','Tools Management','OpenAgentic Flows','Code Mode',
-      'Agent Management','Integrations','Prompt Engineering','Content & Data',
-      'Chargeback & Costs','Monitoring & Logs']
+    ;['System Management','LLM','Tools Management','OpenAgentic Flows',
+      'Agent Management','Prompt Engineering','Content & Data',
+      'Monitoring & Logs']
       .forEach(label => {
         expect(screen.getByRole('button', { name: new RegExp('^' + label) }), `missing group header: ${label}`).toBeInTheDocument()
       })
@@ -72,7 +70,7 @@ describe('Sidebar', () => {
   it('hides Tools Management when featureFlags.mcp is false', async () => {
     vi.resetModules()
     vi.doMock('../../../../config/featureFlags', () => ({
-      featureFlags: { mcp: false, synth: false, openagentic: true, adminV2: true, ollama: false, multiModel: true },
+      featureFlags: { mcp: false, synth: false, adminV2: true, ollama: false, multiModel: true },
     }))
     const { Sidebar: SidebarNoMcp } = await import('../Sidebar')
     render(<SidebarNoMcp active="overview" onNavigate={() => {}} />)

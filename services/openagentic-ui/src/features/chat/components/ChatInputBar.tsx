@@ -83,10 +83,6 @@ interface ChatInputBarProps {
   // Model Badges display toggle
   showModelBadges?: boolean;
   onToggleModelBadges?: () => void;
-  // OpenAgenticCode toggle
-  isCodeMode?: boolean;
-  onCodeModeToggle?: () => void;
-  canUseAwcode?: boolean;
   // Thinking mode toggle
   isThinkingEnabled?: boolean;
   onThinkingToggle?: () => void;
@@ -152,10 +148,6 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
   // Model Badges toggle
   showModelBadges = true,
   onToggleModelBadges,
-  // OpenAgenticCode toggle
-  isCodeMode = false,
-  onCodeModeToggle,
-  canUseAwcode = false,
   // Thinking mode toggle
   isThinkingEnabled = true,
   onThinkingToggle,
@@ -315,7 +307,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
     }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      // Allow sending during streaming to queue messages (like code mode)
+      // Allow sending during streaming to queue messages
       if (value.trim() && !disabled) {
         setHistoryIndex(-1); // Reset history on send
         onSend();
@@ -687,9 +679,6 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
               onToggleMCPIndicators={onToggleMCPIndicators}
               showModelBadges={showModelBadges}
               onToggleModelBadges={onToggleModelBadges}
-              isCodeMode={isCodeMode}
-              onCodeModeToggle={onCodeModeToggle}
-              canUseAwcode={canUseAwcode}
               isStreaming={isStreaming}
               isThinkingEnabled={isThinkingEnabled}
               onThinkingToggle={onThinkingToggle}

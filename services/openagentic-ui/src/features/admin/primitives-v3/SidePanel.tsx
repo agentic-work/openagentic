@@ -62,7 +62,7 @@ export const SidePanel = ({
         role="dialog"
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : 'detail'}
-        className="aw-side-panel"
+        className="aw-side-panel glass"
         data-open={open || undefined}
         style={{
           position: 'fixed',
@@ -70,14 +70,14 @@ export const SidePanel = ({
           bottom: 0,
           right: 0,
           width: 'var(--v3-panel-w, 580px)',
-          background: 'var(--bg-1)',
-          borderLeft: '1px solid var(--line-2)',
+          /* frosted glass detail panel over the aurora; square the right edge
+             so it tucks flush to the viewport while keeping a soft left corner */
+          borderRadius: 'var(--glass-radius, 18px) 0 0 var(--glass-radius, 18px)',
           zIndex: 100,
           display: 'flex',
           flexDirection: 'column',
           transform: open ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 220ms cubic-bezier(.6,0,0,1)',
-          boxShadow: '-12px 0 32px color-mix(in srgb, var(--color-shadow) 50%, transparent)',
         }}
       >
         <div
@@ -156,7 +156,7 @@ export const SidePanel = ({
             style={{
               display: 'flex',
               borderBottom: '1px solid var(--line-1)',
-              background: 'var(--bg-1)',
+              background: 'var(--ctl-surf)',
             }}
           >
             {tabs.map((t) => (

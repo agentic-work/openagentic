@@ -672,17 +672,24 @@
 /* ============================================================================
  * NAMED-ACCENT SWITCHING (admin data-accent picker: gcp/green/teal/amber/
  * violet/magenta). Was admin-v2-accents.css. The admin useTheme hook writes
- * [data-accent] on <html>; this overrides --color-accent (so the whole shell,
- * which already derives from --color-accent, re-tints) plus the legacy
- * --accent / --accent-* family. Default (no data-accent) = brand signal.
+ * [data-accent] on <html>.
+ *
+ * These presets feed the SINGLE accent driver --user-accent (NOT --color-accent
+ * directly): --color-accent resolves as var(--user-accent, --brand-signal) in
+ * the [data-theme] blocks, so everything (glass, aurora, --user-accent-* family,
+ * legacy --accent) re-tints from this one variable. Crucially, ThemeContext's
+ * chat-side accent picker writes --user-accent INLINE on <html>, and an inline
+ * property outranks any stylesheet rule — so a user-picked accent now wins over
+ * these presets instead of being silently overridden. Default (no data-accent,
+ * no inline) = brand signal via the var() fallback.
  * ==========================================================================*/
-html[data-accent="orange"]  { --color-accent: var(--cat-accent-orange); }
-html[data-accent="gcp"]     { --color-accent: var(--cat-accent-gcp); }
-html[data-accent="green"]   { --color-accent: var(--cat-accent-green); }
-html[data-accent="teal"]    { --color-accent: var(--cat-accent-teal); }
-html[data-accent="amber"]   { --color-accent: var(--cat-accent-amber); }
-html[data-accent="violet"]  { --color-accent: var(--cat-accent-violet); }
-html[data-accent="magenta"] { --color-accent: var(--cat-accent-magenta); }
+html[data-accent="orange"]  { --user-accent: var(--cat-accent-orange); }
+html[data-accent="gcp"]     { --user-accent: var(--cat-accent-gcp); }
+html[data-accent="green"]   { --user-accent: var(--cat-accent-green); }
+html[data-accent="teal"]    { --user-accent: var(--cat-accent-teal); }
+html[data-accent="amber"]   { --user-accent: var(--cat-accent-amber); }
+html[data-accent="violet"]  { --user-accent: var(--cat-accent-violet); }
+html[data-accent="magenta"] { --user-accent: var(--cat-accent-magenta); }
 
 /* ============================================================================
  * LAYER 4 — BRUTALIST utility layer.

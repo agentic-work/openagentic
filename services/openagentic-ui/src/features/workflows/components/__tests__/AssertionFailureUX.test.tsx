@@ -102,8 +102,8 @@ describe('R7 – CustomNode execution state colors', () => {
     expect(checkCircles.length).toBeGreaterThan(0);
     // The exec bar text should say "completed"
     expect(container.textContent).toContain('completed');
-    // At least one check circle should have green color (via data-color attr from mock)
-    const greenCheckCircle = checkCircles.find(el => el.getAttribute('data-color') === '#22c55e');
+    // At least one check circle should carry the success token color (tokenized — no hardcoded hex)
+    const greenCheckCircle = checkCircles.find(el => el.getAttribute('data-color') === 'var(--color-success)');
     expect(greenCheckCircle).toBeTruthy();
   });
 
@@ -115,8 +115,8 @@ describe('R7 – CustomNode execution state colors', () => {
     const xCircles = screen.getAllByTestId('x-circle');
     expect(xCircles.length).toBeGreaterThan(0);
     expect(container.textContent).toContain('failed');
-    // At least one x-circle should have red color (#f44336)
-    const redXCircle = xCircles.find(el => el.getAttribute('data-color') === '#f44336');
+    // At least one x-circle should carry the error token color (tokenized — no hardcoded hex)
+    const redXCircle = xCircles.find(el => el.getAttribute('data-color') === 'var(--color-error)');
     expect(redXCircle).toBeTruthy();
   });
 
@@ -178,8 +178,8 @@ describe('R5 – node_error with assertion reason', () => {
     });
     const xCircles = screen.getAllByTestId('x-circle');
     expect(xCircles.length).toBeGreaterThan(0);
-    // Should show red (#f44336) not orange
-    const redXCircle = xCircles.find(el => el.getAttribute('data-color') === '#f44336');
+    // Should show the error token color (red), not the warning/orange one
+    const redXCircle = xCircles.find(el => el.getAttribute('data-color') === 'var(--color-error)');
     expect(redXCircle).toBeTruthy();
   });
 });

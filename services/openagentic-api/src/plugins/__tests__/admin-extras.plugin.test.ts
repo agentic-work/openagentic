@@ -12,7 +12,7 @@
  *                               grafana, pipeline-log, pipeline-control, pipeline-status,
  *                               monitoring-ws
  *  4. adminMiscPlugin        — user-perms, auth-access, openagentic, health, system-config,
- *                               internal routes, mcp-logs, awcode, docs, background-jobs,
+ *                               internal routes, mcp-logs, docs, background-jobs,
  *                               admin-integrations, dlp
  *
  * Smoke-test honesty:
@@ -252,16 +252,6 @@ describe('adminExtrasRoutesPlugin — Phase 3.7 smoke tests', () => {
     expect(resp.statusCode).toBe(200);
     const body = JSON.parse(resp.payload);
     expect(body).toHaveProperty('workflowEngine');
-  });
-
-  // ── D4: awcodeRoutes — no auth gate (internal service) → active inject probe ──
-  // Route handler returns 404 + specific JSON for unknown sessionId — proves mount.
-  it('awcodeRoutes: GET /api/awcode/sessions/probe — handler runs (not route-miss)', async () => {
-    const resp = await server.inject({ method: 'GET', url: '/api/awcode/sessions/probe-session-id' });
-    // Either 404 from handler or 500 from stub — never Fastify's generic route-not-found
-    const body = JSON.parse(resp.payload);
-    expect(resp.statusCode).not.toBe(200); // session doesn't exist
-    expect(body).toHaveProperty('error'); // handler-generated error, not route-miss
   });
 
   // ── D4: mcpLogsRoutes — no auth gate (internal service) → active inject probe ──

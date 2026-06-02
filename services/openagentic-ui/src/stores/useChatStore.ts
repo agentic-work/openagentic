@@ -2,6 +2,100 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { devtools } from 'zustand/middleware';
 import { apiEndpoint } from '@/utils/api';
+import type { UIContentBlock } from '@agentic-work/llm-sdk';
+import type {
+  MCPCall,
+  ToolCall,
+  ToolResult,
+} from '@/features/chat/types/chat.types';
+
+// ─────────────────────────────────────────────────────────────────────────
+// Message field types — replaces the prior `any`-soup. These mirror the
+// REAL runtime shapes produced by `buildDoneMessagePayload` + the SSE
+// pipeline and consumed by `ChatContainer` / `useChatSessions`:
+//
+//   - toolCalls / toolResults / mcpCalls / tokenUsage  → the existing UI
+//     SoT in `features/chat/types/chat.types.ts` (pure type module, no
+//     runtime coupling).
+//   - content_blocks → the SDK's `UIContentBlock` (the SoT for the
+//     `chat_messages.content_blocks` Json column; same shape live + reload).
+//   - thinkingSteps  → the interleaved-step shape emitted by
+//     `buildDoneMessagePayload` (broader than the narrow `ThinkingStep` in
+//     `types/index.ts`, which only models `type: 'analysis'|...`).
+//   - reasoningTrace → string (the extraction in this file coerces to
+//     string) OR the structured `ReasoningTrace` object the SSE payload can
+//     carry (`ChatContainer` reads `reasoningTrace?.reasoning`).
+//   - metadata → a typed record. Known keys this file reads off it are
+//     `thinkingContent` / `thinkingSteps` / `toolCalls` / `toolResults`;
+//     the rest of the bag varies per provider so the index signature stays
+//     `unknown`-valued (NOT `any`).
+// ─────────────────────────────────────────────────────────────────────────
+
+/** One step in the interleaved thinking/tool narrative persisted on a
+ *  message. Superset of both the COT-step shape and the tool-step shape
+ *  `buildDoneMessagePayload` emits. */
+export interface ThinkingStep {
+  id: string;
+  /** 'thinking' | 'mcp' (interleaved) OR 'analysis' | 'consideration' |
+   *  'decision' | 'observation' (legacy COT). Kept as a widened union so
+   *  both producers type-check. */
+  type:
+    | 'thinking'
+    | 'mcp'
+    | 'analysis'
+    | 'consideration'
+    | 'decision'
+    | 'observation';
+  content: string;
+  title?: string;
+  status?: 'pending' | 'completed' | 'error';
+  toolId?: string;
+  duration?: number;
+  timestamp?: string;
+  details?: { args?: unknown; result?: unknown };
+}
+
+/** Structured reasoning trace object the SSE payload may carry. The store's
+ *  own extraction always reduces this to the `reasoning` string, but the
+ *  field can still arrive as the full object. */
+export interface ReasoningTrace {
+  id?: string;
+  model?: string;
+  reasoning: string;
+  conclusion?: string;
+  confidence?: number;
+  totalTokens?: number;
+  processingTime?: number;
+  timestamp?: string;
+}
+
+/** Token accounting for a message. Mirrors the SoT `TokenUsage` in
+ *  `types/index.ts` (the shape the SSE pipeline + `ChatMessage` actually
+ *  carry) — note `cost` is the structured object form, not a bare number,
+ *  which is why the looser `chat.types.ts` `TokenUsage` (cost: number) is
+ *  NOT reused here. */
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cost?: {
+    promptCost: number;
+    completionCost: number;
+    totalCost: number;
+    currency: string;
+  };
+  model?: string;
+}
+
+/** Per-message metadata bag. Provider-specific so the value type is
+ *  `unknown`, but the keys this store reads defensively are declared. */
+export interface MessageMetadata {
+  thinkingContent?: unknown;
+  thinkingSteps?: unknown;
+  toolCalls?: unknown;
+  toolResults?: unknown;
+  [key: string]: unknown;
+}
 
 // Helper to get auth headers
 const getAuthHeaders = async () => {
@@ -27,19 +121,19 @@ export interface Message {
   content: string;
   timestamp: Date | string;
   model?: string; // Model used for this response (for badge display)
-  metadata?: any;
-  toolCalls?: any[];           // Function call requests from LLM
+  metadata?: MessageMetadata;
+  toolCalls?: ToolCall[];           // Function call requests from LLM
   toolCallId?: string;         // For tool result messages
-  mcpCalls?: any[];            // MCP tool calls for this message (executed tools)
-  thinkingSteps?: any[];       // Thinking/reasoning steps from LLM
-  reasoningTrace?: any;        // Full reasoning trace content (string or ReasoningTrace object)
-  toolResults?: any[];         // Results from tool executions
+  mcpCalls?: MCPCall[];            // MCP tool calls for this message (executed tools)
+  thinkingSteps?: ThinkingStep[];       // Thinking/reasoning steps from LLM
+  reasoningTrace?: string | ReasoningTrace;        // Full reasoning trace content (string or ReasoningTrace object)
+  toolResults?: ToolResult[];         // Results from tool executions
   attachedImages?: Array<{ name: string; data: string; mimeType: string }>; // Attached files
   streaming?: boolean;
   status?: 'sending' | 'sent' | 'error' | 'streaming' | 'completed';  // Message status
   attachments?: boolean;       // File attachment indicator
   tokens?: number;             // Token count for feedback tracking
-  tokenUsage?: any;            // Token usage details
+  tokenUsage?: TokenUsage;            // Token usage details
   imageUrl?: string;           // Image URL for image messages
   error?: string;              // Error message
   // Persistence Sev-1: inline render frames captured during streaming and
@@ -63,7 +157,7 @@ export interface Message {
    * Persisted server-side to `chat_messages.content_blocks` Json column
    * by ChatStorageService.addMessage.
    */
-  content_blocks?: any[];
+  content_blocks?: UIContentBlock[];
 }
 
 export interface ChatSession {
@@ -90,11 +184,11 @@ interface ChatStore {
   // Actions
   setActiveSession: (sessionId: string) => void;
   addMessage: (sessionId: string, message: Message) => void;
-  updateMessage: (sessionId: string, messageId: string, content: string, mcpCalls?: any[], metadata?: any, model?: string, thinkingSteps?: any[], reasoningTrace?: string, toolCalls?: any[], toolResults?: any[], contentBlocks?: any[]) => void;
+  updateMessage: (sessionId: string, messageId: string, content: string, mcpCalls?: MCPCall[], metadata?: MessageMetadata, model?: string, thinkingSteps?: ThinkingStep[], reasoningTrace?: string | ReasoningTrace, toolCalls?: ToolCall[], toolResults?: ToolResult[], contentBlocks?: UIContentBlock[]) => void;
   updateStreamingMessage: (sessionId: string, messageId: string, content: string) => void;
   finishStreamingMessage: (sessionId: string, messageId: string) => void;
   loadSession: (sessionId: string) => Promise<void>;
-  loadUserSessions: (userId?: string) => Promise<any[]>;
+  loadUserSessions: (userId?: string) => Promise<ChatSession[]>;
   createSession: (userId?: string, title?: string) => Promise<string>;
   deleteSession: (sessionId: string) => Promise<void>;
   updateSessionTitle: (sessionId: string, title: string) => Promise<void>;

@@ -26,6 +26,7 @@ import { WorkflowToolbar } from './toolbar/WorkflowToolbar';
 import { NodePropertiesPanel } from './NodePropertiesPanel';
 import { ExecutionResultsPanel, ExecutionData, NodeExecution, TabId } from './ExecutionResultsPanel';
 import { RunInputsModal, type RunInputDef } from './RunInputsModal';
+import { NeedsInputForm, type NeedsInputRequest } from './NeedsInputForm';
 import { MissingSecretsWizard, type MissingSecretEntry } from './MissingSecretsWizard';
 import { scanMissingSecrets } from '../services/scanMissingSecrets';
 import { listKnownSecretNames, createSecrets } from '../services/workflowSecretsApi';
@@ -244,6 +245,11 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
   // `subagent.complete` events emitted by the engine while a multi_agent /
   // agent_pool / agent_supervisor node runs. Cleared when the run ends.
   const [swarmAgents, setSwarmAgents] = useState<Record<string, SubagentCardData[]>>({});
+
+  // human_input HITL: the active `needs_input` request the engine is paused
+  // on (one at a time). Populated when a `needs_input` frame arrives, cleared
+  // after the user submits values (the engine then resumes emitting frames).
+  const [needsInput, setNeedsInput] = useState<NeedsInputRequest | null>(null);
 
   // Execution state
   const [showExecutionPanel, setShowExecutionPanel] = useState(false);
@@ -1051,9 +1057,41 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
         nodeExecutions: [],
       });
       setShowExecutionPanel(true);
-      // Reset swarm cards from any prior run.
+      // Reset swarm cards + any stale HITL prompt from a prior run.
       setSwarmAgents({});
+      setNeedsInput(null);
       return;
+    }
+
+    // human_input HITL: the engine paused on a `human_input` node and is
+    // asking the user to fill a typed form. Surface the request inline (the
+    // NeedsInputForm renders at the same surface as approval prompts). The
+    // engine sends the request either as a top-level `needs_input` frame or
+    // nested under an `execution_paused` envelope with `reason:'needs_input'`.
+    {
+      const ev = event as any;
+      const payload =
+        type === 'needs_input'
+          ? ev
+          : type === 'execution_paused' && (ev.reason === 'needs_input' || ev.dataRequest || ev.requestId)
+            ? (ev.dataRequest || ev)
+            : null;
+      if (payload && (payload.requestId || payload.request_id) && Array.isArray(payload.fields)) {
+        setNeedsInput({
+          requestId: payload.requestId || payload.request_id,
+          nodeId: payload.nodeId || payload.node_id || nodeId || '',
+          title: payload.title || 'Input required',
+          description: payload.description,
+          fields: payload.fields,
+          channel: payload.channel,
+          expiresAt: payload.expiresAt || payload.expires_at,
+          allowDefaults:
+            payload.allowDefaults === true ||
+            payload.timeoutAction === 'use_defaults' ||
+            payload.timeout_action === 'use_defaults',
+        });
+        return;
+      }
     }
 
     // Subagent telemetry from multi_agent / agent_pool / agent_supervisor.

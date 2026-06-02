@@ -141,7 +141,7 @@ export function Modal({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'var(--ap-bg-overlay, rgba(0,0,0,0.55))',
+        background: 'var(--ap-bg-overlay, color-mix(in srgb, var(--color-shadow) 55%, transparent))',
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
         zIndex: 100,
@@ -156,15 +156,12 @@ export function Modal({
         aria-labelledby={titleId}
         data-testid={testId}
         data-variant={variant}
+        className="glass"
         onClick={(e) => e.stopPropagation()}
         style={{
           minWidth: 420,
           maxWidth: 560,
-          background: 'var(--ap-bg-1, var(--bg-1))',
           color: 'var(--ap-fg-1, var(--fg-1))',
-          border: '1px solid var(--ap-ln-2, var(--line-2))',
-          borderRadius: 'var(--radius-md, 12px)',
-          boxShadow: '0 24px 60px -24px rgba(0,0,0,0.45)',
           padding: 22,
           display: 'flex',
           flexDirection: 'column',

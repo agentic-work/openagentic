@@ -109,7 +109,7 @@ const btnPrimary =
   'px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50';
 
 const btnPrimaryStyle: React.CSSProperties = {
-  backgroundColor: 'var(--user-accent-primary, #2196f3)',
+  backgroundColor: 'var(--user-accent-primary, #FF5722)',
   color: 'var(--color-on-accent)',
 };
 
@@ -177,10 +177,11 @@ const TabButton: React.FC<{
 }> = ({ active, onClick, children }) => (
   <button
     onClick={onClick}
-    className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+    className="px-3 py-1.5 text-sm font-medium rounded-[var(--ctl-radius)] transition-colors"
     style={{
-      backgroundColor: active ? 'var(--user-accent-primary, #2196f3)' : 'transparent',
-      color: active ? 'var(--color-on-accent)' : 'var(--color-text-secondary)',
+      backgroundColor: active ? 'var(--glass-accent-fill-2)' : 'transparent',
+      borderBottom: active ? '2px solid var(--user-accent-primary, #FF5722)' : '2px solid transparent',
+      color: active ? 'var(--user-accent-primary, #FF5722)' : 'var(--color-text-secondary)',
     }}
   >
     {children}
@@ -379,8 +380,8 @@ const NodesContent: React.FC = () => {
   const allCats = [...orderedCats, ...remaining];
 
   const capBadgeStyle: React.CSSProperties = {
-    backgroundColor: 'color-mix(in srgb, var(--user-accent-primary, #2196f3) 12%, transparent)',
-    color: 'var(--user-accent-primary, #2196f3)',
+    backgroundColor: 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 12%, transparent)',
+    color: 'var(--user-accent-primary, #FF5722)',
   };
 
   return (
@@ -418,7 +419,7 @@ const NodesContent: React.FC = () => {
                   onClick={() => setExpandedType(isExpanded ? null : config.type)}
                   className="rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md"
                   style={{
-                    borderColor: isExpanded ? 'var(--user-accent-primary, #2196f3)' : 'var(--color-border)',
+                    borderColor: isExpanded ? 'var(--user-accent-primary, #FF5722)' : 'var(--color-border)',
                     backgroundColor: isExpanded ? 'var(--color-surface)' : 'var(--color-bg-primary)',
                   }}
                 >
@@ -485,7 +486,7 @@ const NodesContent: React.FC = () => {
                             <ul className="space-y-1">
                               {caps.useCases.map(u => (
                                 <li key={u} className="text-xs flex items-start gap-1.5" style={{ color: 'var(--color-text-tertiary)' }}>
-                                  <ChevronRight className="w-3 h-3 mt-0.5 flex-shrink-0" style={{ color: 'var(--user-accent-primary, #2196f3)' }} />
+                                  <ChevronRight className="w-3 h-3 mt-0.5 flex-shrink-0" style={{ color: 'var(--user-accent-primary, #FF5722)' }} />
                                   {u}
                                 </li>
                               ))}
@@ -765,7 +766,7 @@ const AgentsContent: React.FC = () => {
                         disabled={testingId === agent.id}
                         className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface)]"
                         title="Test agent"
-                        style={{ color: 'var(--user-accent-primary, #2196f3)' }}
+                        style={{ color: 'var(--user-accent-primary, #FF5722)' }}
                       >
                         {testingId === agent.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                       </button>
@@ -1418,7 +1419,7 @@ const WebhooksContent: React.FC<{ workflowId?: string }> = ({ workflowId }) => {
                     </td>
                     <td className={tableCellClass} style={tableCellStyle}>
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => handleTest(wh)} disabled={testingId === wh.id} className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface)]" title="Test webhook" style={{ color: 'var(--user-accent-primary, #2196f3)' }}>
+                        <button onClick={() => handleTest(wh)} disabled={testingId === wh.id} className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface)]" title="Test webhook" style={{ color: 'var(--user-accent-primary, #FF5722)' }}>
                           {testingId === wh.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                         </button>
                         <button onClick={() => handleCopy(wh.url, wh.id)} className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface)]" title="Copy URL" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -1589,7 +1590,7 @@ const ApiEndpointContent: React.FC<{ workflowId?: string }> = ({ workflowId }) =
               <div key={wh.id} className="p-3 rounded-lg border space-y-2" style={{ borderColor: 'var(--color-border)' }}>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium" style={{ color: 'var(--color-text)' }}>{wh.name}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: '#2196f315', color: 'var(--color-info)' }}>{wh.response_mode}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--color-info) 12%, transparent)', color: 'var(--color-info)' }}>{wh.response_mode}</span>
                 </div>
                 <div className="flex items-center gap-2 p-2 rounded" style={{ background: 'var(--color-bg-primary)' }}>
                   <code className="text-[11px] font-mono flex-1 truncate" style={{ color: 'var(--color-text-secondary)' }}>{wh.url}</code>
@@ -1702,7 +1703,7 @@ const TeamContent: React.FC<{ workflowId?: string }> = ({ workflowId }) => {
       {owner && (
         <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: 'var(--color-surface)' }}>
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-tertiary)' }}>Owner:</span>
-          <span className="text-sm font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--user-accent-primary, #2196f3)' + '20', color: 'var(--user-accent-primary, #2196f3)' }}>
+          <span className="text-sm font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--glass-accent-fill-2)', color: 'var(--user-accent-primary, #FF5722)' }}>
             {owner}
           </span>
         </div>
@@ -2656,7 +2657,7 @@ const SettingsContent: React.FC<{
             </div>
           ))}
           <button onClick={() => { const nv = [...envVars, { key: '', value: '' }]; setEnvVars(nv); }}
-            className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:opacity-80 mt-2" style={{ color: 'var(--user-accent-primary, #2196f3)' }}>
+            className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:opacity-80 mt-2" style={{ color: 'var(--user-accent-primary, #FF5722)' }}>
             <Plus className="w-3.5 h-3.5" /> Add Variable
           </button>
         </div>
@@ -2937,8 +2938,8 @@ const VersionsContent: React.FC<{
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold px-2 py-0.5 rounded-full" style={{
-                    backgroundColor: idx === 0 ? 'color-mix(in srgb, var(--color-info) 12%, transparent)' : 'var(--color-surface)',
-                    color: idx === 0 ? 'var(--user-accent-primary, #2196f3)' : 'var(--color-text-secondary)',
+                    backgroundColor: idx === 0 ? 'var(--glass-accent-fill-2)' : 'var(--color-surface)',
+                    color: idx === 0 ? 'var(--user-accent-primary, #FF5722)' : 'var(--color-text-secondary)',
                   }}>
                     v{version.version || versions.length - idx}
                   </span>
@@ -2959,7 +2960,7 @@ const VersionsContent: React.FC<{
                 {idx !== 0 && (
                   <button onClick={() => onRestoreVersion?.(version.id)}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors hover:bg-[var(--color-surface)]"
-                    style={{ borderColor: 'var(--color-border)', color: 'var(--user-accent-primary, #2196f3)' }}>
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--user-accent-primary, #FF5722)' }}>
                     <RotateCw className="w-3 h-3" /> Restore
                   </button>
                 )}
@@ -3087,7 +3088,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
             Back to Canvas
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--user-accent-primary, #2196f3)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--user-accent-primary, #FF5722)' }}>
               <SectionIcon className="w-4 h-4 text-text" />
             </div>
             <h1 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>

@@ -59,14 +59,16 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({ open, onClose })
       <aside
         role="dialog"
         aria-label="Activity drawer"
+        className="glass"
         style={{
           position: 'fixed',
           top: 'var(--v3-topbar-h, 44px)',
           right: 0,
           bottom: 0,
           width: 360,
-          background: 'var(--bg-1)',
-          borderLeft: '1px solid var(--line-2)',
+          /* frosted glass drawer over the aurora; square the right edge so it
+             tucks flush to the viewport edge while keeping the soft left corner */
+          borderRadius: 'var(--glass-radius, 18px) 0 0 var(--glass-radius, 18px)',
           display: 'flex',
           flexDirection: 'column',
           zIndex: 999,

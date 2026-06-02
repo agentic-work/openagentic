@@ -76,7 +76,7 @@ export const AgentPlayground: React.FC = () => {
               backgroundColor: 'var(--color-bg-primary)',
               borderColor: 'var(--color-border)',
               color: 'var(--color-text)',
-              outlineColor: 'var(--user-accent-primary, #2196f3)',
+              outlineColor: 'var(--user-accent-primary, #FF5722)',
             }}
           >
             {agents.map(a => (
@@ -146,8 +146,8 @@ export const AgentPlayground: React.FC = () => {
                 disabled={executing || !task.trim()}
                 className="self-end px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
                 style={{
-                  backgroundColor: executing ? '#ff9800' : 'var(--user-accent-primary, #2196f3)',
-                  color: '#fff',
+                  backgroundColor: executing ? 'var(--color-warning)' : 'var(--user-accent-primary, #FF5722)',
+                  color: 'var(--color-on-accent)',
                 }}
               >
                 {executing ? (

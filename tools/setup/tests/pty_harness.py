@@ -241,9 +241,9 @@ def script_all_mcps_inline(child: pexpect.spawn) -> None:
 def assert_all_mcps_inline(env: dict[str, str]) -> list[str]:
     fails = []
     mcps = env.get("MCPS_ENABLED", "").split(",")
-    expected = {"web", "knowledge", "admin",
+    expected = {"web", "admin",
                 "aws", "azure", "gcp", "kubernetes", "github",
-                "prometheus", "loki", "alertmanager"}
+                "prometheus", "loki"}
     missing = expected - set(mcps)
     if missing:
         fails.append(f"MCPS_ENABLED missing: {missing}")
@@ -343,8 +343,8 @@ def assert_skip_all_cloud(env: dict[str, str]) -> list[str]:
         if env.get(evar) != "true":
             fails.append(f"{evar} should be true after skip, got {env.get(evar)!r}")
     # Fields-type MCPs with empty values are still "enabled" (user said yes to the MCP),
-    # so github/kubernetes/prometheus/loki/alertmanager must remain in MCPS_ENABLED.
-    for still_on in ("kubernetes", "github", "prometheus", "loki", "alertmanager"):
+    # so github/kubernetes/prometheus/loki must remain in MCPS_ENABLED.
+    for still_on in ("kubernetes", "github", "prometheus", "loki"):
         if still_on not in mcps:
             fails.append(f"{still_on} expected to remain enabled (fields blank is OK)")
     return fails

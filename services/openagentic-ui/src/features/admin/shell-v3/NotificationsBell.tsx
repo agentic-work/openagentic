@@ -102,6 +102,7 @@ export const NotificationsBell: React.FC = () => {
         <div
           role="dialog"
           aria-label="Notifications"
+          className="glass"
           style={{
             position: 'absolute',
             top: '100%',
@@ -109,10 +110,7 @@ export const NotificationsBell: React.FC = () => {
             marginTop: 4,
             width: 360,
             maxHeight: '60vh',
-            background: 'var(--bg-1)',
-            border: '1px solid var(--line-2)',
             color: 'var(--fg-0)',
-            boxShadow: '0 12px 40px color-mix(in srgb, var(--color-shadow) 40%, transparent)',
             display: 'flex',
             flexDirection: 'column',
             zIndex: 999,

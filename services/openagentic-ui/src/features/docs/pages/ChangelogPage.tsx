@@ -42,8 +42,7 @@ const releases = [
       'Router Tuning Live Scoring Lab — tune SmartRouter weights live, simulate 8 hard prompts, visualize the formula, see ranked KPIs; 10 new Prometheus metrics instrument Router + Defaults',
       'Registry as sole SoT for default chat model — env-var + Ollama hardcodes removed; Tenant Default Models admin page owns all 5 category defaults',
       'Dynamic cross-CSP pricing — BedrockPricingFetcher (AWS SDK) + PricingService orchestrator replace stale static tables',
-      'Per-user retained PVC for codemode — pod lifecycle decoupled from workspace data (#324); /model slash command for live LLM hot-swap (#355); Ollama thinking-only fallback + PTY running-header',
-      'CSI-S3 per-user bucket pipeline (T1-T8) — code-manager provisions via /api/internal/code-mode/ensure-user-bucket; UserStorageService facade; mountWorkspace helpers + docker-entrypoint verification',
+      '/model slash command for live LLM hot-swap (#355); Ollama thinking-only fallback',
       'File uploads persist to MinIO — drag-dropped files go through pre-upload pipeline instead of base64-inlined into messages',
       'Admin console v2 — Control Plane-inspired redesign (lazy chunk); recharts sparklines, MCP pie + LLM Sankey on Overview, 7 populated tabs from /admin/dashboard/metrics; v1 SettingsMenu + close X + Cog header preserved',
       'UAT bench router blocker cleared — chat-stream now routes to claude-sonnet-4-6 for all prompt sizes; 152-UC bench unblocked',
@@ -72,7 +71,6 @@ const releases = [
     date: 'April 2026',
     current: false,
     highlights: [
-      'Codemode /v1/messages streaming end-to-end through the openagentic daemon',
       'Bob cloud-operations Phase-1 — Azure RG/VM/AKS/App-Gateway tools wired through MCP',
       'Azure MCP hardened — typed OBO token cache + retry + pagination',
       'Live-verified 19/19 UC battery with reproducible harness evidence',

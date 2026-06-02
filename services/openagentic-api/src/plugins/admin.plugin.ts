@@ -272,20 +272,18 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
     failCount++;
   }
 
-  // Register Admin V3 Extras Mutations — 5 endpoints that close the
+  // Register Admin V3 Extras Mutations — endpoints that close the
   // "wire-up pending" Banner gaps in the v3 admin UI:
   //   - POST  /integrations/:platform/oauth-start
   //   - PATCH /chargeback/reports/:id
-  //   - POST  /codemode/skills + DELETE /codemode/skills/:id
-  //   - POST  /codemode/plugins + DELETE /codemode/plugins/:id
-  //   - PUT   /codemode/mcp-policy
   //   - POST  /llm-providers/registry/refresh-all
+  //   - GET/PUT /workflow-settings
   try {
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminV3ExtrasMutationsRoutes);
     }, { prefix: '/api/admin' });
-    loggers.routes.info('Admin V3 Extras Mutations registered at /api/admin/* (5 endpoints) with admin middleware');
+    loggers.routes.info('Admin V3 Extras Mutations registered at /api/admin/* with admin middleware');
     successCount++;
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register admin v3 extras mutations routes');

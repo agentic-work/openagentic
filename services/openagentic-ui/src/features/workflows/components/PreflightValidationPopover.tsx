@@ -70,6 +70,9 @@ export const PreflightValidationPopover: React.FC<Props> = ({
             aria-modal="true"
             aria-labelledby="preflight-title"
             data-testid="preflight-popover"
+            // Terminal Glass: frosted modal CARD (.glass) over the dim scrim
+            // backdrop above. Was an opaque #0d1117 panel.
+            className="glass"
             style={{
               position: 'fixed',
               top: '50%',
@@ -80,11 +83,6 @@ export const PreflightValidationPopover: React.FC<Props> = ({
               maxHeight: '80vh',
               display: 'flex',
               flexDirection: 'column',
-              background: 'var(--color-bg-primary, #0d1117)',
-              border: '1px solid var(--color-border, #30363d)',
-              borderRadius: 12,
-              boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-              overflow: 'hidden',
             }}
             onClick={(e) => e.stopPropagation()}
           >

@@ -1,0 +1,185 @@
+/* ==========================================================================
+ * AuditLogsPage — Terminal Glass treatment.
+ *
+ * The unified Audit Logs page is brought onto the Terminal Glass + unified
+ * accent system (the same frosted surfaces the chat shell uses) while the rest
+ * of the admin console keeps its flat industrial v3 look. To avoid touching the
+ * shared aw-* primitives globally (which would re-glass every admin page), the
+ * glass is scoped to the `.aw-audit-glass` wrapper this page renders around its
+ * content. EVERY value reads a theme.css token (--glass-* / --color-accent /
+ * --fg-* / --font-*), so it flips dark ⇄ light and follows the user accent from
+ * the ONE source of truth — no hardcoded color or font literals live here.
+ * ======================================================================== */
+
+.aw-audit-glass {
+  /* the page paints onto the glass page base so the frosted surfaces have an
+     atmosphere to blur against, matching the chat shell. */
+  position: relative;
+  padding: 14px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: var(--font-body);
+}
+
+/* ---- KPI stat cards: each tile becomes a frosted glass card ---------------- */
+.aw-audit-glass .aw-kpi-grid {
+  background: transparent;
+  border-bottom: 0;
+  gap: 12px;
+}
+.aw-audit-glass .aw-kpi {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-right: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-card-shadow);
+  padding: 12px 16px;
+  gap: 4px;
+  overflow: hidden;
+}
+/* hairline top edge highlight — the glass signature */
+.aw-audit-glass .aw-kpi::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-edge), transparent);
+  pointer-events: none;
+}
+.aw-audit-glass .aw-kpi__label {
+  font-family: var(--font-mono);
+  color: var(--fg-3);
+}
+.aw-audit-glass .aw-kpi__val {
+  font-family: var(--font-mono);
+  color: var(--fg-0);
+}
+.aw-audit-glass .aw-kpi__sub { font-family: var(--font-mono); }
+
+/* ---- Filter bar: frosted strip with accent-active chips ------------------- */
+.aw-audit-glass .aw-filter-row {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-card-shadow);
+  padding: 10px 14px;
+  flex-wrap: wrap;
+}
+.aw-audit-glass .aw-filter-row__search {
+  background: var(--ctl-surf, var(--glass-surf-2));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-chip);
+  font-family: var(--font-mono);
+  color: var(--fg-0);
+}
+.aw-audit-glass .aw-filter-row__search:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+/* chips: frosted neutral by default, accent-filled when active */
+.aw-audit-glass .aw-chip {
+  background: var(--glass-surf-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-chip);
+  color: var(--fg-1);
+  font-family: var(--font-mono);
+}
+.aw-audit-glass .aw-chip:hover {
+  border-color: var(--color-accent-line);
+  background: var(--glass-accent-fill-2);
+}
+.aw-audit-glass .aw-chip[data-on="true"] {
+  border-color: var(--color-accent);
+  background: var(--glass-accent-fill-2);
+  color: var(--color-accent);
+}
+.aw-audit-glass .aw-chip[data-on="true"] .aw-chip__v { color: var(--color-accent); }
+
+/* ---- The main feed / errors / sessions table card ------------------------- */
+.aw-audit-glass .aw-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-card-shadow);
+  overflow: hidden;
+}
+.aw-audit-glass .aw-panel-head {
+  background: transparent;
+  border-bottom: 1px solid var(--glass-border);
+}
+/* feed rows: hairline glass dividers, accent on the highlighted action */
+.aw-audit-glass .aw-feed-row {
+  border-bottom: 1px solid var(--glass-border);
+}
+.aw-audit-glass .aw-feed-row:hover {
+  background: var(--glass-accent-fill-2);
+}
+.aw-audit-glass .aw-feed-row .ts {
+  /* IDs / timestamps / technical cells in mono */
+  font-family: var(--font-mono);
+  color: var(--fg-3);
+}
+.aw-audit-glass .aw-feed-row .act .accent { color: var(--color-accent); }
+
+/* empty / loading inline state sits inside the frosted card */
+.aw-audit-glass .aw-empty {
+  background: transparent;
+  font-family: var(--font-mono);
+}
+
+/* ---- Sub-tabs strip: glass underline, accent-active tab ------------------- */
+.aw-audit-glass .aw-subtabs {
+  background: transparent;
+  border-bottom: 1px solid var(--glass-border);
+}
+.aw-audit-glass .aw-subtabs button[aria-selected="true"] { color: var(--color-accent); }
+.aw-audit-glass .aw-subtabs button[aria-selected="true"]::after { background: var(--color-accent); }
+
+/* ---- Page head: accent underline + frosted action buttons ----------------- */
+.aw-audit-glass .aw-page-head {
+  border-bottom: 1px solid var(--glass-border);
+}
+.aw-audit-glass .aw-page-head__title { font-family: var(--font-body); }
+.aw-audit-glass .aw-page-head__meta { font-family: var(--font-mono); }
+
+/* export button (primary) reads the unified accent gradient */
+.aw-audit-glass .aw-btn--primary {
+  background: var(--ctl-primary-grad);
+  color: var(--ctl-primary-fg);
+  border-color: var(--glass-accent-line);
+  border-radius: var(--radius-chip);
+  box-shadow: var(--ctl-primary-glow);
+}
+.aw-audit-glass .aw-btn--primary:hover {
+  box-shadow: var(--ctl-primary-glow-h);
+}
+.aw-audit-glass .aw-btn--ghost {
+  border-radius: var(--radius-chip);
+  font-family: var(--font-body);
+}
+.aw-audit-glass .aw-btn--ghost:hover {
+  border-color: var(--color-accent-line);
+  color: var(--color-accent);
+}
+
+/* ---- Banner inside the glass page ----------------------------------------- */
+.aw-audit-glass .aw-banner {
+  background: var(--glass-surf-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-chip);
+}
+.aw-audit-glass .aw-banner .accent { color: var(--color-accent); }
+
+/* ---- Detail side-panel: technical cells stay mono ------------------------- */
+.aw-audit-glass .aw-side-panel,
+.aw-audit-glass + .aw-side-panel { font-family: var(--font-body); }

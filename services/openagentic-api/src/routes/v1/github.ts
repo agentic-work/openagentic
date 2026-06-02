@@ -152,9 +152,8 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
 
     // Default landing page — the legacy /settings page is being ripped
     // (per user 2026-05-07). Bounce back to /admin#integrations so the
-    // admin can see the result, OR honor the per-flow redirectUrl that
-    // codemode passes when its "Connect GitHub" button kicks the OAuth
-    // dance from inside a session.
+    // admin can see the result, OR honor the per-flow redirectUrl when a
+    // caller passes one with its "Connect GitHub" request.
     const DEFAULT_LANDING = '/admin#integrations/github';
 
     // Handle OAuth errors
@@ -190,9 +189,9 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
         githubUsername: userInfo.login
       }, 'GitHub OAuth completed successfully');
 
-      // Honor the per-flow redirect (codemode session URL) if the connect
-      // call passed one. Otherwise bounce back to the admin integrations
-      // page so the operator can see "GitHub: connected".
+      // Honor the per-flow redirect if the connect call passed one.
+      // Otherwise bounce back to the admin integrations page so the
+      // operator can see "GitHub: connected".
       const redirectUrl = stateData.redirectUrl || `${DEFAULT_LANDING}?github_success=true`;
       return reply.redirect(redirectUrl);
 
@@ -455,24 +454,6 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
         userId: user.id,
         githubUsername: userInfo.login
       }, 'Device Flow completed successfully');
-
-      // Inject GitHub token into running code mode pod (if active)
-      try {
-        const codeManagerUrl = process.env.CODE_MANAGER_URL || process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-code-manager:3050';
-        const { default: axios } = await import('axios');
-        // Tell code-manager to refresh the user's session with the new GitHub token
-        await axios.post(`${codeManagerUrl}/sessions/refresh-github`, {
-          userId: user.id,
-          githubToken: tokenInfo.access_token,
-        }, {
-          headers: { 'x-internal-auth': process.env.INTERNAL_AUTH_SECRET || 'internal' },
-          timeout: 15000,
-        });
-        logger.info({ userId: user.id }, 'GitHub token injected into code mode pod');
-      } catch (injectErr) {
-        // Non-fatal — token will be picked up on next session create/reconnect
-        logger.warn({ userId: user.id, err: (injectErr as Error).message }, 'Failed to inject GitHub token into code mode pod (will retry on reconnect)');
-      }
 
       return reply.send({
         status: 'success',

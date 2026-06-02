@@ -26,7 +26,6 @@ const SERVICES: Array<{ name: string; label: string }> = [
   { name: 'openagentic-ui',        label: 'UI' },
   { name: 'openagentic-mcp-proxy', label: 'MCP Proxy' },
   { name: 'openagentic-workflows', label: 'Workflows' },
-  { name: 'openagentic-exec',      label: 'Exec' },
   { name: 'openagentic-proxy',     label: 'Proxy' },
   { name: 'openagentic-synth',     label: 'Synth' },
 ];
@@ -67,11 +66,8 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="relative w-full max-w-2xl rounded-2xl overflow-hidden"
+            className="glass relative w-full max-w-2xl overflow-hidden"
             style={{
-              backgroundColor: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
               maxHeight: '85vh',
               display: 'flex',
               flexDirection: 'column',
@@ -81,11 +77,11 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             {/* Header */}
             <div
               className="px-6 py-5 flex items-center justify-between"
-              style={{ borderBottom: '1px solid var(--color-border)', flexShrink: 0 }}
+              style={{ borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }}
             >
               <div className="flex items-center gap-3">
                 <OpenAgenticWordmark size={28} animate />
-                <span className="text-sm" style={{ color: 'var(--color-textMuted)' }}>
+                <span className="text-sm font-mono" style={{ color: 'var(--color-textMuted)' }}>
                   v{APP_VERSION}
                 </span>
               </div>
@@ -93,7 +89,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               {/* Close button */}
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                className="p-2 rounded-lg transition-colors hover:bg-[var(--ctl-surf-hover)]"
                 style={{ color: 'var(--color-textMuted)' }}
                 aria-label="Close"
               >
@@ -117,8 +113,8 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                   <div
                     className="rounded-lg overflow-hidden"
                     style={{
-                      border: '1px solid var(--color-border)',
-                      backgroundColor: 'var(--color-background)',
+                      border: '1px solid var(--glass-border)',
+                      backgroundColor: 'var(--ctl-surf)',
                     }}
                   >
                     <table className="w-full text-xs font-mono">
@@ -193,8 +189,8 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             <div
               className="px-6 py-3 flex items-center justify-between gap-2"
               style={{
-                borderTop: '1px solid var(--color-border)',
-                backgroundColor: 'var(--color-background)',
+                borderTop: '1px solid var(--glass-border)',
+                backgroundColor: 'var(--ctl-surf)',
                 flexShrink: 0,
               }}
             >

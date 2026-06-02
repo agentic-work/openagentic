@@ -100,25 +100,45 @@ export function finishReasonRate(window: TimeWindow): string {
   return `sum by (finish_reason) (rate(gen_ai_finish_reasons_total[${w}]))`
 }
 
-/** Error rate by class. */
+/** Error rate by class.
+ *  `gen_ai_errors_total` is only just being emitted, so we additionally derive
+ *  from the ALREADY-emitted http 5xx counter — that way the chart shows real
+ *  error data immediately instead of waiting for the gen_ai metric to populate.
+ *  The 5xx series carries the synthetic class label `http_5xx`; gen_ai errors
+ *  keep their real `error_class`. They union into one stacked area. */
 export function errorRateByClass(window: TimeWindow): string {
   const w = rateWindowFor(window)
-  return `sum by (error_class) (rate(gen_ai_errors_total[${w}]))`
+  return `(
+  sum by (error_class) (rate(gen_ai_errors_total[${w}]))
+)
+  OR
+(
+  label_replace(
+    sum(rate(http_requests_total{status_code=~"5.."}[${w}])),
+    "error_class", "http_5xx", "", ""
+  )
+)`.trim()
 }
 
-/** Error % across all requests = errors / (requests + errors).
- *  Both numerator and denominator wrapped with `OR on() vector(0)` so a
- *  pod with no errors AND no requests yet renders 0% instead of an
- *  empty dash. Without wrapping the denominator, empty-vector + scalar
- *  yields empty (PromQL), so the whole ratio collapses to no-data.
- *  2026-05-25 audit. */
+/** Error % across all requests = errors / requests.
+ *  The numerator combines gen_ai errors (just being emitted) with the
+ *  ALREADY-emitted http 5xx counter, so this shows real error data
+ *  immediately. Both numerator and denominator wrapped with
+ *  `OR on() vector(0)` so a pod with no errors AND no requests yet renders
+ *  0% instead of an empty dash. Without wrapping the denominator,
+ *  empty-vector + scalar yields empty (PromQL), so the whole ratio collapses
+ *  to no-data. 2026-05-25 audit. */
 export function errorPercent(window: TimeWindow): string {
   const w = rateWindowFor(window)
   return `((
-  sum(rate(gen_ai_errors_total[${w}])) OR on() vector(0)
+  (
+    (sum(rate(gen_ai_errors_total[${w}])) OR on() vector(0))
+    +
+    (sum(rate(http_requests_total{status_code=~"5.."}[${w}])) OR on() vector(0))
+  )
 )
   /
-  ((sum(rate(gen_ai_client_operation_duration_seconds_count[${w}])) OR on() vector(0)) + 1e-9)
+  ((sum(rate(http_requests_total[${w}])) OR on() vector(0)) + 1e-9)
 ) * 100`.trim()
 }
 

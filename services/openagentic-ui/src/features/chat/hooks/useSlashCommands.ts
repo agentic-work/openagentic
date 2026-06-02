@@ -66,15 +66,6 @@ I'm your AI assistant with access to powerful enterprise tools. Here's what I ca
 
 **Try:** "Help me create a workflow that monitors costs"
 
-## Code & Development
-Switch to **Code Mode** (tab above) for:
-- Full application development with AI
-- Live code execution in sandboxed environment
-- Debugging with real-time tool execution
-- Git operations and file management
-
-**Try:** "Build a Python script to analyze my logs"
-
 ## Show Me What You Got
 - See all platform capabilities in action
 - Generate data visualizations (Sankey diagrams, charts)
@@ -96,7 +87,6 @@ Switch to **Code Mode** (tab above) for:
 ## Tips
 - **Intelligence Slider** (left panel): Slide right for smarter responses, left for faster/cheaper
 - **MCP Tools** (toolbar): Click the wrench icon to see available integrations
-- **Code Mode** (tab): For building applications with live execution
 
 Just describe what you want to accomplish - I'll figure out the best approach!`;
 

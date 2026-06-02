@@ -328,7 +328,7 @@ export const AdminWorkflowSettingsView: React.FC = () => {
 
   const renderMemory = () => (
     <div>
-      {fieldRow('Cross-Mode Memory Enabled', 'Allow workflows to read/write shared memory across chat and code modes', toggleInput('crossModeMemoryEnabled'))}
+      {fieldRow('Cross-Mode Memory Enabled', 'Allow workflows to read/write shared memory across chat sessions', toggleInput('crossModeMemoryEnabled'))}
       {fieldRow('Memory Retention (days)', 'Number of days to retain workflow memory entries', numberInput('memoryRetentionDays', { min: 1 }))}
       {fieldRow('Max Memory Entries Per User', 'Maximum number of memory entries stored per user', numberInput('maxMemoryEntriesPerUser', { min: 1 }))}
     </div>

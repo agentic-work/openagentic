@@ -51,7 +51,7 @@ const statusLabels: Record<SubagentStatus, string> = {
 };
 
 const statusColors: Record<SubagentStatus, { bg: string; fg: string; border: string }> = {
-  queued:    { bg: '#1a1f26',                fg: 'var(--color-fg-muted)', border: 'var(--color-rule)' },
+  queued:    { bg: 'var(--ctl-surf)',         fg: 'var(--color-fg-muted)', border: 'var(--color-rule)' },
   running:   { bg: 'color-mix(in srgb, var(--color-warning) 15%, transparent)',  fg: 'var(--color-warning)', border: 'var(--color-warning)' },
   completed: { bg: 'color-mix(in srgb, var(--color-success) 15%, transparent)',   fg: 'var(--color-success)', border: 'color-mix(in srgb, var(--color-success) 40%, transparent)' },
   failed:    { bg: 'color-mix(in srgb, var(--color-error) 15%, transparent)',   fg: 'var(--color-error)', border: 'color-mix(in srgb, var(--color-error) 50%, transparent)' },
@@ -92,6 +92,10 @@ export const MultiAgentSwarmPopover: React.FC<MultiAgentSwarmPopoverProps> = ({
   return (
     <AnimatePresence>
       <motion.div
+        // Terminal Glass: frosted popover floating over the canvas/aurora via
+        // the .glass class. We keep the signal-orange accent border + glow inline
+        // (the swarm's live identity) but the surface/blur/edge come from .glass.
+        className="glass"
         data-testid={`swarm-popover-${nodeId}`}
         data-swarm-popover="multi-agent"
         initial={{ opacity: 0, y: 8 }}
@@ -100,9 +104,7 @@ export const MultiAgentSwarmPopover: React.FC<MultiAgentSwarmPopoverProps> = ({
         style={{
           ...positionStyle,
           width: 380,
-          background: 'var(--color-surface)',
           border: '1px solid var(--user-accent-primary, #FF5722)',
-          borderRadius: 12,
           padding: 14,
           boxShadow: '0 8px 32px color-mix(in srgb, var(--user-accent-primary, #FF5722) 25%, transparent)',
           zIndex: 20,
@@ -164,7 +166,7 @@ export const MultiAgentSwarmPopover: React.FC<MultiAgentSwarmPopoverProps> = ({
                   gap: 10,
                   padding: 10,
                   borderRadius: 8,
-                  background: 'var(--color-bg)',
+                  background: 'var(--ctl-surf)',
                   border: `1px solid ${colors.border}`,
                   alignItems: 'flex-start',
                 }}
@@ -199,7 +201,7 @@ export const MultiAgentSwarmPopover: React.FC<MultiAgentSwarmPopoverProps> = ({
                         marginTop: 4,
                         fontSize: 11,
                         color: 'var(--color-fg)',
-                        background: 'var(--color-bg)',
+                        background: 'color-mix(in srgb, var(--glass-page-bg) 45%, transparent)',
                         padding: '4px 6px',
                         borderRadius: 4,
                         overflow: 'hidden',

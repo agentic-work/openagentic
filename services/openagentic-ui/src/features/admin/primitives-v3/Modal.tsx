@@ -36,16 +36,14 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, fo
       }}
     >
       <div
+        className="glass"
         onClick={(e) => e.stopPropagation()}
         style={{
           width,
           maxWidth: '92vw',
           maxHeight: '92vh',
           overflow: 'auto',
-          background: 'var(--bg-1)',
-          border: '1px solid var(--line-2)',
           padding: 0,
-          boxShadow: '0 24px 60px color-mix(in srgb, var(--color-shadow) 50%, transparent)',
           display: 'flex',
           flexDirection: 'column',
         }}

@@ -79,15 +79,6 @@ export const IconFlows = wrap(
   </>,
 )
 
-// Code Mode — angle brackets.
-export const IconCode = wrap(
-  <>
-    <polyline points="8 6 3 12 8 18" />
-    <polyline points="16 6 21 12 16 18" />
-    <line x1="14" y1="4" x2="10" y2="20" />
-  </>,
-)
-
 // Agent Management — head silhouette.
 export const IconAgents = wrap(
   <>
@@ -148,7 +139,6 @@ const ICON_BY_GROUP: Record<string, React.FC<IconProps>> = {
   'llm': IconLlm,
   'tools management': IconTools,
   'openagentic flows': IconFlows,
-  'code mode': IconCode,
   'agent management': IconAgents,
   'integrations': IconIntegrations,
   'prompts': IconPrompts,

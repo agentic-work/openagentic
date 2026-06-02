@@ -48,6 +48,19 @@ const adminAuditRoutesPluginImpl: FastifyPluginAsync<AdminAuditRoutesPluginOptio
     loggers.routes.error({ err: error }, 'Failed to register admin audit-log route');
   }
 
+  // ── Unified audit logs (plural) ───────────────────────────────────────────
+  // GET /api/admin/audit-logs (+ /stats,/errors,/sessions,/export) — UNIONs all
+  // audit source tables into the AuditLogEntry feed the AuditLogsPage consumes.
+  // NOTE: this plugin is not the live registration path (server.ts is); kept in
+  // sync here so both paths register identical routes.
+  try {
+    const { default: adminAuditLogsRoutes } = await import('../routes/admin-audit-logs.js');
+    await fastify.register(adminAuditLogsRoutes, { prefix: '/api/admin' });
+    loggers.routes.info('Admin unified audit-logs routes registered at /api/admin/audit-logs');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin unified audit-logs routes');
+  }
+
   loggers.routes.info('admin-audit routes sub-plugin registered successfully');
 };
 

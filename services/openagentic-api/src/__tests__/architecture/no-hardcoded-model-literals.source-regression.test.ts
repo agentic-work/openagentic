@@ -172,7 +172,6 @@ const KNOWN_VIOLATORS: Record<string, number> = {
   'services/BedrockPricingService.ts': 12,
   'services/TitleGenerationClient.ts': 6,
   'services/multi-model/MultiModelOrchestrator.types.ts': 6,
-  'services/llm-providers/codemodeModelValidation.ts': 6,
   // 'config/models.ts': closed 2026-05-05 (M3). MODELS.ollama removed (dead
   //   code, no callers). Remaining MODELS.* entries are env-driven only.
   // 2026-05-20 (#914): pulled off ALLOW_LIST_PREFIXES — track explicitly as
@@ -188,7 +187,6 @@ const KNOWN_VIOLATORS: Record<string, number> = {
   'services/model-routing/RegistryCandidatePool.ts': 3,
   'services/ChatRAGService.ts': 3,
   'services/AzureSDKKnowledgeIngester.ts': 3,
-  'routes/code-mode/internal-codemode-model.route.ts': 3,
   'routes/admin-usage-analytics.ts': 3,
   // Cost tracker pricing literal map (audit M4)
   // (lives in openagentic-proxy, outside this src tree — not caged here)

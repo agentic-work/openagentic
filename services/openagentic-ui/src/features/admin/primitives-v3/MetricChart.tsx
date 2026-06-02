@@ -110,7 +110,7 @@ export const MetricChart = ({
   series,
   xLabels,
   yFormat,
-  height = 180,
+  height = 280,
   data,
   centerLabel,
   expandable,

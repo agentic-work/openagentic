@@ -1,0 +1,75 @@
+{
+  "type": "dedup",
+  "category": "control",
+  "label": "Deduplicate",
+  "description": "Idempotency gate. Computes a key from the configured expression and drops (or errors on) items whose key has already been seen — within the current execution by default, or across executions with an optional TTL window.",
+  "icon": "filter-x",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "duplicate": "boolean",
+          "firstSeen": "boolean",
+          "key": "string",
+          "passthrough": "any"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "key",
+      "label": "Key expression",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "{{input.id}}",
+      "description": "Template that resolves to the de-duplication key for each item. Items with an identical resolved key are treated as duplicates. Must be non-empty for every item."
+    },
+    {
+      "name": "scope",
+      "label": "Scope",
+      "type": "enum",
+      "values": ["execution", "global"],
+      "default": "execution",
+      "required": false,
+      "description": "execution = dedup only within the current flow run (idempotent fan-out). global = dedup across all executions (use with a TTL to suppress repeated webhook deliveries)."
+    },
+    {
+      "name": "ttlSeconds",
+      "label": "TTL (seconds)",
+      "type": "number",
+      "required": false,
+      "default": 0,
+      "min": 0,
+      "max": 2592000,
+      "description": "How long a seen key is remembered. 0 = forever within the scope. With a TTL, a key re-appearing after the window is treated as new again."
+    },
+    {
+      "name": "onDuplicate",
+      "label": "On duplicate",
+      "type": "enum",
+      "values": ["drop", "error"],
+      "default": "drop",
+      "required": false,
+      "description": "drop = return { duplicate:true } so downstream can skip; error = throw a runtime error on the second sighting."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Drop items whose key was already processed — an idempotency / de-dup gate.",
+    "whenToUse": "Place inside a loop / map_reduce body or downstream of a webhook trigger to ensure each unique record (or delivery) is processed at most once. Route the duplicate path to a skip / no-op.",
+    "examplePrompt": "deduplicate incoming records by input.id so each id is processed only once per run",
+    "promptHints": "Output: {{steps.X.duplicate}} (true = already seen, downstream should skip), {{steps.X.firstSeen}} (true = first sighting, proceed). Use onDuplicate=drop with a condition node on {{steps.X.duplicate}} to branch."
+  },
+  "outputAssertions": [
+    {
+      "name": "dedup_envelope",
+      "expression": "result && typeof result.duplicate === 'boolean' && typeof result.key === 'string'",
+      "errorMessage": "dedup output is missing the { duplicate, key } envelope."
+    }
+  ]
+}

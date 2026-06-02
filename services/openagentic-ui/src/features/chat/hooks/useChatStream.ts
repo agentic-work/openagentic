@@ -1614,6 +1614,17 @@ export interface McpApprovalRequest {
   timeoutMs: number;
 }
 
+// Mutating-tool approval gate (backend commit 7e6637539). Distinct from
+// McpApprovalRequest — keyed by an append-only `auditId`, resolved via
+// POST /api/approvals/:auditId/{approve,deny}. OSS-only audit surface.
+export interface AuditApprovalRequest {
+  auditId: string;
+  toolName: string;
+  serverName?: string;
+  args?: Record<string, unknown> | string;
+  preview?: string;
+}
+
 // Multi-model orchestration event - flexible type for various event shapes
 export interface MultiModelEvent {
   type: string;
@@ -1643,6 +1654,7 @@ export interface UseSSEChatOptions {
   onToolExecution?: (tool: any) => void;
   onToolApprovalRequest?: (data: { tools: any[]; toolCallRound: number; messageId: string }) => void;
   onMcpApprovalRequest?: (data: McpApprovalRequest) => void;
+  onAuditApprovalRequired?: (data: AuditApprovalRequest) => void;  // OSS-only mutating-tool gate
   onError?: (error: Error) => void;
   onThinking?: (status: string) => void;
   onThinkingContent?: (content: string, tokens?: number) => void;  // For actual thinking content
@@ -1668,6 +1680,7 @@ export const useChatStream = ({
   onToolExecution,
   onToolApprovalRequest,
   onMcpApprovalRequest,
+  onAuditApprovalRequired,
   onError,
   onThinking,
   onThinkingContent,
@@ -2141,8 +2154,13 @@ export const useChatStream = ({
   // CRITICAL FIX: Abort active stream AND reset state when session changes
   // This prevents messages from bleeding between sessions
   useEffect(() => {
-    if (previousSessionIdRef.current !== null && previousSessionIdRef.current !== sessionId) {
-      // Session changed — IMMEDIATELY abort any running stream
+    if (previousSessionIdRef.current && previousSessionIdRef.current !== sessionId) {
+      // Session changed — IMMEDIATELY abort any running stream.
+      // NOTE: a falsy `previousSessionIdRef.current` ('' or null) means we're
+      // going from "no/empty session" → a freshly-created one (the first-message
+      // flow), NOT switching between two real sessions. We must NOT abort there,
+      // or the first message's just-started stream (kicked off with the live
+      // sessionId) gets killed the instant the store update re-renders the prop.
       if (abortControllerRef.current) {
         console.warn('[SSE] Session changed while stream active — ABORTING old stream:', {
           from: previousSessionIdRef.current,
@@ -2316,8 +2334,18 @@ export const useChatStream = ({
     // Critical debug logging
     // console.log('[SSE] sendMessage called with:', { message, sessionId, options });
     
+    // First-message race fix: on the first send of a brand-new chat the prop
+    // `sessionId` can still be '' because createNewSession()'s store update
+    // hasn't re-rendered this hook yet. Resolve the id LIVE from the store at
+    // call time so the very first message opens the stream. (Previously it hit
+    // the guard below, silently bailed before any /api/chat/stream fetch, and
+    // left a spinner — which is why it "worked after reload": on reload the id
+    // is already hydrated before the first send.)
+    const effectiveSessionId =
+      (sessionId && sessionId.trim()) ? sessionId : (useChatStore.getState().activeSessionId || '');
+
     // Validate sessionId before attempting to send
-    if (!sessionId || sessionId.trim() === '') {
+    if (!effectiveSessionId || effectiveSessionId.trim() === '') {
       console.error('[SSE] Cannot send message - no sessionId provided');
       setIsStreaming(false);
       if (onError) {
@@ -2485,7 +2513,7 @@ export const useChatStream = ({
           'Accept': 'application/x-ndjson',
         },
         body: JSON.stringify({
-          sessionId,
+          sessionId: effectiveSessionId,
           message,
           model: options?.model,
           enabledTools: options?.enabledTools || [],
@@ -4803,6 +4831,19 @@ export const useChatStream = ({
                 }
 
                 case 'approval_required': {
+                  // OSS-only: mutating-tool approval gate (commit 7e6637539).
+                  // Shape: { auditId, toolName, serverName?, args, preview }.
+                  // Discriminated from the agent-tree path by `auditId`.
+                  if (safeData.auditId) {
+                    onAuditApprovalRequired?.({
+                      auditId: safeData.auditId,
+                      toolName: safeData.toolName || 'unknown',
+                      serverName: safeData.serverName,
+                      args: safeData.args,
+                      preview: safeData.preview,
+                    });
+                    break;
+                  }
                   console.log('[SSE] Agent approval required:', safeData.agentId, safeData.toolName);
                   if (safeData.executionId && safeData.agentId) {
                     useAgentTreeStore.getState().handleApprovalRequired(safeData.executionId, {

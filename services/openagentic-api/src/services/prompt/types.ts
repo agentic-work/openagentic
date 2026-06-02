@@ -1,6 +1,6 @@
 export type ModuleCategory = 'core' | 'domain' | 'mode' | 'capability';
 export type AdapterFamily = 'claude' | 'gemini' | 'openai' | 'local';
-export type ContextMode = 'chat' | 'code' | 'flow';
+export type ContextMode = 'chat' | 'flow';
 
 /**
  * Explicit user-intent signals derived from the request message.

@@ -5,7 +5,7 @@
  * These are intrinsic model properties (reference data), NOT runtime model selection.
  * They stay as data tables — no env vars needed.
  *
- * Used by: ContextManagementService, CodeModeSessionService, etc.
+ * Used by: ContextManagementService, etc.
  */
 
 // =============================================================================

@@ -26,6 +26,7 @@ import { findIdempotencyKey, storeIdempotencyKey } from './services/IdempotencyS
 import { requireInternalKey } from './middleware/requireInternalKey.js';
 import { validateTenantId } from './middleware/validateTenantId.js';
 import { resumeExecutionHandler, type ResumeExecutionInput } from './services/resumeExecutionHandler.js';
+import { submitDataRequest, isDataRequestSubmission } from './services/dataRequestSubmissionHandler.js';
 import { seedTemplatesOnBoot } from './services/templateSeeder.js';
 import { withTenant } from './utils/tenantPrismaExtension.js';
 
@@ -423,6 +424,79 @@ async function start() {
     const payload = request.body;
     // After validateTenantId, payload.tenantId is guaranteed non-empty string.
     const tenantId = payload.tenantId as string;
+
+    // ── HITL human_input / request_data SUBMIT branch ──────────────────────
+    // A data-request submission carries { requestId, values } (+ optional
+    // executionId/providedBy/providedAt) but NONE of the approval-resume's
+    // definition/fromNodeId/state — the workflows-svc looks those up from the
+    // persisted WorkflowDataRequest + WorkflowExecution rows. Discriminated by
+    // `kind:'data_request'` or by `requestId` with no inline state/definition.
+    // The approval path below is left untouched (kind:'approval' or no kind +
+    // definition/state present).
+    if (isDataRequestSubmission(request.body as any)) {
+      return withTenant({ tenantId }, async () => {
+        const body = request.body as any;
+        // SSE streaming — same envelope as the approval path so api-side
+        // resumeViaWorkflowsService can replay events[] uniformly.
+        reply.hijack();
+        reply.raw.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Connection': 'keep-alive',
+          'X-Accel-Buffering': 'no',
+          'X-Content-Type-Options': 'nosniff',
+        });
+        reply.raw.socket?.setNoDelay(true);
+        reply.raw.write(': connected\n\n');
+
+        const sendDR = (event: ExecutionEvent) => {
+          if (!reply.raw.writableEnded) {
+            reply.raw.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+            if (typeof (reply.raw as any).flush === 'function') (reply.raw as any).flush();
+          }
+        };
+
+        metrics.activeExecutions++;
+        workflowActiveExecutions.inc();
+        try {
+          const result = await submitDataRequest(
+            {
+              executionId: body.executionId,
+              requestId: body.requestId,
+              values: body.values,
+              providedBy: body.providedBy,
+              providedAt: body.providedAt,
+            },
+            { prisma: prisma as any },
+            sendDR,
+          );
+          sendDR({
+            type: result.success ? 'execution_complete' : 'execution_error',
+            executionId: body.executionId || '',
+            timestamp: new Date().toISOString(),
+            data: {
+              success: result.success,
+              output: result.output,
+              error: result.error,
+              notFound: result.notFound,
+              invalid: result.invalid,
+            },
+          } as ExecutionEvent);
+        } catch (err: any) {
+          logger.error({ err: err.message, requestId: body.requestId }, 'Data-request resume failed unexpectedly');
+          sendDR({
+            type: 'execution_error',
+            executionId: body.executionId || '',
+            timestamp: new Date().toISOString(),
+            data: { error: err.message },
+          } as ExecutionEvent);
+        } finally {
+          metrics.activeExecutions--;
+          workflowActiveExecutions.dec();
+          if (!reply.raw.writableEnded) reply.raw.end();
+        }
+      });
+    }
 
     if (!payload?.definition?.nodes?.length) {
       reply.code(400).send({ error: 'No nodes in workflow definition' });

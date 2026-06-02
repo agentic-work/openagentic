@@ -23,9 +23,6 @@ export const featureFlags = {
   // Ollama LLM provider - set to false to remove Ollama management
   ollama: parseFlag(import.meta.env.VITE_FEATURE_OLLAMA, false),
 
-  // OpenAgentic agent surface
-  openagentic: parseFlag(import.meta.env.VITE_FEATURE_OPENAGENTIC, true),
-
   // Multi-Model orchestration
   multiModel: parseFlag(import.meta.env.VITE_FEATURE_MULTIMODEL, true),
 

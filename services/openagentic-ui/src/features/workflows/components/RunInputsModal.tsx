@@ -84,6 +84,9 @@ export const RunInputsModal: React.FC<RunInputsModalProps> = ({
         onClick={onCancel}
       >
         <motion.div
+          // Terminal Glass: frosted modal CARD (.glass) over the dim scrim;
+          // was an opaque #1a1a1a card. Layout + text set inline.
+          className="glass"
           data-testid="run-inputs-modal"
           initial={{ scale: 0.95, y: 16 }}
           animate={{ scale: 1, y: 0 }}
@@ -91,15 +94,12 @@ export const RunInputsModal: React.FC<RunInputsModalProps> = ({
           style={{
             width: 'min(560px, 92vw)',
             maxHeight: '85vh', overflow: 'auto',
-            background: 'var(--color-bg-secondary, #1a1a1a)',
-            color: 'var(--color-text, #e6edf3)',
-            border: '1px solid var(--color-border, #2a2a2a)',
-            borderRadius: 12, padding: 24,
-            boxShadow: '0 24px 64px rgba(0,0,0,0.45)',
+            color: 'var(--color-text)',
+            padding: 24,
           }}
         >
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Run with parameters</h2>
-          <p style={{ marginTop: 8, marginBottom: 20, fontSize: 13, color: 'var(--color-text-secondary, #8b949e)' }}>
+          <p style={{ marginTop: 8, marginBottom: 20, fontSize: 13, color: 'var(--color-text-secondary)' }}>
             This flow needs a few inputs before it can run. Fill them in below.
           </p>
 
@@ -115,7 +115,7 @@ export const RunInputsModal: React.FC<RunInputsModalProps> = ({
                     {input.required ? <span style={{ color: 'var(--color-error)', marginLeft: 4 }}>*</span> : null}
                   </label>
                   {input.description ? (
-                    <div style={{ fontSize: 12, color: 'var(--color-text-tertiary, #8b949e)', marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', marginBottom: 6 }}>
                       {input.description}
                     </div>
                   ) : null}
@@ -128,10 +128,10 @@ export const RunInputsModal: React.FC<RunInputsModalProps> = ({
                     onChange={(e) => setValues((s) => ({ ...s, [input.name]: e.target.value }))}
                     style={{
                       width: '100%', padding: '10px 12px', fontSize: 13,
-                      background: 'var(--color-bg-tertiary, #0d1117)',
-                      color: 'var(--color-text, #e6edf3)',
-                      border: `1px solid ${showErrors && missing ? 'var(--color-error)' : 'var(--color-border, #2a2a2a)'}`,
-                      borderRadius: 6, outline: 'none',
+                      background: 'var(--ctl-surf)',
+                      color: 'var(--color-text)',
+                      border: `1px solid ${showErrors && missing ? 'var(--color-error)' : 'var(--glass-border)'}`,
+                      borderRadius: 8, outline: 'none',
                     }}
                   />
                   {showErrors && missing ? (
@@ -146,22 +146,16 @@ export const RunInputsModal: React.FC<RunInputsModalProps> = ({
             <button
               type="button"
               onClick={onCancel}
-              style={{
-                padding: '8px 14px', fontSize: 13,
-                background: 'transparent', color: 'var(--color-text, #e6edf3)',
-                border: '1px solid var(--color-border, #2a2a2a)', borderRadius: 6, cursor: 'pointer',
-              }}
+              className="glass-btn glass-btn-secondary"
+              style={{ padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleSubmit}
-              style={{
-                padding: '8px 14px', fontSize: 13, fontWeight: 600,
-                background: 'var(--color-info)', color: 'white',
-                border: '1px solid #2196f3', borderRadius: 6, cursor: 'pointer',
-              }}
+              className="glass-btn glass-btn-primary"
+              style={{ padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
               Run flow
             </button>

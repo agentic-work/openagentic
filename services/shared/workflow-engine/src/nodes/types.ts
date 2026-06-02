@@ -377,6 +377,29 @@ export interface NodeExecutionContext {
     timeout_at: Date | string;
   }>;
 
+  /**
+   * HITL data-request hook (sister of pauseForApproval) — backs the
+   * `human_input` / `request_data` node. Persists a typed WorkflowDataRequest,
+   * checkpoints the execution, and emits the `needs_input` frame. The engine's
+   * pause logic then suspends the run; POST /resume-execution re-enters with
+   * the user's submitted values. Returns the request id + expiry so the
+   * executor can echo them downstream.
+   */
+  requestData?: (payload: {
+    nodeId: string;
+    fields: Array<Record<string, unknown>>;
+    title: string;
+    description: string;
+    timeoutSeconds: number;
+    timeoutAction: string;
+    assignTo: string[];
+    channel: string;
+    input: unknown;
+  }) => Promise<{
+    id: string;
+    timeout_at: Date | string;
+  }>;
+
   // ---------------------------------------------------------------------------
   // Control-flow hooks (Task #45) — let condition / switch / parallel / loop
   // run as schema-driven plugins. The legacy engine methods used direct access
@@ -436,13 +459,34 @@ export interface NodeExecutionContext {
    * in the per-iteration input. Used by loop.
    * Engine wires to a per-iteration executeNode call binding `${itemVariable}`
    * in the input scope, accumulating per-iteration results.
+   *
+   * Optional `concurrency` (default 1 / sequential) bounds how many
+   * per-item subgraph executions run at once — used by map_reduce to
+   * fan out under a configurable limit. When omitted the engine runs
+   * iterations sequentially (loop's historical behaviour).
    */
   iterateOver?: (
     fromNodeId: string,
     items: ReadonlyArray<unknown>,
     itemVariable: string,
     input: unknown,
+    concurrency?: number,
   ) => Promise<unknown[]>;
+
+  /**
+   * Control-flow hook: execute the downstream subgraph from `fromNodeId`
+   * exactly once with the supplied input, resolving to the subgraph's
+   * terminal result or REJECTING if any node in it errors. Used by
+   * retry_with_backoff to drive a single attempt of the operation it
+   * guards. The engine wires this to executeNode over the node's outgoing
+   * edges, surfacing the first rejection so the executor can decide whether
+   * to back off and retry. Distinct from iterateOver (which never re-runs
+   * the same item) and fanOutBranches (which swallows rejections into a
+   * settled array).
+   *
+   * Absent in unit tests that inject their own attempt function.
+   */
+  runSubStep?: (fromNodeId: string, input: unknown) => Promise<unknown>;
 
   // ---------------------------------------------------------------------------
   // Synth + code/openagentic hooks (Task #46) — let the last unmigrated nodes

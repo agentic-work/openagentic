@@ -8,7 +8,6 @@
  *   - SlackIntegrationService.getSlackSystemPrompt
  *   - AITitleGenerationService.getTitleGenerationPrompt
  *   - TitleGenerationClient.getMultipleTitlesPrompt
- *   - CodeModeSessionService.getSummarySystemPrompt
  *   - MemoryContextService.getContextSystemPrompt
  *
  * For each site: invoke with a ServicePromptLike whose `getPrompt` throws,
@@ -123,28 +122,6 @@ describe('Gap #3 — ServicePrompt fallback MUST emit a WARN log', () => {
       return (
         obj &&
         obj.key === 'title_gen.client' &&
-        typeof obj.reason === 'string' &&
-        /ServicePrompt fallback/.test(msg)
-      );
-    });
-    expect(fallbackWarn, `warn calls = ${JSON.stringify(logger.warn.mock.calls)}`).toBeTruthy();
-    expect(String(fallbackWarn?.[1] ?? '')).toMatch(/ServicePrompt fallback/);
-  });
-
-  it('CodeModeSessionService: svc.getPrompt throws → WARN { key, reason } + fallback', async () => {
-    vi.resetModules();
-    const { CodeModeSessionService } = await import('../CodeModeSessionService.js');
-    const logger = makeLogger();
-    const fakePm = {} as any;
-    const svc = new CodeModeSessionService(logger as any, fakePm);
-    const result = await (svc as any).getSummarySystemPrompt(makeThrowingSvc());
-    expect(result).toContain('summariz'); // 'summarizes coding'
-    const fallbackWarn = logger.warn.mock.calls.find((args: any[]) => {
-      const obj = args[0];
-      const msg = String(args[1] ?? '');
-      return (
-        obj &&
-        obj.key === 'codemode.summary_prompt' &&
         typeof obj.reason === 'string' &&
         /ServicePrompt fallback/.test(msg)
       );

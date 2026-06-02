@@ -84,13 +84,13 @@ describe('W.6 — admin-service-prompts routes', () => {
 
   it('GET /:key → returns body for existing key', async () => {
     const svc = makeFakeService([
-      { prompt_key: 'codemode.summary_prompt', body: 'Summary prompt body', version: 2, is_active: true },
+      { prompt_key: 'memory.context_system', body: 'Summary prompt body', version: 2, is_active: true },
     ]);
     const app = await buildApp(svc);
-    const res = await app.inject({ method: 'GET', url: '/codemode.summary_prompt' });
+    const res = await app.inject({ method: 'GET', url: '/memory.context_system' });
     expect(res.statusCode).toBe(200);
     const json = JSON.parse(res.body);
-    expect(json.prompt_key).toBe('codemode.summary_prompt');
+    expect(json.prompt_key).toBe('memory.context_system');
     expect(json.body).toBe('Summary prompt body');
   });
 

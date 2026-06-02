@@ -151,8 +151,8 @@ export const VariablesSection: React.FC<VariablesSectionProps> = ({ variables, o
           {entries.map((entry, index) => (
             <div
               key={index}
-              className="flex items-center gap-1 p-1.5 rounded border"
-              style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+              className="flex items-center gap-1 p-1.5 rounded-[var(--ctl-radius-sm)] border"
+              style={{ borderColor: 'var(--glass-border)', background: 'var(--ctl-surf)' }}
             >
               {/* Name input */}
               <input
@@ -226,7 +226,7 @@ export const VariablesSection: React.FC<VariablesSectionProps> = ({ variables, o
       <button
         onClick={handleAddRow}
         className="flex items-center gap-1 text-[12px] font-medium transition-colors hover:opacity-80"
-        style={{ color: 'var(--user-accent-primary, #2196f3)' }}
+        style={{ color: 'var(--user-accent-primary, #FF5722)' }}
       >
         <Plus className="w-3 h-3" />
         Add Variable
@@ -264,7 +264,7 @@ export const VariablesSection: React.FC<VariablesSectionProps> = ({ variables, o
                       {ce.label}
                     </span>
                     <span className="flex items-center gap-1">
-                      <code className="text-[10px] font-mono" style={{ color: 'var(--user-accent-primary, #2196f3)' }}>
+                      <code className="text-[10px] font-mono" style={{ color: 'var(--user-accent-primary, #FF5722)' }}>
                         {ce.expr}
                       </code>
                       {copiedKey === ce.expr ? (

@@ -62,18 +62,18 @@ export const WhatsNewToast: React.FC<WhatsNewToastProps> = ({ version, onSelectF
     <div
       role="alert"
       aria-live="polite"
+      // Terminal Glass: frosted toast over the workspace via the .glass class
+      // (background var(--glass-bg) + blur + soft border/shadow + top-edge
+      // highlight). Was an opaque #161b22 card. Only layout + text set inline.
+      className="glass"
       style={{
         position: 'fixed',
         right: 24,
         bottom: 24,
         zIndex: 9999,
         width: 360,
-        background: 'var(--color-bg-secondary, #161b22)',
-        border: '1px solid var(--color-border, #2a2a2a)',
-        borderRadius: 12,
         padding: 16,
-        boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
-        color: 'var(--color-text, #e6edf3)',
+        color: 'var(--color-text)',
         fontSize: 13,
       }}
     >
@@ -94,7 +94,7 @@ export const WhatsNewToast: React.FC<WhatsNewToastProps> = ({ version, onSelectF
           style={{
             background: 'transparent',
             border: 'none',
-            color: 'var(--color-text-tertiary, #8b949e)',
+            color: 'var(--color-text-tertiary)',
             fontSize: 16,
             cursor: 'pointer',
             lineHeight: 1,
@@ -126,7 +126,7 @@ export const WhatsNewToast: React.FC<WhatsNewToastProps> = ({ version, onSelectF
               }}
             >
               <span style={{ fontWeight: 600 }}>{f.label}</span>
-              <span style={{ fontSize: 11, color: 'var(--color-text-tertiary, #8b949e)' }}>
+              <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
                 {f.hint}
               </span>
             </button>

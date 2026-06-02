@@ -13,7 +13,6 @@
  *   - services/SlackIntegrationService.ts
  *   - services/AITitleGenerationService.ts
  *   - services/TitleGenerationClient.ts
- *   - services/CodeModeSessionService.ts
  *   - memory/services/MemoryContextService.ts
  *
  * The defining module itself (services/prompt/ServicePromptService.ts) and

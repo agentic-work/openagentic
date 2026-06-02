@@ -1,0 +1,87 @@
+{
+  "type": "retry_with_backoff",
+  "category": "control",
+  "label": "Retry with Backoff",
+  "description": "Wraps a downstream operation and retries it with exponential backoff on failure. Returns the first successful result; throws a clear error naming the last failure once all retries are exhausted.",
+  "icon": "rotate-ccw",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "ok": "boolean",
+          "attempts": "number",
+          "retries": "number",
+          "totalDelayMs": "number",
+          "result": "any"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "maxRetries",
+      "label": "Max retries",
+      "type": "number",
+      "required": false,
+      "default": 3,
+      "min": 0,
+      "max": 50,
+      "description": "Number of additional attempts after the first. maxRetries=3 means up to 4 total attempts. 0 disables retrying."
+    },
+    {
+      "name": "baseDelayMs",
+      "label": "Base delay (ms)",
+      "type": "number",
+      "required": false,
+      "default": 500,
+      "min": 0,
+      "max": 600000,
+      "description": "Delay before the first retry. Subsequent retries multiply this by backoffFactor each time (capped at maxDelayMs)."
+    },
+    {
+      "name": "maxDelayMs",
+      "label": "Max delay (ms)",
+      "type": "number",
+      "required": false,
+      "default": 30000,
+      "min": 0,
+      "max": 3600000,
+      "description": "Upper bound on any single backoff sleep. The exponential delay is clamped to this ceiling."
+    },
+    {
+      "name": "backoffFactor",
+      "label": "Backoff factor",
+      "type": "number",
+      "required": false,
+      "default": 2,
+      "min": 1,
+      "max": 10,
+      "description": "Multiplier applied to the delay each retry. 2 = double each time (500ms, 1s, 2s, …). 1 = constant delay."
+    },
+    {
+      "name": "jitter",
+      "label": "Jitter",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "When true, each backoff delay is randomized within [delay/2, delay] (full jitter) to de-correlate concurrent retriers. Disable for deterministic delays."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Retry a flaky downstream operation with exponential backoff before giving up.",
+    "whenToUse": "Place upstream of an http_request / mcp_tool / agent node that calls a flaky third-party API. The downstream subgraph runs once per attempt; on the first success the flow continues, otherwise the node errors after maxRetries.",
+    "examplePrompt": "retry the API call up to 5 times with exponential backoff starting at 1 second",
+    "promptHints": "Output envelope: {{steps.X.result.ok}} (true on success), {{steps.X.result.attempts}} (how many tries it took). On exhaustion the node throws — route its error port to an error_handler to recover."
+  },
+  "outputAssertions": [
+    {
+      "name": "retry_envelope",
+      "expression": "result && result.ok === true && typeof result.attempts === 'number'",
+      "errorMessage": "retry_with_backoff output is missing the success envelope { ok, attempts }."
+    }
+  ]
+}

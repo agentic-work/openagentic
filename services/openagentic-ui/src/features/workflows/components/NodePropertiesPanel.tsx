@@ -2847,18 +2847,22 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       initial={{ x: 320, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 320, opacity: 0 }}
+      // Terminal Glass: the node inspector reads as a frosted slab over the
+      // canvas/aurora — translucent surface + backdrop blur + soft left edge.
       className="w-80 border-l overflow-y-auto"
       data-has-schema={schemaSettings.hasSchema ? 'true' : 'false'}
       data-node-type={node?.type}
       style={{
-        backgroundColor: 'var(--color-surface)',
-        borderColor: 'var(--color-border)',
+        background: 'var(--glass-bg)',
+        backdropFilter: 'var(--glass-blur)',
+        WebkitBackdropFilter: 'var(--glass-blur)',
+        borderColor: 'var(--glass-border)',
       }}
     >
       <div className="sticky top-0 z-10 p-4 border-b backdrop-blur-sm"
         style={{
-          backgroundColor: 'color-mix(in srgb, var(--color-surface) 95%, transparent)',
-          borderColor: 'var(--color-border)',
+          backgroundColor: 'var(--ctl-surf)',
+          borderColor: 'var(--glass-border)',
         }}
       >
         <div className="flex items-center justify-between mb-2">

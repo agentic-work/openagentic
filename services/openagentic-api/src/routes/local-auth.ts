@@ -12,6 +12,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { trackAuthAttempt } from '../metrics/index.js';
 import { prisma } from '../utils/prisma.js';
+import { logAuthEvent } from '../services/audit/authAuditLogger.js';
 import { getJWTSecret } from '../utils/secrets.js';
 import { AdminValidationService } from '../services/AdminValidationService.js';
 import { AzureTokenService } from '../services/AzureTokenService.js';
@@ -240,6 +241,16 @@ export const localAuthRoutes: FastifyPluginAsync = async (fastify) => {
 
       if (!user || !user.password_hash) {
         logger.warn({ email: username }, 'Login attempt for non-existent user');
+        await logAuthEvent({
+          event: 'login_failed',
+          provider: 'local',
+          success: false,
+          userId: user?.id ?? null,
+          userEmail: username,
+          ipAddress: request.ip,
+          userAgent: request.headers['user-agent'],
+          detail: { reason: 'unknown_user_or_no_password' },
+        });
         return reply.code(401).send({ error: 'Invalid credentials' });
       }
 
@@ -247,6 +258,16 @@ export const localAuthRoutes: FastifyPluginAsync = async (fastify) => {
       const isValidPassword = await verifyPassword(password, user.password_hash);
       if (!isValidPassword) {
         logger.warn({ email: username }, 'Invalid password attempt');
+        await logAuthEvent({
+          event: 'login_failed',
+          provider: 'local',
+          success: false,
+          userId: user.id,
+          userEmail: user.email,
+          ipAddress: request.ip,
+          userAgent: request.headers['user-agent'],
+          detail: { reason: 'invalid_password' },
+        });
         return reply.code(401).send({ error: 'Invalid credentials' });
       }
 
@@ -316,10 +337,22 @@ export const localAuthRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       logger.info({ email: user.email, isAdmin: user.is_admin }, 'User logged in successfully');
-      
+
       // Track successful authentication
       trackAuthAttempt('local_login', 'success');
-      
+
+      // Persist auth event for the unified admin audit feed (best-effort).
+      await logAuthEvent({
+        event: 'login',
+        provider: 'local',
+        success: true,
+        userId: user.id,
+        userEmail: user.email,
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
+        detail: { isAdmin: user.is_admin },
+      });
+
       // CRITICAL: Call MCP orchestrator to spawn Azure MCP for this user
       // Admin users get admin SP, regular users get read-only SP
       try {
@@ -445,6 +478,17 @@ export const localAuthRoutes: FastifyPluginAsync = async (fastify) => {
         data: {
           is_active: false
         }
+      });
+
+      // Persist logout for the unified admin audit feed (best-effort).
+      await logAuthEvent({
+        event: 'logout',
+        provider: 'local',
+        success: true,
+        userId: decoded.userId,
+        userEmail: decoded.email,
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
       });
 
       // Kill user's Azure MCP instances on logout

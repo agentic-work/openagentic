@@ -102,8 +102,7 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
 
       {/* Direct Execute Endpoint */}
       <div
-        className="p-2.5 rounded-lg border space-y-2"
-        style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+        className="glass-card p-2.5 space-y-2"
       >
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold" style={{ color: 'var(--color-text)' }}>
@@ -111,7 +110,7 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
           </span>
           <span
             className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"
-            style={{ backgroundColor: '#22c55e20', color: 'var(--color-success)' }}
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-success) 14%, transparent)', color: 'var(--color-success)' }}
           >
             POST
           </span>
@@ -176,11 +175,7 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
         <button
           onClick={handleTestExecute}
           disabled={testing}
-          className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded transition-colors hover:opacity-80 disabled:opacity-50"
-          style={{
-            backgroundColor: 'var(--user-accent-primary, #2196f3)',
-            color: 'var(--color-on-accent)',
-          }}
+          className="glass-btn glass-btn-primary flex items-center gap-1 px-2 py-1 text-[10px]"
         >
           <Play className="w-2.5 h-2.5" />
           {testing ? 'Running...' : 'Try it'}
@@ -227,14 +222,13 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
             return (
               <div
                 key={wh.id}
-                className="p-2 rounded-lg border space-y-1.5"
-                style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+                className="glass-card p-2 space-y-1.5"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-medium truncate" style={{ color: 'var(--color-text)' }}>
                     {wh.name}
                   </span>
-                  <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: '#2196f320', color: 'var(--color-info)' }}>
+                  <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--color-info) 14%, transparent)', color: 'var(--color-info)' }}>
                     {wh.response_mode}
                   </span>
                 </div>

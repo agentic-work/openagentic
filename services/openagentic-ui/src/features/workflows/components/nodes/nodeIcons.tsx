@@ -569,6 +569,26 @@ const AgentArtifactIcon = () => svg(
   </>
 );
 
+// OAT Function Builder: function braces f(x)
+const AgentOatFunctionIcon = () => svg(
+  <>
+    <path d="M8 3c-2 0-2 2-2 4s0 3-2 4c2 1 2 3 2 5s0 4 2 4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M16 3c2 0 2 2 2 4s0 3 2 4c-2 1-2 3-2 5s0 4-2 4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M10.5 9.5h2M11.5 9.5v5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
+    <circle cx="13.6" cy="14" r="0.9" fill="#fff" />
+  </>
+);
+
+// Cloud Operations: cloud with a gear
+const AgentCloudOpsIcon = () => svg(
+  <>
+    <path d="M7 18a4 4 0 01-.4-7.98A5 5 0 0116 9.5a3.5 3.5 0 01.2 6.99" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="rgba(255,255,255,0.05)" />
+    <circle cx="13" cy="17.5" r="2.4" stroke="#fff" strokeWidth="1.3" />
+    <path d="M13 14.4v-1M13 21.6v-1M16.1 17.5h-1M10.9 17.5h-1" stroke="#fff" strokeWidth="1.1" strokeLinecap="round" />
+    <circle cx="13" cy="17.5" r="0.8" fill="#fff" />
+  </>
+);
+
 // Custom: puzzle piece
 const AgentCustomIcon = () => svg(
   <>
@@ -588,6 +608,8 @@ export const AGENT_TYPE_ICONS: Record<string, () => React.ReactElement> = {
   validation: AgentValidationIcon,
   synthesis: AgentSynthesisIcon,
   artifact_creation: AgentArtifactIcon,
+  oat_function_builder: AgentOatFunctionIcon,
+  cloud_operations: AgentCloudOpsIcon,
   custom: AgentCustomIcon,
 };
 
@@ -603,6 +625,8 @@ export const AGENT_TYPE_COLORS: Record<string, string> = {
   validation: '#ef4444',        // red
   synthesis: '#a855f7',         // purple-500
   artifact_creation: '#ec4899', // pink
+  oat_function_builder: '#14b8a6', // teal
+  cloud_operations: '#0ea5e9',  // sky
   custom: '#64748b',            // slate
 };
 

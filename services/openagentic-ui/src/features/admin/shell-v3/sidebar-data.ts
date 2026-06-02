@@ -61,17 +61,6 @@ export const ADMIN_NAV: AdminGroup[] = [
     ],
   },
   {
-    title: 'code mode',
-    leaves: [
-      { id: 'cm-settings',  key: 'cs', name: 'Settings' },
-      { id: 'cm-global',    key: 'cg', name: 'Global Settings' },
-      { id: 'cm-mcp',       key: 'cp', name: 'MCP Servers' },
-      { id: 'cm-skills',    key: 'ck', name: 'Skills & Plugins' },
-      { id: 'cm-users',     key: 'cu', name: 'Users & Sessions' },
-      { id: 'cm-metrics',   key: 'cm', name: 'Metrics' },
-    ],
-  },
-  {
     title: 'agent management',
     leaves: [
       { id: 'agent-registry',    key: 'ag', name: 'Agent Registry' },

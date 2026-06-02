@@ -30,10 +30,10 @@ const inputStyle = (border: string): React.CSSProperties => ({
   padding: '10px 12px',
   fontSize: 13,
   fontFamily: 'var(--font-mono)',
-  background: 'var(--color-bg-tertiary, #0d1117)',
-  color: 'var(--color-text, #e6edf3)',
+  background: 'var(--ctl-surf)',
+  color: 'var(--color-text)',
   border: `1px solid ${border}`,
-  borderRadius: 6,
+  borderRadius: 8,
   outline: 'none',
 });
 
@@ -74,6 +74,10 @@ export const MissingSecretsWizard: React.FC<MissingSecretsWizardProps> = ({
         onClick={onCancel}
       >
         <motion.div
+          // Terminal Glass: the modal CARD is frosted glass (.glass) over the
+          // dim scrim backdrop above; was an opaque #1a1a1a card. Layout + text
+          // set inline; surface/blur/border/shadow come from the .glass class.
+          className="glass"
           data-testid="missing-secrets-wizard"
           initial={{ scale: 0.95, y: 16 }}
           animate={{ scale: 1, y: 0 }}
@@ -81,17 +85,14 @@ export const MissingSecretsWizard: React.FC<MissingSecretsWizardProps> = ({
           style={{
             width: 'min(640px, 92vw)',
             maxHeight: '85vh', overflow: 'auto',
-            background: 'var(--color-bg-secondary, #1a1a1a)',
-            color: 'var(--color-text, #e6edf3)',
-            border: '1px solid var(--color-border, #2a2a2a)',
-            borderRadius: 12, padding: 24,
-            boxShadow: '0 24px 64px rgba(0,0,0,0.45)',
+            color: 'var(--color-text)',
+            padding: 24,
           }}
         >
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
             Provide credentials before running
           </h2>
-          <p style={{ marginTop: 8, marginBottom: 20, fontSize: 13, color: 'var(--color-text-secondary, #8b949e)' }}>
+          <p style={{ marginTop: 8, marginBottom: 20, fontSize: 13, color: 'var(--color-text-secondary)' }}>
             This flow references credentials that haven't been saved yet. Enter
             the values below — they'll be encrypted and stored as workflow
             secrets, then reused on every run.
@@ -115,7 +116,7 @@ export const MissingSecretsWizard: React.FC<MissingSecretsWizardProps> = ({
                   >
                     {m.name}
                   </label>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-tertiary, #6e7681)', marginBottom: 6 }}>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 6 }}>
                     Used by {m.nodeIds.length} node{m.nodeIds.length === 1 ? '' : 's'}: {m.nodeIds.join(', ')}
                   </div>
                   <input
@@ -127,7 +128,7 @@ export const MissingSecretsWizard: React.FC<MissingSecretsWizardProps> = ({
                     onChange={(e) =>
                       setValues((prev) => ({ ...prev, [m.name]: e.target.value }))
                     }
-                    style={inputStyle('var(--color-border, #2a2a2a)')}
+                    style={inputStyle('var(--glass-border)')}
                   />
                 </div>
               );
@@ -138,11 +139,8 @@ export const MissingSecretsWizard: React.FC<MissingSecretsWizardProps> = ({
             <button
               type="button"
               onClick={onCancel}
-              style={{
-                padding: '8px 14px', fontSize: 13,
-                background: 'transparent', color: 'var(--color-text, #e6edf3)',
-                border: '1px solid var(--color-border, #2a2a2a)', borderRadius: 6, cursor: 'pointer',
-              }}
+              className="glass-btn glass-btn-secondary"
+              style={{ padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}
             >
               Cancel
             </button>
@@ -150,14 +148,10 @@ export const MissingSecretsWizard: React.FC<MissingSecretsWizardProps> = ({
               type="button"
               onClick={handleSubmit}
               disabled={!allFilled}
+              className="glass-btn glass-btn-primary"
               style={{
                 padding: '8px 14px', fontSize: 13, fontWeight: 600,
-                background: allFilled ? 'var(--color-info)' : '#444',
-                color: 'white',
-                border: '1px solid ' + (allFilled ? 'var(--color-info)' : '#444'),
-                borderRadius: 6,
                 cursor: allFilled ? 'pointer' : 'not-allowed',
-                opacity: allFilled ? 1 : 0.6,
               }}
             >
               Save & Run

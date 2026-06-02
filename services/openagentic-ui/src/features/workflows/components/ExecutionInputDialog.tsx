@@ -145,11 +145,9 @@ export const ExecutionInputDialog: React.FC<ExecutionInputDialogProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.15 }}
-            className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg rounded-xl shadow-2xl border overflow-hidden"
-            style={{
-              backgroundColor: 'var(--color-bg-primary)',
-              borderColor: 'var(--color-border)',
-            }}
+            // Terminal Glass: frosted dialog CARD (.glass) over the dim scrim.
+            // Was an opaque var(--color-bg-primary) panel.
+            className="glass fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg overflow-hidden"
             onKeyDown={handleKeyDown}
           >
             {/* Header */}
@@ -305,11 +303,7 @@ export const ExecutionInputDialog: React.FC<ExecutionInputDialogProps> = ({
                 <button
                   onClick={handleExecute}
                   disabled={isExecuting || !!jsonError}
-                  className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
-                  style={{
-                    backgroundColor: 'var(--user-accent-primary, #2196f3)',
-                    color: 'var(--color-on-accent)',
-                  }}
+                  className="glass-btn glass-btn-primary flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold"
                 >
                   <Play className="w-3 h-3" />
                   {isExecuting ? 'Executing...' : 'Execute'}

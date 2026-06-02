@@ -1,7 +1,7 @@
 
 
 """
-Workflow MCP Tools - Manage workflows from chat/code mode via MCP
+Workflow MCP Tools - Manage workflows from chat via MCP
 
 These tools are available to all authenticated users (not admin-only)
 and proxy through to the OpenAgentic API's workflow endpoints.

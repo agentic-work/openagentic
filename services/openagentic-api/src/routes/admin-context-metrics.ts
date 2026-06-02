@@ -42,7 +42,7 @@ export const adminContextMetricsRoutes: FastifyPluginAsync = async (fastify) => 
           properties: {
             startDate: { type: 'string', description: 'Start date for metrics (ISO format)' },
             endDate: { type: 'string', description: 'End date for metrics (ISO format)' },
-            sessionType: { type: 'string', enum: ['chat', 'code', 'all'], default: 'all' }
+            sessionType: { type: 'string', enum: ['chat', 'all'], default: 'all' }
           }
         },
         response: {
@@ -123,7 +123,7 @@ export const adminContextMetricsRoutes: FastifyPluginAsync = async (fastify) => 
         const metrics = await contextManagementService.getCompactionMetrics({
           startDate: startDate ? new Date(startDate) : undefined,
           endDate: endDate ? new Date(endDate) : undefined,
-          sessionType: (sessionType as 'chat' | 'code' | 'all') || 'all',
+          sessionType: (sessionType as 'chat' | 'all') || 'all',
         });
 
         return reply.send(metrics);

@@ -53,9 +53,6 @@ describe('admin-page-corpus', () => {
       'native-workflow-list', 'native-execution-list', 'native-workflow-costs',
       'native-workflow-credentials', 'native-workflow-settings',
       'flows-kpis', 'flows-audit-logs', 'teams',
-      // Code Mode
-      'codemode-settings', 'codemode-global', 'codemode-mcp',
-      'codemode-skills', 'codemode-users', 'openagentic-metrics',
       // Agents
       'agent-registry', 'agent-skills', 'agent-executions',
       // Integrations

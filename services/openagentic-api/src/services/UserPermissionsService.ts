@@ -34,7 +34,6 @@ export interface UserPermissions {
   canUseFileUpload: boolean;
   canUseMemory: boolean;
   canUseRag: boolean;
-  canUseAwcode: boolean;
   adminNotes?: string;
   source: 'user' | 'group' | 'default';
 }
@@ -56,7 +55,6 @@ export interface PermissionUpdate {
   canUseFileUpload?: boolean;
   canUseMemory?: boolean;
   canUseRag?: boolean;
-  canUseAwcode?: boolean;
   adminNotes?: string;
 }
 
@@ -87,7 +85,6 @@ export interface PermissionTemplate {
   canUseFileUpload: boolean;
   canUseMemory: boolean;
   canUseRag: boolean;
-  canUseAwcode: boolean;
   isDefault: boolean;
 }
 
@@ -108,7 +105,6 @@ const DEFAULT_PERMISSIONS: Omit<UserPermissions, 'userId' | 'source'> = {
   canUseFileUpload: true,
   canUseMemory: true,
   canUseRag: true,
-  canUseAwcode: false,  // AWCode disabled by default - must be enabled per-user or admin gets it automatically
 };
 
 export class UserPermissionsService {
@@ -159,7 +155,6 @@ export class UserPermissionsService {
           canUseFileUpload: userPerms.can_use_file_upload,
           canUseMemory: userPerms.can_use_memory,
           canUseRag: userPerms.can_use_rag,
-          canUseAwcode: (userPerms as any).can_use_awcode ?? false,
           adminNotes: userPerms.admin_notes || undefined,
           source: 'user',
         };
@@ -202,7 +197,6 @@ export class UserPermissionsService {
             canUseFileUpload: highestPriorityGroup.can_use_file_upload,
             canUseMemory: highestPriorityGroup.can_use_memory,
             canUseRag: highestPriorityGroup.can_use_rag,
-            canUseAwcode: (highestPriorityGroup as any).can_use_awcode ?? false,
             adminNotes: highestPriorityGroup.admin_notes || undefined,
             source: 'group',
           };
@@ -269,7 +263,6 @@ export class UserPermissionsService {
           can_use_file_upload: update.canUseFileUpload ?? true,
           can_use_memory: update.canUseMemory ?? true,
           can_use_rag: update.canUseRag ?? true,
-          can_use_awcode: update.canUseAwcode ?? false,
           admin_notes: update.adminNotes,
           created_by: adminUserId,
           updated_by: adminUserId,
@@ -291,7 +284,6 @@ export class UserPermissionsService {
           can_use_file_upload: update.canUseFileUpload,
           can_use_memory: update.canUseMemory,
           can_use_rag: update.canUseRag,
-          can_use_awcode: update.canUseAwcode,
           admin_notes: update.adminNotes,
           updated_by: adminUserId,
         } as any,
@@ -320,7 +312,6 @@ export class UserPermissionsService {
         canUseFileUpload: result.can_use_file_upload,
         canUseMemory: result.can_use_memory,
         canUseRag: result.can_use_rag,
-        canUseAwcode: (result as any).can_use_awcode ?? false,
         adminNotes: result.admin_notes || undefined,
         source: 'user',
       };
@@ -379,7 +370,6 @@ export class UserPermissionsService {
           can_use_file_upload: update.canUseFileUpload ?? true,
           can_use_memory: update.canUseMemory ?? true,
           can_use_rag: update.canUseRag ?? true,
-          can_use_awcode: update.canUseAwcode ?? false,
           priority: update.priority || 1000,
           admin_notes: update.adminNotes,
           created_by: adminUserId,
@@ -404,7 +394,6 @@ export class UserPermissionsService {
           can_use_file_upload: update.canUseFileUpload,
           can_use_memory: update.canUseMemory,
           can_use_rag: update.canUseRag,
-          can_use_awcode: update.canUseAwcode,
           priority: update.priority,
           admin_notes: update.adminNotes,
           updated_by: adminUserId,
@@ -450,7 +439,6 @@ export class UserPermissionsService {
         canUseFileUpload: g.can_use_file_upload,
         canUseMemory: g.can_use_memory,
         canUseRag: g.can_use_rag,
-        canUseAwcode: (g as any).can_use_awcode ?? false,
         priority: g.priority,
         adminNotes: g.admin_notes || undefined,
       }));
@@ -527,19 +515,6 @@ export class UserPermissionsService {
   }
 
   /**
-   * Check if user can access AWCode
-   * Admins always have access, non-admins need explicit permission
-   */
-  async canAccessAwcode(userId: string, isAdmin: boolean, userGroups: string[] = []): Promise<boolean> {
-    // Admins always have access
-    if (isAdmin) {
-      return true;
-    }
-    const perms = await this.getUserPermissions(userId, userGroups);
-    return perms.canUseAwcode;
-  }
-
-  /**
    * Get all users with custom permissions
    */
   async getAllUserPermissions(): Promise<UserPermissions[]> {
@@ -566,7 +541,6 @@ export class UserPermissionsService {
         canUseFileUpload: u.can_use_file_upload,
         canUseMemory: u.can_use_memory,
         canUseRag: u.can_use_rag,
-        canUseAwcode: (u as any).can_use_awcode ?? false,
         adminNotes: u.admin_notes || undefined,
         source: 'user' as const,
       }));
@@ -605,7 +579,6 @@ export class UserPermissionsService {
           can_use_file_upload: template.canUseFileUpload,
           can_use_memory: template.canUseMemory,
           can_use_rag: template.canUseRag,
-          can_use_awcode: template.canUseAwcode,
           is_default: template.isDefault,
           created_by: adminUserId,
           updated_by: adminUserId,
@@ -628,7 +601,6 @@ export class UserPermissionsService {
           can_use_file_upload: template.canUseFileUpload,
           can_use_memory: template.canUseMemory,
           can_use_rag: template.canUseRag,
-          can_use_awcode: template.canUseAwcode,
           is_default: template.isDefault,
           updated_by: adminUserId,
         } as any,
@@ -654,7 +626,6 @@ export class UserPermissionsService {
         canUseFileUpload: result.can_use_file_upload,
         canUseMemory: result.can_use_memory,
         canUseRag: result.can_use_rag,
-        canUseAwcode: (result as any).can_use_awcode ?? false,
         isDefault: result.is_default,
       };
     } catch (error) {
@@ -692,7 +663,6 @@ export class UserPermissionsService {
         canUseFileUpload: t.can_use_file_upload,
         canUseMemory: t.can_use_memory,
         canUseRag: t.can_use_rag,
-        canUseAwcode: (t as any).can_use_awcode ?? false,
         isDefault: t.is_default,
       }));
     } catch (error) {

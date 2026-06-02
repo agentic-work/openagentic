@@ -14,6 +14,7 @@ import { PricingLookup } from './pricingLookup.js';
 import { MODELS } from '../config/models.js';
 import { canAutoApprove } from './approvalGate.js';
 import { createApprovalRecord } from './approvalRecord.js';
+import { createDataRequestRecord, type DataRequestField } from './dataRequestRecord.js';
 import { redactSecrets, redactLogMeta, type RedactionMap } from './secretRedaction.js';
 import { checkSecretAcl } from './secretAcl.js';
 import type { AclSecretRow } from './secretAcl.js';
@@ -146,7 +147,7 @@ export interface OutputEnvelope {
 }
 
 export interface ExecutionEvent {
-  type: 'execution_start' | 'node_start' | 'node_complete' | 'node_error' | 'node_stream' | 'node_progress' | 'node_canonical' | 'node_retry' | 'node_fallback' | 'execution_complete' | 'execution_error' | 'approval_required' | 'approval_received' | 'execution_paused' | 'execution_resumed';
+  type: 'execution_start' | 'node_start' | 'node_complete' | 'node_error' | 'node_stream' | 'node_progress' | 'node_canonical' | 'node_retry' | 'node_fallback' | 'execution_complete' | 'execution_error' | 'approval_required' | 'approval_received' | 'needs_input' | 'execution_paused' | 'execution_resumed';
   executionId: string;
   nodeId?: string;
   nodeType?: string;
@@ -1090,6 +1091,20 @@ export class WorkflowExecutionEngine extends EventEmitter {
           attempts: attempt + 1
         });
 
+        // If human_input/request_data returned awaiting_input, suspend the run.
+        // ctx.requestData already persisted the WorkflowDataRequest + emitted the
+        // `needs_input` frame; the user submits via POST /resume-execution which
+        // re-enters through resumeExecution() with their typed values.
+        if (result?.status === 'awaiting_input' &&
+            (node.type === 'human_input' || node.type === 'request_data')) {
+          this.emitEvent('execution_paused', {
+            nodeId,
+            reason: 'awaiting_input',
+            requestId: result.requestId,
+          });
+          return; // Stop processing this branch — resumeExecution() continues after the user submits
+        }
+
         // If approval node returned awaiting_approval, pause execution — don't continue downstream
         // The resumeExecution() method handles continuing from checkpoint after approval
         if (result?.status === 'awaiting_approval' &&
@@ -1782,6 +1797,73 @@ export class WorkflowExecutionEngine extends EventEmitter {
           id: approval.id,
           message: (approval.message as string) || payload.message,
           timeout_at: approval.timeout_at as Date | string,
+        };
+      },
+
+      // human_input / request_data — persist the typed data-request, checkpoint
+      // the execution, emit the `needs_input` frame. Mirrors pauseForApproval;
+      // the outer pause logic suspends the run after the executor returns
+      // awaiting_input. POST /resume-execution re-enters with the user's
+      // submitted values.
+      requestData: async (payload: {
+        nodeId: string;
+        fields: DataRequestField[];
+        title: string;
+        description: string;
+        timeoutSeconds: number;
+        timeoutAction: string;
+        assignTo: string[];
+        channel: string;
+        input?: unknown;
+      }) => {
+        const request = await createDataRequestRecord(prisma, {
+          executionId: this.context.executionId,
+          nodeId: payload.nodeId,
+          fields: payload.fields as any,
+          title: payload.title,
+          description: payload.description,
+          timeoutSeconds: payload.timeoutSeconds,
+          timeoutAction: payload.timeoutAction,
+          assignTo: payload.assignTo,
+          channel: payload.channel,
+          contextData: {
+            input: payload.input,
+            nodeResults: Object.fromEntries(this.context.nodeResults),
+          },
+          tenantId: this.context.tenantId ?? null,
+        });
+
+        try {
+          await prisma.workflowExecution.update({
+            where: { id: this.context.executionId },
+            data: {
+              status: 'awaiting_input',
+              current_node_id: payload.nodeId,
+              state: {
+                nodeResults: Object.fromEntries(this.context.nodeResults),
+                variables: Object.fromEntries(this.context.variables),
+                pendingDataRequestId: request.id,
+                input: payload.input as any,
+              } as any,
+            },
+          });
+        } catch (dbErr) {
+          logger.warn({ dbErr, nodeId: payload.nodeId }, '[WorkflowEngine] Could not update execution for data request');
+        }
+
+        this.emitEvent('needs_input', {
+          requestId: request.id,
+          nodeId: payload.nodeId,
+          title: payload.title,
+          description: payload.description,
+          fields: payload.fields,
+          channel: payload.channel,
+          expiresAt: request.timeout_at,
+        });
+
+        return {
+          id: request.id,
+          timeout_at: request.timeout_at as Date | string,
         };
       },
 

@@ -12,21 +12,27 @@ describe('internalKeyReader', () => {
   let dir: string;
   let file: string;
   const origPath = process.env.INTERNAL_KEY_FILE_PATH;
-  const origEnv = process.env.CODE_MANAGER_INTERNAL_KEY;
+  const origEnv = process.env.OPENAGENTIC_INTERNAL_KEY;
+  const origApiKey = process.env.INTERNAL_API_KEY;
 
   beforeEach(() => {
     dir = mkdtempSync(path.join(tmpdir(), 'ikey-'));
     file = path.join(dir, 'internal-key');
     process.env.INTERNAL_KEY_FILE_PATH = file;
-    delete process.env.CODE_MANAGER_INTERNAL_KEY;
+    delete process.env.OPENAGENTIC_INTERNAL_KEY;
+    delete process.env.INTERNAL_API_KEY;
     invalidateInternalKeyCache();
     _testSetInternalKey(null);
   });
 
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
-    process.env.INTERNAL_KEY_FILE_PATH = origPath;
-    process.env.CODE_MANAGER_INTERNAL_KEY = origEnv;
+    if (origPath === undefined) delete process.env.INTERNAL_KEY_FILE_PATH;
+    else process.env.INTERNAL_KEY_FILE_PATH = origPath;
+    if (origEnv === undefined) delete process.env.OPENAGENTIC_INTERNAL_KEY;
+    else process.env.OPENAGENTIC_INTERNAL_KEY = origEnv;
+    if (origApiKey === undefined) delete process.env.INTERNAL_API_KEY;
+    else process.env.INTERNAL_API_KEY = origApiKey;
     invalidateInternalKeyCache();
   });
 
@@ -40,8 +46,8 @@ describe('internalKeyReader', () => {
     expect(getInternalKey()).toBe('sekret-v1');
   });
 
-  it('falls back to CODE_MANAGER_INTERNAL_KEY env when the file is missing', () => {
-    process.env.CODE_MANAGER_INTERNAL_KEY = 'fallback-from-env';
+  it('falls back to OPENAGENTIC_INTERNAL_KEY env when the file is missing', () => {
+    process.env.OPENAGENTIC_INTERNAL_KEY = 'fallback-from-env';
     expect(getInternalKey()).toBe('fallback-from-env');
   });
 

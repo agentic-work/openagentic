@@ -21,6 +21,7 @@ import { PrismaClient } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
 import { getRedisClient } from '../utils/redis-client.js';
 import { AuditTrail, AuditEventType, AuditSeverity } from '../utils/auditTrail.js';
+import { logAuthEvent } from '../services/audit/authAuditLogger.js';
 
 interface TokenValidateRequest {
   token: string;
@@ -2050,6 +2051,19 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         logger.warn({ error: auditError, userId: azureUserId }, 'Failed to log OAuth login audit event');
       }
 
+      // Persist SSO login to the dedicated auth_audit_log for the unified
+      // admin audit feed (first-class event/provider/success columns).
+      await logAuthEvent({
+        event: 'sso_login',
+        provider: 'azure',
+        success: true,
+        userId: azureUserId,
+        userEmail: user.email,
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
+        detail: { isAdmin: user.isAdmin, isNewUser, tenantId: user.tenantId },
+      });
+
       logger.info({ userId: azureUserId, frontendUrl, sessionId: sessionId.substring(0, 20) + '...' }, 'Redirecting user to frontend with session ID');
       return reply.redirect(redirectUrl);
       
@@ -2060,6 +2074,14 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         errorType: typeof error,
         errorName: error.name
       }, 'Azure AD callback processing failed');
+      await logAuthEvent({
+        event: 'login_failed',
+        provider: 'azure',
+        success: false,
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
+        detail: { reason: 'azure_callback_error', message: error?.message },
+      });
       return reply.code(500).send({
         error: 'Authentication failed',
         message: error.message || 'Failed to process Azure AD callback'

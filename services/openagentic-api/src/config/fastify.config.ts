@@ -262,7 +262,7 @@ export async function createServer(): Promise<FastifyInstance> {
         const isInternal = INTERNAL.has(from);
         const isHealth = request.url === '/health' || request.url === '/api/health';
         // WebSocket upgrades MUST be exempt — rate limiting WS handshakes
-        // causes rapid connect/disconnect storms that make CodeMode unusable
+        // causes rapid connect/disconnect storms that break live WS streams.
         const isWebSocket = request.url?.includes('/ws/') || request.headers?.upgrade === 'websocket';
         // Admin telemetry/observability proxies — the v3 Dashboard fans
         // out ~96 prom/query+query_range hits + mcp-logs polls on mount.

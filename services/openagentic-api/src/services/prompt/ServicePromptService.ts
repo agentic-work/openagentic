@@ -9,7 +9,6 @@
  *   slack.integration_prompt
  *   title_gen.ai_service
  *   title_gen.client
- *   codemode.summary_prompt
  *   memory.context_system
  *   memory.context_build
  *
@@ -89,10 +88,6 @@ Return ONLY the title, nothing else.`,
   'title_gen.client': {
     description: 'System prompt used by TitleGenerationClient.generateMultipleTitles',
     body: `Generate title suggestions for a chat conversation. Each title should be on a new line. Focus on different aspects of the user's message. No numbers, bullets, or prefixes - just the titles.`,
-  },
-  'codemode.summary_prompt': {
-    description: 'System prompt passed to the model when summarizing a codemode session',
-    body: 'You are a helpful assistant that summarizes coding conversations concisely.',
   },
   'memory.context_system': {
     description: 'Fallback system prompt returned by MemoryContextService when building from cache',

@@ -106,6 +106,59 @@ describe('chatLoop — F2-followup streaming metrics', () => {
     expect(args.stopReason).toBe('end_turn');
   });
 
+  it('records an ERROR metric when the provider stream throws mid-turn', async () => {
+    // F2-followup (2026-06-01) — the streaming chat path had no error seam,
+    // so a provider stream that throws never incremented gen_ai_errors_total
+    // (the dashboard "Error rate by class" panel was empty for live chat).
+    // chatLoop must now route ONE error record through recordCompletionMetrics
+    // with errorClass set, then rethrow the original error.
+    const ctx = makeCtx();
+    const calls: ChatTurnMetricsArgs[] = [];
+    const recordCompletionMetrics = vi.fn(async (args: ChatTurnMetricsArgs) => {
+      calls.push(args);
+    });
+
+    async function* throwingStream() {
+      yield { type: 'text_delta', text: 'partial' } as any;
+      throw Object.assign(new Error('Connect Timeout Error'), { code: 'UND_ERR_CONNECT_TIMEOUT' });
+    }
+    const streamProvider = vi.fn(async function* () {
+      yield* throwingStream();
+    });
+
+    await expect(
+      chatLoop(
+        ctx,
+        {
+          userMessage: 'hi',
+          priorMessages: [],
+          systemPrompt: 'sys',
+          tools: [],
+          model: 'gpt-oss:20b',
+          maxTurns: 5,
+        },
+        {
+          streamProvider: streamProvider as any,
+          dispatch: vi.fn() as any,
+          recordCompletionMetrics: recordCompletionMetrics as any,
+        },
+      ),
+    ).rejects.toThrow('Connect Timeout Error');
+
+    // Exactly one metrics emit — the error one. The success-path emit must
+    // NOT also fire (no double-count).
+    expect(recordCompletionMetrics).toHaveBeenCalledTimes(1);
+    const [args] = calls;
+    expect(args.model).toBe('gpt-oss:20b');
+    expect(args.errorClass).toBeDefined();
+    // 'timeout' from the message classifier ('Connect Timeout Error').
+    expect(args.errorClass).toBe('timeout');
+    expect(args.errorMessage).toContain('Connect Timeout Error');
+    expect(args.startedAt).toBeInstanceOf(Date);
+    expect(args.userId).toBe('u-metrics');
+    expect(args.sessionId).toBe('s-metrics');
+  });
+
   it('records turn even when stop_reason is tool_use (dispatch path)', async () => {
     const ctx = makeCtx();
     const recordCompletionMetrics = vi.fn(async () => undefined);

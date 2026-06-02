@@ -190,8 +190,7 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({ workflowId }) 
             className="overflow-hidden"
           >
             <div
-              className="p-2 rounded-lg border space-y-1.5"
-              style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+              className="glass-card p-2 space-y-1.5"
             >
               <input
                 type="text"
@@ -236,11 +235,7 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({ workflowId }) 
               <button
                 onClick={handleAdd}
                 disabled={saving || !newName.trim()}
-                className="w-full py-1 text-[12px] font-medium rounded transition-colors disabled:opacity-50"
-                style={{
-                  backgroundColor: 'var(--user-accent-primary, #2196f3)',
-                  color: 'var(--color-on-accent)',
-                }}
+                className="glass-btn glass-btn-primary w-full py-1 text-[12px]"
               >
                 {saving ? 'Creating...' : 'Add Webhook'}
               </button>
@@ -264,8 +259,7 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({ workflowId }) 
           {webhooks.map(wh => (
             <div
               key={wh.id}
-              className="p-2 rounded-lg border"
-              style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+              className="glass-card p-2"
             >
               {/* Webhook header */}
               <div className="flex items-center gap-1.5 mb-1">
@@ -313,11 +307,7 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({ workflowId }) 
                 <button
                   onClick={() => handleTest(wh)}
                   disabled={testingId === wh.id}
-                  className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors hover:opacity-80 disabled:opacity-50"
-                  style={{
-                    backgroundColor: 'var(--user-accent-primary, #2196f3)',
-                    color: 'var(--color-on-accent)',
-                  }}
+                  className="glass-btn glass-btn-primary flex items-center gap-0.5 px-1.5 py-0.5 text-[10px]"
                 >
                   <Play className="w-2.5 h-2.5" />
                   {testingId === wh.id ? 'Testing...' : 'Test'}

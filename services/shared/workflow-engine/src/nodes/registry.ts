@@ -178,6 +178,11 @@ import { execute as subWorkflowExecute } from './sub_workflow/executor.js';
 import humanApprovalSchemaJson from './human_approval/schema.json' with { type: 'json' };
 import { execute as humanApprovalExecute } from './human_approval/executor.js';
 
+// human_input / request_data — HITL DATA-REQUEST node (sister of human_approval).
+// Pauses the flow, emits a typed form, resumes with the user's values.
+import humanInputSchemaJson from './human_input/schema.json' with { type: 'json' };
+import { execute as humanInputExecute } from './human_input/executor.js';
+
 import dataSourceQuerySchemaJson from './data_source_query/schema.json' with { type: 'json' };
 import { execute as dataSourceQueryExecute } from './data_source_query/executor.js';
 
@@ -309,6 +314,32 @@ import { execute as aggregateExecute } from './aggregate/executor.js';
 import knowledgeSearchSchemaJson from './knowledge_search/schema.json' with { type: 'json' };
 import { execute as knowledgeSearchExecute } from './knowledge_search/executor.js';
 
+// Batch 20 — 2026-05-31: RAG quality nodes (flows-overhaul Wave A #6). rerank
+// re-orders retrieved chunks by lexical relevance (deterministic BM25-style
+// scorer, no model round-trip) and keeps top-N; multi_query expands one
+// question into N retrieval query variants (deterministic rule-based
+// reformulation) to widen recall before retrieval. Both are pure/deterministic
+// so the RAG harness is reproducible without a live model dependency.
+import rerankSchemaJson from './rerank/schema.json' with { type: 'json' };
+import { execute as rerankExecute } from './rerank/executor.js';
+
+import multiQuerySchemaJson from './multi_query/schema.json' with { type: 'json' };
+import { execute as multiQueryExecute } from './multi_query/executor.js';
+
+// Batch 21 — 2026-06-01: missing control-flow primitives (flows-deep gap
+// analysis). retry_with_backoff wraps a downstream op with exponential-backoff
+// retry; map_reduce fans out the downstream subgraph per item (bounded
+// concurrency) then reduces; dedup is an idempotency gate keyed by a config
+// expression (execution-scoped by default, optional TTL for cross-execution).
+import retryWithBackoffSchemaJson from './retry_with_backoff/schema.json' with { type: 'json' };
+import { execute as retryWithBackoffExecute } from './retry_with_backoff/executor.js';
+
+import mapReduceSchemaJson from './map_reduce/schema.json' with { type: 'json' };
+import { execute as mapReduceExecute } from './map_reduce/executor.js';
+
+import dedupSchemaJson from './dedup/schema.json' with { type: 'json' };
+import { execute as dedupExecute } from './dedup/executor.js';
+
 // ---------------------------------------------------------------------------
 // Registry table
 // ---------------------------------------------------------------------------
@@ -429,6 +460,17 @@ registerAlias(
   'Approval',
   humanApprovalExecute,
 );
+
+// human_input — HITL data-request. `request_data` aliases the same plugin so
+// either type string works in saved flows + templates (mirrors approval/human_approval).
+register(humanInputSchemaJson, humanInputExecute);
+registerAlias(
+  humanInputSchemaJson,
+  'request_data',
+  'Request Data from User',
+  humanInputExecute,
+);
+
 register(dataSourceQuerySchemaJson, dataSourceQueryExecute);
 
 // Batch 7 — control flow (Task #45). The four legacy "private executeXxxNode"
@@ -480,6 +522,16 @@ register(llmRouterSchemaJson, llmRouterExecute);
 register(saveFileSchemaJson, saveFileExecute);
 register(aggregateSchemaJson, aggregateExecute);
 register(knowledgeSearchSchemaJson, knowledgeSearchExecute);
+
+// Batch 20 — RAG quality nodes (flows-overhaul Wave A #6). Deterministic
+// (no model round-trip on the default path) so the RAG harness is reproducible.
+register(rerankSchemaJson, rerankExecute);
+register(multiQuerySchemaJson, multiQueryExecute);
+
+// Batch 21 — missing control-flow primitives (2026-06-01).
+register(retryWithBackoffSchemaJson, retryWithBackoffExecute);
+register(mapReduceSchemaJson, mapReduceExecute);
+register(dedupSchemaJson, dedupExecute);
 
 // ---------------------------------------------------------------------------
 // Public helpers

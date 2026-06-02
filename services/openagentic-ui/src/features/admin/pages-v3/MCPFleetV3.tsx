@@ -88,20 +88,91 @@ interface LogEvent {
 // ============================================================
 // Helpers — server-list normalization, status mapping
 // ============================================================
-function normStatus(raw?: string): 'healthy' | 'degraded' | 'down' | 'unknown' {
+type FleetStatus = 'healthy' | 'degraded' | 'down' | 'available' | 'unknown'
+
+function normStatus(raw?: string): FleetStatus {
   const s = String(raw ?? '').toLowerCase()
   if (s === 'healthy' || s === 'up' || s === 'ok' || s === 'running' || s === 'connected') return 'healthy'
   if (s === 'degraded' || s === 'warn') return 'degraded'
   if (s === 'down' || s === 'failed' || s === 'unreachable' || s === 'error') return 'down'
+  // New lifecycle category: a built-in MCP that EXISTS but is env-disabled /
+  // not spawned (e.g. aws/gcp/azure without creds). It is installable — calm,
+  // not an error. The API emits `available` or `needs-config` for these.
+  if (
+    s === 'available' ||
+    s === 'needs-config' ||
+    s === 'needs_config' ||
+    s === 'needsconfig' ||
+    s === 'installable' ||
+    s === 'not-installed' ||
+    s === 'not_installed' ||
+    s === 'disabled'
+  )
+    return 'available'
   return 'unknown'
 }
+
+// Label for the calm "available · needs config" lifecycle badge.
+const AVAILABLE_LABEL = 'available · needs config'
 
 function statusDotKind(s: ReturnType<typeof normStatus>): Status {
   if (s === 'healthy') return 'ok'
   if (s === 'degraded') return 'warn'
   if (s === 'down') return 'err'
+  // `available` reads as a calm, informational state (a muted info dot),
+  // clearly distinct from healthy (ok/green), down (err/red) and unknown (idle).
+  if (s === 'available') return 'info'
   return 'idle'
 }
+
+// Human-facing status text used by the badge rows. `available` expands to the
+// fuller "available · needs config" copy; everything else renders verbatim.
+function statusLabel(s: ReturnType<typeof normStatus>): string {
+  return s === 'available' ? AVAILABLE_LABEL : s
+}
+
+// ============================================================
+// AvailableBadge — calm lifecycle pill for env-disabled built-ins
+//
+// An MCP that the platform SHIPS but hasn't spawned because it's
+// env-gated (e.g. aws/gcp/azure without creds). It is installable,
+// so it must read as inviting/neutral — NOT as a fault. We use a
+// muted info-toned dot (no glow) + a hairline glass chip so it sits
+// quietly next to the saturated healthy (green) / down (red) dots
+// and the idle (gray) unknown dot. All colors come from theme.css
+// tokens (--color-nfo via --info, --line-1, --bg-2, --fg-2/3).
+// ============================================================
+const AvailableBadge = ({ label = AVAILABLE_LABEL }: { label?: string }) => (
+  <span
+    title="Built-in MCP — shipped but not enabled. Set its env flag / credentials to install."
+    style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 6,
+      padding: '1px 7px',
+      borderRadius: 2,
+      border: '1px solid color-mix(in srgb, var(--info) 28%, var(--line-1))',
+      background: 'color-mix(in srgb, var(--info) 7%, var(--bg-2))',
+      color: 'var(--fg-2)',
+      fontFamily: 'var(--font-mono)',
+      fontSize: 'var(--v3-t-meta)',
+      whiteSpace: 'nowrap',
+    }}
+  >
+    {/* subtle dot — no glow, muted info tone (calm, not alarming) */}
+    <span
+      aria-hidden="true"
+      style={{
+        width: 6,
+        height: 6,
+        borderRadius: '50%',
+        background: 'color-mix(in srgb, var(--info) 55%, var(--fg-3))',
+        flex: '0 0 auto',
+      }}
+    />
+    {label}
+  </span>
+)
 
 function normTier(raw?: string): 't1' | 't2' | 't3' | undefined {
   const t = String(raw ?? '').toLowerCase()
@@ -151,7 +222,7 @@ export const MCPFleetV3 = () => {
   const metrics = useDashboardMetrics('24h')
 
   const [search, setSearch] = React.useState('')
-  const [statusFilter, setStatusFilter] = React.useState<'all' | 'healthy' | 'degraded' | 'down'>('all')
+  const [statusFilter, setStatusFilter] = React.useState<'all' | 'healthy' | 'degraded' | 'down' | 'available'>('all')
   const [tierFilter, setTierFilter] = React.useState<'all' | 't1' | 't2' | 't3'>('all')
   const [hostedFilter, setHostedFilter] = React.useState<'all' | 'pod' | 'remote'>('all')
   const [view, setView] = React.useState<'cards' | 'table'>('cards')
@@ -244,6 +315,7 @@ export const MCPFleetV3 = () => {
     const healthy = list.filter((s) => normStatus(s.status ?? s.health as any) === 'healthy').length
     const degraded = list.filter((s) => normStatus(s.status ?? s.health as any) === 'degraded').length
     const down = list.filter((s) => normStatus(s.status ?? s.health as any) === 'down').length
+    const available = list.filter((s) => normStatus(s.status ?? s.health as any) === 'available').length
     const tools = list.reduce((n, s) => n + (s.toolCount ?? 0), 0)
     const h = health.data ?? {}
     return {
@@ -251,6 +323,7 @@ export const MCPFleetV3 = () => {
       healthy: typeof h.healthyServers === 'number' ? h.healthyServers : healthy,
       degraded,
       down,
+      available,
       tools: typeof h.toolsIndexed === 'number' ? h.toolsIndexed : tools,
       callsPerMin: deriveCallsPerMin(metrics),
     }
@@ -324,7 +397,11 @@ export const MCPFleetV3 = () => {
         <Kpi
           label="total servers"
           value={servers.isLoading ? '…' : summary.total.toLocaleString()}
-          sub={`${summary.healthy} healthy · ${summary.degraded + summary.down} attention`}
+          sub={
+            summary.available > 0
+              ? `${summary.healthy} healthy · ${summary.degraded + summary.down} attention · ${summary.available} available`
+              : `${summary.healthy} healthy · ${summary.degraded + summary.down} attention`
+          }
         />
         <Kpi
           label="health"
@@ -376,7 +453,7 @@ export const MCPFleetV3 = () => {
           />
         }
       >
-        <Chip label="status" value={statusFilter} on={statusFilter !== 'all'} onClick={() => cycle(statusFilter, ['all', 'healthy', 'degraded', 'down'], setStatusFilter as any)} />
+        <Chip label="status" value={statusFilter} on={statusFilter !== 'all'} onClick={() => cycle(statusFilter, ['all', 'healthy', 'degraded', 'down', 'available'], setStatusFilter as any)} />
         <Chip label="tier" value={tierFilter} on={tierFilter !== 'all'} onClick={() => cycle(tierFilter, ['all', 't1', 't2', 't3'], setTierFilter as any)} />
         <Chip label="hosted" value={hostedFilter} on={hostedFilter !== 'all'} onClick={() => cycle(hostedFilter, ['all', 'pod', 'remote'], setHostedFilter as any)} />
         <Chip label="match" value={`${filtered.length} / ${list.length}`} />
@@ -703,8 +780,14 @@ const ServerCardGrid = ({
               color: 'var(--fg-2)',
             }}
           >
-            <StatusDot status={statusDotKind(st)} />
-            <span style={{ color: 'var(--fg-2)' }}>{st}</span>
+            {st === 'available' ? (
+              <AvailableBadge />
+            ) : (
+              <>
+                <StatusDot status={statusDotKind(st)} />
+                <span style={{ color: 'var(--fg-2)' }}>{st}</span>
+              </>
+            )}
             <span style={{ color: 'var(--fg-3)' }}>·</span>
             <span>{s.toolCount ?? 0} tools</span>
             {typeof s.callsLastMinute === 'number' && (
@@ -747,9 +830,10 @@ const ServerTable = ({
     {
       key: 'status',
       label: 'Status',
-      width: '100px',
+      width: '150px',
       render: (s) => {
         const st = normStatus(s.status ?? s.health as any)
+        if (st === 'available') return <AvailableBadge />
         return (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <StatusDot status={statusDotKind(st)} />
@@ -809,9 +893,12 @@ const ServerTable = ({
         rowDataAttrs={(s) => {
           const st = normStatus((s as any).status ?? (s as any).health)
           return {
+            // `available` → 'info' so the row edge reads calm (matching the
+            // badge), never the red 'err' stripe.
             status: st === 'healthy' ? 'ok'
               : st === 'degraded' ? 'warn'
               : st === 'down' ? 'err'
+              : st === 'available' ? 'info'
               : 'idle',
           }
         }}
@@ -843,10 +930,14 @@ const OverviewTab = ({ server }: { server: MCPServer }) => {
 
   const rows: Array<[string, React.ReactNode]> = [
     ['status', (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <StatusDot status={statusDotKind(st)} />
-        <span>{st}</span>
-      </span>
+      st === 'available' ? (
+        <AvailableBadge />
+      ) : (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <StatusDot status={statusDotKind(st)} />
+          <span>{st}</span>
+        </span>
+      )
     )],
     ['tier', normTier(server.tier) ? <PriorityBadge tier={normTier(server.tier)!} /> : '—'],
     ['hosted', String(server.hosted ?? '—')],
@@ -1303,6 +1394,10 @@ const IamTab = ({ server }: { server: MCPServer }) => {
       (s) => String(s.name).toLowerCase() === target || String(s.id).toLowerCase() === target,
     )
   }, [q.data, server.name])
+  // Lifecycle of THIS server — an env-disabled built-in (status `available` /
+  // `needs-config`) is shipped-but-not-installed, so the "enable in db" copy
+  // below would be wrong. Branch on it for the right guidance.
+  const lifecycle = normStatus(server.status ?? (server.health as any))
 
   return (
     <>
@@ -1323,15 +1418,26 @@ const IamTab = ({ server }: { server: MCPServer }) => {
         <div>
           {q.isLoading
             ? '…'
-            : isAvailable === undefined
-              ? '—'
-              : isAvailable
-                ? <span style={{ color: 'var(--ok)' }}>yes — appears in available-mcps</span>
-                : <span style={{ color: 'var(--warn)' }}>not in available-mcps (enable in db)</span>}
+            : q.isError
+              ? <span style={{ color: 'var(--err)' }}>failed to load available-mcps</span>
+              : isAvailable === undefined
+                ? '—'
+                : isAvailable
+                  ? <span style={{ color: 'var(--ok)' }}>yes — appears in available-mcps</span>
+                  : lifecycle === 'available'
+                    ? <AvailableBadge label="available · install to grant" />
+                    : <span style={{ color: 'var(--warn)' }}>not in available-mcps (enable in db)</span>}
         </div>
         <div style={{ color: 'var(--fg-3)' }}>endpoint</div>
         <div className="accent">/api/admin/permissions/available-mcps</div>
       </div>
+      {lifecycle === 'available' && (
+        <Banner level="info" label="needs config">
+          this built-in MCP ships with the platform but isn&apos;t enabled yet — set{' '}
+          <code>{toEnvFlag(String(server.name ?? ''))}</code> / its credentials on{' '}
+          <code>openagentic-mcp-proxy</code> to install it, then it becomes grantable here.
+        </Banner>
+      )}
 
       <SectionBar
         title="users / groups with access"

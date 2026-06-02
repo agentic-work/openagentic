@@ -692,6 +692,40 @@ export class WorkflowApiService {
   }
 
   /**
+   * Submit the user-supplied values for a `human_input` data-request, which
+   * the flows engine emits as a `needs_input` NDJSON frame when a workflow
+   * pauses on a human_input node. POSTing the collected `{ values }` resolves
+   * the request server-side and the engine resumes emitting frames.
+   *
+   * SINGLE SOURCE for the data-request submit URL — if the api route shape
+   * changes, this is the one line to update.
+   */
+  async submitDataRequest(
+    executionId: string,
+    requestId: string,
+    values: Record<string, any>,
+  ): Promise<{ success: boolean }> {
+    const response = await fetch(
+      workflowEndpoint(`/workflows/executions/${executionId}/data-requests/${requestId}`),
+      {
+        method: 'POST',
+        headers: {
+          ...this.getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ values }),
+      },
+    );
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ error: 'Failed to submit input' }));
+      throw new Error(error.error || error.message || 'Failed to submit input');
+    }
+    return response.json().catch(() => ({ success: true }));
+  }
+
+  /**
    * Cancel a running or paused workflow execution.
    * Calls the engine's abort method and marks the execution as `cancelled`.
    */

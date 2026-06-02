@@ -137,56 +137,6 @@ describe('SoT regression: no env-overrides in three commit-5424d0f4 fix sites', 
     expect(src).toMatch(/ModelConfigurationService\.getServiceModel\('compaction'\)/);
   });
 
-  it('services/CodeModeSessionService.ts — generateContextSummary must not read COMPACTION_MODEL from env (plan task 4)', () => {
-    const src = read('src/services/CodeModeSessionService.ts');
-    // Pre-fix line ~466: const summaryModel = process.env.COMPACTION_MODEL || MODELS.compaction;
-    // The live path must use ModelConfigurationService, not env.
-    // Note: MODELS.compaction (from config/models.ts) is a separate rule-#7 violation,
-    // out of scope for this task. We only lock out the direct env read.
-    const generateContextSummaryBlock = src.match(/private async generateContextSummary\([\s\S]*?^\s{2}\}/m)?.[0] ?? '';
-    expect(generateContextSummaryBlock).not.toMatch(/process\.env\.COMPACTION_MODEL/);
-    // Positive assertion: DB service calls are present in generateContextSummary
-    expect(generateContextSummaryBlock).toMatch(/ModelConfigurationService\.getServiceModel\('compaction'\)/);
-    expect(generateContextSummaryBlock).toMatch(/ModelConfigurationService\.getDefaultChatModel\(\)/);
-  });
-
-  it('services/AgenticCodeService.ts — must not read DEFAULT_CODE_MODEL/DEFAULT_MODEL in constructor/resolveDefaultModel (plan task 5)', () => {
-    const src = read('src/services/AgenticCodeService.ts');
-    // Pre-fix line ~116:
-    //   this.defaultModel = config?.defaultModel || process.env.DEFAULT_CODE_MODEL || process.env.DEFAULT_MODEL || '';
-    // Post-fix: constructor assigns configuredDefaultModel = config?.defaultModel only;
-    //   resolveDefaultModel() reads DB, no env.
-    expect(src).not.toMatch(/process\.env\.DEFAULT_CODE_MODEL/);
-    expect(src).not.toMatch(/process\.env\.DEFAULT_MODEL/);
-    // Positive assertion: DB accessor is present
-    expect(src).toMatch(/ModelConfigurationService\.getDefaultChatModel\(\)/);
-    // Positive assertion: resolveDefaultModel method exists
-    expect(src).toMatch(/resolveDefaultModel/);
-  });
-
-  it('services/CodeModeSessionService.ts — createSession must not read DEFAULT_CODE_MODEL from env (plan task 5)', () => {
-    const src = read('src/services/CodeModeSessionService.ts');
-    // Pre-fix line ~99:
-    //   const model = options.model || process.env.DEFAULT_CODE_MODEL || MODELS.code;
-    // Post-fix: process.env.DEFAULT_CODE_MODEL removed from this chain.
-    const createSessionBlock = src.match(/async createSession\([\s\S]*?^\s{2}\}/m)?.[0] ?? '';
-    expect(createSessionBlock).not.toMatch(/process\.env\.DEFAULT_CODE_MODEL/);
-    // Positive assertion: DB accessor is used in createSession path
-    expect(createSessionBlock).toMatch(/ModelConfigurationService\.getDefaultChatModel\(\)/);
-  });
-
-  it('services/CodeModeProvisioningService.ts — constructor must not assign env model vars to config.defaultModel (plan task 5)', () => {
-    const src = read('src/services/CodeModeProvisioningService.ts');
-    // Pre-fix line ~72:
-    //   defaultModel: process.env.CODE_MODE_DEFAULT_MODEL || process.env.DEFAULT_MODEL || process.env.FALLBACK_MODEL
-    // Post-fix: constructor assigns defaultModel: undefined; resolveDefaultModel() reads DB.
-    expect(src).not.toMatch(/process\.env\.CODE_MODE_DEFAULT_MODEL/);
-    // Positive assertion: DB accessor is present in resolveDefaultModel
-    expect(src).toMatch(/ModelConfigurationService\.getDefaultChatModel\(\)/);
-    // Positive assertion: resolveDefaultModel method exists
-    expect(src).toMatch(/resolveDefaultModel/);
-  });
-
   // ── Task 6a: Health/analysis/orchestrator bundle ────────────────────────────
 
   it('services/ModelHealthCheck.ts — checkModelHealth must not read env model vars (plan task 6a)', () => {

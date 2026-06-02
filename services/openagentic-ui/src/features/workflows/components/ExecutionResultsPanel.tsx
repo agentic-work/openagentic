@@ -601,7 +601,7 @@ const DataSection: React.FC<{
             <img
               src={autoRoute.content}
               alt={`${nodeType} output`}
-              style={{ maxWidth: '100%', maxHeight: 480, borderRadius: 6, border: '1px solid var(--color-border, #30363d)' }}
+              style={{ maxWidth: '100%', maxHeight: 480, borderRadius: 6, border: '1px solid var(--color-border)' }}
             />
           </div>
         ) : autoRoute?.type === 'text' && typeof autoRoute.content === 'string' && autoRoute.content.length > 0 ? (
@@ -695,7 +695,8 @@ const OutputTab: React.FC<{
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600,
-                background: 'rgba(88,166,255,0.12)', border: '1px solid rgba(88,166,255,0.3)',
+                background: 'color-mix(in srgb, var(--color-info) 12%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--color-info) 30%, transparent)',
                 color: 'var(--color-info)',
               }}
             >
@@ -723,8 +724,8 @@ const OutputTab: React.FC<{
           style={{
             margin: '0 12px 8px',
             padding: '8px 10px',
-            background: 'rgba(88,166,255,0.05)',
-            border: '1px solid rgba(88,166,255,0.15)',
+            background: 'color-mix(in srgb, var(--color-info) 5%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--color-info) 15%, transparent)',
             borderRadius: 6,
             fontSize: 11,
             fontFamily: 'var(--font-mono)',
@@ -1468,9 +1469,9 @@ const HistoryTab: React.FC<{
               <button
                 onClick={(e) => { e.stopPropagation(); onLoadExecution?.(ex.id); }}
                 className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors"
-                style={{ color: 'var(--color-fg-muted)', background: 'rgba(255,255,255,0.04)' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+                style={{ color: 'var(--color-fg-muted)', background: 'var(--ctl-surf)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--ctl-surf-hover)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--ctl-surf)')}
                 title="Load this execution on canvas"
               >
                 <Eye className="w-3 h-3" />
@@ -1624,7 +1625,7 @@ const CodeTab: React.FC<{ workflowId: string | null; workflowName: string }> = (
           <CopyButton text={currentSnippet} />
         </div>
         <pre style={{
-          background: 'var(--wf-ep-bg-code, #161b22)',
+          background: 'var(--wf-ep-bg-code)',
           border: '1px solid var(--wf-ep-border)',
           borderRadius: 8,
           padding: '14px 16px',
@@ -1647,7 +1648,7 @@ const CodeTab: React.FC<{ workflowId: string | null; workflowName: string }> = (
         background: 'var(--wf-ep-bg)', fontSize: 10, color: 'var(--wf-ep-text-muted)',
         lineHeight: 1.5,
       }}>
-        Replace <code style={{ background: 'rgba(88,166,255,0.1)', padding: '1px 4px', borderRadius: 3, color: 'var(--color-info)' }}>YOUR_API_KEY</code> with
+        Replace <code style={{ background: 'color-mix(in srgb, var(--color-info) 12%, transparent)', padding: '1px 4px', borderRadius: 3, color: 'var(--color-info)' }}>YOUR_API_KEY</code> with
         a key from Settings &rarr; API Keys.
       </div>
     </div>

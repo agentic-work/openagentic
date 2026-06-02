@@ -141,8 +141,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const confirm = useConfirm();
   const userId = user?.id || '';
 
-  // (Workspace files sidebar removed — CodeMode uses VS Code editor panel directly)
-
   // Use the new theme context
   const { resolvedTheme, changeTheme } = useTheme();
 

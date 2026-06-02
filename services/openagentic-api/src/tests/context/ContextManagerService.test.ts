@@ -88,21 +88,15 @@ describe('ContextManagerService', () => {
       expect(sum).toBeLessThanOrEqual(budget.totalTokens + 1); // +1 for rounding
     });
 
-    it('code mode has more history allocation than chat mode', async () => {
+    it('flow mode has its own history allocation distinct from chat mode', async () => {
       const chatBudget = await service.getBudget('claude-sonnet-4', 'chat');
-      const codeBudget = await service.getBudget('claude-sonnet-4', 'code');
+      const flowBudget = await service.getBudget('claude-sonnet-4', 'flow');
 
-      // Code mode has 65% history pct vs chat's 50%
-      // Both will be large for 200K, but proportionally code should keep more
-      // However, with caps + slack + extended thinking bonus the exact numbers vary.
-      // The key assertion: code history% (65) > chat history% (50) in raw config.
-      // Verify by checking that total history budget in code >= chat or that config is correct.
-      expect(codeBudget.mode).toBe('code');
+      expect(flowBudget.mode).toBe('flow');
       expect(chatBudget.mode).toBe('chat');
 
-      // Code has lower tool cap (5K vs 10K) and lower system prompt cap (4K vs 8K)
-      // So code should have more "freed" tokens going to history
-      expect(codeBudget.tools).toBeLessThanOrEqual(5120);
+      // Both modes cap tools sensibly.
+      expect(flowBudget.tools).toBeLessThanOrEqual(8192);
       expect(chatBudget.tools).toBeLessThanOrEqual(10240);
     });
   });
@@ -218,7 +212,6 @@ describe('ContextManagerService', () => {
       expect(config.enabled).toBe(true);
       expect(config.budgets).toBeDefined();
       expect(config.budgets.chat).toBeDefined();
-      expect(config.budgets.code).toBeDefined();
       expect(config.budgets.flow).toBeDefined();
     });
   });

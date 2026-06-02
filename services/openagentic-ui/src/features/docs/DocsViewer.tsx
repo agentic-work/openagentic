@@ -138,8 +138,10 @@ export const DocsViewer: React.FC<DocsViewerProps> = ({
       <div
         className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b"
         style={{
-          borderColor: 'var(--color-border)',
-          backgroundColor: 'var(--color-surface)',
+          borderColor: 'var(--glass-border)',
+          background: 'var(--glass-bg)',
+          backdropFilter: 'var(--glass-blur)',
+          WebkitBackdropFilter: 'var(--glass-blur)',
         }}
       >
         <div className="flex items-center gap-3 min-w-0">
@@ -147,8 +149,9 @@ export const DocsViewer: React.FC<DocsViewerProps> = ({
           <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
             Documentation
           </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap truncate" style={{
-            backgroundColor: 'var(--color-surfaceSecondary)',
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full whitespace-nowrap truncate" style={{
+            backgroundColor: 'var(--ctl-surf)',
+            border: '1px solid var(--glass-border)',
             color: 'var(--color-textMuted)',
           }}>
             v{import.meta.env.VITE_APP_VERSION || import.meta.env.VITE_VERSION || '0.0.0'}
@@ -161,7 +164,7 @@ export const DocsViewer: React.FC<DocsViewerProps> = ({
               already open in this surface, so the button was redundant. */}
           <button
             onClick={onClose}
-            className="p-1.5 rounded-md transition-colors hover:bg-[var(--color-surfaceHover)]"
+            className="p-1.5 rounded-md transition-colors hover:bg-[var(--ctl-surf-hover)]"
             style={{ color: 'var(--color-textMuted)' }}
             title="Close documentation (Esc)"
           >

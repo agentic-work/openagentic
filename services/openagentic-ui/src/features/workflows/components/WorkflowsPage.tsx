@@ -635,6 +635,10 @@ const WorkflowAboutPanel: React.FC<{
   // layer above ReactFlow's transformed viewport (its parent is
   // `relative`). top: 72 clears the 56px workflow toolbar (h-14) + 16px
   // gap so the legend doesn't overlap the toolbar header row.
+  // Terminal Glass: frosted surface over the canvas/aurora. The .glass class
+  // supplies background var(--glass-bg) + backdrop blur + soft border/shadow +
+  // the top-edge highlight; we only set the positioning/sizing + text color
+  // inline so the panel floats correctly. (was an opaque #161b22 slab.)
   const wrapperStyle: React.CSSProperties = {
     position: 'absolute',
     top: 72,
@@ -645,16 +649,12 @@ const WorkflowAboutPanel: React.FC<{
     maxHeight: collapsed ? undefined : 'calc(100% - 88px)',
     display: 'flex',
     flexDirection: 'column',
-    background: 'var(--color-bg-secondary, #161b22)',
-    border: '1px solid var(--color-border, #30363d)',
-    borderRadius: 12,
-    boxShadow: '0 8px 24px rgba(0,0,0,0.22)',
-    overflow: 'hidden',
-    color: 'var(--color-text, #e6edf3)',
+    color: 'var(--color-text)',
   };
 
   return (
     <div
+      className="glass"
       data-testid="workflow-about-panel"
       data-collapsed={collapsed ? 'true' : 'false'}
       style={wrapperStyle}
@@ -672,7 +672,7 @@ const WorkflowAboutPanel: React.FC<{
           padding: '10px 14px',
           background: 'transparent',
           border: 'none',
-          borderBottom: collapsed ? 'none' : '1px solid var(--color-border, #30363d)',
+          borderBottom: collapsed ? 'none' : '1px solid var(--color-border)',
           textAlign: 'left',
           cursor: 'pointer',
           color: 'inherit',
@@ -694,7 +694,7 @@ const WorkflowAboutPanel: React.FC<{
           </span>
         </div>
         <span aria-hidden="true" style={{
-          fontSize: 10, color: 'var(--color-text-tertiary, #8b949e)',
+          fontSize: 10, color: 'var(--color-text-tertiary)',
           transform: collapsed ? 'rotate(-90deg)' : 'none',
           transition: 'transform 0.15s ease',
           marginLeft: 8,
@@ -727,13 +727,13 @@ const WorkflowAboutPanel: React.FC<{
 const WorkflowLegendEmptyState: React.FC<{ description?: string }> = ({ description }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
     {description ? (
-      <div style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--color-text-secondary, #c9d1d9)' }}>
+      <div style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--color-text-secondary)' }}>
         {description}
       </div>
     ) : (
       <div style={{
         fontSize: 12, lineHeight: 1.55,
-        color: 'var(--color-text-tertiary, #8b949e)',
+        color: 'var(--color-text-tertiary)',
         fontStyle: 'italic',
       }}>
         No description yet — add Purpose, How it works, and Expected output
@@ -742,7 +742,7 @@ const WorkflowLegendEmptyState: React.FC<{ description?: string }> = ({ descript
       </div>
     )}
     <div style={{
-      fontSize: 10, color: 'var(--color-text-tertiary, #8b949e)',
+      fontSize: 10, color: 'var(--color-text-tertiary)',
       letterSpacing: '0.04em',
     }}>
       Tip: legends help operators triage flows at a glance.

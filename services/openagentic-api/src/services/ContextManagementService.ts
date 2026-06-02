@@ -663,7 +663,7 @@ export class ContextManagementService {
   async getCompactionMetrics(options: {
     startDate?: Date;
     endDate?: Date;
-    sessionType?: 'chat' | 'code' | 'all';
+    sessionType?: 'chat' | 'all';
   } = {}): Promise<{
     summary: {
       totalCompactions: number;

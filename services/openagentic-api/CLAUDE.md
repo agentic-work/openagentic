@@ -64,7 +64,6 @@ Current domain plugins:
 | `admin.plugin.ts` | Admin routes | `/api/admin/*` |
 | `auth.plugin.ts` | Authentication | `/api/auth/*` |
 | `chat.plugin.ts` | Chat & streaming | `/api/chat/*` |
-| `codemode.plugin.ts` | Code mode | `/api/code/*` |
 | `user.plugin.ts` | User profile | `/api/user*` |
 | `docs.plugin.ts` | Documentation | `/api/docs/*` |
 | `models.plugin.ts` | Model/provider management | `/api/models/*`, `/api/providers/*` |

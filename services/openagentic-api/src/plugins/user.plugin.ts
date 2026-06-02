@@ -52,8 +52,6 @@ const userPlugin: FastifyPluginAsync<UserPluginOptions> = async (
       return reply.send({
         ...permissions,
         isAdmin,
-        // Admins always have AWCode access
-        canUseAwcode: isAdmin || permissions.canUseAwcode,
         // Admins always have Flows access; non-admins only if granted
         workflowsEnabled: isAdmin || permissions.workflowsEnabled,
         // MCP panel visible if any MCP access

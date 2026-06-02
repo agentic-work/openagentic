@@ -17,7 +17,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { nanoid } from 'nanoid';
 // Recharts imports removed - charts handled by sub-components
 import MessageContent from './MessageContent';
-import { useSSEChat } from '../hooks/useSSEChat';
+import { useChatStream } from '../hooks/useChatStream';
+// Track B Phase 3 — `currentMessage` flat-string was ripped from the
+// useChatStream return shape; ChatContainer derives it from canonical
+// `contentBlocks` via deriveFlatMessage (joins type='text' blocks in order).
+import { deriveFlatMessage } from '../hooks/streamReducer/deriveFlatMessage';
 import { isValidChatMessage, validateChartData, ensureArray, safeArrayAccess } from '@/utils/validation';
 import { useAuth } from '@/app/providers/AuthContext';
 // Removed conflicting useTheme - using settings from API as source of truth
@@ -72,7 +76,7 @@ import HITLPanel, { type HITLMode, type HITLLogEntry } from './HITLPanel';
 import ToolApprovalDialog from '@/shared/components/Dialogs/ToolApprovalDialog';
 import ApprovalModal, { type AuditApprovalRequest } from './ApprovalModal';
 import AdminToolInspector from './AdminToolInspector';
-import type { McpApprovalRequest } from '../hooks/useSSEChat';
+import type { McpApprovalRequest } from '../hooks/useChatStream';
 
 // App mode type.
 type AppMode = 'chat' | 'flows';
@@ -295,10 +299,50 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     initializeModel,
   } = useModelStore();
 
-  // Get current session messages from store - memoized for performance
-  const currentSession = useMemo(() => 
-    activeSessionId ? sessions[activeSessionId] : null,
-    [activeSessionId, sessions]
+  // Holds the id created by the current first-send, set SYNCHRONOUSLY inside
+  // sendMessage (before the first delta can land) so the render path can resolve
+  // the live session id on the very first-delta render — see the renderSessionId
+  // note below. Declared FIRST so both the retire effect and renderSessionId read it.
+  const firstSendSessionIdRef = useRef<string | null>(null);
+
+  // First-send render bridge (state, so the render reacts): holds the id created by
+  // the in-flight first send until the closure `activeSessionId` catches up. See the
+  // note on firstSendSessionIdRef / resolveSessionId below.
+  const [firstSendStreamSessionId, setFirstSendStreamSessionId] = useState<string>('');
+
+  // Once the closure `activeSessionId` has caught up to the bridged first-send id,
+  // retire the bridge so it can't shadow a later "new chat" (when activeSessionId
+  // momentarily becomes '' again).
+  useEffect(() => {
+    if (firstSendStreamSessionId && activeSessionId === firstSendStreamSessionId) {
+      setFirstSendStreamSessionId('');
+      firstSendSessionIdRef.current = null;
+    }
+  }, [activeSessionId, firstSendStreamSessionId]);
+
+  // Get current session messages from store - memoized for performance.
+  // Resolve the render session id LIVE: on the first send of a brand-new chat the
+  // closure `activeSessionId` is still '' until createNewSession()'s store update
+  // re-renders, so we fall back to the captured first-send id. Without this, the
+  // freshly-created session's placeholder + streamed content (written under the
+  // REAL id) would not appear in the rendered list until reload.
+  //
+  // UPSTREAM-PARITY FIX (mirrors agenticwork-ui ChatContainer keying the in-flight
+  // mirror on a render-synchronous session id): the prior chain ended in
+  // `firstSendStreamSessionId` — a useState set via setFirstSendStreamSessionId,
+  // which flushes ONE render too late. The first `content_delta` frames arrive and
+  // update `currentMessage` BEFORE that state has flushed, so the streaming-writer
+  // effect ran with renderSessionId === '' and silently bailed on its
+  // `!renderSessionId` guard — the first message's content never mirrored into the
+  // placeholder until reload. The synchronously-set `firstSendSessionIdRef.current`
+  // (assigned in sendMessage before the stream starts) makes renderSessionId
+  // non-empty on the very first-delta render. The useState is retained AFTER the ref
+  // so flushing it still triggers a re-render (the ref alone does not).
+  const renderSessionId =
+    activeSessionId || firstSendSessionIdRef.current || firstSendStreamSessionId || '';
+  const currentSession = useMemo(() =>
+    renderSessionId ? sessions[renderSessionId] : null,
+    [renderSessionId, sessions]
   );
   const messages = useMemo(() =>
     currentSession?.messages || [],
@@ -608,12 +652,31 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   // thinkingStartTime, thinkingTime now provided by useChatStreamingStore
   const streamingPlaceholderIdRef = useRef<string | null>(null); // Track current streaming message ID
 
+  // First-message race fix (mirrors useSSEChat.ts:409-412): on the FIRST send of
+  // a brand-new chat, createNewSession() sets the store's activeSessionId + returns
+  // the new id, but this component's `activeSessionId` closure is still '' until the
+  // store update re-renders. Every render/callback surface that keys on the closure
+  // (the rendered messages list, the streaming-content writer effect, onMessage/onError)
+  // would then target '' and the freshly-created session's placeholder + streamed
+  // content (written under the REAL id) would not render until reload. We capture the
+  // freshly-created id here and resolve the LIVE id (closure → store → captured) so
+  // the render path binds to the new session immediately.
+  // (firstSendSessionIdRef is declared above, next to renderSessionId, so the render
+  // derivation can read it synchronously on the first-delta render.)
+  const resolveSessionId = useCallback((): string => {
+    if (activeSessionId && activeSessionId.trim()) return activeSessionId;
+    const storeId = useChatStore.getState().activeSessionId;
+    if (storeId && storeId.trim()) return storeId;
+    return firstSendSessionIdRef.current || '';
+  }, [activeSessionId]);
+
   // Initialize SSE chat hook with pipeline awareness
   const {
     sendMessage: sendSSEMessage,
     stopStreaming,
     isStreaming,
-    currentMessage,
+    // Track B Phase 3 — `currentMessage` flat-string state ripped from
+    // useChatStream's return shape; derived below from `contentBlocks`.
     currentThinking,
     thinkingMetrics,
     thinkingProgress, // Real progress indicator (tokens vs budget)
@@ -622,11 +685,14 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     contentBlocks, // Interleaved content blocks for thinking/text display
     contextCompaction, // Context compaction notification (auto-dismisses)
     normalizedEvents, // Normalized stream events for UnifiedActivityTree (UNIFIED_STREAM=true)
-  } = useSSEChat({
+  } = useChatStream({
     sessionId: activeSessionId || '',
     onMessage: (message) => {
+      // Resolve the live session id (closure may still be '' on the first send;
+      // the freshly-created session lives in the store / firstSendSessionIdRef).
+      const targetSessionId = resolveSessionId();
       // Prevent duplicate messages by checking if message ID already exists
-      if (!activeSessionId) return;
+      if (!targetSessionId) return;
 
       // If there's a streaming placeholder, update it instead of adding new message
       if (streamingPlaceholderIdRef.current && message.role === 'assistant') {
@@ -639,7 +705,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
           : message.reasoningTrace?.reasoning || undefined;
 
         updateMessage(
-          activeSessionId,
+          targetSessionId,
           streamingPlaceholderIdRef.current,
           message.content,
           message.mcpCalls,
@@ -650,7 +716,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
           message.toolCalls,         // Tool calls made during response
           message.toolResults        // Results from tool executions
         );
-        finishStreamingMessage(activeSessionId, streamingPlaceholderIdRef.current);
+        finishStreamingMessage(targetSessionId, streamingPlaceholderIdRef.current);
         streamingPlaceholderIdRef.current = null; // Clear placeholder tracking
         return;
       }
@@ -663,7 +729,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
       }
 
       // Add message to store which handles session metadata updates
-      addMessage(activeSessionId, message);
+      addMessage(targetSessionId, message);
 
       // NOTE: Session title is now auto-generated server-side via AI
       // The onSessionTitleUpdated callback handles updating the sidebar
@@ -758,9 +824,11 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
         }
       };
 
-      // Add error message to current session
-      if (activeSessionId) {
-        addMessage(activeSessionId, errorMessage);
+      // Add error message to current session. Resolve the live id so a first-send
+      // error (closure still '') lands on the freshly-created session, not nowhere.
+      const targetSessionId = resolveSessionId();
+      if (targetSessionId) {
+        addMessage(targetSessionId, errorMessage);
       }
 
       // Reset status after error
@@ -822,6 +890,19 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     },
     autoApproveTools: false, // HITM enforced: tools always require user approval
   });
+
+  // Track B Phase 3 (2026-05-22) — derive the legacy `currentMessage`
+  // flat string from canonical `contentBlocks`. The pre-rip code received
+  // a `currentMessage: string` directly from useChatStream and used it for
+  // three things: (a) auto-scroll trigger, (b) updating the streaming-
+  // placeholder message in the messages store, (c) passing as
+  // `streamingContent` to ChatMessages. All three still work with a
+  // derived flat string (deriveFlatMessage joins type='text' blocks in
+  // chronological order — identical content shape to the old accumulator).
+  const currentMessage = useMemo(
+    () => deriveFlatMessage(contentBlocks),
+    [contentBlocks],
+  );
 
   // Agent activity state is now managed by useSSEToAgentState hook
   // The unified agentState replaces the old feedActivities and orbState
@@ -1156,6 +1237,16 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
       try {
         sessionId = await createNewSession();
         // console.log('[CHAT] Created new session:', sessionId);
+        // FIRST-MESSAGE LIVE-RENDER FIX: thread the freshly-created id explicitly.
+        // createNewSession() sets the store's activeSessionId, but this component's
+        // `activeSessionId` closure is still '' for the rest of THIS render. Capture
+        // the new id so (a) the render binds messages to it immediately
+        // (firstSendStreamSessionId state → renderSessionId) and (b) the
+        // onMessage/onError/streaming-writer surfaces resolve it (firstSendSessionIdRef).
+        if (sessionId) {
+          firstSendSessionIdRef.current = sessionId;
+          setFirstSendStreamSessionId(sessionId);
+        }
       } catch (error) {
         console.error('[CHAT] Failed to create session:', error);
         return;
@@ -1583,8 +1674,17 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
 
   // Update streaming placeholder content as it streams in
   // CRITICAL: Only update if content is actually new (not stale from previous message)
+  // Resolves the target session id render-SYNCHRONOUSLY via resolveSessionId()
+  // (closure → store → firstSendSessionIdRef), NOT via the late-flushing
+  // firstSendStreamSessionId useState. On the FIRST message of a new chat the live
+  // tokens then mirror into the placeholder under the freshly-created session on the
+  // very first-delta render instead of bailing on a stale '' (which is why it used to
+  // need a reload). renderSessionId stays in the dep list so the effect re-runs once
+  // the closure/state catch up. Mirrors agenticwork-ui ChatContainer, which keys this
+  // mirror on the live active session id.
   useEffect(() => {
-    if (!streamingPlaceholderIdRef.current || !currentMessage || !activeSessionId) {
+    const writeSessionId = resolveSessionId();
+    if (!streamingPlaceholderIdRef.current || !currentMessage || !writeSessionId) {
       return;
     }
 
@@ -1597,9 +1697,9 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
 
     // Only update if content is different (prevents stale updates)
     if (placeholder.content !== currentMessage) {
-      updateStreamingMessage(activeSessionId, streamingPlaceholderIdRef.current, currentMessage);
+      updateStreamingMessage(writeSessionId, streamingPlaceholderIdRef.current, currentMessage);
     }
-  }, [currentMessage, activeSessionId, messages, updateStreamingMessage]);
+  }, [currentMessage, renderSessionId, messages, updateStreamingMessage, resolveSessionId]);
 
   // Auto-scroll to bottom during streaming to keep user focused on response
   // Triggers on currentMessage OR contentBlocks changes to follow thinking/tool outputs

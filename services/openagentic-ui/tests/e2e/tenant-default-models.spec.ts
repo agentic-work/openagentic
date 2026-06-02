@@ -6,7 +6,6 @@
  *   (2) Model picker lists ONLY registry-enabled models.
  *   (3) Registry-gated PUT rejection — the SOT guard.
  *   (4) Live-propagation round-trip — the headline test.
- *   (5) Code-mode settings no longer exposes a default-model picker.
  *
  * Prerequisites:
  *   - AW_JWT env var must be set to a valid openagentic_token JWT for
@@ -27,7 +26,7 @@ const BASE_URL = process.env.BASE_URL || 'https://chat.example.com';
 const AW_JWT   = process.env.AW_JWT ?? '';
 
 // A model that is known to be enabled in the registry on chat-dev.
-// Used as the "different model" for the code-mode live-propagation test.
+// Used as the "different model" for the code-category live-propagation test.
 // The value intentionally lives here (not hardcoded in application source).
 const HAIKU_MODEL_ID = 'global.anthropic.claude-haiku-4-5';
 
@@ -120,35 +119,6 @@ async function openAdminDefaultModels(page: Page): Promise<void> {
   await expect(
     page.locator('h1:has-text("Tenant Default Models")'),
   ).toBeVisible({ timeout: 15_000 });
-}
-
-// ---------------------------------------------------------------------------
-// Admin portal navigation helper — Code → Settings (old AWCodeSettingsView)
-// ---------------------------------------------------------------------------
-
-async function openAdminCodeSettings(page: Page): Promise<void> {
-  await openAdminPortal(page);
-
-  // Expand "Code Mode" or legacy "Code" sidebar section.
-  const codeModeSection = page.locator(
-    'button:has-text("Code Mode"), button:has-text("Code"), text=Code Mode',
-  ).first();
-  const codeModeVisible = await codeModeSection.isVisible({ timeout: 5_000 }).catch(() => false);
-  if (codeModeVisible) {
-    await codeModeSection.click().catch(() => {});
-  }
-
-  const settingsBtn = page.locator(
-    '[aria-current="page"]:has-text("Settings"), button:has-text("Settings")',
-  ).first();
-  await settingsBtn.waitFor({ state: 'visible', timeout: 10_000 });
-  await settingsBtn.click();
-
-  // Wait for a settings view heading to appear.
-  await page.waitForSelector(
-    'text=CodeMode Settings, text=Openagentic Settings, h2:has-text("Settings")',
-    { timeout: 15_000 },
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -450,92 +420,6 @@ test.describe('Tenant Default Models — registry gate + live propagation (T-C)'
     } finally {
       // Step 10: Restore original code model via API.
       await apiPutDefaultModels(request, { code: originalCodeModel });
-    }
-  });
-
-  // ----------------------------------------------------------------------- //
-  // Test 5 — Code-mode settings no longer exposes a default-model picker      //
-  // ----------------------------------------------------------------------- //
-
-  test('Test 5 — Code mode settings pages have no default-model picker; show redirect banner instead', async ({ page }) => {
-    if (!AW_JWT) test.skip();
-
-    // ---- Part A: Admin → Code → Settings (AWCodeSettingsView) ----
-
-    await openAdminCodeSettings(page);
-
-    const bodyTextA = await page.locator('body').textContent() ?? '';
-
-    // Assert there is NO <select> or <input> for choosing a default model.
-    // The old AWCodeSettingsView used to have a "Default Model" label + select.
-    // After T-B it was replaced with a read-only banner.
-    const defaultModelSelect = page.locator('select, input[type="text"]', {
-      has: page.locator('label:has-text("Default Model"), label:has-text("default model")'),
-    });
-    const selectCount = await defaultModelSelect.count();
-    expect(
-      selectCount,
-      'There must be NO default-model picker (select/input) on the Code Settings page',
-    ).toBe(0);
-
-    // Assert the redirect banner is present — points to Default Models page.
-    expect(
-      bodyTextA,
-      'Code settings must contain a banner pointing to Admin → System Configuration → Default Models',
-    ).toContain('System Configuration');
-    expect(bodyTextA).toContain('Default Models');
-
-    // ---- Part B: Admin → Code Mode → Settings (CodeModeSettingsView) ----
-    //
-    // Navigate the admin portal to Code Mode → Settings (new view).
-    // Re-use the same page (portal stays open).
-
-    // Look for "Code Mode" section in the sidebar (may already be expanded).
-    const codeModeSection2 = page.locator(
-      'button:has-text("Code Mode")',
-    ).first();
-    const codeModeVisible2 = await codeModeSection2.isVisible({ timeout: 5_000 }).catch(() => false);
-    if (codeModeVisible2) {
-      await codeModeSection2.click().catch(() => {});
-    }
-
-    const codeModeSettingsBtn = page.locator(
-      'button:has-text("Settings")',
-    ).first();
-    const codeModeSettingsBtnVisible = await codeModeSettingsBtn.isVisible({ timeout: 5_000 }).catch(() => false);
-    if (codeModeSettingsBtnVisible) {
-      await codeModeSettingsBtn.click();
-
-      // Wait for CodeModeSettingsView to render.
-      await page.waitForSelector(
-        'text=CodeMode Settings, text=Model & Execution',
-        { timeout: 15_000 },
-      );
-
-      const bodyTextB = await page.locator('body').textContent() ?? '';
-
-      // Assert there is NO <select> or <input[type=text]> labelled for default model
-      // selection inside the Model & Execution section.
-      const defaultModelSelectB = page.locator('select, input[type="text"]', {
-        has: page.locator('label:has-text("Default Model"), label:has-text("default model")'),
-      });
-      const selectCountB = await defaultModelSelectB.count();
-      expect(
-        selectCountB,
-        'CodeModeSettingsView must NOT have a default-model picker (select/input)',
-      ).toBe(0);
-
-      // Assert the read-only banner pointing to Default Models page.
-      expect(
-        bodyTextB,
-        'CodeModeSettingsView must contain a banner pointing to Admin → System Configuration → Default Models',
-      ).toContain('System Configuration');
-      expect(bodyTextB).toContain('Default Models');
-    } else {
-      console.warn(
-        'Code Mode → Settings sidebar item not visible — skipping Part B of Test 5. ' +
-        'This may mean the openagentic feature flag is disabled in this environment.',
-      );
     }
   });
 });

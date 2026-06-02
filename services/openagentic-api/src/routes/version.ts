@@ -97,7 +97,6 @@ export async function versionRoutes(fastify: FastifyInstance) {
         api: process.env.API_VERSION || versionJson.components?.api || versionJson.version,
         ui: process.env.UI_VERSION || versionJson.components?.ui || versionJson.version,
         mcpProxy: versionJson.components?.mcpProxy || versionJson.version,
-        codeManager: versionJson.components?.codeManager || versionJson.version,
         openagentic: cliVersions.openagentic,
         sdk: cliVersions.sdk,
       },
@@ -228,7 +227,6 @@ export async function versionRoutes(fastify: FastifyInstance) {
     };
 
     const mcpProxyUrl = process.env.MCP_PROXY_URL || process.env.MCP_ORCHESTRATOR_URL || 'http://openagentic-mcp-proxy:8080';
-    const codeManagerUrl = process.env.CODE_MANAGER_URL || 'http://openagentic-code-manager:3000';
     const openagenticProxyUrl = process.env.OPENAGENTIC_PROXY_URL || 'http://openagentic-openagentic-proxy:3300';
     const now = new Date().toISOString();
 
@@ -246,9 +244,8 @@ export async function versionRoutes(fastify: FastifyInstance) {
     } catch { /* keep offline defaults */ }
 
     // Probe live services in parallel
-    const [mcpProxy, codeManager, openagenticProxy] = await Promise.all([
+    const [mcpProxy, openagenticProxy] = await Promise.all([
       probeService('MCP Proxy', `${mcpProxyUrl}/health`),
-      probeService('Code Manager', `${codeManagerUrl}/health`),
       probeService('Agent Proxy', `${openagenticProxyUrl}/api/agents/health`),
     ]);
 
@@ -295,7 +292,6 @@ export async function versionRoutes(fastify: FastifyInstance) {
         lastChecked: now,
       },
       { ...mcpProxy, name: `MCP Proxy${mcpServers}` },
-      codeManager,
       openagenticProxy,
       { name: 'PostgreSQL', version: 'PostgreSQL 16', gitCommit: 'upstream', gitShortCommit: 'upstream', status: dbStatus, endpoint: 'internal', lastChecked: now },
       { name: 'Redis', version: 'Redis 7', gitCommit: 'upstream', gitShortCommit: 'upstream', status: redisStatus, endpoint: 'internal', lastChecked: now },

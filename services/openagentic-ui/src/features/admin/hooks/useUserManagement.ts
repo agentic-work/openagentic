@@ -19,7 +19,6 @@ export interface ApiUserPermissions {
   canUseFileUpload: boolean
   canUseMemory: boolean
   canUseRag: boolean
-  canUseAwcode: boolean
   source: 'user' | 'group' | 'default'
 }
 
@@ -364,7 +363,6 @@ export interface SetUserPermissionsBody {
   canUseFileUpload?: boolean
   canUseMemory?: boolean
   canUseRag?: boolean
-  canUseAwcode?: boolean
 }
 
 export function useSetUserPermissions(userId: string | null) {

@@ -236,6 +236,39 @@ class UnifiedRedisClient {
     }
   }
 
+  /**
+   * Raw `INFO` probe. Returns the full server INFO text (or a named section
+   * when `section` is provided) for metrics/admin dashboards. Empty string
+   * when the client is not connected.
+   */
+  async info(section?: string): Promise<string> {
+    if (!this.isConnected()) return '';
+    try {
+      const result = section
+        ? await this.client!.info(section)
+        : await this.client!.info();
+      return typeof result === 'string' ? result : String(result ?? '');
+    } catch (error) {
+      this.logger?.error({ err: error }, 'Redis INFO error');
+      return '';
+    }
+  }
+
+  /**
+   * Exact key count for the current logical DB via `DBSIZE` — cheaper and
+   * more accurate than `KEYS *` for dashboard tiles. Returns null on failure.
+   */
+  async dbSize(): Promise<number | null> {
+    if (!this.isConnected()) return null;
+    try {
+      const result = await this.client!.dbSize();
+      return typeof result === 'number' ? result : Number(result ?? 0);
+    } catch (error) {
+      this.logger?.error({ err: error }, 'Redis DBSIZE error');
+      return null;
+    }
+  }
+
   async disconnect(): Promise<void> {
     if (this.client) {
       try {

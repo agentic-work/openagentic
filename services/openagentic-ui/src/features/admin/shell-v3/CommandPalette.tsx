@@ -162,17 +162,15 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, o
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
+        className="glass"
         style={{
           position: 'relative',
           width: 640,
           maxHeight: '60vh',
-          background: 'var(--bg-1)',
-          border: '1px solid var(--line-2)',
           color: 'var(--fg-0)',
           display: 'flex',
           flexDirection: 'column',
           fontFamily: 'var(--font-v3-body)',
-          boxShadow: '0 20px 80px color-mix(in srgb, var(--color-shadow) 45%, transparent)',
         }}
       >
         <div
@@ -246,7 +244,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, o
                       letterSpacing: '0.18em',
                       color: 'var(--fg-3)',
                       fontFamily: 'var(--font-v3-body)',
-                      background: 'var(--bg-1)',
+                      background: 'var(--ctl-surf)',
+                      backdropFilter: 'var(--glass-blur)',
+                      WebkitBackdropFilter: 'var(--glass-blur)',
                       position: 'sticky',
                       top: 0,
                       zIndex: 1,

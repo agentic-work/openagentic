@@ -292,7 +292,7 @@ export function AdminAIPanel({
       <div
         role="dialog"
         aria-label="Admin AI Assistant"
-        className="bg-bg-1 flex flex-col rounded border border-ln-3"
+        className="glass flex flex-col"
         style={{
           position: 'fixed',
           bottom: 24,
@@ -302,7 +302,6 @@ export function AdminAIPanel({
           maxWidth: '480px',
           maxHeight: '600px',
           zIndex: 90,
-          boxShadow: '0 16px 48px var(--ap-shadow, var(--bg-0))',
         }}
       >
         {body}
@@ -313,21 +312,20 @@ export function AdminAIPanel({
   return (
     <div
       className="fixed inset-0 z-[90]"
-      style={{ background: 'rgba(0,0,0,0.6)' }}
+      style={{ background: 'color-mix(in srgb, var(--color-shadow) 60%, transparent)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
       data-testid="ai-mask"
     >
       <div
         role="dialog"
         aria-label="Admin AI Assistant"
-        className="bg-bg-1 absolute left-1/2 flex flex-col rounded border border-ln-3"
+        className="glass absolute left-1/2 flex flex-col"
         style={{
           top: 60,
           transform: 'translateX(-50%)',
           width: 720,
           maxWidth: '90vw',
           maxHeight: '70vh',
-          boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
         }}
       >
         {body}

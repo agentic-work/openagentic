@@ -59,6 +59,10 @@ import { stripFreestyleHtml } from './stripFreestyleHtml.js';
 //     runChat.ts subagent dispatch wrapper) — chatLoop just dispatches
 //     by name through deps.dispatch.
 import { v3Metrics, safeIncCounter, safeObserveHistogram } from '../../../../services/V3MetricsRegistry.js';
+// F2-followup (2026-06-01) — coarse error classifier shared with the
+// non-streaming completion path, used to label gen_ai_errors_total on the
+// streaming chat error seam below.
+import { classifyCompletionError } from '../../../../services/llm-providers/recordCompletionMetrics.js';
 
 // NO HARDCODED DEFAULT — admin-tunable via ChatLoopConfigService
 // (SoT: `admin.system_configuration` row keyed `chat_loop`, surfaced
@@ -1092,6 +1096,18 @@ export async function chatLoop(
       | { input: number; output: number; cacheRead?: number; cacheWrite?: number; reasoning?: number }
       | undefined;
 
+    // F2-followup (2026-06-01) — the streaming consumer below has no error
+    // seam, so a provider stream that throws mid-iteration (timeout, 429,
+    // dropped socket) bubbled up WITHOUT ending the chat span as errored OR
+    // emitting gen_ai_errors_total — the dashboard's "Error rate by class"
+    // panel was therefore empty for the live (streaming) chat path and only
+    // ever showed the http_5xx fallback. Wrap the for-await so a stream
+    // failure: (1) ends the chat span with error status (suppresses the
+    // success-only chat_turns increment), and (2) routes one error record
+    // through deps.recordCompletionMetrics, which calls trackLLMRequest with
+    // status='error' → gen_ai_errors_total{error_class,provider,model}. Then
+    // rethrow so the outer pipeline's existing error handling is unchanged.
+    try {
     for await (const rawEvent of stream) {
       // Phase 3 — `enrich_sse_event` (modifying-style; declared 'sync' in
       // HOOK_KINDS but invoked via runModifying per spec §4.2 so the
@@ -1189,6 +1205,47 @@ export async function chatLoop(
           stopReason = event.stop_reason;
           break;
       }
+    }
+    } catch (streamErr) {
+      // F2-followup (2026-06-01) — streaming provider error seam. End the
+      // chat span as errored (suppresses the success-only chat_turns
+      // increment) and route ONE error record through recordCompletionMetrics
+      // so gen_ai_errors_total{error_class,provider,model} increments on the
+      // live streaming path. Both emits are best-effort — never let a metrics
+      // failure mask the original stream error, which we always rethrow.
+      const errObj = streamErr instanceof Error ? streamErr : new Error(String(streamErr));
+      try {
+        chatSpan?.end(errObj);
+      } catch { /* span end is best-effort */ }
+      if (deps.recordCompletionMetrics) {
+        try {
+          const maybe = deps.recordCompletionMetrics({
+            model: input.model,
+            providerType: 'unknown',
+            startedAt: turnStartedAt,
+            stopReason,
+            userId: ctx.userId,
+            sessionId: ctx.sessionId,
+            messageId: (ctx as { messageId?: string }).messageId,
+            errorClass: classifyCompletionError(errObj),
+            errorMessage: errObj.message,
+          });
+          if (maybe && typeof (maybe as Promise<unknown>).then === 'function') {
+            (maybe as Promise<unknown>).catch((err: unknown) => {
+              (ctx.logger as { debug?: (...args: unknown[]) => void } | undefined)?.debug?.(
+                { err },
+                '[chat] recordCompletionMetrics(error) failed (non-fatal)',
+              );
+            });
+          }
+        } catch (metricErr) {
+          (ctx.logger as { debug?: (...args: unknown[]) => void } | undefined)?.debug?.(
+            { err: metricErr },
+            '[chat] recordCompletionMetrics(error) threw (non-fatal)',
+          );
+        }
+      }
+      throw errObj;
     }
 
     // F2 (2026-05-12) — close chat span when stream completes naturally.

@@ -77,25 +77,11 @@ export const ADMIN_PAGE_CORPUS: AdminPageEntry[] = [
   { slug: 'teams', label: 'Teams', group: 'Flows',
     purpose: 'Team-scoped workflow ownership (beta).' },
 
-  // Code Mode
-  { slug: 'codemode-settings', label: 'Settings', group: 'Code Mode',
-    purpose: 'Per-tenant Code Mode session defaults: model, working directory, timeout.' },
-  { slug: 'codemode-global', label: 'Global Settings', group: 'Code Mode',
-    purpose: 'Cluster-wide Code Mode toggles: max parallel sandboxes, idle eviction, network policy.' },
-  { slug: 'codemode-mcp', label: 'MCP Servers', group: 'Code Mode',
-    purpose: 'Which MCP servers Code Mode sandboxes are allowed to invoke.' },
-  { slug: 'codemode-skills', label: 'Skills & Plugins', group: 'Code Mode',
-    purpose: 'Manage installable skills/plugins available to Code Mode agents.' },
-  { slug: 'codemode-users', label: 'Users & Sessions', group: 'Code Mode',
-    purpose: 'Active Code Mode sessions per user; terminate, view logs.' },
-  { slug: 'openagentic-metrics', label: 'Metrics', group: 'Code Mode',
-    purpose: 'System metrics for the Code Mode runtime (CPU, memory, sandbox lifecycle).' },
-
   // Agent Management
   { slug: 'agent-registry', label: 'Agent Registry', group: 'Agents',
     purpose: 'Catalog of agent definitions: type, primary model, system prompt, prompt_modules composition.' },
   { slug: 'agent-skills', label: 'Skills & Plugins', group: 'Agents',
-    purpose: 'Reusable skill bundles agents can compose (different from Code Mode skills).' },
+    purpose: 'Reusable skill bundles agents can compose.' },
   { slug: 'agent-executions', label: 'Agent Observability', group: 'Agents',
     purpose: 'Per-agent execution traces: tool calls, sub-agent dispatch, token usage.' },
 

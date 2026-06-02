@@ -181,14 +181,15 @@ export class PromptStage implements PipelineStage {
           const messageText = typeof userMessage === 'string' ? userMessage :
             (Array.isArray(userMessage) ? (userMessage[0] as any)?.text || '' : '');
 
-          // Derive mode from request context — code mode routes set request.mode,
-          // flow context indicates flow mode, otherwise default to chat
-          const promptMode = (context.request as any).mode
+          // Derive mode from request context — flow context indicates flow
+          // mode, otherwise default to chat.
+          const rawMode = (context.request as any).mode
             || ((context.request as any).flowContext ? 'flow' : 'chat');
+          const promptMode: 'chat' | 'flow' = rawMode === 'flow' ? 'flow' : 'chat';
 
           const composed = await composer.compose({
             message: messageText,
-            mode: promptMode as 'chat' | 'code' | 'flow',
+            mode: promptMode,
             model: context.request.model || context.config?.model || '',
             availableTools: context.availableTools || [],
             structuredSummary: (context as any).structuredSummary,

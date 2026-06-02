@@ -19,8 +19,7 @@ The OSS upstream of the OpenAgentic platform — services for building, orchestr
 | `services/openagentic-proxy` | Egress proxy for agent tool calls |
 | `services/openagentic-synth` | OAT tool-synthesis framework runner |
 | `services/synth-executor` | Sandboxed runner for synth-emitted code |
-| `services/openagentic-exec` | Code Mode runner (Claude Code in PTY) |
-| `services/mcps/*` | 14 built-in MCP servers (aws, azure, gcp, kubernetes, prometheus, loki, alertmanager, github, admin, agent-architect, incident, knowledge, runbook, web) |
+| `services/mcps/*` | 9 built-in MCP servers (aws, azure, gcp, kubernetes, prometheus, loki, github, admin, web) — these are what the proxy actually wires (see `services/openagentic-mcp-proxy/src/mcp_manager.py` `initialize_servers`). alertmanager/incident/runbook/agent-architect/knowledge were removed upstream as out-of-scope/redundant. |
 | `services/openagentic-ollama` | Optional custom Ollama image with model pre-pull |
 | `services/shared` | Cross-service types / utilities |
 
@@ -28,7 +27,7 @@ Top-level `helm/openagentic` is the platform Helm chart (templates only — env-
 
 ## Install + run
 
-The user-facing install path is `install.sh`, which checks Docker/git/Node, clones/updates the repo under `~/.openagentic`, creates cloud-secret stubs, then launches the Ink TUI wizard under `tools/setup/`. The wizard walks the user through deploy target → admin user → Ollama → LLM providers → MCP selection → per-MCP auth → coding CLI → review → launch, writes `.env`, and brings the compose stack up.
+The user-facing install path is `install.sh`, which checks Docker/git/Node, clones/updates the repo under `~/.openagentic`, creates cloud-secret stubs, then launches the Ink TUI wizard under `tools/setup/`. The wizard walks the user through deploy target → admin user → Ollama → LLM providers → MCP selection → per-MCP auth → review → launch, writes `.env`, and brings the compose stack up.
 
 End-to-end from a fresh clone on osx or linux:
 
@@ -75,7 +74,7 @@ These all tripped the first install and are fixed in commits `7266813` and `f7c6
 
 `tools/sync-upstream.py` pulls from `$OAP_UPSTREAM` (default `~/agenticwork/agentic`) with path renames, brand rewrite, a skip-list for proprietary content, and a preserve-list for OSS-only patches. It automatically runs `tools/scrub-headers.py` on completion to strip copyright/license boilerplate the upstream keeps adding.
 
-Files in the PRESERVE list never get overwritten — any local fix you want to survive a sync must be added there. The current preserve list includes our entrypoint fix, the undici agent, the adapter-aware ptyManager, the wizard, docker-compose.yml, install.sh, etc.
+Files in the PRESERVE list never get overwritten — any local fix you want to survive a sync must be added there. The current preserve list includes our entrypoint fix, the undici agent, the wizard, docker-compose.yml, install.sh, etc.
 
 ```bash
 python3 tools/sync-upstream.py --dry-run  # preview

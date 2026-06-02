@@ -21,10 +21,16 @@ vi.mock('@/app/providers/AuthContext', () => ({
   }),
 }));
 
-import { useSSEChat } from '../useSSEChat';
+// useSSEChat retired — the streaming engine is now useChatStream, which
+// re-exports `useSSEChat` as a back-compat alias and carries the same
+// OSS-only `approval_required` (auditId) discriminator surface this asserts.
+import { useSSEChat } from '../useChatStream';
 import { useAgentTreeStore } from '@/stores/useAgentTreeStore';
 
-// ── helper: build a fetch Response whose body streams the given SSE text ─────
+// ── helper: build a fetch Response whose body streams the given frames ───────
+// The ported streaming engine (useChatStream) consumes the v0.6.6 NDJSON wire
+// format: one typed JSON object `{type, ...payload}` per `\n`-terminated line
+// (NOT the legacy `event:`/`data:` SSE framing). `frame()` emits that shape.
 function sseResponse(frames: string[]): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -40,7 +46,7 @@ function sseResponse(frames: string[]): Response {
 }
 
 function frame(event: string, data: Record<string, unknown>): string {
-  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  return `${JSON.stringify({ type: event, ...data })}\n`;
 }
 
 describe('useSSEChat — approval_required discriminator', () => {

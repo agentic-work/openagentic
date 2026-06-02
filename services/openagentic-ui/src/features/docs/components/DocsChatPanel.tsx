@@ -189,14 +189,16 @@ const DocsChatPanel: React.FC<DocsChatPanelProps> = ({
     <div
       className="flex flex-col h-full"
       style={{
-        borderLeft: '1px solid var(--color-border)',
-        backgroundColor: 'var(--color-background)',
+        borderLeft: '1px solid var(--glass-border)',
+        background: 'var(--glass-bg)',
+        backdropFilter: 'var(--glass-blur)',
+        WebkitBackdropFilter: 'var(--glass-blur)',
       }}
     >
       {/* Header */}
       <div
         className="flex items-center gap-2 px-4 py-3 flex-shrink-0"
-        style={{ borderBottom: '1px solid var(--color-border)' }}
+        style={{ borderBottom: '1px solid var(--glass-border)' }}
       >
         <svg width={18} height={18} viewBox="0 0 24 24" fill="none">
           <defs>
@@ -259,23 +261,23 @@ const DocsChatPanel: React.FC<DocsChatPanelProps> = ({
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className="max-w-[85%] rounded-xl px-3 py-2 text-sm"
+                className={`max-w-[85%] px-3 py-2 text-sm ${msg.role === 'user' ? 'glass-bubble-user' : ''}`}
                 style={
                   msg.role === 'user'
                     ? {
-                        backgroundColor: 'var(--color-primary)',
-                        color: 'white',
-                        borderBottomRightRadius: '4px',
+                        color: 'var(--color-fg)',
                       }
                     : {
-                        backgroundColor: 'var(--color-surfaceSecondary)',
+                        backgroundColor: 'var(--ctl-surf)',
+                        border: '1px solid var(--glass-border)',
                         color: 'var(--color-text)',
-                        borderBottomLeftRadius: '4px',
+                        borderRadius: '16px 16px 16px 5px',
+                        boxShadow: '0 1px 0 var(--ctl-edge) inset',
                       }
                 }
               >
                 {msg.role === 'assistant' && msg.model && (
-                  <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-success)', display: 'inline-block' }} />
                     {msg.model}
                   </div>
@@ -319,11 +321,13 @@ const DocsChatPanel: React.FC<DocsChatPanelProps> = ({
             className="flex justify-start"
           >
             <div
-              className="max-w-[85%] rounded-xl px-3 py-2 text-sm"
+              className="max-w-[85%] px-3 py-2 text-sm"
               style={{
-                backgroundColor: 'var(--color-surfaceSecondary)',
+                backgroundColor: 'var(--ctl-surf)',
+                border: '1px solid var(--glass-border)',
                 color: 'var(--color-text)',
-                borderBottomLeftRadius: '4px',
+                borderRadius: '16px 16px 16px 5px',
+                boxShadow: '0 1px 0 var(--ctl-edge) inset',
               }}
             >
               {currentModel && (
@@ -373,12 +377,7 @@ const DocsChatPanel: React.FC<DocsChatPanelProps> = ({
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.1 }}
               onClick={() => handleSend(s)}
-              className="text-xs px-3 py-1.5 rounded-full transition-colors"
-              style={{
-                backgroundColor: 'var(--color-surfaceSecondary)',
-                color: 'var(--color-textSecondary)',
-                border: '1px solid var(--color-border)',
-              }}
+              className="glass-chip text-xs px-3 py-1.5 rounded-full"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -395,12 +394,7 @@ const DocsChatPanel: React.FC<DocsChatPanelProps> = ({
             <button
               key={i}
               onClick={() => handleSend(s)}
-              className="text-xs px-3 py-1.5 rounded-full transition-colors"
-              style={{
-                backgroundColor: 'var(--color-surfaceSecondary)',
-                color: 'var(--color-textSecondary)',
-                border: '1px solid var(--color-border)',
-              }}
+              className="glass-chip text-xs px-3 py-1.5 rounded-full"
             >
               {s}
             </button>
@@ -411,26 +405,23 @@ const DocsChatPanel: React.FC<DocsChatPanelProps> = ({
       {/* Input */}
       <div
         className="px-4 py-3 flex-shrink-0"
-        style={{ borderTop: '1px solid var(--color-border)' }}
+        style={{ borderTop: '1px solid var(--glass-border)' }}
       >
         {isLockedOut ? (
           <div
             className="text-center py-2 px-3 rounded-xl text-xs"
             style={{
-              backgroundColor: 'var(--color-surfaceSecondary)',
+              backgroundColor: 'var(--ctl-surf)',
               color: 'var(--color-textMuted)',
-              border: '1px solid var(--color-border)',
+              border: '1px solid var(--glass-border)',
             }}
           >
             Assistant paused. Refresh to try again.
           </div>
         ) : (
         <div
-          className="flex items-end gap-2 rounded-xl px-3 py-2"
-          style={{
-            backgroundColor: 'var(--color-surfaceSecondary)',
-            border: '1px solid var(--color-border)',
-          }}
+          className="glass-field flex items-end gap-2 px-3 py-2"
+          style={{ width: 'auto' }}
         >
           <textarea
             ref={inputRef}

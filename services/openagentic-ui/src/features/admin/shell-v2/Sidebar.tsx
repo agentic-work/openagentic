@@ -10,7 +10,6 @@ import {
   LLMSparkleIcon,
   MCPToolsIcon,
   WorkflowFlowIcon,
-  TerminalCodeIcon,
   AgentOrchestrationIcon,
   SparkleIcon,
   ContentDataIcon,
@@ -23,7 +22,7 @@ import { Globe, X } from 'lucide-react'
 
 type Flags = typeof featureFlags
 
-function groupVisible(featureGate: 'mcp' | 'openagentic' | undefined, flags: Flags): boolean {
+function groupVisible(featureGate: 'mcp' | undefined, flags: Flags): boolean {
   if (!featureGate) return true
   return Boolean((flags as any)[featureGate])
 }
@@ -40,7 +39,6 @@ const GROUP_ICONS: Record<string, React.FC<{ size?: number; className?: string }
   llm: LLMSparkleIcon,
   tools: MCPToolsIcon,
   'native-workflows': WorkflowFlowIcon,
-  codemode: TerminalCodeIcon,
   'agent-management': AgentOrchestrationIcon,
   integrations: Globe as any,
   'prompt-engineering': SparkleIcon,

@@ -26,10 +26,9 @@
  * suppressed.
  *
  * Source-content test (the established convention for MessageBubble —
- * see MessageBubble.cm-msg-asst.test.tsx, .noDoubleRender.test.tsx,
- * .streamEngineDualRenderGuard.test.tsx — MessageBubble is 1400+ LOC
- * with a heavy props surface; full-render tests are infeasible and
- * the existing tests source-grep instead).
+ * see MessageBubble.cm-msg-asst.test.tsx, .noDoubleRender.test.tsx —
+ * MessageBubble is 1400+ LOC with a heavy props surface; full-render
+ * tests are infeasible and the existing tests source-grep instead).
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

@@ -28,7 +28,6 @@ export interface UserPermissions {
   canUseFileUpload: boolean;
   canUseMemory: boolean;
   canUseRag: boolean;
-  canUseAwcode: boolean;
   mcpPanelEnabled: boolean;
   source: 'user' | 'group' | 'default';
 }
@@ -51,7 +50,6 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
   canUseFileUpload: true,
   canUseMemory: true,
   canUseRag: true,
-  canUseAwcode: false, // AWCode disabled by default, admins always have access
   mcpPanelEnabled: true,
   source: 'default',
 };
@@ -93,8 +91,7 @@ export const useUserPermissions = () => {
         setPermissions({
           ...DEFAULT_PERMISSIONS,
           isAdmin,
-          // Admins get AWCode + Flows enabled by default
-          canUseAwcode: isAdmin,
+          // Admins get Flows enabled by default
           workflowsEnabled: isAdmin,
         });
         return;
@@ -115,7 +112,6 @@ export const useUserPermissions = () => {
       setPermissions({
         ...DEFAULT_PERMISSIONS,
         isAdmin,
-        canUseAwcode: isAdmin,
         workflowsEnabled: isAdmin,
       });
     } finally {

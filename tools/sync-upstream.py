@@ -27,9 +27,9 @@ RENAMES = [
     ('services/agenticwork-workflows',     'services/openagentic-workflows'),
     ('services/agenticwork-mcp-proxy',     'services/openagentic-mcp-proxy'),
     ('services/agenticwork-ollama',        'services/openagentic-ollama'),
-    ('services/agenticode-exec',           None),  # Code Mode is enterprise-only — OSS shows lock screen
-    ('services/agenticode-manager',        None),  # Code Mode is enterprise-only — OSS shows lock screen
-    ('services/agenticode-server',         None),  # Code Mode is enterprise-only — OSS shows lock screen
+    ('services/agenticode-exec',           None),  # Code Mode removed from OSS entirely (no lock screen)
+    ('services/agenticode-manager',        None),  # Code Mode removed from OSS entirely (no lock screen)
+    ('services/agenticode-server',         None),  # Code Mode removed from OSS entirely (no lock screen)
     ('services/agent-proxy',               'services/openagentic-proxy'),
     ('services/oat-executor',              'services/openagentic-synth'),
     ('services/mcps/awp-admin-mcp',        'services/mcps/oap-admin-mcp'),
@@ -47,7 +47,7 @@ RENAMES = [
     ('services/mcps/awp-runbook-mcp',      'services/mcps/oap-runbook-mcp'),
     ('services/mcps/awp-web-mcp',          'services/mcps/oap-web-mcp'),
     ('services/mcps/awp-agent-architect-mcp', 'services/mcps/oap-agent-architect-mcp'),
-    ('services/mcps/awp-agenticode-mcp',   'services/mcps/oap-code-mcp'),
+    ('services/mcps/awp-agenticode-mcp',   None),  # Code Mode MCP — dropped from OSS entirely
     ('helm/agenticwork',                   'helm/openagentic'),
 ]
 
@@ -123,8 +123,11 @@ SKIP_PREFIXES = (
     # Playwright reports (generated artifacts)
     'services/openagentic-ui/playwright-report/',
     'services/openagentic-ui/tests/e2e/playwright-report-tests-e2e/',
-    # Pytest cache / coverage / editor state — generated, never OSS
-    '.pytest_cache/', 'coverage/',
+    # Pytest cache / coverage / ruff cache / throwaway test venvs / editor
+    # state — generated junk, never OSS. The upstream leaves .ruff_cache/ and
+    # .venv-test/ scattered under services/mcps/* and at the repo root; without
+    # these prefixes their contents leak into the OSS tree on sync.
+    '.pytest_cache/', 'coverage/', '.ruff_cache/', '.venv-test/',
     # API internal planning docs / phase trackers / scratch
     'services/openagentic-api/PHASE',
     'services/openagentic-api/SWAGGER_',
@@ -300,6 +303,13 @@ SKIP_PREFIXES = (
     'services/openagentic-workflows/seed/templates/loki-error-log-research-report.json',
     'services/openagentic-workflows/seed/templates/azure-security-posture-snapshot.json',
     'services/openagentic-workflows/seed/templates/azure-advisor-savings-report.json',
+    # rag-knowledge-qa: deliberate exclusion (2026-06-02). Brand-safe + no hardcoded
+    # models, BUT it relies on advanced RAG node executors (rerank / grounding_check /
+    # multi_query / guardrails / embedding) that the OSS workflow engine does not
+    # implement, and ships as category:"enterprise". Shipping it would seed a template
+    # that fails at runtime. OSS already has 4 working templates incl. grounded
+    # research-and-publish. Revisit if/when those node executors land in OSS.
+    'services/openagentic-workflows/seed/templates/rag-knowledge-qa.json',
     # Enterprise __seed__ template modules (OMHS / incident-response pack).
     # Removed 2026-05-29; sync must never re-pull these.
     'services/openagentic-api/src/services/__seed__/templates/01-pagerduty-triage.ts',
@@ -382,7 +392,7 @@ SKIP_NAMES = {
     'chat_api_stress_test.py',
     'playwright.config.deployed.ts',
     'COMPREHENSIVE_CODEBASE_SECURITY_v0.4.0.md',
-    # Code Mode bundle — enterprise-only; OSS shows lock screen.
+    # Code Mode bundle — removed from OSS entirely (no lock screen); scrub on every sync.
     'CodeModeProvisioningService.ts', 'CodeModeSyncService.ts', 'CodeModeMilvusService.ts',
     'AgenticCodeService.ts', 'AWCodeStorageService.ts',
     'code-mode-provisioning.ts', 'code-plugins.ts', 'admin-code.ts',
@@ -407,6 +417,12 @@ SKIP_CONTENT_HINTS = (
     # Code Mode markers — drop any file dominated by them
     'awcode', 'AWCode', 'AgenticCodeService', 'AgenticCodeSession',
     'CodeModeProvisioning', 'CodeModeSession', 'useCodeModeWebSocket',
+    # Enterprise paywall / upsell / 402-gate / lock-screen markers. The OSS
+    # product has NO monetization gate (clean install, everything works); the
+    # upstream still carries upsell/paywall UI + 402 license-gate components.
+    # Drop any file dominated by these so a sync can never re-introduce them.
+    'GuestPassesUpsell', 'OverageCreditUpsell', 'DesktopUpsell',
+    'PaywallModal', 'UpsellModal', 'LicenseGate', 'LockScreen',
 )
 
 # Stale filename patterns left behind by past renames — filter by path, not content.
@@ -422,11 +438,15 @@ SKIP_PATH_HINTS = (
     '/stress-', '-stress-',
     # Pre-chainguard build artifacts
     '.pre-chainguard',
-    # Code Mode is enterprise-only — block anything with the marker.
-    # OSS shows lock screen via the UI entry point only.
+    # Code Mode removed from OSS entirely (no lock screen) — block anything with the marker.
     'doc-generators/code-mode.gen.ts',
     '/codemode-', '/code-mode-', '/codemode.', '/code-mode.',
     'codemode.plugin', 'codemode.test', 'codemode-test', 'code-mode-test',
+    # Enterprise monetization surfaces — OSS has NO paywall / 402 / upsell /
+    # license lock-screen. Block by path so a sync can never re-add the gate UI
+    # or its routes/services anywhere in the tree.
+    'Upsell', 'upsell', 'paywall', 'Paywall',
+    'lock-screen', 'LockScreen', 'license-gate', 'LicenseGate',
 )
 
 # ─── Preserve: our local fixes (never overwrite) ─────────────────────────────
@@ -435,6 +455,10 @@ PRESERVE = {
     'services/openagentic-api/src/utils/redis-client.ts',
     'services/openagentic-api/package.json',  # OSS-added deps (undici) + any upstream strips
     'services/openagentic-api/src/features.ts',  # OSS edition flag (no gating)
+    # Belt-and-suspenders: this carries the agentic-memory-mcp phantom-removal.
+    # Even with the AGENTIC_PREFIX rewrite above, preserving the file guarantees
+    # the local fix survives the next sync regardless of how the upstream names it.
+    'services/openagentic-api/src/services/InitializationService.ts',
     '.github/workflows/oss-integrity.yml',
     '.github/workflows/sonar.yml',
     '.github/workflows/sonar-summary.yml',
@@ -533,6 +557,81 @@ PRESERVE = {
     'services/openagentic-workflows/prisma/schema.prisma',
     'services/openagentic-workflows/src/services/WorkflowExecutionEngine.ts',
     'services/openagentic-workflows/src/services/WorkflowSecretService.ts',
+
+    # ─── OSS-launch session work (brand/theme + chat rewire + audit-log +
+    #     dead-admin-endpoints + mcp-fleet + dashboard + glass + the backend
+    #     stream drop-fix). These files carry OSS-only edits made for the public
+    #     release; a sync must NEVER overwrite them with the enterprise upstream.
+    #     Added so this session's work survives `sync-upstream.py`.
+
+    # SOT theme (Terminal Glass + accent system + glass-everywhere)
+    'services/openagentic-ui/src/styles/theme.css',
+    'services/openagentic-ui/src/features/admin/primitives-v3/styles.css',
+    'services/openagentic-ui/src/features/workflows/styles/workflow-canvas.css',
+
+    # Chat rewire — the OSS streaming hooks + container (drop-fix consumer +
+    # approval-gate SSE wiring + glass presentation). useChatStream is the
+    # ported engine; useSSEChat is the OSS hook with the approval-required path.
+    'services/openagentic-ui/src/features/chat/hooks/useChatStream.ts',
+    'services/openagentic-ui/src/features/chat/hooks/useSSEChat.ts',
+    'services/openagentic-ui/src/stores/useChatStore.ts',
+    'services/openagentic-ui/src/features/chat/components/MessageBubble.tsx',
+    'services/openagentic-ui/src/features/chat/components/ChatInputBar.tsx',
+    'services/openagentic-ui/src/features/chat/components/ChatInputToolbar.tsx',
+    'services/openagentic-ui/src/features/chat/streamEngine/StreamEngine.ts',
+
+    # Audit-log (unified all-activity admin log) — backend route + plugin mount
+    # + the UI page the launch-headline trust feature lands in.
+    'services/openagentic-api/src/routes/admin-audit-log.ts',
+    'services/openagentic-api/src/plugins/admin-audit.plugin.ts',
+    'services/openagentic-ui/src/features/admin/pages-v3/AuditLogsPage.tsx',
+    # Approval-gate + audit seam (mutating-tool gate, append-only audit).
+    'services/openagentic-api/src/routes/chat/approval-gate.routes.ts',
+    'services/openagentic-api/src/pipeline/built-in-hooks.ts',
+
+    # Dead-admin-endpoints build — every admin route the UI called but the API
+    # never served, now implemented against real data, plus the plugin mounts.
+    'services/openagentic-api/src/routes/admin-kpis.ts',
+    'services/openagentic-api/src/routes/admin-metrics-extra.ts',
+    'services/openagentic-api/src/routes/admin-prompt-analytics.ts',
+    'services/openagentic-api/src/routes/admin-tiered-fc.ts',
+    'services/openagentic-api/src/routes/admin-service-prompts.ts',
+    'services/openagentic-api/src/routes/admin-context-metrics.ts',
+    'services/openagentic-api/src/routes/admin-missing-routes.ts',
+    'services/openagentic-api/src/routes/admin/v3-extras.ts',
+    'services/openagentic-api/src/routes/admin/v3-extras-mutations.ts',
+    'services/openagentic-api/src/routes/admin/ai/admin-page-corpus.ts',
+    'services/openagentic-api/src/plugins/admin-extras.plugin.ts',
+    'services/openagentic-api/src/plugins/admin.plugin.ts',
+    'services/openagentic-api/src/plugins/user.plugin.ts',
+    'services/openagentic-api/src/services/prompt/ServicePromptService.ts',
+
+    # MCP fleet — phantom-removal + registry reconciliation + env-disabled
+    # built-ins surfaced as "available", and the catalog they read from.
+    'services/openagentic-api/src/services/InitializationService.ts',
+    'services/openagentic-api/src/routes/admin/mcp-management.ts',
+    'services/openagentic-api/src/services/mcpBuiltinCatalog.ts',
+    'services/openagentic-ui/src/features/admin/pages-v3/MCPFleetV3.tsx',
+
+    # Dashboard — recharts panes + metric chart + prom queries + the GenAI
+    # tracer metric emit (the 3 newly-emitted gen_ai_* metrics).
+    'services/openagentic-ui/src/features/admin/pages-v3/AnalyticsPanes.tsx',
+    'services/openagentic-ui/src/features/admin/primitives-v3/MetricChart.tsx',
+    'services/openagentic-ui/src/features/admin/pages-v3/llm-performance/promQueries.ts',
+    'services/openagentic-api/src/services/observability/GenAITracer.ts',
+
+    # Backend stream drop-fix trio — streamProvider dropped Ollama tool calls
+    # riding the finish chunk (fixed 8b0b328f4); chatLoop + OllamaProvider are
+    # the rest of the fix. OllamaProvider is already preserved above; the other
+    # two are added here. UI must never be re-synced over these.
+    'services/openagentic-api/src/routes/chat/pipeline/chat/streamProvider.ts',
+    'services/openagentic-api/src/routes/chat/pipeline/chat/chatLoop.ts',
+
+    # Glass-everywhere — flows/docs/about surfaces brought onto the glass +
+    # accent system this session.
+    'services/openagentic-ui/src/features/about/AboutModal.tsx',
+    'services/openagentic-ui/src/features/docs/DocsViewer.tsx',
+    'services/openagentic-ui/src/features/workflows/components/WorkflowsPage.tsx',
 }
 
 # Content-level brand rewrite
@@ -561,6 +660,21 @@ MCP_KEBAB = re.compile(r'openagentic-([a-z0-9-]+)-mcp')
 MCP_SNAKE = re.compile(r'openagentic_([a-z0-9_]+)_mcp')
 MCP_CAMEL = re.compile(r'openagentic([A-Z][A-Za-z0-9]*)Mcp')
 
+# Bare `agentic-`/`agentic_` identifier prefix (e.g. the upstream's
+# `agentic-memory-mcp` MCP id / display name) → `openagentic-`/`openagentic_`.
+# The other CONTENT_RENAMES only handle `agenticwork`/`agenticode`/`oat-`/`awp-`,
+# so a plain `agentic-…` id slipped through and re-leaked the proprietary name.
+# CAREFULLY scoped so it never touches the word "agentic" inside "openagentic"
+# or in prose ("agentic work platform"):
+#   (?<![A-Za-z0-9]) — only at an identifier boundary (not mid-word: reagentic-)
+#   (?<!open/Open/OPEN) — never re-prefix something already openagentic-…
+#   agentic([-_])   — literal prefix followed by an identifier separator only
+#                     (hyphen/underscore — NOT a space, so prose is untouched)
+#   (?=[a-z0-9])    — separator must lead into an identifier token
+AGENTIC_PREFIX = re.compile(
+    r'(?<![A-Za-z0-9])(?<!open)(?<!Open)(?<!OPEN)agentic([-_])(?=[a-z0-9])'
+)
+
 def map_path(path):
     for src, dst in RENAMES:
         if path == src or path.startswith(src + '/'):
@@ -582,6 +696,10 @@ def should_skip(rel):
 
 def rewrite(text):
     for old, new in CONTENT_RENAMES: text = text.replace(old, new)
+    # Fix bare `agentic-`/`agentic_` identifier prefixes BEFORE the MCP-id
+    # kebab/snake passes so `agentic-memory-mcp` first becomes
+    # `openagentic-memory-mcp` and then folds into `oap-memory-mcp`.
+    text = AGENTIC_PREFIX.sub(lambda m: 'openagentic' + m.group(1), text)
     text = MCP_KEBAB.sub(r'oap-\1-mcp', text)
     text = MCP_SNAKE.sub(r'oap_\1_mcp', text)
     text = MCP_CAMEL.sub(r'oap\1Mcp', text)
@@ -598,6 +716,7 @@ def main():
             '.venv','venv','.turbo','@eaDir',
             '.worktrees','.worktree','.serena','.superpowers','.claude',
             '.playwright-mcp','playwright-report','coverage',
+            '.pytest_cache','.ruff_cache','.venv-test',
         )]
         for fn in files:
             abs_up = os.path.join(dp, fn)

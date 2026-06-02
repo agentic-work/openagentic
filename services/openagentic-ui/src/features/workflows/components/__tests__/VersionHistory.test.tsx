@@ -306,7 +306,8 @@ describe('R13 – WorkflowToolbar Save with changelog prompt', () => {
       />
     );
     const saveBtn = screen.getByRole('button', { name: /save/i });
-    fireEvent.click(saveBtn);
+    // One-click Save runs without prompting; Shift+Save opens the changelog dialog.
+    fireEvent.click(saveBtn, { shiftKey: true });
     // Changelog dialog should appear
     expect(screen.getByTestId('changelog-prompt')).toBeInTheDocument();
   });
@@ -331,7 +332,8 @@ describe('R13 – WorkflowToolbar Save with changelog prompt', () => {
       />
     );
     const saveBtn = screen.getByRole('button', { name: /save/i });
-    fireEvent.click(saveBtn);
+    // Shift+Save opens the changelog dialog (one-click Save saves directly).
+    fireEvent.click(saveBtn, { shiftKey: true });
     const input = screen.getByTestId('changelog-input');
     fireEvent.change(input, { target: { value: 'Added new HTTP node' } });
     const submitBtn = screen.getByTestId('changelog-submit');

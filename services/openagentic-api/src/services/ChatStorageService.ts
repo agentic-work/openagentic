@@ -419,12 +419,9 @@ export class ChatStorageService {
     }
 
     // Cache miss - fetch lightweight session data (NO messages, just metadata).
-    // Exclude codemode-originated sessions: the v2-bespoke codemode handler
-    // wrote user prompts into this same table with title="Code Session", which
-    // made them appear in the chat sidebar — a real privacy bug since chatmode
-    // and codemode transcripts should be siloed. CCR (task #218) persists
-    // codemode transcripts to the pod's MinIO workspace instead, so new rows
-    // won't show up, but legacy v2 rows need the title filter to stay hidden.
+    // Legacy guard: an older, now-removed feature wrote rows into this table
+    // with title="Code Session". Those rows must never surface in the chat
+    // sidebar, so the title filter below keeps any such legacy rows hidden.
     try {
       const sessions = await this.prisma.chatSession.findMany({
         where: {

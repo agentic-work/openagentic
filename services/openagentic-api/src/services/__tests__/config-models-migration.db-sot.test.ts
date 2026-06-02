@@ -8,12 +8,6 @@
  *   mc = await ModelConfigurationService.getConfig().catch(() => null);
  *   defaultModel: mc?.defaultModel.modelId ?? '(db-unreachable)', ...
  *
- * Pre-fix pattern (CodeModeSessionService.ts line 99):
- *   const model = options.model || await ModelConfigurationService.getDefaultChatModel().catch(() => null) || MODELS.code;
- *
- * Post-fix:
- *   const model = options.model || await ModelConfigurationService.getDefaultChatModel().catch(() => null) || '';
- *
  * These are static-source (grep) tests. They lock out the specific regression
  * vector (MODELS.* references in non-provider consumers) without requiring a
  * fully-mocked Fastify stack.
@@ -44,36 +38,6 @@ describe('Task 6b: non-provider MODELS.* consumers migrated to DB', () => {
     expect(logBlock).not.toMatch(/getDefaultModel\(\)/);
     // Positive: must reference ModelConfigurationService.getConfig
     expect(logBlock).toMatch(/ModelConfigurationService\.getConfig/);
-  });
-
-  // ── CodeModeSessionService ─────────────────────────────────────────────────
-
-  it('CodeModeSessionService.createSession does not reference MODELS.code', () => {
-    const src = read('src/services/CodeModeSessionService.ts');
-    // Extract the createSession method body (ends at next top-level method)
-    const createSessionBlock =
-      src.match(/async createSession\([\s\S]*?^\s{2}\}/m)?.[0] ?? '';
-    expect(createSessionBlock.length).toBeGreaterThan(10);
-    // Must not fall back to MODELS.code (non-comment lines)
-    const nonCommentLines = createSessionBlock
-      .split('\n')
-      .filter(l => !l.trimStart().startsWith('//') && !l.trimStart().startsWith('*'))
-      .join('\n');
-    expect(nonCommentLines).not.toMatch(/MODELS\.code/);
-    // Positive: DB accessor must be present
-    expect(nonCommentLines).toMatch(/ModelConfigurationService\.getDefaultChatModel/);
-  });
-
-  it('CodeModeSessionService.getSession does not reference MODELS.code', () => {
-    const src = read('src/services/CodeModeSessionService.ts');
-    const getSessionBlock =
-      src.match(/async getSession\([\s\S]*?^\s{2}\}/m)?.[0] ?? '';
-    expect(getSessionBlock.length).toBeGreaterThan(10);
-    const nonCommentLines = getSessionBlock
-      .split('\n')
-      .filter(l => !l.trimStart().startsWith('//') && !l.trimStart().startsWith('*'))
-      .join('\n');
-    expect(nonCommentLines).not.toMatch(/MODELS\.code/);
   });
 
   // ── WorkflowExecutionEngine ────────────────────────────────────────────────

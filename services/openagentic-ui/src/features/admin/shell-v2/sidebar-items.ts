@@ -11,7 +11,7 @@ export type SidebarGroup = {
   id: string
   label: string
   /** If non-null, the group renders only when featureFlags[featureGate] is true. */
-  featureGate?: 'mcp' | 'openagentic'
+  featureGate?: 'mcp'
   children: SidebarLeaf[]
 }
 
@@ -65,17 +65,6 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { id: 'flows-kpis',                  label: 'KPI Dashboard', badge: 'Live' },
       { id: 'flows-audit-logs',            label: 'Audit Logs', badge: 'Live' },
       { id: 'teams',                       label: 'Teams', badge: 'Beta' },
-    ],
-  },
-  {
-    id: 'codemode', label: 'Code Mode', featureGate: 'openagentic',
-    children: [
-      { id: 'codemode-settings',  label: 'Settings' },
-      { id: 'codemode-global',    label: 'Global Settings' },
-      { id: 'codemode-mcp',       label: 'MCP Servers' },
-      { id: 'codemode-skills',    label: 'Skills & Plugins' },
-      { id: 'codemode-users',     label: 'Users & Sessions' },
-      { id: 'openagentic-metrics', label: 'Metrics' },
     ],
   },
   {

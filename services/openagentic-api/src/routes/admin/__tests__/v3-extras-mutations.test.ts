@@ -1,17 +1,13 @@
 /**
  * v3-extras-mutations admin routes — TDD spec
  *
- * Covers the 5 mutation endpoints flagged by the v3 admin UI as
+ * Covers the mutation endpoints flagged by the v3 admin UI as
  * "wire-up pending":
  *
  *   1. POST   /api/admin/integrations/:platform/oauth-start
  *   2. PATCH  /api/admin/chargeback/reports/:id
- *   3a. POST  /api/admin/codemode/skills
- *   3b. DELETE /api/admin/codemode/skills/:id
- *   4a. POST  /api/admin/codemode/plugins
- *   4b. DELETE /api/admin/codemode/plugins/:id
- *   5. PUT    /api/admin/codemode/mcp-policy
- *   6. POST   /api/admin/llm-providers/registry/refresh-all
+ *   3. POST   /api/admin/llm-providers/registry/refresh-all
+ *   4. GET/PUT /api/admin/workflow-settings
  *
  * Each endpoint is exercised for:
  *   - 200 OK on the happy path
@@ -310,196 +306,6 @@ describe('PATCH /api/admin/chargeback/reports/:id', () => {
 });
 
 // ===========================================================================
-// 3. POST /codemode/skills + DELETE /codemode/skills/:id
-// ===========================================================================
-describe('POST /api/admin/codemode/skills', () => {
-  it('201: adds a new skill to the codemode.skills config', async () => {
-    p.systemConfiguration.findUnique.mockResolvedValue({
-      key: 'codemode.skills',
-      value: JSON.stringify([{ id: 'existing', name: 'Existing', enabled: true }]),
-    });
-    p.systemConfiguration.upsert.mockResolvedValue({});
-    p.adminAuditLog.create.mockResolvedValue({ id: 'a1' });
-
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/admin/codemode/skills',
-      payload: { id: 'new-skill', name: 'New Skill', description: 'test', enabled: true },
-    });
-    expect(res.statusCode).toBe(201);
-    const body = res.json();
-    expect(body.success).toBe(true);
-    expect(body.skill.id).toBe('new-skill');
-    expect(p.systemConfiguration.upsert).toHaveBeenCalled();
-    await app.close();
-  });
-
-  it('400: rejects when id is missing', async () => {
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/admin/codemode/skills',
-      payload: { name: 'No id' },
-    });
-    expect(res.statusCode).toBe(400);
-    await app.close();
-  });
-
-  it('409: rejects duplicate id', async () => {
-    p.systemConfiguration.findUnique.mockResolvedValue({
-      key: 'codemode.skills',
-      value: JSON.stringify([{ id: 'dup', name: 'Dup' }]),
-    });
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/admin/codemode/skills',
-      payload: { id: 'dup', name: 'Duplicate' },
-    });
-    expect(res.statusCode).toBe(409);
-    await app.close();
-  });
-});
-
-describe('DELETE /api/admin/codemode/skills/:id', () => {
-  it('200: removes the skill from the config', async () => {
-    p.systemConfiguration.findUnique.mockResolvedValue({
-      key: 'codemode.skills',
-      value: JSON.stringify([
-        { id: 'keep', name: 'Keep' },
-        { id: 'drop', name: 'Drop' },
-      ]),
-    });
-    p.systemConfiguration.upsert.mockResolvedValue({});
-    p.adminAuditLog.create.mockResolvedValue({ id: 'a1' });
-
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'DELETE',
-      url: '/api/admin/codemode/skills/drop',
-    });
-    expect(res.statusCode).toBe(200);
-    expect(res.json().success).toBe(true);
-    // Verify the new array doesn't contain `drop`
-    const upsertCall = p.systemConfiguration.upsert.mock.calls[0][0];
-    const written = JSON.parse(upsertCall.update.value);
-    expect(written.find((s: any) => s.id === 'drop')).toBeUndefined();
-    expect(written.find((s: any) => s.id === 'keep')).toBeDefined();
-    await app.close();
-  });
-
-  it('404: when skill id not found', async () => {
-    p.systemConfiguration.findUnique.mockResolvedValue({
-      key: 'codemode.skills',
-      value: JSON.stringify([{ id: 'a' }]),
-    });
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'DELETE',
-      url: '/api/admin/codemode/skills/missing',
-    });
-    expect(res.statusCode).toBe(404);
-    await app.close();
-  });
-});
-
-// ===========================================================================
-// 4. POST /codemode/plugins + DELETE /codemode/plugins/:id
-// ===========================================================================
-describe('POST /api/admin/codemode/plugins', () => {
-  it('201: adds plugin to codemode.plugins config', async () => {
-    p.systemConfiguration.findUnique.mockResolvedValue(null);
-    p.systemConfiguration.upsert.mockResolvedValue({});
-    p.adminAuditLog.create.mockResolvedValue({ id: 'a1' });
-
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/admin/codemode/plugins',
-      payload: { id: 'plug-1', name: 'plug-1', version: '1.0.0', enabled: true },
-    });
-    expect(res.statusCode).toBe(201);
-    expect(res.json().plugin.id).toBe('plug-1');
-    await app.close();
-  });
-});
-
-describe('DELETE /api/admin/codemode/plugins/:id', () => {
-  it('200: removes plugin from config', async () => {
-    p.systemConfiguration.findUnique.mockResolvedValue({
-      key: 'codemode.plugins',
-      value: JSON.stringify([{ id: 'p1', name: 'p1' }]),
-    });
-    p.systemConfiguration.upsert.mockResolvedValue({});
-    p.adminAuditLog.create.mockResolvedValue({ id: 'a1' });
-
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'DELETE',
-      url: '/api/admin/codemode/plugins/p1',
-    });
-    expect(res.statusCode).toBe(200);
-    await app.close();
-  });
-});
-
-// ===========================================================================
-// 5. PUT /codemode/mcp-policy
-// ===========================================================================
-describe('PUT /api/admin/codemode/mcp-policy', () => {
-  it('200: stores allow + deny lists', async () => {
-    p.systemConfiguration.findUnique.mockResolvedValue(null);
-    p.systemConfiguration.upsert.mockResolvedValue({});
-    p.adminAuditLog.create.mockResolvedValue({ id: 'a1' });
-
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'PUT',
-      url: '/api/admin/codemode/mcp-policy',
-      payload: { allow: ['azure-mcp', 'aws-mcp'], deny: ['legacy-foo'] },
-    });
-    expect(res.statusCode).toBe(200);
-    const body = res.json();
-    expect(body.success).toBe(true);
-    expect(body.policy.allow).toEqual(['azure-mcp', 'aws-mcp']);
-    expect(body.policy.deny).toEqual(['legacy-foo']);
-    await app.close();
-  });
-
-  it('400: rejects when allow ∩ deny is non-empty', async () => {
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'PUT',
-      url: '/api/admin/codemode/mcp-policy',
-      payload: { allow: ['shared'], deny: ['shared', 'other'] },
-    });
-    expect(res.statusCode).toBe(400);
-    expect(res.json().error).toMatch(/intersection|overlap|conflict/i);
-    await app.close();
-  });
-
-  it('200: partial update preserves the unspecified side', async () => {
-    p.systemConfiguration.findUnique.mockResolvedValue({
-      key: 'codemode.mcp-policy',
-      value: JSON.stringify({ allow: ['existing-allow'], deny: ['existing-deny'] }),
-    });
-    p.systemConfiguration.upsert.mockResolvedValue({});
-    p.adminAuditLog.create.mockResolvedValue({ id: 'a1' });
-
-    const app = await buildApp();
-    const res = await app.inject({
-      method: 'PUT',
-      url: '/api/admin/codemode/mcp-policy',
-      payload: { allow: ['new-allow'] },
-    });
-    expect(res.statusCode).toBe(200);
-    expect(res.json().policy.deny).toEqual(['existing-deny']);
-    await app.close();
-  });
-});
-
-// ===========================================================================
 // 6. POST /llm-providers/registry/refresh-all
 // ===========================================================================
 describe('POST /api/admin/llm-providers/registry/refresh-all', () => {
@@ -559,8 +365,8 @@ describe('Defence-in-depth admin guard', () => {
     const app = await buildApp({ isAdmin: false });
     const res = await app.inject({
       method: 'POST',
-      url: '/api/admin/codemode/skills',
-      payload: { id: 'x', name: 'x' },
+      url: '/api/admin/llm-providers/registry/refresh-all',
+      payload: {},
     });
     expect(res.statusCode).toBe(403);
     await app.close();

@@ -1,4 +1,4 @@
-export type ContextMode = 'chat' | 'code' | 'flow';
+export type ContextMode = 'chat' | 'flow';
 
 export interface ContextBudget {
   totalTokens: number;

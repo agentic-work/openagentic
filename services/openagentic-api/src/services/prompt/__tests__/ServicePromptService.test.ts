@@ -221,12 +221,11 @@ describe('seedServicePromptsFromDefaults', () => {
     expect(result.created).not.toContain(existing);
   });
 
-  it('seeds the 6 required keys', async () => {
+  it('seeds the 5 required keys', async () => {
     const required = [
       'slack.integration_prompt',
       'title_gen.ai_service',
       'title_gen.client',
-      'codemode.summary_prompt',
       'memory.context_system',
       'memory.context_build',
     ];

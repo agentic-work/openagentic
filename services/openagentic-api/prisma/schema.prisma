@@ -1301,6 +1301,35 @@ model AdminAuditLog {
 }
 
 // ============================================================================
+// AUTHENTICATION EVENT AUDIT
+// ----------------------------------------------------------------------------
+// First-class persistence of login/logout/sso/token-refresh events. Written
+// best-effort by AuthAuditLogger from the auth routes and UNIONed into the
+// admin audit feed. Previously these were not recorded for local auth and were
+// only buried in admin_audit_log.details JSON for Azure.
+// ============================================================================
+
+model AuthAuditLog {
+  id         String   @id @default(uuid())
+  user_id    String? // nullable: a failed login may not resolve to a known user
+  user_email String? // attempted identity, recorded even when user_id is null
+  event      String // 'login' | 'logout' | 'login_failed' | 'token_refresh' | 'sso_login'
+  provider   String // 'local' | 'azure' | ...
+  success    Boolean  @default(true)
+  ip_address String?
+  user_agent String?  @db.Text
+  detail     Json? // structured extra context (failure reason, tenant, isNewUser); no secrets
+  created_at DateTime @default(now())
+
+  @@index([created_at(sort: Desc)])
+  @@index([event])
+  @@index([user_id])
+  @@index([success])
+  @@map("auth_audit_log")
+  @@schema("admin")
+}
+
+// ============================================================================
 // DLP (DATA LOSS PREVENTION) FINDINGS
 // ============================================================================
 
@@ -4001,7 +4030,8 @@ model WorkflowExecution {
   version    WorkflowVersion?       @relation(fields: [version_id], references: [id])
   starter    User?                  @relation(fields: [started_by], references: [id])
   group      UserGroup?             @relation(fields: [group_id], references: [id])
-  approvals  WorkflowApproval[]
+  approvals    WorkflowApproval[]
+  dataRequests WorkflowDataRequest[]
   logs       WorkflowExecutionLog[]
   tokenUsage TokenUsage[]
 
@@ -4052,6 +4082,52 @@ model WorkflowApproval {
   @@index([execution_id])
   @@index([status])
   @@map("workflow_approvals")
+  @@schema("public")
+}
+
+// HITL human_input / request_data — the typed DATA-REQUEST gate (sister of
+// WorkflowApproval). A human_input node persists one of these rows, pauses the
+// run, and emits a `needs_input` frame; POST /resume-execution validates the
+// user's submitted values against the stored fields[] and resumes the engine.
+model WorkflowDataRequest {
+  id           String @id @default(uuid())
+  execution_id String
+  node_id      String
+
+  // The typed form the user must fill (array of field descriptors).
+  fields      Json
+  title       String? @db.Text
+  description String? @db.Text
+
+  // Request configuration
+  timeout_seconds Int      @default(86400) // 24 hours
+  timeout_action  String   @default("fail") // fail | use_default
+  assign_to       String[] @default([]) // user ids or group names allowed to answer
+  channel         String   @default("chat") // chat | in_app | email | slack
+
+  // Status + result
+  status      String  @default("pending") // pending, provided, timeout
+  values      Json? // the user's submitted answers, keyed by field name
+  provided_by String? // user id who submitted
+
+  // Context (input snapshot + node results at suspend time)
+  context_data Json?
+
+  // Multi-tenant isolation (nullable / harmless in single-tenant OSS)
+  tenant_id String?
+
+  // Timing
+  created_at DateTime  @default(now())
+  timeout_at DateTime
+  decided_at DateTime?
+
+  // Relations
+  execution WorkflowExecution @relation(fields: [execution_id], references: [id], onDelete: Cascade)
+
+  @@index([execution_id])
+  @@index([status])
+  @@index([tenant_id])
+  @@map("workflow_data_requests")
   @@schema("public")
 }
 

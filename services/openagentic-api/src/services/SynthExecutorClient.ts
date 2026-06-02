@@ -23,8 +23,8 @@ export interface SynthExecutionRequest {
   intent: string;
   userId: string;
   /**
-   * Chat/codemode session id — embedded as `sid` claim in the service-JWT
-   * so synth-executor can correlate audit rows + emit lifecycle frames back
+   * Chat session id — embedded as `sid` claim in the service-JWT so
+   * synth-executor can correlate audit rows + emit lifecycle frames back
    * to the right SSE stream.
    */
   sessionId: string;

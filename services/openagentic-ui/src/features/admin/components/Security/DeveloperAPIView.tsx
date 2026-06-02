@@ -1212,7 +1212,6 @@ x-api-key: oa_your_api_key_here`}
                   <li><strong>OpenAgentic Manager</strong> - Orchestrates code sessions and file management</li>
                   <li><strong>User Workspaces</strong> - Isolated /workspaces/{'{userId}'} directories</li>
                   <li><strong>MCP Integration</strong> - Execute code via openagentic_openagentic MCP server</li>
-                  <li><strong>WebSocket Terminal</strong> - Real-time terminal access</li>
                 </ul>
               </div>
             </div>
@@ -1288,42 +1287,6 @@ x-api-key: oa_your_api_key_here`}
   }'`}
                   </pre>
                 </div>
-              </div>
-            </div>
-
-            {/* WebSocket Terminal */}
-            <div
-              className="p-6 rounded-lg"
-              style={{ backgroundColor: 'var(--color-surfaceSecondary)' }}
-            >
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
-                <Terminal className="w-5 h-5" /> WebSocket Terminal
-              </h3>
-
-              <div className="space-y-4">
-                <p className="text-sm" style={{ color: 'var(--color-textSecondary)' }}>
-                  Connect to the WebSocket terminal for real-time shell access.
-                </p>
-                <pre
-                  className="p-4 rounded text-xs overflow-auto"
-                  style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}
-                >
-{`// WebSocket connection
-const ws = new WebSocket(
-  'wss://your-instance/api/code/ws/terminal?sessionId=your-session-id'
-);
-
-ws.onopen = () => {
-  console.log('Terminal connected');
-  // Send commands
-  ws.send(JSON.stringify({ type: 'input', data: 'ls -la\\n' }));
-};
-
-ws.onmessage = (event) => {
-  const msg = JSON.parse(event.data);
-  console.log('Output:', msg.data);
-};`}
-                </pre>
               </div>
             </div>
 

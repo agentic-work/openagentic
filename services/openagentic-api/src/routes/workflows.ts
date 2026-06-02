@@ -46,6 +46,7 @@ function workflowServiceHeaders(extra: Record<string, string | undefined> = {}):
 // fallback else branches are the only callers that resolve to a
 // local-engine instance to abort.
 import { executeViaWorkflowsService as executeWorkflow } from '../services/executeViaWorkflowsService.js';
+import { submitDataRequestViaWorkflowsService } from '../services/resumeViaWorkflowsService.js';
 import { fireWorkflowFinishedSubscribers } from '../services/workflowFinishedSubscriptions.js';
 import { resolveExecuteTenantId } from './helpers/resolveExecuteTenantId.js';
 import { abortWorkflowExecution } from '../services/WorkflowExecutionEngine.js';
@@ -4209,6 +4210,103 @@ data.on("data", (chunk: Buffer) => {
       } catch (error: any) {
         logger.error({ error }, '[Workflows] Failed to store artifact');
         return reply.code(500).send({ error: 'Failed to store artifact', message: error.message });
+      }
+    }
+  );
+
+  /**
+   * POST /api/workflows/executions/:executionId/data-requests/:requestId
+   *
+   * HITL human_input / request_data SUBMIT. The flows "human_input" node pauses
+   * a run, persists a WorkflowDataRequest row, and emits a `needs_input` NDJSON
+   * frame. This is where the user submits their typed `{ values }` to resolve
+   * the request and resume the workflow.
+   *
+   * URL shape is the UI client contract (workflowApi.submitDataRequest →
+   * `workflowEndpoint('/workflows/executions/:executionId/data-requests/:requestId')`).
+   * We auth-gate, load the row for tenant + authorization, thread the caller as
+   * `providedBy`, and proxy to the workflows-svc which validates the values
+   * against the stored fields[] and re-enters the engine from the request node.
+   */
+  fastify.post<{ Params: { executionId: string; requestId: string }; Body: { values: Record<string, unknown> } }>(
+    '/executions/:executionId/data-requests/:requestId',
+    async (request, reply) => {
+      try {
+        const { executionId, requestId } = request.params;
+        const { values } = request.body || ({} as { values: Record<string, unknown> });
+        const user = request.user;
+        const userId = user?.userId || user?.id;
+
+        if (!values || typeof values !== 'object' || Array.isArray(values)) {
+          return reply.code(400).send({ error: 'A `values` object keyed by field name is required' });
+        }
+
+        // Load the request row for tenant scoping + authorization. Full field
+        // validation happens server-side in workflows-svc against the persisted
+        // fields[]; here we only gate access + derive the tenant.
+        const dataRequest = await prisma.workflowDataRequest.findUnique({
+          where: { id: requestId },
+          include: {
+            execution: { include: { workflow: { select: { id: true, name: true, created_by: true } } } },
+          },
+        }) as any;
+
+        if (!dataRequest) {
+          return reply.code(404).send({ error: `Data request '${requestId}' not found` });
+        }
+        if (dataRequest.execution_id !== executionId) {
+          return reply.code(400).send({ error: `Data request '${requestId}' does not belong to execution '${executionId}'` });
+        }
+        if (dataRequest.status !== 'pending') {
+          return reply.code(400).send({ error: `Data request is already '${dataRequest.status}'` });
+        }
+
+        // Authorization: assign_to (user ids / group names) scopes who may
+        // answer. Empty assign_to ⇒ the execution owner (or an admin) only.
+        const assignTo: string[] = Array.isArray(dataRequest.assign_to) ? dataRequest.assign_to : [];
+        const isAssignee = assignTo.length > 0 && assignTo.includes(userId);
+        const isOwner =
+          dataRequest.execution?.started_by === userId ||
+          dataRequest.execution?.workflow?.created_by === userId;
+        if (!isAssignee && !isOwner && !user?.isAdmin) {
+          return reply.code(403).send({ error: 'You are not authorized to answer this data request' });
+        }
+
+        // Tenant derived from the persisted row / execution — the proxy
+        // fail-CLOSES on null (no JWT-trust boundary downstream).
+        const tenantId =
+          dataRequest.tenant_id ||
+          (dataRequest.execution as any)?.tenant_id ||
+          request.tenantId;
+
+        const result = await submitDataRequestViaWorkflowsService({
+          executionId,
+          requestId,
+          values,
+          providedBy: userId,
+          providedAt: new Date().toISOString(),
+          tenantId,
+        });
+
+        if (!result.success) {
+          // Validation/state rejections surface as 400 (UI re-prompts); engine
+          // failures surface as 500.
+          const msg = result.error || 'Data request submission failed';
+          const isValidation = /required|option|must be|already|does not belong|no fields|not an object/i.test(msg);
+          return reply.code(isValidation ? 400 : 500).send({ error: msg });
+        }
+
+        logger.info({ requestId, executionId, userId }, '[Workflows] Data request submitted + workflow resumed');
+        return reply.send({
+          success: true,
+          requestId,
+          executionId,
+          status: 'provided',
+          output: result.output,
+        });
+      } catch (error: any) {
+        logger.error({ error: error.message }, '[Workflows] Failed to submit data request');
+        return reply.code(500).send({ error: 'Failed to submit data request', message: error.message });
       }
     }
   );

@@ -155,55 +155,106 @@ export class ChatMCPService {
   }
 
   /**
-   * List all MCP servers from database
+   * List all MCP servers reflecting the REAL fleet:
+   *   - live mcp-proxy servers (running built-ins, normalized to bare ids)
+   *   - the known built-in catalog (so env-disabled built-ins still appear)
+   *   - DB-registered admin-added servers
+   *
+   * The DB registry alone no longer models the built-ins (the memory phantom was
+   * removed), so a DB-only list would be empty. This keys everything by the
+   * canonical bare id so each built-in shows as ONE entry.
    */
   async listServers(): Promise<MCPServer[]> {
     try {
-      this.logger.debug('Listing MCP servers');
-      
-      // Query MCP server configurations from database
-      const servers = await this.prisma.mCPServerConfig.findMany({
-        where: {
-          enabled: true
-        },
-        orderBy: {
-          name: 'asc'
+      this.logger.debug('Listing MCP servers (real fleet: proxy + catalog + db)');
+
+      const { MCPSyncService } = await import('../../../services/MCPSyncService.js');
+      const { normalizeMcpServerId, BUILTIN_MCP_CATALOG } =
+        await import('../../../services/mcpBuiltinCatalog.js');
+
+      const byId = new Map<string, MCPServer>();
+
+      // 1. Known built-in catalog — baseline so disabled built-ins still appear.
+      for (const def of Object.values(BUILTIN_MCP_CATALOG)) {
+        byId.set(def.id, {
+          id: def.id,
+          name: def.name,
+          description: def.description,
+          enabled: !def.needsConfig,
+          transport: 'stdio',
+          userIsolated: false,
+          requireObo: false,
+          capabilities: { tools: true, resources: false, prompts: false, logging: true },
+        });
+      }
+
+      // 2. Live proxy servers (running) — override catalog with real running state.
+      try {
+        const sync = new MCPSyncService(this.logger as any);
+        const proxyServers = await sync.getMCPProxyServers();
+        for (const ps of proxyServers) {
+          const raw = String(ps.name ?? ps.id ?? '').trim();
+          if (!raw) continue;
+          const id = normalizeMcpServerId(raw) || raw.toLowerCase();
+          const existing = byId.get(id);
+          byId.set(id, {
+            id,
+            name: existing?.name ?? id,
+            description: existing?.description ?? (ps.description || `MCP Server: ${id}`),
+            enabled: ps.status === 'running' || ps.status === 'connected' || !!ps.enabled,
+            transport: 'stdio',
+            userIsolated: ps.user_isolated || ps.userIsolated || existing?.userIsolated || false,
+            requireObo: ps.supports_obo || ps.requireObo || existing?.requireObo || false,
+            capabilities: { tools: true, resources: false, prompts: false, logging: true },
+          });
         }
+      } catch (e: any) {
+        this.logger.warn({ error: e?.message }, 'listServers: proxy fetch failed (non-fatal)');
+      }
+
+      // 3. DB-registered admin-added servers (anything not already covered).
+      const dbServers = await this.prisma.mCPServerConfig.findMany({
+        where: { enabled: true },
+        orderBy: { name: 'asc' },
       });
-      
-      // Transform to MCPServer format
-      const mcpServers: MCPServer[] = servers.map(server => ({
-        id: server.id,
-        name: server.name,
-        description: server.description || '',
-        enabled: server.enabled,
-        transport: 'stdio', // Default transport
-        userIsolated: server.user_isolated,
-        requireObo: server.require_obo,
-        capabilities: {
-          tools: server.capabilities?.includes('tools') ?? true,
-          resources: server.capabilities?.includes('resources') ?? false,
-          prompts: server.capabilities?.includes('prompts') ?? false,
-          logging: server.capabilities?.includes('logging') ?? true
-        },
-        command: server.command,
-        args: server.args,
-        env: (typeof server.env === 'object' && server.env !== null && !Array.isArray(server.env)) 
-          ? server.env as Record<string, string> 
-          : {}
-      }));
-      
-      this.logger.info({ 
-        serverCount: mcpServers.length 
-      }, 'Listed MCP servers successfully');
-      
+      for (const server of dbServers) {
+        const id = normalizeMcpServerId(server.id) || server.id;
+        if (byId.has(id)) continue;
+        byId.set(id, {
+          id,
+          name: server.name,
+          description: server.description || '',
+          enabled: server.enabled,
+          transport: 'stdio',
+          userIsolated: server.user_isolated,
+          requireObo: server.require_obo,
+          capabilities: {
+            tools: server.capabilities?.includes('tools') ?? true,
+            resources: server.capabilities?.includes('resources') ?? false,
+            prompts: server.capabilities?.includes('prompts') ?? false,
+            logging: server.capabilities?.includes('logging') ?? true,
+          },
+          command: server.command,
+          args: server.args,
+          env: (typeof server.env === 'object' && server.env !== null && !Array.isArray(server.env))
+            ? server.env as Record<string, string>
+            : {},
+        });
+      }
+
+      const mcpServers = Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+      this.logger.info({
+        serverCount: mcpServers.length
+      }, 'Listed MCP servers successfully (real fleet)');
+
       return mcpServers;
-      
+
     } catch (error) {
-      this.logger.error({ 
-        error: error.message 
+      this.logger.error({
+        error: error.message
       }, 'Failed to list MCP servers');
-      
+
       return [];
     }
   }

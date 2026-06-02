@@ -176,8 +176,7 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({ workflow
               className="overflow-hidden mb-2"
             >
               <div
-                className="p-2 rounded-lg border space-y-1.5"
-                style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+                className="glass-card p-2 space-y-1.5"
               >
                 <input
                   type="text"
@@ -232,11 +231,7 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({ workflow
                 <button
                   onClick={handleAddSecret}
                   disabled={saving || !newName.trim() || !newValue.trim()}
-                  className="w-full py-1 text-[12px] font-medium rounded transition-colors disabled:opacity-50"
-                  style={{
-                    backgroundColor: 'var(--user-accent-primary, #2196f3)',
-                    color: 'var(--color-on-accent)',
-                  }}
+                  className="glass-btn glass-btn-primary w-full py-1 text-[12px]"
                 >
                   {saving ? 'Saving...' : 'Add Secret'}
                 </button>
@@ -259,7 +254,7 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({ workflow
             {secrets.map(secret => (
               <div
                 key={secret.id}
-                className="flex items-center gap-1.5 px-2 py-1 rounded transition-colors hover:bg-[var(--color-surface)]"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-[var(--ctl-radius-sm)] border border-transparent transition-[background,border-color] glass-row-hover"
               >
                 <Key className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--color-text-tertiary, #999)' }} />
                 <div className="flex-1 min-w-0">
@@ -354,7 +349,7 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({ workflow
       <button
         onClick={() => window.dispatchEvent(new CustomEvent('openAdminPortal'))}
         className="flex items-center gap-1.5 text-[12px] font-medium transition-colors hover:opacity-80"
-        style={{ color: 'var(--user-accent-primary, #2196f3)' }}
+        style={{ color: 'var(--user-accent-primary, #FF5722)' }}
       >
         <Settings className="w-3 h-3" />
         Manage in Admin

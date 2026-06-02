@@ -9,8 +9,6 @@ export type AdminSection =
   | 'prompts' | 'templates' | 'pipeline'
   | 'monitoring' | 'usage' | 'performance' | 'feedback' | 'audit' | 'code-metrics'
   | 'rate-limits' | 'api-tokens'
-  | 'awcode-sessions' | 'awcode-settings'
-  | 'codemode-settings' | 'codemode-mcp' | 'codemode-skills' | 'codemode-users' | 'codemode-global'
   | 'settings';
 
 // Section categories for sidebar
@@ -22,8 +20,6 @@ export const SECTION_CATEGORIES = {
   content: ['prompts', 'templates', 'pipeline'],
   monitoring: ['monitoring', 'usage', 'performance', 'feedback', 'audit', 'code-metrics'],
   security: ['rate-limits', 'api-tokens'],
-  code: ['awcode-sessions', 'awcode-settings'],
-  codemode: ['codemode-settings', 'codemode-global', 'codemode-mcp', 'codemode-skills', 'codemode-users'],
   systemConfig: [],
 } as const;
 

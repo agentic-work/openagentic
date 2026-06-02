@@ -14,6 +14,7 @@ import { MCPToolIndexingService } from '../../services/MCPToolIndexingService.js
 import { logger } from '../../utils/logger.js';
 import { adminMiddleware } from '../../middleware/unifiedAuth.js';
 import { credentialAuditService } from '../../services/CredentialAuditService.js';
+import { normalizeMcpServerId, getDisabledBuiltinFleetRows } from '../../services/mcpBuiltinCatalog.js';
 
 // Validation schemas
 const RegisterMCPSchema = z.object({
@@ -110,16 +111,25 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
       // connected" comes from this list).
       const proxyServers = await mcpSync.getMCPProxyServers();
 
-      // Union: keyed by name/alias. proxy entry wins for status/health
-      // (it knows what's actually running); db entry contributes config
-      // details (transport, isolation flags, etc).
+      // Union: keyed by the canonical bare built-in id. proxy entry wins for
+      // status/health (it knows what's actually running); db entry contributes
+      // config details (transport, isolation flags, etc).
+      //
+      // The proxy reports built-ins under `openagentic_<id>` (e.g.
+      // `openagentic_admin`) while the DB/wizard/UI use the bare id (`admin`).
+      // We normalize both sides to the bare id so each built-in reconciles to
+      // ONE fleet row instead of two.
       const byKey = new Map<string, any>();
 
       for (const ps of proxyServers) {
-        const key = String(ps.name ?? ps.alias ?? ps.id ?? '').trim();
-        if (!key) continue;
+        const rawName = String(ps.name ?? ps.alias ?? ps.id ?? '').trim();
+        if (!rawName) continue;
+        const key = normalizeMcpServerId(rawName) || rawName.toLowerCase();
         byKey.set(key, {
+          // Surface the canonical bare id as the display name so the UI shows a
+          // single reconciled row (e.g. `admin`, not `openagentic_admin`).
           name: key,
+          proxy_name: rawName,
           status: ps.status === 'running' || ps.status === 'connected' ? 'healthy'
                 : ps.status === 'degraded' ? 'degraded'
                 : ps.status === 'down' || ps.status === 'failed' ? 'down'
@@ -136,8 +146,9 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
       }
 
       for (const db of dbServers) {
-        const key = String(db.id ?? db.name ?? '').trim();
-        if (!key) continue;
+        const rawKey = String(db.id ?? db.name ?? '').trim();
+        if (!rawKey) continue;
+        const key = normalizeMcpServerId(rawKey) || rawKey.toLowerCase();
         const existing = byKey.get(key);
         if (existing) {
           // proxy already has it — just mark that it's also DB-registered.
@@ -157,6 +168,18 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
             db_registered: true,
           });
         }
+      }
+
+      // Surface env-DISABLED built-ins. The proxy only registers built-ins whose
+      // `*_MCP_DISABLED` flag is unset, so disabled ones (commonly
+      // aws/azure/gcp/loki/alertmanager/github on a creds-less deploy) are absent
+      // from the proxy list and would silently vanish from the Fleet. Render them
+      // from the known built-in catalog as `available` / `needs-config` (a
+      // distinct state from the running ones) so the operator sees the full fleet
+      // and what's left to enable. Running built-ins keep their real status.
+      const runningIds = new Set<string>(byKey.keys());
+      for (const row of getDisabledBuiltinFleetRows(runningIds)) {
+        byKey.set(row.id, { ...row, name: row.id });
       }
 
       const servers = Array.from(byKey.values());

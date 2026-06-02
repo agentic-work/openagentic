@@ -134,8 +134,8 @@ export const TeamSection: React.FC<TeamSectionProps> = ({ workflowId }) => {
           <span
             className="text-[11px] px-1.5 py-0.5 rounded-full font-medium"
             style={{
-              backgroundColor: 'var(--user-accent-primary, #2196f3)' + '20',
-              color: 'var(--user-accent-primary, #2196f3)',
+              backgroundColor: 'var(--glass-accent-fill-2)',
+              color: 'var(--user-accent-primary, #FF5722)',
             }}
           >
             {owner}
@@ -152,7 +152,7 @@ export const TeamSection: React.FC<TeamSectionProps> = ({ workflowId }) => {
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('openShareDialog'))}
             className="text-[11px] font-medium transition-colors hover:opacity-80"
-            style={{ color: 'var(--user-accent-primary, #2196f3)' }}
+            style={{ color: 'var(--user-accent-primary, #FF5722)' }}
           >
             Share
           </button>
@@ -172,7 +172,7 @@ export const TeamSection: React.FC<TeamSectionProps> = ({ workflowId }) => {
             {shares.map(share => (
               <div
                 key={share.id}
-                className="flex items-center gap-1.5 px-2 py-1 rounded transition-colors hover:bg-[var(--color-surface)]"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-[var(--ctl-radius-sm)] border border-transparent transition-[background,border-color] glass-row-hover"
               >
                 <span className="flex-shrink-0">
                   {share.type === 'group' ? (
@@ -232,7 +232,7 @@ export const TeamSection: React.FC<TeamSectionProps> = ({ workflowId }) => {
             {activity.map(entry => (
               <div
                 key={entry.id}
-                className="flex items-center gap-1.5 px-2 py-1 rounded transition-colors hover:bg-[var(--color-surface)]"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-[var(--ctl-radius-sm)] border border-transparent transition-[background,border-color] glass-row-hover"
               >
                 <span
                   className="inline-block w-2 h-2 rounded-full flex-shrink-0"

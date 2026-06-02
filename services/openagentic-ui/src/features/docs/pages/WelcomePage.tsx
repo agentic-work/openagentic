@@ -306,15 +306,11 @@ const WelcomePage: React.FC = () => {
           HERO SECTION
           ================================================================ */}
       <section
+        className="glass"
         style={{
-          position: 'relative',
-          overflow: 'hidden',
-          borderRadius: '20px',
           marginBottom: '80px',
           padding: '72px 40px 64px',
           textAlign: 'center',
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
         }}
       >
         {/* Animated background orbs */}
@@ -446,9 +442,9 @@ const WelcomePage: React.FC = () => {
               letterSpacing: '0.06em',
               padding: '5px 16px',
               borderRadius: 20,
-              color: 'var(--color-primary)',
-              background: 'var(--color-surfaceSecondary)',
-              border: '1px solid var(--color-border)',
+              color: 'var(--color-accent)',
+              background: 'var(--ctl-surf)',
+              border: '1px solid var(--glass-border)',
               animation: 'hereFadeIn 0.6s ease-out 0.7s both',
             }}
           >
@@ -515,15 +511,11 @@ const WelcomePage: React.FC = () => {
             <motion.div
               key={mode.title}
               variants={fadeUpItem}
+              className="glass-surface"
               whileHover={{ y: -4, transition: { duration: 0.2 } }}
               style={{
-                position: 'relative',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '14px',
                 overflow: 'hidden',
                 cursor: 'default',
-                transition: 'box-shadow 0.3s ease',
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLElement).style.boxShadow =
@@ -644,12 +636,8 @@ const WelcomePage: React.FC = () => {
         </p>
 
         <div
-          style={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: '16px',
-            overflow: 'hidden',
-          }}
+          className="glass-surface"
+          style={{ overflow: 'hidden' }}
         >
           <ReactFlowDiagram
             diagram={architectureDiagram}
@@ -718,28 +706,25 @@ const WelcomePage: React.FC = () => {
             <motion.div
               key={cap.title}
               variants={fadeUpItem}
+              className="glass-surface"
               whileHover={{ y: -3, transition: { duration: 0.2 } }}
               style={{
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '12px',
                 padding: '24px',
                 cursor: 'default',
-                transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
                 position: 'relative',
                 overflow: 'hidden',
               }}
               onMouseEnter={(e) => {
                 const el = e.currentTarget as HTMLElement;
-                el.style.borderColor = 'var(--color-primary)';
-                el.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)';
+                el.style.borderColor = 'var(--ctl-focus-border)';
+                el.style.boxShadow = 'var(--ctl-lift-shadow)';
                 const detail = el.querySelector('[data-hover-detail]') as HTMLElement | null;
                 if (detail) detail.style.maxHeight = '60px';
               }}
               onMouseLeave={(e) => {
                 const el = e.currentTarget as HTMLElement;
-                el.style.borderColor = 'var(--color-border)';
-                el.style.boxShadow = 'none';
+                el.style.borderColor = 'var(--glass-border)';
+                el.style.boxShadow = '';
                 const detail = el.querySelector('[data-hover-detail]') as HTMLElement | null;
                 if (detail) detail.style.maxHeight = '0px';
               }}
@@ -759,13 +744,14 @@ const WelcomePage: React.FC = () => {
                       {cap.title}
                     </h4>
                     <span
+                      className="font-mono"
                       style={{
                         fontSize: '11px',
                         fontWeight: 600,
                         letterSpacing: '0.03em',
-                        color: 'var(--color-primary)',
-                        background: 'var(--color-surfaceSecondary)',
-                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-accent)',
+                        background: 'var(--ctl-surf)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '10px',
                         padding: '2px 8px',
                         whiteSpace: 'nowrap',
@@ -875,12 +861,8 @@ const WelcomePage: React.FC = () => {
           ].map((item) => (
             <div
               key={item.tip}
-              style={{
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '10px',
-                padding: '20px',
-              }}
+              className="glass-surface"
+              style={{ padding: '20px' }}
             >
               <h4
                 style={{
@@ -917,14 +899,10 @@ const WelcomePage: React.FC = () => {
         variants={sectionReveal}
       >
         <div
+          className="glass"
           style={{
-            position: 'relative',
-            overflow: 'hidden',
-            borderRadius: '20px',
             padding: '56px 40px',
             textAlign: 'center',
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
           }}
         >
           {/* Subtle gradient accent along the top */}
@@ -1001,11 +979,12 @@ const WelcomePage: React.FC = () => {
                 style={{
                   fontSize: '13px',
                   color: 'var(--color-textSecondary)',
-                  background: 'var(--color-surfaceSecondary)',
-                  border: '1px solid var(--color-border)',
+                  background: 'var(--ctl-surf)',
+                  border: '1px solid var(--glass-border)',
                   borderRadius: '20px',
                   padding: '8px 16px',
                   lineHeight: 1.4,
+                  boxShadow: '0 1px 0 var(--ctl-edge) inset',
                 }}
               >
                 {q}

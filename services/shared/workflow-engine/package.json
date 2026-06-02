@@ -19,6 +19,10 @@
       "types": "./dist/approvalRecord.d.ts",
       "default": "./dist/approvalRecord.js"
     },
+    "./dataRequestRecord": {
+      "types": "./dist/dataRequestRecord.d.ts",
+      "default": "./dist/dataRequestRecord.js"
+    },
     "./secretRedaction": {
       "types": "./dist/secretRedaction.d.ts",
       "default": "./dist/secretRedaction.js"
