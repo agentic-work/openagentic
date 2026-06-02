@@ -16,7 +16,6 @@ import { Plus, ChevronDown, ChevronRight, X, PuzzleIcon, Layers, Sparkles, Searc
 import { useGroundingStore } from '@/stores/useGroundingStore';
 import { useFollowupChipsStore } from '@/stores/useFollowupChipsStore';
 import { ExtendedThinkingToggleButton } from './ExtendedThinkingToggleButton';
-// SynthIndicator removed - HITM enforced, no YOLO mode
 import FileAttachmentThumbnails, { AttachmentFile } from './FileAttachmentThumbnails';
 import { ModelSelectorDropdown as NewModelSelectorDropdown } from './ModelSelectorDropdown';
 // RIPPED ToolsIndexedPill import (no longer rendered).
@@ -544,11 +543,6 @@ interface ChatInputToolbarProps {
   onAttachmentRemove?: (fileId: string) => void;
   // Multi-model mode (disables model selector when enabled)
   isMultiModelEnabled?: boolean;
-  // OAT / Tool Synthesis (display only - no YOLO mode)
-  synthEnabled?: boolean;
-  synthPendingCount?: number;
-  onSynthToggle?: () => void;
-  onSynthClick?: () => void;
   // Admin Tool Inspector toggle
   onToggleToolInspector?: () => void;
   showToolInspector?: boolean;
@@ -700,11 +694,6 @@ const ChatInputToolbar: React.FC<ChatInputToolbarProps> = ({
   onAttachmentRemove,
   // Multi-model mode
   isMultiModelEnabled = false,
-  // OAT / Tool Synthesis (display only)
-  synthEnabled = false,
-  synthPendingCount = 0,
-  onSynthToggle,
-  onSynthClick,
   // Admin Tool Inspector
   onToggleToolInspector,
   showToolInspector = false,
@@ -795,8 +784,6 @@ const ChatInputToolbar: React.FC<ChatInputToolbarProps> = ({
         <FollowupChipsToggleButton disabled={disabled} />
 
         {/* MCP Servers puzzle button removed — MCP tools are auto-discovered by the pipeline */}
-
-        {/* OAT / Tool Synthesis - removed YOLO mode, HITM enforced */}
 
         {/* Skills configuration moved to Admin Portal > Pipeline Settings */}
 

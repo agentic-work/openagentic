@@ -432,7 +432,6 @@ import type {
   ToolRankerLike,
   RouterTuningLike,
   HookRunnerLike,
-  SynthCredentialBrokerLike,
   ToolResultCacheLike,
 } from '../routes/chat/pipeline/chat/types.js';
 // 2026-05-20 — cross-user semantic cache for MCP tool results. The lazy
@@ -456,10 +455,6 @@ import { getRedisToolResultCacheL1 } from './RedisToolResultCacheL1.js';
 // at the proxy invocation itself. Single-pass via the shared alreadyAudited/
 // markAudited ctx flag so a call that ALSO hit dispatchBody is audited once.
 import { auditMcpExecutionSeam } from './approval/auditAndGate.js';
-// Phase C.5 (2026-05-11) — lazy process-singleton for the CredentialBroker.
-// Production wiring resolves the singleton via this getter; tests pass an
-// explicit stub via `BuildChatV2DepsOptions.synthCredentialBroker`.
-import { getCredentialBroker } from './CredentialBroker.js';
 // Phase D.1 (2026-05-11) — wire HookRunner singleton into the chat deps
 // factory. Built-in hooks (DLP / HITL / audit / cost / SSE sequencer) self-
 // register against this singleton at boot via `registerBuiltInHooks` in
@@ -960,18 +955,6 @@ export interface BuildChatV2DepsOptions {
    */
   hooks?: HookRunnerLike;
   /**
-   * Phase C.5 (2026-05-11) — explicit CredentialBroker override for the
-   * OBO-aware `synth` dispatch arm.
-   *
-   * Precedence:
-   *   1. explicit opts.synthCredentialBroker (test injection — wins)
-   *   2. getCredentialBroker() — lazy process singleton constructed from
-   *      AWS_OBO_ROLE_ARN / AWS_REGION / GOOGLE_APPLICATION_CREDENTIALS_JSON
-   *
-   * Tests pass a `{ brokerFor: vi.fn() }` stub to avoid real STS / GCP IO.
-   */
-  synthCredentialBroker?: SynthCredentialBrokerLike;
-  /**
    * 2026-05-11 — LargeResultStorage adapter override (tests). When omitted,
    * the factory builds a thin adapter wrapping `getLargeResultStorageService()`
    * (the lazy Redis-backed singleton).
@@ -1118,25 +1101,6 @@ export function buildChatV2Deps(opts: BuildChatV2DepsOptions): ChatV2DepsWithPer
     } catch {
       // Singleton not initialized — test path. Loop will skip cross-cuts.
       resolvedHooks = undefined;
-    }
-  }
-
-  // Phase C.5 (2026-05-11) — CredentialBroker resolution for the `synth`
-  // dispatch arm.
-  //   1. explicit opts.synthCredentialBroker (test injection — wins)
-  //   2. getCredentialBroker() — lazy process singleton constructed from env
-  //   3. undefined — fail-soft: dispatchSynth returns ok:false with a
-  //      "broker not wired" message rather than crashing the loop.
-  let resolvedSynthCredentialBroker: SynthCredentialBrokerLike | undefined;
-  if (opts.synthCredentialBroker) {
-    resolvedSynthCredentialBroker = opts.synthCredentialBroker;
-  } else {
-    try {
-      resolvedSynthCredentialBroker = getCredentialBroker() as unknown as SynthCredentialBrokerLike;
-    } catch {
-      // Construction failed (e.g. env vars unset in unit test) — leave
-      // undefined so the synth arm returns a structured ok:false.
-      resolvedSynthCredentialBroker = undefined;
     }
   }
 
@@ -1331,7 +1295,6 @@ export function buildChatV2Deps(opts: BuildChatV2DepsOptions): ChatV2DepsWithPer
     toolRanker: opts.toolRanker,
     routerTuning: opts.routerTuning,
     hooks: resolvedHooks,
-    synthCredentialBroker: resolvedSynthCredentialBroker,
     // 2026-05-11 — LargeResultStorage + threshold so runChat threads them
     // into V3DispatchDeps and ToolEnvelopeSplitter actually offloads.
     largeResultStorage: resolvedLargeResultStorage,
@@ -1349,7 +1312,7 @@ export function buildChatV2Deps(opts: BuildChatV2DepsOptions): ChatV2DepsWithPer
     // into the existing recordCompletionMetrics helper. This populates
     // the legacy TTFT/TPOT/operation_duration/token_usage/finish_reasons
     // histograms on /metrics for every streaming chat turn — the same
-    // helper non-streaming chat + embeddings + synth already use.
+    // helper non-streaming chat + embeddings already use.
     // Provider type is derived from the model via providerManager.
     recordCompletionMetrics: async (args) => {
       // Best-effort provider lookup. Falls back to UNKNOWN_PROVIDER when the

@@ -173,7 +173,6 @@ const fixtures: Record<AgenticEventType, AgenticEvent> = {
   mcp_connect: { type: 'mcp_connect', server: 'awp-azure-mcp', tool_count: 74, ts: NOW },
   mcp_disconnect: { type: 'mcp_disconnect', server: 'awp-azure-mcp', reason: 'restart', ts: NOW },
   mcp_capability_delta: { type: 'mcp_capability_delta', server: 'awp-azure-mcp', added: ['azure_new_tool'], removed: [], ts: NOW },
-  oat_synthesized: { type: 'oat_synthesized', tool_name: 'reverse_string', description: 'reverses input', runner_id: 'r1', ts: NOW },
 
   // Layer 11 — codemode
   ui_open: { type: 'ui_open', ui_id: 'u1', root: { tag: 'div', children: [] }, ts: NOW },
@@ -267,7 +266,6 @@ function _exhaustivenessGuard(ev: AgenticEvent): string {
     case 'mcp_connect': return 'mcp+';
     case 'mcp_disconnect': return 'mcp-';
     case 'mcp_capability_delta': return 'mcp~';
-    case 'oat_synthesized': return 'oat';
     case 'ui_open': return 'ui+';
     case 'ui_patch': return 'ui~';
     case 'ui_close': return 'ui-';
@@ -317,7 +315,7 @@ describe('AgenticEvent taxonomy', () => {
       'dlp_block', 'audit_event', 'policy_violation', 'request_clarification',
       'cost_pulse', 'cost_record', 'usage',
       'rag_citation', 'doc_chunk', 'memory_write', 'embedding_indexed', 'vector_probe',
-      'mcp_connect', 'mcp_disconnect', 'mcp_capability_delta', 'oat_synthesized',
+      'mcp_connect', 'mcp_disconnect', 'mcp_capability_delta',
       'ui_open', 'ui_patch', 'ui_close', 'ui_event', 'kube_event',
       'file_panel_update', 'slash_command_synthetic', 'session_info',
       'flow_node_start', 'flow_node_end', 'node_progress',
@@ -448,7 +446,7 @@ describe('AgenticEvent taxonomy', () => {
       'dlp_block', 'audit_event', 'policy_violation', 'request_clarification',
       'cost_pulse', 'cost_record', 'usage',
       'rag_citation', 'doc_chunk', 'memory_write', 'embedding_indexed', 'vector_probe',
-      'mcp_connect', 'mcp_disconnect', 'mcp_capability_delta', 'oat_synthesized',
+      'mcp_connect', 'mcp_disconnect', 'mcp_capability_delta',
       'ui_open', 'ui_patch', 'ui_close', 'ui_event', 'kube_event',
       'file_panel_update', 'slash_command_synthetic', 'session_info',
       'flow_node_start', 'flow_node_end', 'node_progress',

@@ -33,19 +33,8 @@ import type { StructuredContent } from '../../../../types/ToolResult.js';
 // for these primitives.
 //   - memory_search      → AgentMemoryService.recall (read companion to memorize)
 //   - read_large_result  → LargeResultStorage paged retrieval
-//   - synth_execute      → SynthExecutorClient.execute (sandboxed Python, legacy)
-//   - synth              → SynthOBODispatcher.executeSynthOBO (OBO-aware, Phase C.5)
 import { executeMemorySearch, type MemorySearchInput } from '../../../../services/MemorySearchTool.js';
 import { executeReadLargeResult, type ReadLargeResultInput } from '../../../../services/ReadLargeResultTool.js';
-import { executeSynthExecute, type SynthExecuteInput } from '../../../../services/SynthExecuteTool.js';
-// Phase C.5 (2026-05-11) — OBO-aware synth dispatcher. The new T1 surface
-// (renamed from `synth_execute` to `synth` per plan §C.5) routes through
-// this wrapper so cloud capabilities (aws / azure / gcp) get brokered
-// against the calling user's Azure AD ACCESS token — never a shared
-// service account. Refuses if userJwt missing.
-import { executeSynthOBO } from '../../../../services/SynthOBODispatcher.js';
-import type { SynthInput } from '../../../../services/SynthTool.js';
-import type { SynthOBOBrokerLike } from '../../../../services/SynthOBODispatcher.js';
 // Live-wiring fix (2026-05-31) — audit EVERY tool call + gate the mutating
 // ones at the dispatch seam the live runChat→chatLoop path ALWAYS calls. The
 // priority-11 before_tool_call hook does the same, but only fires when
@@ -60,7 +49,6 @@ import {
 } from '../../../../services/approval/auditAndGate.js';
 import { getAgentMemoryService } from '../../../../services/AgentMemoryService.js';
 import { getMilvusMemoryService } from '../../../../services/MilvusMemoryService.js';
-import { getSynthExecutorClient } from '../../../../services/SynthExecutorClient.js';
 import { getLargeResultStorageService } from '../../../../services/LargeResultStorageService.js';
 
 /**
@@ -97,16 +85,6 @@ export interface V3DispatchDeps {
   largeResultStorage?: SplitterLargeResultStorage;
   /** Inline-vs-overflow byte threshold; defaults to splitter's 30KB. */
   thresholdBytes?: number;
-  /**
-   * Phase C.5 (2026-05-11) — CredentialBroker used by the OBO-aware
-   * `synth` arm. When omitted, the synth arm falls through to a
-   * structured ok:false response — never silently routes to the legacy
-   * non-OBO path (cred drift guard). Production wiring constructs a
-   * `new CredentialBroker(...)` once at chat-plugin init and passes it
-   * here via buildChatV2Deps; unit tests inject a `{ brokerFor: vi.fn() }`
-   * stub matching `SynthOBOBrokerLike`.
-   */
-  synthCredentialBroker?: SynthOBOBrokerLike;
 }
 
 /**
@@ -258,18 +236,6 @@ async function dispatchBody(
       // #974 — thread ctx.user identity so the storage layer can RBAC-gate
       // the handle. Without this a leaked handle = cross-user read.
       const v3Result = await dispatchReadLargeResult(call.input as ReadLargeResultInput, ctx);
-      return await wrapEnvelope(call.name, v3Result, ctx, v3Deps, Date.now() - startedAt);
-    }
-    // Phase C.5 (2026-05-11) — new T1 surface name. Must precede the legacy
-    // `synth_execute` arm so the new name takes priority; both arms stay
-    // during the C.1 catalog cutover so mid-flight chats don't get a name
-    // flip mid-turn.
-    if (call.name === 'synth') {
-      const v3Result = await dispatchSynth(ctx, call.input as SynthInput, v3Deps);
-      return await wrapEnvelope(call.name, v3Result, ctx, v3Deps, Date.now() - startedAt);
-    }
-    if (call.name === 'synth_execute') {
-      const v3Result = await dispatchSynthExecute(ctx, call.input as SynthExecuteInput);
       return await wrapEnvelope(call.name, v3Result, ctx, v3Deps, Date.now() - startedAt);
     }
 
@@ -438,92 +404,6 @@ async function dispatchReadLargeResult(
     },
   };
   const result = await executeReadLargeResult(input, { largeResultStorage: adapter });
-  return {
-    ok: result.ok,
-    output: result.output,
-    error: result.error,
-  };
-}
-
-/**
- * synth_execute dispatch arm. Resolves the SynthExecutorClient singleton
- * (constructed lazily — env vars not required at module-load time so unit
- * tests can stub via `getSynthExecutorClient` mock).
- */
-async function dispatchSynthExecute(
-  ctx: RunCtx,
-  input: SynthExecuteInput,
-): Promise<ToolDispatchResult> {
-  const client = getSynthExecutorClient(ctx.logger as any);
-  const result = await executeSynthExecute(
-    {
-      userId: ctx.userId,
-      sessionId: ctx.sessionId,
-      userEmail: (ctx as any)?.user?.email,
-      logger: ctx.logger,
-    },
-    input,
-    { client },
-  );
-  return {
-    ok: result.ok,
-    output: result.output,
-    error: result.error,
-  };
-}
-
-/**
- * synth dispatch arm — chatmode-rip Phase C.5 (2026-05-11).
- *
- * The T1 catalog renames `synth_execute` → `synth`. This arm routes the
- * new name through `executeSynthOBO` so cloud capabilities (aws / azure /
- * gcp) are brokered against the calling user's Azure AD ACCESS token —
- * never a shared service account.
- *
- * Contract:
- *   - `ctx.userJwt` MUST be set for cloud-touching code; OBO refuses
- *     otherwise (`SynthOBODispatcher` returns `ok:false` with a clear
- *     /auth|jwt|sign in|userJwt/ error). The dispatcher surfaces that
- *     result verbatim — never falls back to the legacy non-OBO path.
- *   - When `v3Deps.synthCredentialBroker` is missing (mis-wired chat
- *     plugin), return a structured ok:false so chats degrade gracefully
- *     instead of crashing the loop. Production must ALWAYS wire the
- *     broker; the guard is a defensive cage.
- *   - `client` resolution mirrors `dispatchSynthExecute` (lazy singleton).
- *
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §C.5
- */
-async function dispatchSynth(
-  ctx: RunCtx,
-  input: SynthInput,
-  v3Deps: V3DispatchDeps,
-): Promise<ToolDispatchResult> {
-  const broker = v3Deps.synthCredentialBroker;
-  if (!broker) {
-    ctx.logger.warn(
-      { tool: 'synth' },
-      '[chat] dispatchSynth — synthCredentialBroker missing from deps; cannot run synth. ' +
-        'Wire CredentialBroker via buildChatV2Deps.',
-    );
-    return {
-      ok: false,
-      error:
-        'synth dispatcher is not wired (no CredentialBroker on deps). ' +
-        'This is a server-side wiring bug — please contact your administrator.',
-    };
-  }
-  const client = getSynthExecutorClient(ctx.logger as any);
-  const result = await executeSynthOBO(
-    {
-      userId: ctx.userId,
-      sessionId: ctx.sessionId,
-      userEmail: (ctx as any)?.user?.email,
-      userJwt: ctx.userJwt,
-      logger: ctx.logger,
-    },
-    input,
-    { broker, client },
-  );
   return {
     ok: result.ok,
     output: result.output,

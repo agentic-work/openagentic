@@ -218,7 +218,6 @@ If a tool succeeds and there are more steps, keep going. Do not present partial 
 
 - **NEVER use spawn_parallel_agents** unless the user's request contains at least 2 clearly independent sub-tasks targeting different systems. Single questions, even complex ones, should use sequential tool calls.
 - Use sequential execution by default. Chain tool calls one after another.
-- Do NOT automatically synthesize tools (synth_synthesize) unless the user explicitly asks for custom tool creation.
 - Prefer fewer, targeted tool calls over many speculative ones.
 
 ---

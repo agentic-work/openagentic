@@ -301,13 +301,6 @@ export const AGENT_EXPECTED_OUTPUT_SCHEMAS: Record<string, ExpectedOutputSchema>
     expectNonEmptyText: true,
     validate: (c) => (c.trim().length === 0 ? 'flows_agent response must not be empty' : null),
   },
-  oat_function_builder: {
-    expectNonEmptyText: true,
-    validate: (c) => {
-      if (c.trim().length < 20) return 'oat_function_builder response is too short';
-      return null;
-    },
-  },
   cloud_operations: {
     expectNonEmptyText: true,
     validate: (c) => (c.trim().length < 30 ? 'cloud_operations response is too short' : null),
@@ -401,7 +394,7 @@ export function runAgentBehaviorSuite(args: AgentBehaviorSuiteArgs): void {
       });
 
       it('system prompt is passed (or null for module-composite agents)', async () => {
-        // system_prompt may be null for composite-module agents (artifact_creation, oat_function_builder)
+        // system_prompt may be null for composite-module agents (e.g. artifact_creation)
         // In that case the prompt_modules array is non-empty
         if (agent.system_prompt !== null) {
           expect(agent.system_prompt.length).toBeGreaterThan(0);

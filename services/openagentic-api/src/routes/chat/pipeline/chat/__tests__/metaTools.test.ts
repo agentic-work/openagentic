@@ -5,12 +5,11 @@
  * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
  *       Phase 9 (Tasks 9.1-9.10)
  *
- * Asserts that the V3 dispatcher handles the four Phase 9 meta-tools:
+ * Asserts that the V3 dispatcher handles the Phase 9 meta-tools:
  *
  *   1. memory_search   — query persistent user memory (AgentMemoryService.recall)
  *   2. read_large_result — already created in Phase 4 (executeReadLargeResult)
- *   3. synth_execute   — route to SynthExecutorClient.execute
- *   4. memorize        — already wired in V2 dispatch; covered by V2 test
+ *   3. memorize        — already wired in V2 dispatch; covered by V2 test
  *
  * Each new arm is intercepted in V3's makeDispatch BEFORE the V2
  * passthrough so V3 owns the contract.
@@ -20,7 +19,7 @@ import { makeDispatch } from '../dispatchTool.js';
 import { getAllBaseTools } from '../toolRegistry.js';
 
 // The inner `dispatchChatToolCall` is imported by dispatchTool — for the
-// adapter-owned arms (memory_search / read_large_result / synth_execute)
+// adapter-owned arms (memory_search / read_large_result)
 // we don't touch the inner dispatcher, so we let dispatch be a no-op
 // pass-through. Mock it as a vi.fn() so any test that accidentally falls
 // through fails loudly.
@@ -39,18 +38,12 @@ vi.mock('../../../../../services/AgentMemoryService.js', () => ({
   getAgentMemoryService: vi.fn(),
 }));
 
-// SynthExecutorClient — wire synth_execute to its execute() method.
-vi.mock('../../../../../services/SynthExecutorClient.js', () => ({
-  getSynthExecutorClient: vi.fn(),
-}));
-
 // LargeResultStorage — wire read_large_result to its get() method.
 vi.mock('../../../../../services/LargeResultStorageService.js', () => ({
   getLargeResultStorageService: vi.fn(),
 }));
 
 import { getAgentMemoryService } from '../../../../../services/AgentMemoryService.js';
-import { getSynthExecutorClient } from '../../../../../services/SynthExecutorClient.js';
 import { getLargeResultStorageService } from '../../../../../services/LargeResultStorageService.js';
 
 function makeRunCtx() {
@@ -155,74 +148,17 @@ describe('V3 dispatch — Phase 9 meta-tools', () => {
   });
 
   // --------------------------------------------------------------------------
-  // synth_execute
-  // --------------------------------------------------------------------------
-  describe('synth_execute', () => {
-    it('routes to SynthExecutorClient.execute and returns result', async () => {
-      const executeMock = vi.fn(async () => ({
-        executionId: 'exec-1',
-        success: true,
-        stdout: 'hello\n',
-        stderr: '',
-        result: { ok: true },
-        executionTimeMs: 42,
-        codeHash: 'abc',
-        startedAt: new Date().toISOString(),
-        completedAt: new Date().toISOString(),
-      }));
-      (getSynthExecutorClient as any).mockReturnValue({ execute: executeMock });
-
-      const dispatch = makeDispatch({ v2Deps: {} as any });
-      const result = await dispatch(makeRunCtx(), {
-        name: 'synth_execute',
-        input: { code: 'print("hi")', intent: 'say hi' },
-      });
-
-      expect(result.ok).toBe(true);
-      expect(executeMock).toHaveBeenCalled();
-      const callArg = executeMock.mock.calls[0]![0];
-      expect(callArg.userId).toBe('user-abc');
-      expect(callArg.sessionId).toBe('sess-123');
-      expect(callArg.code).toBe('print("hi")');
-    });
-
-    it('surfaces failure as ok:false with error string', async () => {
-      const executeMock = vi.fn(async () => ({
-        executionId: 'exec-2',
-        success: false,
-        error: 'sandbox crash',
-        executionTimeMs: 1,
-        codeHash: '',
-        startedAt: new Date().toISOString(),
-        completedAt: new Date().toISOString(),
-      }));
-      (getSynthExecutorClient as any).mockReturnValue({ execute: executeMock });
-
-      const dispatch = makeDispatch({ v2Deps: {} as any });
-      const result = await dispatch(makeRunCtx(), {
-        name: 'synth_execute',
-        input: { code: 'raise Exception()', intent: 'crash' },
-      });
-
-      expect(result.ok).toBe(false);
-      expect(result.error).toContain('sandbox crash');
-    });
-  });
-
-  // --------------------------------------------------------------------------
-  // Catalog presence — read_large_result + synth ship in the T1 catalog.
-  // memory_search and synth_execute were removed in Phase C.1 — memory_search
-  // moves into the mcp_tools index (discoverable via tool_search), and
-  // synth_execute was renamed to `synth`. The catalog membership contract
-  // proper lives in getAllBaseTools.t1Catalog.test.ts; this section just
-  // pins the meta-9 tools that survived the T1 trim.
+  // Catalog presence — read_large_result ships in the T1 catalog.
+  // memory_search moved into the mcp_tools index (discoverable via
+  // tool_search). The catalog membership contract proper lives in
+  // getAllBaseTools.t1Catalog.test.ts; this section just pins a meta tool
+  // that survived the T1 trim.
   // --------------------------------------------------------------------------
   describe('meta-tool catalog (post Phase C.1)', () => {
-    it('catalog includes read_large_result + synth', () => {
+    it('catalog includes read_large_result', () => {
       const tools = getAllBaseTools();
       const names = tools.map((t: any) => t.function?.name);
       expect(names).toContain('read_large_result');
-      expect(names).toContain('synth');
     });
   });
 });

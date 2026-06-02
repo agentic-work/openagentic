@@ -466,7 +466,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   // Prompt techniques and MCP state - remaining local state
   const [enabledPromptTechniques, setEnabledPromptTechniques] = useState<Set<string>>(new Set());
   const [alwaysApprovedTools, setAlwaysApprovedTools] = useState<Set<string>>(new Set());
-  const [pendingApproval, setPendingApproval] = useState<any>(null);
   const [mcpApproval, setMcpApproval] = useState<McpApprovalRequest | null>(null);
 
   // Mutating-tool approval gate (backend commit 7e6637539). One-at-a-time
@@ -520,8 +519,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   }, [auditApproval]);
 
   const [showToolInspector, setShowToolInspector] = useState(false);
-  const [synthPendingCount, setSynthPendingCount] = useState(0);
-  const [synthEnabled, setSynthEnabled] = useState(false);
   // HITL panel state
   const [hitlPanelVisible, setHitlPanelVisible] = useState(false);
   const [hitlMode, setHitlMode] = useState<HITLMode>('standard');
@@ -552,99 +549,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   // Use the isAdminUser variable defined earlier for model selection logic
   const isAdmin = isAdminUser;
 
-  // Poll for pending synth approvals in the current session
-  // GAP-4: track synthesisIds we've already injected as inline results so we
-  // don't double-render when the polling endpoint returns the same recentResults
-  // entry on consecutive polls (server returns last 5 minutes worth).
-  const renderedSynthResults = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!isAuthenticated || !activeSessionId) return;
-
-    let cancelled = false;
-    const fetchPendingApprovals = async () => {
-      try {
-        let token;
-        try {
-          token = await getAccessToken(['User.Read']);
-        } catch {
-          token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
-        }
-        if (!token || cancelled) return;
-
-        const res = await fetch(apiEndpoint(`/synth/approvals?sessionId=${activeSessionId}`), {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok || cancelled) return;
-
-        const data = await res.json();
-        const approvals = data.approvals || [];
-        setSynthPendingCount(approvals.length);
-
-        // Set the most recent pending approval for the popup
-        if (approvals.length > 0) {
-          const latest = approvals[0];
-          setPendingApproval({
-            approvalId: latest.id,
-            intent: latest.intent,
-            riskLevel: latest.riskLevel,
-            code: latest.code,
-            expiresAt: latest.expiresAt,
-          });
-        } else {
-          setPendingApproval(null);
-        }
-
-        // GAP-4: handle post-approval execution results.
-        // The backend now executes approved synth code asynchronously and writes
-        // the result back to synth_syntheses. The polling endpoint surfaces those
-        // recently-completed results in `recentResults`. We render each one as
-        // an inline assistant message so the user sees the executed output
-        // without having to re-prompt.
-        const recentResults = data.recentResults || [];
-        for (const r of recentResults) {
-          if (!r.synthesisId || renderedSynthResults.current.has(r.synthesisId)) continue;
-          renderedSynthResults.current.add(r.synthesisId);
-
-          // Format the result as a chat message
-          const intentLine = r.intent ? `**Synth task:** ${r.intent}\n\n` : '';
-          let body: string;
-          if (r.status === 'completed') {
-            const resultText = typeof r.result === 'string'
-              ? r.result
-              : '```json\n' + JSON.stringify(r.result, null, 2) + '\n```';
-            body = `${intentLine}**Result** (executed in ${r.executionTimeMs ?? '?'}ms after your approval):\n\n${resultText}`;
-          } else {
-            body = `${intentLine}**Execution failed:** ${r.error || 'Unknown error'}`;
-          }
-
-          // Inject as an assistant message into the chat. Reuse addMessage from the chat store.
-          if (activeSessionId) {
-            try {
-              const msgId = `synth-result-${r.synthesisId}`;
-              addMessage(activeSessionId, {
-                id: msgId,
-                role: 'assistant',
-                content: body,
-                timestamp: r.completedAt || new Date().toISOString(),
-                metadata: { source: 'synth-post-approval', synthesisId: r.synthesisId },
-                status: r.status === 'completed' ? 'completed' : 'error',
-              });
-              console.log('[SYNTH-POST-APPROVAL] Injected result message', { synthesisId: r.synthesisId, status: r.status });
-            } catch (injectErr) {
-              console.warn('[SYNTH-POST-APPROVAL] Failed to inject result message', injectErr);
-            }
-          }
-        }
-      } catch {
-        // Silently fail - synth approvals are optional
-      }
-    };
-
-    fetchPendingApprovals();
-    const interval = setInterval(fetchPendingApprovals, 10000); // Poll every 10s
-    return () => { cancelled = true; clearInterval(interval); };
-  }, [isAuthenticated, activeSessionId, getAccessToken]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1050,57 +954,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     // Don't auto-trigger image analysis - images will be sent with message
   }, [currentImageForAnalysis]);
 
-  // HITL approval log helper
-  const logHITLAction = useCallback((action: 'approved' | 'denied' | 'auto-approved' | 'expired') => {
-    if (!pendingApproval) return;
-    const entry: HITLLogEntry = {
-      id: pendingApproval.approvalId || nanoid(8),
-      timestamp: new Date(),
-      toolName: pendingApproval.tools?.[0]?.name || 'unknown',
-      riskLevel: pendingApproval.riskLevel || 'medium',
-      action,
-      intent: pendingApproval.intent,
-      durationMs: pendingApproval._shownAt ? Date.now() - pendingApproval._shownAt : undefined,
-    };
-    setHitlLog(prev => [...prev, entry]);
-  }, [pendingApproval]);
-
-  // Synth approval handlers
-  const handleApproveSynth = useCallback(async () => {
-    if (!pendingApproval?.approvalId) return;
-    logHITLAction('approved');
-    try {
-      let token;
-      try { token = await getAccessToken(['User.Read']); } catch { token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken'); }
-      if (!token) return;
-      await fetch(apiEndpoint(`/synth/approvals/${pendingApproval.approvalId}/approve`), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-      setPendingApproval(null);
-      setSynthPendingCount(prev => Math.max(0, prev - 1));
-    } catch (err) {
-      console.error('[SYNTH] Failed to approve:', err);
-    }
-  }, [pendingApproval, getAccessToken, logHITLAction]);
-
-  const handleDenySynth = useCallback(async () => {
-    if (!pendingApproval?.approvalId) return;
-    logHITLAction('denied');
-    try {
-      let token;
-      try { token = await getAccessToken(['User.Read']); } catch { token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken'); }
-      if (!token) return;
-      await fetch(apiEndpoint(`/synth/approvals/${pendingApproval.approvalId}/reject`), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-      setPendingApproval(null);
-      setSynthPendingCount(prev => Math.max(0, prev - 1));
-    } catch (err) {
-      console.error('[SYNTH] Failed to reject:', err);
-    }
-  }, [pendingApproval, getAccessToken, logHITLAction]);
 
   // MCP tool approval handlers (HITL for CRUD/destructive MCP operations)
   const handleApproveMcpTool = useCallback(async () => {
@@ -2137,7 +1990,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
               setMcpCalls([]);
               setStreamingStatus('idle');
               setAlwaysApprovedTools(new Set<string>());
-              setPendingApproval(null);
               // Reset any streaming state
               stopThinking();
               // console.log('[NEW SESSION] Reset all UI state for clean session');
@@ -2323,9 +2175,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
               onExecuteCode={handleExecuteCode}
               onMessageUpdate={handleMessageUpdate}
               onFeedback={handleFeedback}
-              pendingApproval={pendingApproval}
-              onApproveTools={handleApproveSynth}
-              onDenyTools={handleDenySynth}
             />
 
             {/* Floating "Go to latest" chip — appears when user has scrolled
@@ -2497,11 +2346,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
                   })()}
                   // Multi-model mode (disables model selector when enabled)
                   isMultiModelEnabled={isMultiModelEnabled}
-                  // Synth tool approvals (HITM enforced, no YOLO)
-                  synthEnabled={synthEnabled}
-                  synthPendingCount={synthPendingCount}
-                  onSynthToggle={() => setSynthEnabled(prev => !prev)}
-                  onSynthClick={() => {/* Could open approval details panel */}}
                   onToggleToolInspector={() => setShowToolInspector(prev => !prev)}
                   showToolInspector={showToolInspector}
                   className="pb-0"

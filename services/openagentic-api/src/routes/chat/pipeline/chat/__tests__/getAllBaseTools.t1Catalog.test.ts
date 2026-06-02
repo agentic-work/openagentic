@@ -10,13 +10,13 @@
  *
  * The T1 list (canonical order):
  *   tool_search · agent_search · Task · agent_send · agent_list · agent_stop ·
- *   read_large_result · web_search · web_fetch · synth ·
+ *   read_large_result · web_search · web_fetch ·
  *   pattern_save · pattern_recall
  *
  * Tools REMOVED from T1 (now discoverable via tool_search in mcp_tools index):
  *   compose_visual · compose_app · render_artifact · kb_search ·
  *   request_clarification · browser_sandbox_exec · memorize · memory_search ·
- *   delegate_to_agents · synth_execute (renamed → synth)
+ *   delegate_to_agents
  *
  * The model's first turn surface is ALWAYS exactly these 12 primitives.
  * Discovery is the only path that surfaces MCP tools; the platform never
@@ -35,7 +35,6 @@ const T1_NAMES = [
   'read_large_result',
   'web_search',
   'web_fetch',
-  'synth',
   'pattern_save',
   'pattern_recall',
 ] as const;
@@ -70,7 +69,6 @@ describe('getAllBaseTools — T1 catalog pinning (Phase C.1)', () => {
       'memorize',
       'memory_search',
       'delegate_to_agents',
-      'synth_execute', // renamed → 'synth'
       'kb_search',
     ];
     for (const r of removed) {

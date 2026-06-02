@@ -68,8 +68,6 @@ const PLATFORM_BARE_NAMES = new Set([
   'render_artifact',
   'request_clarification',
   'browser_sandbox_exec',
-  'synth_execute',
-  'synth_synthesize',
 ]);
 
 // Verb token classification.

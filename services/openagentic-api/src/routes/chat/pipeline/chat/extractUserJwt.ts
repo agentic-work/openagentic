@@ -2,13 +2,13 @@
  * extractUserJwt — chat-pipeline JWT accessor (chatmode-rip Phase C.6).
  *
  * Surfaces the user's Azure AD ACCESS token from the loose `RunCtx.user`
- * shape so OBO-aware tool dispatchers (synth, future agent_send to a
- * subordinate context, etc.) can read it via the typed `ctx.userJwt`
- * field instead of sniffing the user object directly.
+ * shape so the OBO-aware cloud-MCP dispatch path (chatLoop's Azure OBO
+ * seam) can read it via the typed `ctx.userJwt` field instead of sniffing
+ * the user object directly.
  *
  * Why ACCESS token, not idToken:
  *   - accessToken is what ARM, AWS STS, GCP IAM accept as a bearer for
- *     the OBO exchange (CredentialBroker.brokerFor(userJwt, capabilities))
+ *     the cloud OBO exchange
  *   - idToken is identity-only (claims about who the user is); cloud APIs
  *     reject it. Falling back to idToken would silently produce 401s
  *     downstream — much harder to debug than a clean "no JWT" path.

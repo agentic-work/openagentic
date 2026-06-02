@@ -201,7 +201,7 @@ export interface ApprovalResult {
 // WorkflowExecutionEngine
 // =============================================================================
 
-// Lazy import for AgentRegistry (avoids circular dependencies, same pattern as SynthService)
+// Lazy import for AgentRegistry (avoids circular dependencies)
 let _agentRegistryModule: typeof import('./AgentRegistry.js') | null = null;
 async function getAgentRegistryLazy() {
   try {
@@ -1054,14 +1054,11 @@ export class WorkflowExecutionEngine extends EventEmitter {
           if (this.context.agenticExecutionId) {
             const registry = await getAgentRegistryLazy();
             if (registry) {
-              // Record tool calls for MCP tool and Synth nodes
+              // Record tool calls for MCP tool nodes
               if (node.type === 'mcp_tool') {
                 const toolName = node.data.toolName || node.data.toolServer
                   ? `${node.data.toolServer || 'unknown'}/${node.data.toolName || 'unknown'}`
                   : nodeId;
-                registry.recordToolCall(this.context.agenticExecutionId, toolName);
-              } else if (node.type === 'synth' || node.type === 'synth_synthesize' || node.type === 'oat_synthesize' || node.type === 'oat') {
-                const toolName = `synth/${node.data.intent?.substring(0, 60) || nodeId}`;
                 registry.recordToolCall(this.context.agenticExecutionId, toolName);
               }
 
@@ -1606,9 +1603,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
         this.context.nodeResults.set('__trigger__', triggerData);
       },
 
-      // synth (Task #46): resolve the calling user's email so synth can
-      // pass it to the synthesis API for credential lookup. Mirrors the
-      // legacy executeSynthNode prisma lookup; returns null on miss.
+      // Resolve the calling user's email for nodes that need it (e.g.
+      // credential lookup). Returns null on miss.
       getUserEmail: async () => {
         if (!this.context.userId) return null;
         try {
@@ -2361,125 +2357,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
     return mcpResult;
   }
 
-  /**
-   * Execute Synth (Tool Synthesis) node
-   * Synthesizes a dynamic tool from natural language intent and executes it.
-   *
-   * CRITICAL SECURITY:
-   * - Tools run AS the authenticated user (no service accounts)
-   * - Credentials come from user's SSO provider
-   * - Session-based OAuth for services like GitHub
-   */
-  private async executeSynthNode(node: WorkflowNode, input: any): Promise<any> {
-    const { intent, capabilities, dryRun, credentials } = node.data;
-
-    // Interpolate variables in intent
-    const resolvedIntent = typeof intent === 'string'
-      ? this.interpolateTemplate(intent, input)
-      : (typeof input === 'string' ? input : intent);
-
-    if (!resolvedIntent) {
-      throw new Error('Synth node requires an intent (either in node data or as input)');
-    }
-
-    logger.info({
-      nodeId: node.id,
-      intent: resolvedIntent?.substring(0, 100),
-      capabilities,
-      dryRun,
-      userId: this.context.userId
-    }, '[WorkflowEngine] Executing Synth node - dynamic tool synthesis');
-
-    // Import SynthService dynamically to avoid circular dependencies
-    const { SynthService } = await import('./SynthService.js');
-    const synthService = SynthService.getInstance(logger);
-
-    // Resolve user email from context or DB lookup
-    let userEmail = '';
-    try {
-      const user = await prisma.user.findUnique({
-        where: { id: this.context.userId },
-        select: { email: true },
-      });
-      userEmail = user?.email || '';
-    } catch {
-      // Non-fatal: continue without email
-    }
-
-    try {
-      // Synthesize and execute the tool
-      const result = await synthService.synthesize({
-        intent: resolvedIntent,
-        userId: this.context.userId,
-        userEmail,
-        capabilities: capabilities || [],
-        dryRun: dryRun || false,
-        sessionId: this.context.executionId,
-        credentials: credentials || undefined,
-        authToken: this.context.authToken || undefined,
-      });
-
-      // If approval is required, return the approval info instead of throwing
-      if (result.approval?.required && !result.approval?.approved) {
-        logger.info({
-          nodeId: node.id,
-          riskLevel: result.tool?.riskLevel,
-          approvalRequired: true,
-        }, '[WorkflowEngine] Synth node requires approval');
-
-        return {
-          status: 'awaiting_approval',
-          intent: resolvedIntent,
-          riskLevel: result.tool?.riskLevel,
-          message: result.error || 'Synthesis requires human approval',
-          tool: result.tool ? {
-            explanation: result.tool.explanation,
-            riskLevel: result.tool.riskLevel,
-            riskReasoning: result.tool.riskReasoning,
-            capabilitiesUsed: result.tool.capabilitiesUsed,
-          } : undefined,
-          metrics: result.metrics,
-        };
-      }
-
-      if (!result.success) {
-        throw new Error(result.error || 'Tool synthesis failed');
-      }
-
-      logger.info({
-        nodeId: node.id,
-        success: result.success,
-        riskLevel: result.tool?.riskLevel,
-        executionTimeMs: result.metrics?.executionTimeMs,
-        totalTimeMs: result.metrics?.totalTimeMs,
-      }, '[WorkflowEngine] Synth node completed');
-
-      // Return comprehensive result including tool info and metrics
-      return {
-        result: result.result,
-        tool: result.tool ? {
-          explanation: result.tool.explanation,
-          riskLevel: result.tool.riskLevel,
-          capabilitiesUsed: result.tool.capabilitiesUsed,
-        } : undefined,
-        metrics: {
-          synthesisTimeMs: result.metrics.synthesisTimeMs,
-          executionTimeMs: result.metrics.executionTimeMs,
-          totalTimeMs: result.metrics.totalTimeMs,
-          costUsd: result.metrics.costUsd,
-        },
-        existingToolsSuggested: result.existingToolsSuggested,
-      };
-    } catch (error: any) {
-      logger.error({
-        nodeId: node.id,
-        error: error.message,
-        intent: resolvedIntent?.substring(0, 100)
-      }, '[WorkflowEngine] Synth node failed');
-
-      throw error;
-    }
-  }
 
   /**
    * Execute HTTP Request node - makes HTTP calls with template interpolation

@@ -417,9 +417,9 @@ export async function runChat(
   // (see chatLoop wrap below).
   const v3TurnStartedAt = Date.now();
   // Phase C.6 — surface the user's Azure AD ACCESS token via the typed
-  // ctx.userJwt accessor so OBO-aware dispatchers (synth, future tools)
-  // don't have to sniff ctx.user shape. extractUserJwt explicitly refuses
-  // idToken to prevent silent 401s at ARM/STS downstream. Set on the
+  // ctx.userJwt accessor so OBO-aware cloud-MCP dispatch (chatLoop's Azure
+  // OBO seam) doesn't have to sniff ctx.user shape. extractUserJwt explicitly
+  // refuses idToken to prevent silent 401s at ARM/STS downstream. Set on the
   // existing ctx so all sub-paths (chatLoop, dispatchTool, hooks) see it.
   ctx.userJwt = extractUserJwt(ctx.user);
   // Phase 8 — pre-loop compaction trigger. BEFORE building the system
@@ -872,17 +872,9 @@ export async function runChat(
   }
 
   // 8. ChatLoop deps — streaming provider + dispatch.
-  //
-  // Phase C.5 (2026-05-11) — propagate the CredentialBroker through to the
-  // dispatch layer so the `synth` arm can broker cloud capabilities on
-  // behalf of the calling user. When deps.synthCredentialBroker is unset
-  // (unit tests / mis-wired plugin), the synth arm returns a structured
-  // ok:false at dispatch time — no production crash, just a clear hint to
-  // wire the broker.
   const v3DispatchDeps: V3DispatchDeps = {
     v2Deps,
     enrichedTools: enrichedToolsForDispatch,
-    synthCredentialBroker: (deps as RunChatDeps).synthCredentialBroker,
     // 2026-05-11 — thread LargeResultStorage + thresholdBytes through to
     // the dispatch layer so ToolEnvelopeSplitter offloads enterprise-scale
     // tool results to Redis (with `_meta.artifactHandle` for paged

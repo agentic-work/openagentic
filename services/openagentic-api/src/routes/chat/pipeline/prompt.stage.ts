@@ -1080,52 +1080,6 @@ ${skill.systemPrompt}
     }, '[PROMPT] 📊 Data layer instructions injected for "Fetch Once, Query Many" pattern');
 
     // =================================================================
-    // 🔧 ON-DEMAND AGENT TOOL (OAT) — FILE PROCESSING & SANDBOX EXECUTION
-    // =================================================================
-    // Tell the LLM it can use synth_synthesize for file processing,
-    // data transformations, and custom code execution in a sandbox.
-    const hasSynthTool = context.availableTools?.some((t: any) =>
-      t.name === 'synth_synthesize' || t.function?.name === 'synth_synthesize'
-    );
-    if (hasSynthTool) {
-      systemPrompt += `\n\n---\n\n## ON-DEMAND AGENT TOOL (OAT) — Sandbox Code Execution
-
-You have access to \`synth_synthesize\` — a powerful tool that generates and executes Python code in a secure sandbox.
-
-### WHEN TO USE:
-- **File processing**: When the user uploads a file (PDF, DOCX, CSV, image, etc.) and wants it converted, parsed, analyzed, or transformed
-- **Document conversion**: PDF↔DOCX, CSV↔JSON, HTML→PDF, markdown→HTML, etc.
-- **Data analysis**: Custom computations, statistics, chart generation
-- **Custom API calls**: Endpoints without a dedicated MCP tool
-- **Any task requiring code execution** not covered by existing tools
-
-### HOW TO USE WITH UPLOADED FILES:
-When the user uploads a file, pass it to synth_synthesize:
-\`\`\`json
-{
-  "intent": "Convert the uploaded PDF to a DOCX file preserving formatting",
-  "capabilities": ["file_processing"],
-  "file_data": "<base64 content from the attachment>",
-  "file_name": "document.pdf",
-  "file_type": "application/pdf"
-}
-\`\`\`
-
-### HUMAN-IN-THE-MIDDLE (HITM) APPROVAL:
-- **Low risk** (read-only, data transforms, format conversion): Auto-approved, runs immediately
-- **Medium risk** (API calls, file writes): May require human approval
-- **High risk** (cloud modifications, credential access, system changes): ALWAYS requires human approval
-- When approval is needed, tell the user: "This operation requires your approval before execution. Risk level: [level]"
-- The user can approve or reject from the UI
-
-### SANDBOX ENVIRONMENT:
-- Python 3.11 with libraries: requests, pandas, python-docx, reportlab, Pillow, openpyxl, beautifulsoup4, lxml
-- Isolated container — no access to the host system
-- 60-second timeout, 512MB memory limit
-- Generated code is shown for review before execution (dry_run mode)`;
-    }
-
-    // =================================================================
     // ⏳ INJECT LONG-RUNNING OPERATIONS GUIDANCE
     // =================================================================
     // When Azure/cloud tools are available, add rules for handling
@@ -1297,8 +1251,7 @@ Respond in English unless the user requests another language or writes in one.
 
 1. **Answer directly** when you know the answer — no tools needed for general knowledge
 2. **Use MCP tools** for real-time data — web_search, k8s_*, azure_*, aws_*, gcp_*, github_*, prometheus_*, loki_*
-3. **DO NOT use synth_synthesize** unless there is genuinely no MCP tool for the task
-4. **DO NOT use delegate_to_agents** for simple tasks — only for 3+ truly independent parts
+3. **DO NOT use delegate_to_agents** for simple tasks — only for 3+ truly independent parts
 
 ### Tool Execution Guidelines
 

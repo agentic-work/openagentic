@@ -89,11 +89,6 @@ interface ChatInputBarProps {
   modelSupportsThinking?: boolean;
   // Multi-model mode (disables model selector when enabled)
   isMultiModelEnabled?: boolean;
-  // OAT / Tool Synthesis
-  synthEnabled?: boolean;
-  synthPendingCount?: number;
-  onSynthToggle?: () => void;
-  onSynthClick?: () => void;
   // Admin Tool Inspector
   onToggleToolInspector?: () => void;
   showToolInspector?: boolean;
@@ -153,11 +148,6 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
   onThinkingToggle,
   // Multi-model mode
   isMultiModelEnabled = false,
-  // OAT / Tool Synthesis
-  synthEnabled = false,
-  synthPendingCount = 0,
-  onSynthToggle,
-  onSynthClick,
   // Admin Tool Inspector
   onToggleToolInspector,
   showToolInspector = false,
@@ -683,10 +673,6 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
               isThinkingEnabled={isThinkingEnabled}
               onThinkingToggle={onThinkingToggle}
               isMultiModelEnabled={isMultiModelEnabled}
-              synthEnabled={synthEnabled}
-              synthPendingCount={synthPendingCount}
-              onSynthToggle={onSynthToggle}
-              onSynthClick={onSynthClick}
               onToggleToolInspector={onToggleToolInspector}
               showToolInspector={showToolInspector}
             />

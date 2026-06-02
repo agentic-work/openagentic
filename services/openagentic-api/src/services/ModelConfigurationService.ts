@@ -317,7 +317,7 @@ class ModelConfigurationServiceClass {
 
   /**
    * Get tier model IDs (economy/balanced/premium) from DB.
-   * Used by TieredFC, TaskAnalysis, the legacy in-api orchestrator, SynthService.
+   * Used by TieredFC, TaskAnalysis, the legacy in-api orchestrator.
    */
   async getTierModels(): Promise<{ economical: string; balanced: string; premium: string }> {
     const config = await this.getConfig();

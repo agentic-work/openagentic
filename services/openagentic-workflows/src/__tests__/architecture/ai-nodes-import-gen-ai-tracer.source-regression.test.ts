@@ -18,7 +18,6 @@
  * | vertex               | chat                                     |
  * | reasoning            | chat                                     |
  * | structured_output    | chat                                     |
- * | synth                | chat                                     |
  * | guardrails           | chat                                     |
  * | agent_single         | agent                                    |
  * | agent_pool           | agent                                    |
@@ -58,7 +57,6 @@ const AI_NODES = [
   'vertex',
   'reasoning',
   'structured_output',
-  'synth',
   'guardrails',
   'agent_single',
   'agent_pool',

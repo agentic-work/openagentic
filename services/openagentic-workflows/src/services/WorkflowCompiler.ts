@@ -45,7 +45,6 @@ const VALID_NODE_TYPES = new Set([
   'transform', 'merge', 'approval', 'human_approval', 'wait',
   'agent_spawn', 'a2a', 'http_request', 'multi_agent',
   'agent_single', 'agent_pool', 'agent_supervisor',
-  'synth_synthesize', 'synth', 'oat_synthesize', 'oat',
   'bedrock', 'vertex', 'azure_ai', 'openagentic',
   'openagentic_llm', 'openagentic_chat', 'data_query', 'reasoning',
   'slack_message', 'teams_message', 'outlook_email', 'send_email',
@@ -199,9 +198,6 @@ export class WorkflowCompiler {
       // (openagentic_llm — schema-driven alias for openagentic_chat; validation handled by schema-driven path)
       // (multi_agent — now schema-driven via nodes/multi_agent/; validation handled by schema-driven path)
       // (agent_spawn — now schema-driven via nodes/agent_spawn/; validation handled by schema-driven path)
-      // (synth + synth_synthesize + oat + oat_synthesize — now schema-driven
-      //  via nodes/synth/ (aliases share the schema); validation handled by
-      //  schema-driven path (Task #46))
       // (rag_query, vector_store, document_loader — now schema-driven via nodes/; validation handled by schema-driven path)
       // (structured_output — now schema-driven via nodes/structured_output/; validation handled by schema-driven path)
       // (transform — now schema-driven via nodes/transform/; validation handled by schema-driven path)

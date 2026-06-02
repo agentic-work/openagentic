@@ -303,15 +303,6 @@ const SEED_MODULES: SeedModule[] = [
       'Use delegate_to_agents when a task can be decomposed into 2+ independent sub-tasks. Each agent gets its own LLM loop with tool access. Prefer parallel agents for complex multi-step work.',
   },
   {
-    name: 'oat-guidance',
-    category: 'domain',
-    description: 'When and how to use synth_synthesize (OAT) — last resort only',
-    priority: 60,
-    injection: { requiresTools: ['synth_synthesize'] },
-    content:
-      'synth_synthesize is a LAST RESORT. Only use when NO dedicated MCP tool exists for the task. It synthesizes custom Python code that runs in a sandbox. High-risk operations require human approval.',
-  },
-  {
     name: 'provisioning-loops',
     category: 'domain',
     description: 'Guidance for complex multi-step provisioning tasks',

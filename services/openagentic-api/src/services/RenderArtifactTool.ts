@@ -57,7 +57,7 @@ const DESCRIPTION = [
   'Python-plot PNG, or for legacy back-compat. The kinds are:',
   "  - 'html'        full HTML widget (sandboxed iframe, self-contained)",
   "  - 'react'       JSX/TSX widget (compiled in-iframe via Babel)",
-  "  - 'python_plot' base64 PNG you produced via synth (sandboxed Python)",
+  "  - 'python_plot' base64 PNG you produced via the browser sandbox (Pyodide)",
   "  - 'svg'         raw SVG you've authored",
   '',
   'For architecture / sequence / state / flowchart / class / ER / network',
@@ -136,8 +136,8 @@ const INPUT_EXAMPLES: ReadonlyArray<Record<string, unknown>> = [
     kind: 'python_plot',
     title: 'matplotlib_bar_png',
     // 1x1 transparent PNG — placeholder showing the base64-encoded
-    // shape. Real emissions come back from synth_execute as a
-    // matplotlib Agg-rendered base64 string.
+    // shape. Real emissions come back from the browser Python sandbox
+    // as a matplotlib Agg-rendered base64 string.
     content:
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     placement: 'inline',

@@ -27,15 +27,14 @@ export type ArtifactKind =
   | 'unknown';
 
 const KIND_BY_SLUG: ReadonlyMap<string, ArtifactKind> = new Map([
-  // python-report: synth_execute stdout-as-markdown payloads (no compose_app
-  // template — these slugs are stamped by the report-shape detector in
-  // SynthExecuteTool's exportable manifest).
+  // python-report: stdout-as-markdown payloads (no compose_app template —
+  // these slugs are stamped by the report-shape detector).
   ['python-report', 'python-report'],
   ['markdown-report', 'python-report'],
   ['analysis-report', 'python-report'],
   ['cost-report', 'python-report'],
   ['audit-report', 'python-report'],
-  // react-app: compose_app iframe via synth-cdn AppRenderer.
+  // react-app: compose_app iframe via AppRenderer.
   ['compose_app', 'react-app'],
   ['react-app', 'react-app'],
   ['cloud-cost-dashboard', 'react-app'],

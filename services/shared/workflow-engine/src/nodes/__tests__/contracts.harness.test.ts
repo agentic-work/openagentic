@@ -52,7 +52,7 @@ const NODES_REQUIRING_EXTERNAL = new Set<string>([
   'agent_spawn', 'a2a', 'agent_single', 'agent_pool',
   'agent_supervisor', 'multi_agent', 'openagentic',
   // K8s / sandbox
-  'k8s_sandbox_run', 'synth',
+  'k8s_sandbox_run',
   // Sub-workflow needs a workflow engine
   'sub_workflow',
   // HITL needs DB

@@ -47,49 +47,12 @@ describe('registry', () => {
     expect(registry.has('llm_completion')).toBe(true);
   });
 
-  // Task #46 — the last 6 unmigrated node types (synth + 3 aliases, code,
-  // openagentic) are now schema-driven. After this batch the schema-driven
-  // registry covers 100% of node types — there are no nodes left for the
-  // legacy switch/case. This test is retained as a positive coverage
-  // assertion: every previously-unmigrated type is now in the registry.
+  // Task #46 — code + openagentic node types are now schema-driven. This
+  // test is retained as a positive coverage assertion: every
+  // previously-unmigrated type is now in the registry.
   it('registers ALL node types — schema coverage reaches 100% (Task #46)', () => {
-    // Final batch — synth family + code + openagentic.
-    expect(registry.has('synth')).toBe(true);
-    expect(registry.has('synth_synthesize')).toBe(true);
-    expect(registry.has('oat')).toBe(true);
-    expect(registry.has('oat_synthesize')).toBe(true);
     expect(registry.has('code')).toBe(true);
     expect(registry.has('openagentic')).toBe(true);
-  });
-
-  // synth_synthesize / oat / oat_synthesize all share the synth plugin —
-  // same executor + outputAssertions, exposed under additional type strings
-  // so saved flows and seed templates that reference the legacy names keep
-  // working without a data migration. Mirrors the openagentic_llm and
-  // approval alias patterns from earlier batches.
-  describe('synth aliases (Task #46)', () => {
-    it('all four synth type strings share the same executor', () => {
-      const synth = registry.get('synth')!;
-      expect(registry.get('synth_synthesize')!.execute).toBe(synth.execute);
-      expect(registry.get('oat')!.execute).toBe(synth.execute);
-      expect(registry.get('oat_synthesize')!.execute).toBe(synth.execute);
-    });
-
-    it('aliases preserve the synth refusal-detection assertions', () => {
-      for (const t of ['synth', 'synth_synthesize', 'oat', 'oat_synthesize']) {
-        const plugin = registry.get(t)!;
-        const names = (plugin.schema.outputAssertions ?? []).map((a) => a.name);
-        expect(names, `${t} assertions`).toContain('non_empty_synth_output');
-        expect(names, `${t} assertions`).toContain('synth_substantive_output');
-      }
-    });
-
-    it('alias schema.type matches its registry key', () => {
-      expect(registry.get('synth')!.schema.type).toBe('synth');
-      expect(registry.get('synth_synthesize')!.schema.type).toBe('synth_synthesize');
-      expect(registry.get('oat')!.schema.type).toBe('oat');
-      expect(registry.get('oat_synthesize')!.schema.type).toBe('oat_synthesize');
-    });
   });
 
   it('returns a NodePlugin { schema, execute } pair for each migrated type', () => {
@@ -114,10 +77,9 @@ describe('registry', () => {
     expect(types).toContain('http_request');
     expect(types).toContain('llm_completion');
     // After Task #46 the registry covers 100% of node types. The previously
-    // unmigrated types (code, openagentic, synth) are now schema-driven.
+    // unmigrated types (code, openagentic) are now schema-driven.
     expect(types).toContain('code');
     expect(types).toContain('openagentic');
-    expect(types).toContain('synth');
   });
 
   it('every schema has the required top-level fields', () => {

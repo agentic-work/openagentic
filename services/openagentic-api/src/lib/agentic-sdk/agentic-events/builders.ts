@@ -1,7 +1,7 @@
 /**
  * Event-builder helpers — typed constructors for the OpenAgentic canonical
  * event taxonomy. Every emit site in the platform (api / workflows /
- * code-manager / openagentic / synth-executor) should call these helpers
+ * code-manager / openagentic) should call these helpers
  * INSTEAD of constructing object literals.
  *
  * Pattern: each builder takes `Omit<Event, 'type' | 'ts'>` and stamps the
@@ -76,7 +76,6 @@ import type {
   McpConnectEvent,
   McpDisconnectEvent,
   McpCapabilityDeltaEvent,
-  OatSynthesizedEvent,
   // Layer 11
   UiOpenEvent,
   UiPatchEvent,
@@ -520,13 +519,6 @@ export function buildMcpCapabilityDelta(
   nowOverride?: number,
 ): McpCapabilityDeltaEvent {
   return { type: 'mcp_capability_delta', ts: now(nowOverride), ...args };
-}
-
-export function buildOatSynthesized(
-  args: Args<OatSynthesizedEvent>,
-  nowOverride?: number,
-): OatSynthesizedEvent {
-  return { type: 'oat_synthesized', ts: now(nowOverride), ...args };
 }
 
 // =============================================================================

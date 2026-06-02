@@ -18,7 +18,6 @@ import userSettingsRoutes from '../routes/user-settings.js';
 import formattingRoutes from '../routes/formatting.js';
 import renderRoutes from '../routes/render.js';
 import agentAdminRoutes from '../routes/admin/agentic-loops.js';
-import artifactFunctionRoutes, { agentExecutionApprovalRoutes } from '../routes/artifact-functions.js';
 import { embedRoutes } from '../routes/embed.js';
 
 // ---------------------------------------------------------------------------
@@ -200,19 +199,7 @@ const miscRoutesPluginImpl: FastifyPluginAsync<MiscRoutesPluginOptions> = async 
     loggers.routes.error({ err: error }, 'Failed to register Agent admin routes');
   }
 
-  // ── 15: Artifact Function routes + Agent Execution Approval routes ────────
-  // These two are co-located in the same route file; imported together.
-  try {
-    await fastify.register(artifactFunctionRoutes, { prefix: '/api/artifact-functions' });
-    loggers.routes.info('Artifact Function routes registered at /api/artifact-functions/*');
-
-    await fastify.register(agentExecutionApprovalRoutes, { prefix: '/api/agent-executions' });
-    loggers.routes.info('Agent Execution Approval routes registered at /api/agent-executions/*');
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register Artifact Function routes');
-  }
-
-  // ── 16: Embed routes (embeddable workflow widgets) ────────────────────────
+  // ── 15: Embed routes (embeddable workflow widgets) ────────────────────────
   try {
     await fastify.register(embedRoutes, { prefix: '/embed' });
     loggers.routes.info('Embed routes registered at /embed/* (widget, iframe, execute)');

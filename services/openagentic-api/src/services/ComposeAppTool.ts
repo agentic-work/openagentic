@@ -10,7 +10,7 @@
  *   - Server emits a single `app_render` NDJSON frame with the verbatim
  *     html — UI mounts it in an iframe with sandbox="allow-scripts" srcdoc
  *     and a CSP `<meta http-equiv>` locked to ${parent-origin}/api/cdn/lib/
- *     (same-origin proxy to the cluster-internal synth-cdn pod)
+ *     (same-origin path served by the UI)
  *
  * Trust boundary:
  *   - The tool is always injected for every model (see meta-tools.stage).
@@ -46,7 +46,7 @@ export interface ComposeAppInput {
   group_id?: string;
   /** Set true when the model wants Pyodide (Python-in-Worker) bootstrap. */
   pyodide_required?: boolean;
-  /** Set true when the iframe will POST to /exec/python (real cloud SDK calls). */
+  /** Set true when the page runs Python in the browser (Pyodide). */
   python_exec_required?: boolean;
   /** Optional registry slug. When set, server hydrates HTML from the
    *  template (validated params → htmlTemplate(params)). Same trust gate
@@ -139,8 +139,7 @@ const DESCRIPTION = [
   'for plain prose, tables, or when a single bar/line/sankey would suffice.',
   '',
   'LIBRARY ALLOW-LIST (script src URLs MUST start with one of these — all',
-  'served by the UI nginx via same-origin proxy to the cluster-internal',
-  'synth-cdn pod; the browser never reaches an external host):',
+  'served same-origin by the UI; the browser never reaches an external host):',
   '  /api/cdn/lib/d3@7/dist/d3.min.js',
   '  /api/cdn/lib/d3-sankey@0/dist/d3-sankey.min.js',
   '  /api/cdn/lib/d3-hierarchy@3/dist/d3-hierarchy.min.js',
@@ -161,11 +160,6 @@ const DESCRIPTION = [
   'PYODIDE: set pyodide_required=true when you need browser-side Python',
   '(NumPy / pandas / matplotlib). Matplotlib MUST use the Agg backend',
   '(HTML5 backend is broken in Web Workers).',
-  '',
-  'REAL CLOUD SDK: when the app needs boto3 / azure-mgmt-* / google-cloud-*,',
-  'POST to /api/synth/exec from the iframe — the api validates the AD JWT,',
-  'OBO-injects the user\'s cloud credentials, and runs the Python in the',
-  'synth-executor sandbox AS the authenticated user.',
   '',
   'WHAT IT RETURNS: an `artifact_id`. The mini-app mounts inline immediately.',
   'Reuse the same `group_id` to hot-swap on edits without losing scroll position.',
@@ -218,8 +212,7 @@ export const COMPOSE_APP_TOOL = {
             'Freestyle path — full HTML document including <!doctype html> + ' +
             '<html> + <head> + <body>. Use ONLY when no registry template fits. ' +
             'ALL <script src="..."> URLs must start with /api/cdn/lib/ — ' +
-            'same-origin path the UI nginx reverse-proxies to the cluster-internal ' +
-            'synth-cdn pod (openagentic-synth-executor:8090 ClusterIP). Public ' +
+            'a same-origin path served by the UI. Public ' +
             'CDNs (jsdelivr, unpkg, cdnjs) and any other absolute host are ' +
             'blocked. No <iframe>, no eval(), no new Function(). ' +
             'Either `template` or `html` is required.',
@@ -261,7 +254,7 @@ export const COMPOSE_APP_TOOL = {
         python_exec_required: {
           type: 'boolean',
           description:
-            'Set true when the page POSTs to /exec/python (real cloud SDK calls).',
+            'Set true when the page runs Python in the browser (Pyodide).',
         },
       },
     },

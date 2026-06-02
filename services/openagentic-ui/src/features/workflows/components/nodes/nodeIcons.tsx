@@ -272,13 +272,6 @@ const AgentSupervisorIcon = () => svg(
   </>
 );
 
-// ── Synth: waveform ──
-const SynthIcon = () => svg(
-  <>
-    <path d="M2 12h3l2-6 3 12 3-8 2 4h2l3-6 2 4h2" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  </>
-);
-
 // ── Error Handler: alert triangle ──
 const ErrorHandlerIcon = () => svg(
   <>
@@ -410,8 +403,6 @@ const NODE_ICONS: Record<string, () => React.ReactElement> = {
   agent_single: AgentSingleIcon,
   agent_pool: AgentPoolIcon,
   agent_supervisor: AgentSupervisorIcon,
-  synth: SynthIcon,
-  synth_synthesize: SynthIcon,
   error_handler: ErrorHandlerIcon,
   user_context: UserContextIcon,
   send_email: SendEmailIcon,
@@ -569,16 +560,6 @@ const AgentArtifactIcon = () => svg(
   </>
 );
 
-// OAT Function Builder: function braces f(x)
-const AgentOatFunctionIcon = () => svg(
-  <>
-    <path d="M8 3c-2 0-2 2-2 4s0 3-2 4c2 1 2 3 2 5s0 4 2 4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M16 3c2 0 2 2 2 4s0 3 2 4c-2 1-2 3-2 5s0 4-2 4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M10.5 9.5h2M11.5 9.5v5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
-    <circle cx="13.6" cy="14" r="0.9" fill="#fff" />
-  </>
-);
-
 // Cloud Operations: cloud with a gear
 const AgentCloudOpsIcon = () => svg(
   <>
@@ -608,7 +589,6 @@ export const AGENT_TYPE_ICONS: Record<string, () => React.ReactElement> = {
   validation: AgentValidationIcon,
   synthesis: AgentSynthesisIcon,
   artifact_creation: AgentArtifactIcon,
-  oat_function_builder: AgentOatFunctionIcon,
   cloud_operations: AgentCloudOpsIcon,
   custom: AgentCustomIcon,
 };
@@ -625,7 +605,6 @@ export const AGENT_TYPE_COLORS: Record<string, string> = {
   validation: '#ef4444',        // red
   synthesis: '#a855f7',         // purple-500
   artifact_creation: '#ec4899', // pink
-  oat_function_builder: '#14b8a6', // teal
   cloud_operations: '#0ea5e9',  // sky
   custom: '#64748b',            // slate
 };

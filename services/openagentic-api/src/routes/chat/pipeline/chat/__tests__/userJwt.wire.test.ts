@@ -3,10 +3,9 @@
  *
  * Verifies that `runChat` plumbs the user's Azure AD ACCESS token from
  * the loose `ctx.user` surface onto the typed `ctx.userJwt` field via
- * `extractUserJwt`. The synth dispatcher (Phase C.5) and any future
- * OBO-aware tool reads `ctx.userJwt` instead of sniffing the user
- * object — this test pins the wire so a refactor never silently drops
- * the field.
+ * `extractUserJwt`. The OBO-aware cloud-MCP dispatch path reads
+ * `ctx.userJwt` instead of sniffing the user object — this test pins the
+ * wire so a refactor never silently drops the field.
  *
  * Sibling test `extractUserJwt.test.ts` covers the extractor in
  * isolation. This file covers the **integration**: stream.handler builds
@@ -86,7 +85,7 @@ describe('userJwt wire (chatmode-rip Phase C.6 integration)', () => {
     // stream.handler.ts:1313-1322 constructs ctx.user with accessToken pulled
     // from the user's stored Azure tokens (deps.getAzureTokenInfo). After
     // runChat returns, ctx.userJwt MUST equal that accessToken — that's
-    // what SynthOBODispatcher reads to call CredentialBroker.brokerFor.
+    // what the cloud-MCP OBO dispatch path reads.
     const ctx: any = {
       emit: vi.fn(),
       logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
@@ -108,8 +107,8 @@ describe('userJwt wire (chatmode-rip Phase C.6 integration)', () => {
 
   it('case 2: leaves ctx.userJwt undefined when ctx.user has no accessToken', async () => {
     // Anonymous / non-Azure / unauthenticated paths land here. The pipeline
-    // must not throw and must not invent an empty-string JWT — downstream
-    // synth dispatcher checks `typeof ctx.userJwt !== 'string' || length===0`
+    // must not throw and must not invent an empty-string JWT — the cloud-MCP
+    // OBO dispatch path checks `typeof ctx.userJwt !== 'string' || length===0`
     // and refuses with a clean "user not signed in" error.
     const ctx: any = {
       emit: vi.fn(),

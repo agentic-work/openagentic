@@ -18,14 +18,13 @@
  *
  * REMOVED from T1 (now discoverable via tool_search in mcp_tools index):
  *   compose_visual · compose_app · render_artifact · request_clarification ·
- *   browser_sandbox_exec · memorize · memory_search · delegate_to_agents ·
- *   synth_execute (renamed → synth).
+ *   browser_sandbox_exec · memorize · memory_search · delegate_to_agents.
  *
  * Concurrency-safe partitioning:
  *   - T1 baseline (hardcoded META_TOOL_CONCURRENCY_SAFE): tool_search /
  *     agent_search / read_large_result / web_search / web_fetch /
  *     pattern_recall — pure reads, always parallel-safe.
- *   - Task / agent_send / agent_list / agent_stop / synth — LIVE-classified
+ *   - Task / agent_send / agent_list / agent_stop — LIVE-classified
  *     as 'allow' by PermissionService.classifyName (sub-agent lifecycle
  *     against independent isolated sessions; mutation safety is the
  *     SUB-AGENT's concern). Coalesce into the parallel batch.

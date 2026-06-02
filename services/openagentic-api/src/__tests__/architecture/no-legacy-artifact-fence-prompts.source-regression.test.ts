@@ -8,7 +8,7 @@
  * model-facing prose telling the model to emit ```artifact:html / react
  * code fences. Those fences are silently failing (legacy HtmlArtifact
  * renderer returns empty content on the new chat-pipeline path) and the
- * next-gen `compose_app` + `synth_execute` artifact emit replaces them.
+ * next-gen `compose_app` artifact emit replaces them.
  *
  * This test pins the rip — once GREEN, any future PR re-adding
  * `\`\`\`artifact:html` (or `react`/`svg`) to a prompt string fails CI.

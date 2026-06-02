@@ -167,7 +167,6 @@ const KNOWN_VIOLATORS: Record<string, number> = {
   // Other / startup
   'startup/04-providers.ts': 5,
   // Surfaced by cage 2026-05-05 (not audit-listed but real violators):
-  'services/SynthService.ts': 12,
   'services/llm-providers/OpenAIProvider.ts': 12,
   'services/BedrockPricingService.ts': 12,
   'services/TitleGenerationClient.ts': 6,

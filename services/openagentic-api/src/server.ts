@@ -1811,45 +1811,6 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register Agent admin routes');
   }
 
-  // Register Synth (Tool Synthesis) routes
-  try {
-    const { SynthService } = await import('./services/SynthService.js');
-    const { registerAdminSynthRoutes } = await import('./routes/admin-synth.js');
-    const { registerSynthRoutes } = await import('./routes/synth.js');
-
-    // Create shared SynthService instance (singleton)
-    const synthService = SynthService.getInstance(loggers.routes);
-    const synthContext = { synthService };
-
-    // Admin Synth routes
-    await server.register(async (instance) => {
-      instance.addHook('preHandler', adminMiddleware);  // SECURITY: Use adminMiddleware for admin routes
-      await registerAdminSynthRoutes(instance, synthContext);
-    }, { prefix: '/api/admin/synth' });
-    loggers.routes.info('Admin Synth routes registered at /api/admin/synth/* with admin middleware');
-
-    // User Synth routes
-    await server.register(async (instance) => {
-      instance.addHook('preHandler', authMiddleware);
-      await registerSynthRoutes(instance, synthContext);
-    }, { prefix: '/api/synth' });
-    loggers.routes.info('Synth user routes registered at /api/synth/* with auth middleware');
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register Synth routes');
-  }
-
-  // Register Artifact Function routes (OAT-backed function registration, execution, approval)
-  try {
-    const { default: artifactFunctionRoutes, agentExecutionApprovalRoutes } = await import('./routes/artifact-functions.js');
-    await server.register(artifactFunctionRoutes, { prefix: '/api/artifact-functions' });
-    loggers.routes.info('Artifact Function routes registered at /api/artifact-functions/*');
-
-    await server.register(agentExecutionApprovalRoutes, { prefix: '/api/agent-executions' });
-    loggers.routes.info('Agent Execution Approval routes registered at /api/agent-executions/*');
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register Artifact Function routes');
-  }
-
   // ============================================================================
   // API v1 Router - Standardized versioned API
   // ============================================================================

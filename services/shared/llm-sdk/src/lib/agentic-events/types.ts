@@ -42,7 +42,7 @@
  *      vector_probe
  *
  *  10. MCP fabric:
- *      mcp_connect, mcp_disconnect, mcp_capability_delta, oat_synthesized
+ *      mcp_connect, mcp_disconnect, mcp_capability_delta
  *
  *  11. Codemode (UI virtual DOM via InkVdom):
  *      ui_open, ui_patch, ui_close, ui_event, kube_event,
@@ -402,7 +402,7 @@ export interface ComposeVisualEvent {
 
 export interface ComposeAppEvent {
   type: 'compose_app';
-  /** Sandboxed mini-app id (synth-cdn-served). */
+  /** Sandboxed mini-app id. */
   app_id: string;
   /** Allow-listed library imports. */
   imports: string[];
@@ -639,16 +639,6 @@ export interface McpCapabilityDeltaEvent {
   ts: number;
 }
 
-export interface OatSynthesizedEvent {
-  type: 'oat_synthesized';
-  /** OAT (On-demand Agent Tooling) synthesis: model created a new tool at runtime. */
-  tool_name: string;
-  description: string;
-  /** Sandboxed runner id. */
-  runner_id: string;
-  ts: number;
-}
-
 // =============================================================================
 // 11. Codemode (UI virtual DOM)
 // =============================================================================
@@ -867,7 +857,6 @@ export type AgenticEvent =
   | McpConnectEvent
   | McpDisconnectEvent
   | McpCapabilityDeltaEvent
-  | OatSynthesizedEvent
   // Layer 11: codemode
   | UiOpenEvent
   | UiPatchEvent

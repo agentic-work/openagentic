@@ -46,7 +46,6 @@ export type AgentType =
   | 'artifact_creation'    // Visual artifact generation (dashboards, reports, diagrams)
   | 'docs_assistant'       // Documentation RAG chat assistant
   | 'flows_agent'          // Workflow/flows execution agent
-  | 'oat_function_builder' // OAT function builder agent
   | 'cloud_operations'     // Long-horizon multi-cloud (Azure/AWS/GCP) provisioning + audit
   | 'finops_analyst'       // Cloud cost / FinOps dashboards (per-service, per-region spend)
   | 'security_auditor'     // IAM graphs, data-class heatmaps, compliance scorecards
@@ -356,19 +355,6 @@ export const DEFAULT_MODEL_CONFIGS: Record<AgentType, AgentModelConfig> = {
     retryAttempts: 2,
     preferredTier: 'premium',
   },
-  oat_function_builder: {
-    agentType: 'oat_function_builder',
-    primaryModel: 'auto',
-    fallbackModel: 'auto',
-    maxTokens: 8192,
-    temperature: 0.1,
-    thinkingEnabled: true,
-    thinkingBudget: 8192,
-    costBudgetPerCall: 50,
-    timeoutMs: 60000,
-    retryAttempts: 2,
-    preferredTier: 'balanced',
-  },
   cloud_operations: {
     // Long-horizon multi-cloud provisioning + enterprise audit. Big budget, big context.
     // Requires a 1M-context-class model (see ModelCapabilityGate Rule 6).
@@ -467,24 +453,22 @@ export const DEFAULT_TOOLS_WHITELIST: Record<string, string[]> = {
   planning: [],
   validation: ['web_search'],
   synthesis: [],
-  // 2026-04-24: expanded from ['generate_image','synth_synthesize','web_search','web_fetch']
-  // to [] (all tools). When a user says "show me my azure resources in an
-  // interactive architecture diagram", the artifact_creation subagent needs
-  // to be able to actually FETCH the azure data via the user's MCP
-  // azure_* tools — not default to web_search. Same pattern as
-  // cloud_operations: empty whitelist = all tools available, prompt does
-  // the scoping (the artifact-creation prompt module tells the subagent
-  // to focus on visualization output). Previously the subagent would
-  // apologize "I don't have direct access to your Azure subscription"
+  // 2026-04-24: expanded to [] (all tools). When a user says "show me my
+  // azure resources in an interactive architecture diagram", the
+  // artifact_creation subagent needs to be able to actually FETCH the azure
+  // data via the user's MCP azure_* tools — not default to web_search. Same
+  // pattern as cloud_operations: empty whitelist = all tools available,
+  // prompt does the scoping (the artifact-creation prompt module tells the
+  // subagent to focus on visualization output). Previously the subagent
+  // would apologize "I don't have direct access to your Azure subscription"
   // even when the session already had azure_* tools bound.
   artifact_creation: [],
-  oat_function_builder: [],
   docs_assistant: ['web_search', 'web_fetch'],
   flows_agent: [],
   data_extraction: ['web_search', 'web_fetch'],
   // cloud_operations: multi-cloud infra. Empty = all tools (we let the system prompt
-  // and the typed cloud SDK tools guide it). Synth and web are explicitly listed for
-  // documentation lookups and last-resort SDK escapes.
+  // and the typed cloud SDK tools guide it). Web tools are available for
+  // documentation lookups.
   cloud_operations: [],
   // Persona agents: MCP tool access is enforced at the user-session OBO layer.
   // Tool whitelists here are empty; per-session tool scoping is a follow-up task.
@@ -512,7 +496,6 @@ export const DEFAULT_PROMPT_MODULES: Record<string, string[]> = {
   validation: ['identity-default', 'safety', 'tool-calling-strategy', 'grounding-instructions', 'continuation'],
   synthesis: ['identity-default', 'safety', 'continuation'],
   artifact_creation: ['identity-default', 'safety', 'artifact-creation', 'architecture-diagram', 'continuation'],
-  oat_function_builder: ['identity-default', 'safety', 'oat-guidance', 'continuation'],
   docs_assistant: ['identity-default', 'safety', 'continuation'],
   flows_agent: ['identity-default', 'safety', 'tool-calling-strategy', 'continuation'],
   data_extraction: ['identity-default', 'safety', 'data-efficiency', 'continuation'],
@@ -640,7 +623,6 @@ export class AgentRegistry {
         const isPreGapDefault =
           current.length === 4 &&
           current.includes('generate_image') &&
-          current.includes('synth_synthesize') &&
           current.includes('web_search') &&
           current.includes('web_fetch');
         if (isOldDefault || isPreGapDefault) {
@@ -808,7 +790,6 @@ export class AgentRegistry {
     const overrides: Record<string, string> = {
       docs_assistant: 'Documentation Assistant',
       flows_agent: 'Flows Agent',
-      oat_function_builder: 'OAT Function Builder',
       artifact_creation: 'Artifact Creation Agent',
       cloud_operations: 'Cloud Operations Agent',
     };

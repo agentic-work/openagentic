@@ -6,7 +6,7 @@
  * compose_app payloads from the model arrive as HTML/JS strings. Before
  * we mount them in the sandboxed iframe (srcdoc), we validate that every
  * `<script src="...">` URL resolves to the same-origin /api/cdn/lib/*
- * path that the UI nginx reverse-proxies to the ClusterIP synth-cdn pod.
+ * path that the UI serves.
  *
  * Allow-list (production):
  *   - /api/cdn/lib/...                           — preferred (relative path)
@@ -19,8 +19,7 @@
  *   - https://cdnjs.cloudflare.com/...
  *
  * ALWAYS rejected:
- *   - https://cdn.openagentic.io/...  (#491 — ghost hostname, no DNS/ingress;
- *                                     synth-cdn is ClusterIP-only)
+ *   - any external CDN hostname (no DNS/ingress; serve same-origin instead)
  *   - skypack.dev (sunsetting per https://www.jsdelivr.com/skypack)
  *   - esm.sh (weak audit history)
  *   - any other host, raw IPs, http://, data:, blob:
@@ -47,12 +46,10 @@ export interface CdnAllowListResult {
 }
 
 /**
- * Same-origin CDN proxy path — UI nginx reverse-proxies `/api/cdn/lib/*`
- * to the ClusterIP synth-cdn:8080 pod inside the cluster. The hostname of
- * that pod is helm-derived (`<release>-synth-cdn.<ns>.svc.cluster.local`)
- * and lives ONLY inside the cluster — there is no external DNS, ingress,
- * or TLS cert. Browsers always fetch from the parent origin, so the
- * absolute URL form embeds whatever host the user is on:
+ * Same-origin CDN path — the UI serves vendored libraries under
+ * `/api/cdn/lib/*` from the parent origin. There is no external DNS,
+ * ingress, or TLS cert involved. Browsers always fetch from the parent
+ * origin, so the absolute URL form embeds whatever host the user is on:
  *   - `/api/cdn/lib/...`                    (relative — preferred)
  *   - `https://anything/api/cdn/lib/...`    (absolute, any host — accepted
  *                                             because the UI nginx is the

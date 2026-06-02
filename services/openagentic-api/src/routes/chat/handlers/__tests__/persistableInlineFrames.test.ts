@@ -46,14 +46,6 @@ describe('PERSISTABLE_INLINE_FRAMES — Sev-0 session-reload regression cage', (
     // E1 (2026-05-12) — closes the remaining reload-loses-X gaps
     'findings_emit',
     'artifact_emit',
-    'synth_planned',
-    'synth_code_chunk',
-    'synth_approval_requested',
-    'synth_approved',
-    'synth_denied',
-    'synth_executing',
-    'synth_stdout',
-    'synth_completed',
   ])('persists "%s" — render-bearing, must survive reload', (frame) => {
     expect(isPersistableInlineFrame(frame)).toBe(true);
     expect(PERSISTABLE_INLINE_FRAMES.has(frame)).toBe(true);

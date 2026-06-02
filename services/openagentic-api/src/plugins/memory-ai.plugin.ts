@@ -14,8 +14,6 @@
  *  7. adminTechniqueRoutes      — Admin AI technique management        → /api/admin/techniques/*
  *  8. (Phase E.4/E.6 RIP) Admin /api/admin/prompts/* removed with the legacy prompt-module registry.
  *  9. sharedKBRoutes            — Admin shared knowledge base          → /api/admin/shared-kb/* (adminMiddleware)
- * 10. registerAdminSynthRoutes  — Admin tool synthesis                 → /api/admin/synth/* (adminMiddleware)
- * 11. registerSynthRoutes       — User tool synthesis                  → /api/synth/* (authMiddleware)
  *
  * Milvus + Redis injection pattern:
  *   Inside the plugin body: read from options first, fall back to AppContext.
@@ -143,49 +141,6 @@ const memoryAIRoutesPluginImpl: FastifyPluginAsync<MemoryAIRoutesPluginOptions> 
     loggers.routes.info('Admin Shared KB routes registered at /api/admin/shared-kb/* with admin middleware');
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register admin shared KB routes');
-  }
-
-  // ── 10 + 11. Synth (Tool Synthesis) routes ──────────────────────────────
-  // Admin synth routes (protected by adminMiddleware) + user synth routes
-  // (protected by authMiddleware). Both share a single SynthService singleton.
-  //
-  // Lesson 4: SynthService init is guarded separately so a singleton-init
-  // failure logs once; each register path then fails independently rather
-  // than one failure silently skipping the other.
-  let synthService: any = null;
-  try {
-    const { SynthService } = await import('../services/SynthService.js');
-    synthService = SynthService.getInstance(loggers.routes);
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to initialize SynthService singleton');
-  }
-
-  if (synthService) {
-    // ── 10. Admin Synth routes ─────────────────────────────────────────────
-    try {
-      const { registerAdminSynthRoutes } = await import('../routes/admin-synth.js');
-      const synthContext = { synthService };
-      await fastify.register(async (instance) => {
-        instance.addHook('preHandler', adminMiddleware);
-        await registerAdminSynthRoutes(instance, synthContext);
-      }, { prefix: '/api/admin/synth' });
-      loggers.routes.info('Admin Synth routes registered at /api/admin/synth/* with admin middleware');
-    } catch (error) {
-      loggers.routes.error({ err: error }, 'Failed to register admin synth routes');
-    }
-
-    // ── 11. User Synth routes ──────────────────────────────────────────────
-    try {
-      const { registerSynthRoutes } = await import('../routes/synth.js');
-      const synthContext = { synthService };
-      await fastify.register(async (instance) => {
-        instance.addHook('preHandler', authMiddleware);
-        await registerSynthRoutes(instance, synthContext);
-      }, { prefix: '/api/synth' });
-      loggers.routes.info('Synth user routes registered at /api/synth/* with auth middleware');
-    } catch (error) {
-      loggers.routes.error({ err: error }, 'Failed to register user synth routes');
-    }
   }
 
   loggers.routes.info('Memory-AI routes plugin registered successfully');

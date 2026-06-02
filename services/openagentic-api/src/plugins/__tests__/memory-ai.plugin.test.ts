@@ -16,8 +16,6 @@
  *  7. adminTechniqueRoutes    — prefix: /api/admin
  *  8. promptModuleRoutes      — prefix: /api/admin/prompts (adminMiddleware)
  *  9. sharedKBRoutes          — prefix: /api/admin/shared-kb (adminMiddleware)
- * 10. registerAdminSynthRoutes — prefix: /api/admin/synth (adminMiddleware)
- * 11. registerSynthRoutes     — prefix: /api/synth (authMiddleware)
  *
  * Smoke-test honesty:
  *  - Routes that require auth will return 404 in Bun test runtime due to the
@@ -103,20 +101,6 @@ describe('memoryAIRoutesPlugin — Phase 3.5 smoke tests', () => {
     'Follow-up: integration test with real auth context.'
   );
 
-  it.todo(
-    'registerAdminSynthRoutes (GET /api/admin/synth/*) — protected by adminMiddleware. ' +
-    'Returns 404 instead of 401 in Bun test runtime due to raw.writableEnded quirk. ' +
-    'Memory: reference_fastify_v5_unawaited_send_bug.md. ' +
-    'Follow-up: integration test with real auth context.'
-  );
-
-  it.todo(
-    'registerSynthRoutes (GET /api/synth/*) — protected by authMiddleware. ' +
-    'Returns 404 instead of 401 in Bun test runtime due to raw.writableEnded quirk. ' +
-    'Memory: reference_fastify_v5_unawaited_send_bug.md. ' +
-    'Follow-up: integration test with real auth context.'
-  );
-
   let server: FastifyInstance;
   const savedEnv: Record<string, string | undefined> = {};
 
@@ -131,7 +115,7 @@ describe('memoryAIRoutesPlugin — Phase 3.5 smoke tests', () => {
     // DATABASE_URL is needed by Prisma imports that run at module load.
     // Use a stub DSN that won't attempt a real connection.
     process.env.DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://stub:stub@localhost:5432/stub';
-    // SharedKBService (and ToolSemanticCacheService via SynthService) both call
+    // SharedKBService calls
     // UniversalEmbeddingService.detectAndLoadConfig() at instantiation time.
     // detectAndLoadConfig requires OLLAMA_ENABLED=true to enter the Ollama branch
     // (line 231 of UniversalEmbeddingService.ts); without it the service throws

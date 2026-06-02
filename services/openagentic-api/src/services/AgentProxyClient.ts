@@ -26,8 +26,7 @@
  * fanouts so the sub-agent calls Azure/AWS/GCP AS the end user.
  *
  * Fail-CLOSED: refuses to construct without OPENAGENTIC_PROXY_INTERNAL_KEY,
- * AND refuses dev-secret literals (FedRAMP — same contract as
- * SynthExecuteJwt.mintSynthExecutorJwt).
+ * AND refuses dev-secret literals (FedRAMP — internal-JWT minting contract).
  *
  * Spec §7: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md
  */

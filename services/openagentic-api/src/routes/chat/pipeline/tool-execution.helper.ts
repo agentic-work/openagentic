@@ -34,14 +34,6 @@ import { insertAuditRow, decideAuditRow, makePreview } from '../../../services/a
 import { getApprovalRegistry } from '../../../services/approval/ApprovalRegistry.js';
 import { getCredentialScopeService } from '../../../services/CredentialScopeService.js';
 import { executeParallelSettled, type ParallelTask } from '../../../utils/parallel-executor.js';
-import { AzureOBOService } from '../../../services/AzureOBOService.js';
-
-// Lazy singleton — OBO service is stateless after construction; reuse across calls
-let _oboServiceForSynth: AzureOBOService | null = null;
-function getOBOServiceForSynth(logger: Logger): AzureOBOService {
-  if (!_oboServiceForSynth) _oboServiceForSynth = new AzureOBOService(logger);
-  return _oboServiceForSynth;
-}
 
 // =================================================================
 // 📊 TOOL EXECUTION RESULT - Extended interface with feedback metadata
@@ -68,12 +60,6 @@ export interface ToolExecutionResult {
   semanticMatchId?: string;         // If result came from semantic cache
   isCrossUserHit?: boolean;         // If result was from another user's cache
 }
-
-// Synth (Tool Synthesis): Dynamic tool synthesis
-import {
-  isSynthTool,
-  executeSynthToolCall
-} from './synth-execution.helper.js';
 
 // Image Generation: generate_image tool for artifact agents
 import {
@@ -892,7 +878,7 @@ interface PreProcessedToolCall {
   targetServer: string | undefined;
   toolArgs: any;                  // Parsed arguments
   isLocal: boolean;               // true = sequential local tool, false = MCP proxy
-  localType?: 'data-layer' | 'memory' | 'synth' | 'image-gen';  // Which local handler
+  localType?: 'data-layer' | 'memory' | 'image-gen';  // Which local handler
   isHallucinated?: boolean;       // true = tool name not in availableTools (LLM invented it)
   hallucinationHint?: string;     // Suggested correct path (e.g., "use delegate_to_agents")
 }
@@ -999,9 +985,6 @@ function preProcessToolCall(
   } else if (isMemoryTool(resolvedToolName)) {
     isLocal = true;
     localType = 'memory';
-  } else if (isSynthTool(resolvedToolName)) {
-    isLocal = true;
-    localType = 'synth';
   } else if (isImageGenTool(resolvedToolName)) {
     isLocal = true;
     localType = 'image-gen';
@@ -1054,7 +1037,7 @@ function preProcessToolCall(
 /**
  * Execute tool calls via MCP Proxy
  *
- * Local tools (code, memory, synth, data layer) execute sequentially to
+ * Local tools (memory, data layer, image gen) execute sequentially to
  * preserve state dependencies. MCP proxy tools execute in parallel with
  * a concurrency limit of 5 for maximum throughput.
  *
@@ -1137,7 +1120,7 @@ export async function executeToolCalls(
   // 🔀 PARALLEL EXECUTION: Pre-process and categorize tool calls
   // =================================================================
   // Phase 1: Pre-process all tool calls (resolve names, parse args, determine routing)
-  // Phase 2: Execute local tools sequentially (code, memory, synth, data layer)
+  // Phase 2: Execute local tools sequentially (memory, data layer, image gen)
   // Phase 3: Execute MCP proxy tools in parallel (concurrency limit: 5)
   // Phase 4: Merge results in original tool call order
   const preprocessed = toolCalls.map((tc, idx) =>
@@ -1182,8 +1165,7 @@ export async function executeToolCalls(
   // =================================================================
   // Phase 2: Execute LOCAL tools sequentially
   // =================================================================
-  // Code tools MUST be sequential (shared openagentic session state).
-  // Memory/synth/data-layer tools are also sequential for simplicity.
+  // Local tools run sequentially for simplicity (memory, data-layer, image-gen).
   for (const pp of localTools) {
     const { toolCall, resolvedToolName, targetServer, toolArgs, localType } = pp;
 
@@ -1401,159 +1383,6 @@ export async function executeToolCalls(
               toolCallId: toolCall.id, toolName: resolvedToolName, status: 'failed', error: error.message
             });
           }
-          continue;
-        }
-      }
-
-      // =================================================================
-      // SYNTH (TOOL SYNTHESIS): Dynamic Tool Synthesis
-      // =================================================================
-      // Route Synth tool calls to the SynthService for dynamic tool synthesis.
-      // Synth allows the LLM to synthesize one-shot tools for tasks outside
-      // built-in capabilities. Runs AS THE AUTHENTICATED USER (no service accounts).
-      if (isSynthTool(resolvedToolName)) {
-        logger.info({
-          toolCallId: toolCall.id,
-          toolName: resolvedToolName,
-          intent: toolArgs.intent?.substring(0, 100),
-          userId,
-          userEmail
-        }, '[TOOL-EXEC] Routing Synth tool to SynthService');
-
-        try {
-          // Get user's SSO provider from their auth context
-          const ssoProvider = (toolAuthContext as any)?.ssoProvider || 'local';
-
-          // OBO credential injection — exchange the user's Azure AD token for an
-          // ARM-scoped access token so synthesized Python in the sandbox can call
-          // Azure SDKs as the user. Mirrors routes/synth.ts preHandler behavior
-          // (which only runs on the standalone /api/synth/* endpoints, not chat).
-          // Without this, synth executes with no Azure credentials and fails on
-          // any synthesized azure-sdk call — defeating the "fill missing MCP tool gap" purpose.
-          // Trigger OBO whenever we have a userToken that looks like a JWT (3-part dot-sep).
-          // Covers both Azure AD SSO users AND API-key users with linked Azure accounts
-          // (auth.stage loads the user's Azure access token from DB into userToken).
-          // OBO requires the *ID token* (audience = our client ID), not the
-          // access token (audience = https://management.azure.com). AAD rejects
-          // OBO with AADSTS500131 if the assertion audience doesn't match the
-          // app presenting it. The ID token is plumbed through tool-execution
-          // for AWS Identity Center / Azure MCP — reuse it for synth too.
-          let synthCloudCredentials: any = (toolAuthContext as any)?.cloudCredentials;
-          const oboAssertion = idToken || userToken; // prefer ID token
-          logger.info({
-            toolCallId: toolCall.id,
-            hasIdToken: !!idToken,
-            hasUserToken: !!userToken,
-            assertionLen: oboAssertion?.length || 0,
-            looksLikeJwt: !!oboAssertion && oboAssertion.split('.').length === 3,
-            authMethod,
-            hasPreExisting: !!synthCloudCredentials,
-          }, '[SYNTH-OBO] Pre-OBO state');
-          if (!synthCloudCredentials && oboAssertion && oboAssertion.split('.').length === 3) {
-            try {
-              const obo = getOBOServiceForSynth(logger);
-              const armResult = await obo.acquireTokenOnBehalfOf({
-                userAccessToken: oboAssertion,
-                scopes: ['https://management.azure.com/.default'],
-              });
-              if (armResult?.accessToken) {
-                synthCloudCredentials = {
-                  azure: {
-                    accessToken: armResult.accessToken,
-                    tenantId: process.env.AZURE_TENANT_ID || '',
-                  },
-                };
-                logger.info({
-                  toolCallId: toolCall.id,
-                  userId: effectiveUserId,
-                  tokenLen: armResult.accessToken.length,
-                }, '[SYNTH-OBO] ✅ Injected Azure ARM credentials into synth execution context');
-              } else {
-                logger.warn({
-                  toolCallId: toolCall.id,
-                  userId: effectiveUserId,
-                  hasArmResult: !!armResult,
-                  resultKeys: armResult ? Object.keys(armResult) : [],
-                }, '[SYNTH-OBO] ⚠️ OBO returned no accessToken — synth will run without Azure credentials');
-              }
-            } catch (oboErr: any) {
-              logger.warn({
-                toolCallId: toolCall.id,
-                userId: effectiveUserId,
-                error: oboErr?.message,
-              }, '[SYNTH-OBO] OBO exchange failed — synth will run without Azure credentials');
-            }
-          }
-
-          const synthResult = await executeSynthToolCall(
-            toolCall.id,
-            resolvedToolName,
-            toolArgs,
-            {
-              userId: effectiveUserId,
-              userEmail: userEmail || '',
-              sessionId,
-              ssoProvider,
-              cloudCredentials: synthCloudCredentials,
-              logger
-            }
-          );
-
-          resultsMap.set(pp.originalIndex, {
-            toolCallId: toolCall.id,
-            toolName: resolvedToolName,
-            result: synthResult.result,
-            serverName: synthResult.serverName,
-            executedOn: synthResult.executedOn,
-            executionTimeMs: synthResult.executionTimeMs
-          });
-
-          // Emit tool execution event for streaming
-          if (emitEvent) {
-            emitEvent('tool_execution', {
-              toolCallId: toolCall.id,
-              toolName: resolvedToolName,
-              status: 'completed',
-              serverName: 'synth',
-              executionTimeMs: synthResult.executionTimeMs
-            });
-          }
-
-          logger.info({
-            toolCallId: toolCall.id,
-            toolName: resolvedToolName,
-            success: !synthResult.result?.error,
-            executionTimeMs: synthResult.executionTimeMs
-          }, '[TOOL-EXEC] Synth tool executed');
-
-          // Skip to next tool - Synth handled
-          continue;
-
-        } catch (synthError: any) {
-          logger.error({
-            toolCallId: toolCall.id,
-            toolName: resolvedToolName,
-            error: synthError.message
-          }, '[TOOL-EXEC] Synth tool execution failed');
-
-          resultsMap.set(pp.originalIndex, {
-            toolCallId: toolCall.id,
-            toolName: resolvedToolName,
-            result: { error: synthError.message || 'Tool synthesis failed' },
-            serverName: 'synth',
-            executedOn: os.hostname(),
-            executionTimeMs: 0
-          });
-
-          if (emitEvent) {
-            emitEvent('tool_execution', {
-              toolCallId: toolCall.id,
-              toolName: resolvedToolName,
-              status: 'failed',
-              error: synthError.message
-            });
-          }
-
           continue;
         }
       }

@@ -204,15 +204,10 @@ import { execute as parallelExecute } from './parallel/executor.js';
 import loopSchemaJson from './loop/schema.json' with { type: 'json' };
 import { execute as loopExecute } from './loop/executor.js';
 
-// Batch 8 — final 6 unmigrated nodes (Task #46). synth (with three aliases:
-// synth_synthesize, oat, oat_synthesize) closes the dynamic-tool synthesis
-// gap; code (JS sandbox) and openagentic (isolated code-manager sessions)
-// close the code-execution gap. After this batch the schema-driven registry
-// covers 100% of node types — the legacy switch/case lives on only as
-// dead-code historical reference.
-import synthSchemaJson from './synth/schema.json' with { type: 'json' };
-import { execute as synthExecute } from './synth/executor.js';
-
+// Batch 8 — code (JS sandbox) and openagentic (isolated code-manager
+// sessions) close the code-execution gap. After this batch the schema-driven
+// registry covers 100% of node types — the legacy switch/case lives on only
+// as dead-code historical reference.
 import codeSchemaJson from './code/schema.json' with { type: 'json' };
 import { execute as codeExecute } from './code/executor.js';
 
@@ -482,15 +477,7 @@ register(switchSchemaJson, switchExecute);
 register(parallelSchemaJson, parallelExecute);
 register(loopSchemaJson, loopExecute);
 
-// Batch 8 — last 6 unmigrated nodes (Task #46). synth + code + openagentic
-// bring schema coverage to 100%. The synth plugin is registered under three
-// additional aliases so saved flows + seed templates that reference the old
-// names (synth_synthesize, oat, oat_synthesize) keep working without a data
-// migration — same pattern as openagentic_llm and approval before this.
-register(synthSchemaJson, synthExecute);
-registerAlias(synthSchemaJson, 'synth_synthesize', 'Synth (synthesize)', synthExecute);
-registerAlias(synthSchemaJson, 'oat', 'OAT (legacy synth)', synthExecute);
-registerAlias(synthSchemaJson, 'oat_synthesize', 'OAT (legacy synthesize)', synthExecute);
+// Batch 8 — code + openagentic bring schema coverage to 100%.
 register(codeSchemaJson, codeExecute);
 register(openagenticSchemaJson, openagenticExecute);
 

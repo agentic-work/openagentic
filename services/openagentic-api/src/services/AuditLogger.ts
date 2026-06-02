@@ -12,26 +12,6 @@ import { prisma } from '../utils/prisma.js';
 import type { Logger } from 'pino';
 import { createHash } from 'crypto';
 
-/**
- * Shape for AuditLogger.logSynthExecution. Mirrors the fields the
- * oat-guidance prompt advertises are recorded.
- */
-export interface SynthAuditEntry {
-  userId: string;
-  userEmail?: string;
-  executionId: string;
-  intent: string;
-  /** Raw Python from synthesis — hashed before storage, never persisted. */
-  code?: string;
-  capabilities: string[];
-  cloudTargets: string[];
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
-  outcome: 'success' | 'error' | 'refused' | 'approval_pending';
-  executionTimeMs?: number;
-  /** Env-var KEY NAMES only. Any values are stripped. */
-  injectedEnvKeys?: string[];
-}
-
 export interface AuditLogEntry {
   userId: string;
   sessionId?: string;
@@ -360,86 +340,6 @@ export class AuditLogger {
         adminUserId,
         action
       }, '[AUDIT] Failed to log admin action');
-    }
-  }
-
-  /**
-   * Log a synth (OAT) execution. One row per call to SynthService.synthesize.
-   *
-   * Fields are scrubbed before persistence — we never store the raw code or
-   * the raw credential values the API injected into the sandbox:
-   *
-   *   code        → sha256(hex)
-   *   intent      → truncated to 512 chars
-   *   env values  → never included; only env-var key names survive
-   *
-   * The row inherits the crypto-chained admin_audit_log format, so the
-   * existing verify-chain tooling picks synth rows up automatically.
-   */
-  async logSynthExecution(entry: SynthAuditEntry): Promise<void> {
-    try {
-      const timestamp = new Date();
-
-      const intent = (entry.intent || '').slice(0, 512);
-      const codeHash = entry.code
-        ? createHash('sha256').update(entry.code).digest('hex')
-        : null;
-
-      // Defensive: only the whitelisted key NAMES are persisted. If a
-      // caller tries to sneak a values map in, it's discarded here.
-      const injectedEnvKeys = Array.isArray(entry.injectedEnvKeys)
-        ? entry.injectedEnvKeys.filter((k): k is string => typeof k === 'string')
-        : [];
-
-      const details = {
-        intent,
-        code_hash: codeHash,
-        capabilities: entry.capabilities || [],
-        cloud_targets: entry.cloudTargets || [],
-        risk_level: entry.riskLevel,
-        outcome: entry.outcome,
-        execution_time_ms: entry.executionTimeMs ?? null,
-        injected_env_keys: injectedEnvKeys,
-      };
-
-      const previousHash = await this.getLatestAdminAuditHash();
-      const chainHash = this.computeChainHash(
-        previousHash,
-        'synth_execute',
-        entry.userId,
-        'synth.execute',
-        timestamp,
-        details,
-      );
-
-      const data: any = {
-        admin_user_id: entry.userId,
-        admin_email: entry.userEmail,
-        action: 'synth.execute',
-        resource_type: 'synth',
-        resource_id: entry.executionId,
-        details,
-        created_at: timestamp,
-        previous_hash: previousHash,
-        chain_hash: chainHash,
-      };
-
-      await prisma.adminAuditLog.create({ data });
-      this.lastAdminAuditHash = chainHash;
-
-      this.logger.info({
-        userId: entry.userId,
-        executionId: entry.executionId,
-        outcome: entry.outcome,
-        riskLevel: entry.riskLevel,
-        chainHash: chainHash.slice(0, 12) + '...',
-      }, '[AUDIT] Synth execution logged');
-    } catch (error) {
-      this.logger.error({
-        error,
-        userId: entry.userId,
-        executionId: entry.executionId,
-      }, '[AUDIT] Failed to log synth execution');
     }
   }
 

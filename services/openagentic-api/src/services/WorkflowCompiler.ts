@@ -43,7 +43,6 @@ const VALID_NODE_TYPES = new Set([
   'transform', 'merge', 'approval', 'human_approval', 'wait',
   'agent_spawn', 'a2a', 'http_request', 'multi_agent',
   'agent_single', 'agent_pool', 'agent_supervisor',
-  'synth_synthesize', 'synth', 'oat_synthesize', 'oat',
   'bedrock', 'vertex', 'azure_ai', 'openagentic',
   'openagentic_llm', 'openagentic_chat', 'data_query', 'reasoning',
   'slack_message', 'teams_message', 'outlook_email', 'send_email',
@@ -233,9 +232,6 @@ export class WorkflowCompiler {
           errors.push({ code: 'MISSING_TASK', message: `${node.type} node requires a task description`, nodeId: node.id });
         }
         break;
-      // (synth + synth_synthesize + oat + oat_synthesize — now schema-driven
-      //  via shared nodes/synth/ (aliases share the schema); validation
-      //  handled by schema-driven path (Task #46))
       // output_parser split (2026-05-14) — typed processing primitives.
       // The workflows-svc compiler validates these against the full schema
       // tree via nodeRegistry; here we only catch the most obvious "node

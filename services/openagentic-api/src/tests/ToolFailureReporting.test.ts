@@ -2,7 +2,7 @@
  * Sev-1 — tests for the no-confab tool-failure reporting util.
  *
  * The live bug that motivated this module: chat showed three "Succeeded"
- * synth cards with fabricated JSON for an operation that never ran. The
+ * tool cards with fabricated JSON for an operation that never ran. The
  * unit tests below lock in the exact wire contract the LLM must see so
  * the regression can't reappear silently.
  */
@@ -110,12 +110,12 @@ describe('formatToolResultForLLM', () => {
   });
 
   it('allows caller to customise failureCode + failureReason', () => {
-    const out = formatToolResultForLLM('synth_execute', null, {
+    const out = formatToolResultForLLM('aws_execute', null, {
       failureCode: 'NO_RESULT_AFTER_APPROVAL',
-      failureReason: 'Synth approved but sandbox returned empty body',
+      failureReason: 'Tool approved but sandbox returned empty body',
     });
     expect(out.content).toContain('code="NO_RESULT_AFTER_APPROVAL"');
-    expect(out.content).toContain('Synth approved but sandbox returned empty body');
+    expect(out.content).toContain('Tool approved but sandbox returned empty body');
   });
 
   it('safely handles circular-reference results (cannot confabulate via partial JSON)', () => {

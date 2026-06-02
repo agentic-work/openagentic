@@ -21,8 +21,8 @@
  * They run against the exported constants and will catch config drift before
  * it reaches production.
  *
- * Coverage: 19 AgentTypes × 12 assertions = 228 static assertions
- * (The "32" figure in the UI reflects multiple rows per type; unique types = 19)
+ * Coverage: 18 AgentTypes × 12 assertions = 216 static assertions
+ * (The "32" figure in the UI reflects multiple rows per type; unique types = 18)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -35,7 +35,7 @@ import {
 } from '../../AgentRegistry.js';
 
 // ---------------------------------------------------------------------------
-// All 19 registered AgentTypes — source of truth is the AgentType union in
+// All 18 registered AgentTypes — source of truth is the AgentType union in
 // AgentRegistry.ts. Update this list if/when new types are added.
 // ---------------------------------------------------------------------------
 const ALL_AGENT_TYPES: AgentType[] = [
@@ -51,7 +51,6 @@ const ALL_AGENT_TYPES: AgentType[] = [
   'artifact_creation',
   'docs_assistant',
   'flows_agent',
-  'oat_function_builder',
   'cloud_operations',
   'finops_analyst',
   'security_auditor',
@@ -337,7 +336,7 @@ describe('agentRegistry static — ALL_AGENT_TYPES completeness', () => {
 // This test documents what is seeded vs. what is boot-seeded.
 // ---------------------------------------------------------------------------
 describe('agentRegistry static — SEED_AGENTS subset', () => {
-  // These 12 are explicitly in admin-agents.ts SEED_AGENTS
+  // These 11 are explicitly in admin-agents.ts SEED_AGENTS
   const EXPLICITLY_SEEDED: AgentType[] = [
     'reasoning',
     'data_query',
@@ -348,7 +347,6 @@ describe('agentRegistry static — SEED_AGENTS subset', () => {
     'validation',
     'synthesis',
     'artifact_creation',
-    'oat_function_builder',
     'cloud_operations',
     'custom',
   ];

@@ -70,27 +70,15 @@ export const PERSISTABLE_INLINE_FRAMES = Object.freeze(
 
     // ── E1 (2026-05-12) ─────────────────────────────────────────────
     // Final batch closing reload-loses-everything. Without these the
-    // Findings card, synth lifecycle strip, and download tiles all
-    // vanish on session reload despite being live-streamed correctly.
+    // Findings card and download tiles vanish on session reload despite
+    // being live-streamed correctly.
     //
     // findings_emit — severity-tagged audit/review artifacts emitted
     //   by the security-analysis sub-agent (mocks 03, 07, 08, 09).
-    // artifact_emit — synth-executor / RenderArtifactTool emit when a
+    // artifact_emit — RenderArtifactTool / image gen emit when a
     //   file is written to UserStorageService. Renders as <DownloadTile>.
-    // synth_* — the 8-frame synth lifecycle that drives <SynthCard>
-    //   (planned → code_chunk → approval_requested → approved/denied →
-    //   executing → stdout → completed). All 8 must persist; orphans
-    //   in the persisted blob would render a stuck "planned" card.
     'findings_emit',
     'artifact_emit',
-    'synth_planned',
-    'synth_code_chunk',
-    'synth_approval_requested',
-    'synth_approved',
-    'synth_denied',
-    'synth_executing',
-    'synth_stdout',
-    'synth_completed',
   ]),
 );
 

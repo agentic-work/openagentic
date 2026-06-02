@@ -3,10 +3,10 @@
  *
  * Pins the wirings introduced in Phase 9 so a future refactor can't
  * silently rip them out:
- *   - dispatchTool.ts handles `memory_search`, `read_large_result`, `synth_execute`
+ *   - dispatchTool.ts handles `memory_search`, `read_large_result`
  *   - runChat.ts imports the memory service for turn-start injection
  *   - getAllBaseTools() (the T1 catalog) registers `read_large_result`
- *     (memory_search + synth_execute now discoverable via tool_search,
+ *     (memory_search now discoverable via tool_search,
  *     not part of the always-on T1 catalog)
  *
  * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §10
@@ -26,11 +26,6 @@ describe('arch: meta-tools wired (Phase 9)', () => {
   it('dispatchTool.ts handles read_large_result', () => {
     const src = readFileSync(`${apiSrc}/routes/chat/pipeline/chat/dispatchTool.ts`, 'utf8');
     expect(src).toContain('read_large_result');
-  });
-
-  it('dispatchTool.ts handles synth_execute', () => {
-    const src = readFileSync(`${apiSrc}/routes/chat/pipeline/chat/dispatchTool.ts`, 'utf8');
-    expect(src).toContain('synth_execute');
   });
 
   it('runChat.ts imports memory service for injection', () => {

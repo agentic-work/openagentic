@@ -3,7 +3,7 @@
  * catalogue. Sev-0 audit found that on session reload, only the
  * hitl_approval + the original visual_render/app_render/streaming_table
  * /inline_widget/sub_agent_complete were rendered from the persisted
- * `message.visualizations` blob. The remaining frame types — synth_*,
+ * `message.visualizations` blob. The remaining frame types —
  * findings_emit, artifact_emit, artifact_render, sub_agent_completed
  * (canonical spelling) — vanished on reload even though the api now
  * persists them.
@@ -39,14 +39,6 @@ describe('ChatMessages — E1 persisted full-frame hydration (Sev-0)', () => {
     expect(src).toMatch(/persisted[\s\S]{0,400}artifact_render|artifact_render[\s\S]{0,400}persisted/);
   });
 
-  it('routes the synth lifecycle frames through the persisted-visualizations fallback', () => {
-    const src = readFileSync(SRC, 'utf8');
-    // Need at least the start + end of the lifecycle to fold a synth
-    // back into a SynthCard.
-    expect(src).toMatch(/synth_planned/);
-    expect(src).toMatch(/synth_completed/);
-  });
-
   it('handles both sub_agent_complete (legacy) and sub_agent_completed (canonical) in fallback', () => {
     const src = readFileSync(SRC, 'utf8');
     expect(src).toMatch(/sub_agent_complete/);
@@ -59,7 +51,5 @@ describe('ChatMessages — E1 persisted full-frame hydration (Sev-0)', () => {
     expect(src).toMatch(/data-testid="findings"|<Findings/);
     // download-tile anchor — DownloadTile imports already present
     expect(src).toMatch(/DownloadTile/);
-    // synth-card anchor
-    expect(src).toMatch(/SynthCard/);
   });
 });

@@ -369,18 +369,6 @@ export class AgentSpawnManager {
       });
     }
 
-    // Ensure all agents have OAT (synth_synthesize) capability
-    if (process.env.SYNTH_ENABLED !== 'false') {
-      const synthToolNames = ['synth_synthesize', 'synthesize_tool', 'synth_execute'];
-      const hasSynth = agentTools.some((t: any) => synthToolNames.includes(t.function?.name));
-      if (!hasSynth) {
-        const parentSynth = (options.availableTools || []).find((t: any) => synthToolNames.includes(t.function?.name));
-        if (parentSynth) {
-          agentTools.push(parentSynth);
-        }
-      }
-    }
-
     try {
       // Tool call loop (up to maxTurns)
       for (let turn = 0; turn <= config.maxTurns; turn++) {

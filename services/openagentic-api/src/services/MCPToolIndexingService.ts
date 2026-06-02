@@ -1665,7 +1665,6 @@ export class MCPToolIndexingService {
    * distinguish them from MCP-server-registered tools at render time.
    *
    * delegate_to_agents was already ripped per #412 and is NOT indexed.
-   * synth/synth_execute remain in T1 (catalog primitives, not discovered).
    */
   private static readonly BUILTIN_META_TOOLS: ReadonlyArray<any> = [
     COMPOSE_VISUAL_TOOL,

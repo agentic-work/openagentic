@@ -61,7 +61,6 @@ export {
   buildMcpConnect,
   buildMcpDisconnect,
   buildMcpCapabilityDelta,
-  buildOatSynthesized,
   buildUiOpen,
   buildUiPatch,
   buildUiClose,
@@ -146,7 +145,6 @@ export type {
   McpConnectEvent,
   McpDisconnectEvent,
   McpCapabilityDeltaEvent,
-  OatSynthesizedEvent,
   // Layer 11 — codemode
   UiOpenEvent,
   UiPatchEvent,

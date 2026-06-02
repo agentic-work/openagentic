@@ -6,7 +6,6 @@ import { getToolPgvectorSearchService } from '../../../services/ToolPgvectorSear
 // Data layer tools: query_data and list_datasets allow LLM to drill into
 // large tool results stored by DataLayerService (>16KB auto-stored)
 import { getDataLayerTools } from '../../../services/DataQueryTool.js';
-import { getSynthToolDefinitions, isSynthVisibleToLLM } from './synth-execution.helper.js';
 import { getMemoryToolDefinitions } from '../../../services/AgentMemoryService.js';
 // TODO: System MCPs moved to MCP Proxy (oap-diagram-mcp) - keeping import for future use
 // import { getSystemMcpTools, isDiagramRequest } from '../../../services/system-mcps/index.js';
@@ -350,42 +349,6 @@ export class MCPStage implements PipelineStage {
         }, '[MCP] 🛡️ ACCESS CONTROL: All tools passed policy check');
       }
 
-      // =================================================================
-      // 🧪 SYNTH (TOOL SYNTHESIS): Add dynamic tool synthesis capability
-      // =================================================================
-      // Include Synth tool so LLM can synthesize tools on-demand for tasks
-      // outside built-in capabilities. Synth runs AS the authenticated user.
-      //
-      // Synth visibility is controlled by TWO settings:
-      // - enabled: Master switch (from env SYNTH_ENABLED)
-      // - visibleToLLM: Whether LLM can see/use Synth (configurable in admin)
-      //
-      // This allows admins to:
-      // - enabled=true, visibleToLLM=true: Synth works normally
-      // - enabled=true, visibleToLLM=false: Synth enabled but hidden from LLM
-      // - enabled=false: Synth completely disabled
-      // Only inject synth for complex queries that have MCP tools.
-      // Skip for simple queries (math, greetings) — synth causes Gemini to waste rounds.
-      const synthVisibleToLLM = isSynthVisibleToLLM(context.logger);
-      const isSimple = this.isSimpleConversationalMessage(userQuery);
-      // Synth/OAT is ALWAYS available when enabled — it's the sandbox execution tool
-      // for file processing, data transforms, and custom code that no MCP handles.
-      // Previously gated on hasMCPTools, but that prevented synth from appearing
-      // for pure file processing queries with no MCP tool matches.
-      if (synthVisibleToLLM && !isSimple) {
-        const synthTools = getSynthToolDefinitions();
-        relevantTools = [...relevantTools, ...synthTools];
-        context.logger.info({
-          synthToolCount: synthTools.length,
-          totalTools: relevantTools.length
-        }, '[MCP] Synth/OAT: Sandbox execution tool injected');
-      } else {
-        context.logger.debug({
-          reason: !synthVisibleToLLM ? 'Synth not visible to LLM (disabled or visibleToLLM=false)' :
-            'Simple query detected — skipping synth'
-        }, '[MCP] Synth: Skipped');
-      }
-
       // NOTE: Agent delegation tool (delegate_to_agents) is now injected by agents.stage.ts
       // which runs after this MCP stage. The old spawn_parallel_agents tool has been replaced.
 
@@ -558,7 +521,7 @@ export class MCPStage implements PipelineStage {
       // =================================================================
       // 🔒 FINAL HARD CEILING: Absolute maximum after ALL injections
       // =================================================================
-      // Reserved tools (memory, synth, data-layer, domain-essential typed tools)
+      // Reserved tools (memory, data-layer, domain-essential typed tools)
       // are always-on and get priority. If we exceed MAX_TOTAL_TOOLS, trim
       // semantic tools (lowest similarity first).
       //
@@ -568,7 +531,7 @@ export class MCPStage implements PipelineStage {
       const MAX_TOTAL_TOOLS = 40;
       if (context.availableTools.length > MAX_TOTAL_TOOLS) {
         const beforeFinalTrim = context.availableTools.length;
-        const reservedServerIds = new Set(['data-layer-service', 'system-memory', 'synth-engine']);
+        const reservedServerIds = new Set(['data-layer-service', 'system-memory']);
         // Domain-essential typed tool names — never trim these when the query
         // matched the corresponding domain (ensureEssential* already gated them).
         const ESSENTIAL_TYPED_TOOLS = new Set([
@@ -600,7 +563,6 @@ export class MCPStage implements PipelineStage {
           if (reservedServerIds.has(serverId) ||
               toolName.startsWith('memory_') ||
               toolName === 'query_data' || toolName === 'list_datasets' ||
-              toolName === 'synthesize_tool' ||
               ESSENTIAL_TYPED_TOOLS.has(toolName)) {
             reservedTools.push(tool);
           } else {

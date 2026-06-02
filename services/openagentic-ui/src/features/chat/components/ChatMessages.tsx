@@ -34,7 +34,6 @@ import { ToolShortlistChip } from './v2/ToolShortlistChip';
 import { ToolArray, type ToolArrayItem, type ToolTier } from './v2/ToolArray';
 import { SubAgentCard, StreamingTable, Findings, LiveTurnStatus } from './v2';
 import { InlineWidgetStrip } from './v2/InlineWidgetStrip';
-import { SynthCard } from './v2/SynthCard';
 import { DownloadTile } from './v2/DownloadTile';
 import {
   subAgentVariantFor,
@@ -153,15 +152,6 @@ interface ChatMessagesProps {
    */
   inlineWidgetsByMessageId?: Record<string, import('../hooks/useChatStream').InlineWidget[]>;
   /**
-   * AC-C — per-message synth lifecycle entries. ChatMessages renders
-   * one <SynthCard> per entry, threading the approve/deny callbacks
-   * through so the consumer (ChatContainer) can POST to
-   * /api/synth/approvals/:id/[approve|reject].
-   */
-  synthsByMessageId?: Record<string, import('../hooks/useChatStream').Synth[]>;
-  onApproveSynth?: (artifactId: string) => void;
-  onDenySynth?: (artifactId: string) => void;
-  /**
    * AC-D — per-message download tiles. Each ArtifactEmit renders one
    * <DownloadTile> chip with mimetype-icon + filename + size + click
    * → presigned MinIO URL (download attribute matches filename).
@@ -257,10 +247,6 @@ export default function ChatMessages({
   findingsByMessageId,
   // #502 — per-message inline-widget state.
   inlineWidgetsByMessageId,
-  // AC-C — per-message synth lifecycle state + approve/deny callbacks.
-  synthsByMessageId,
-  onApproveSynth,
-  onDenySynth,
   // AC-D — per-message clickable download tiles.
   artifactEmitsByMessageId,
   // follow-up chip-row destructures ripped 2026-05-12 (user directive).
@@ -711,7 +697,6 @@ export default function ChatMessages({
                  *   - sub_agent_complete / sub_agent_completed → SubAgentCard
                  *   - findings_emit    → Findings (severity-tagged artifact)
                  *   - artifact_emit    → DownloadTile (presigned MinIO link)
-                 *   - synth_*          → SynthCard (synth lifecycle replay)
                  *
                  * Live-render-already-fired guard: if the matching live map
                  * has any entry for this messageId, skip the fallback to
@@ -730,7 +715,6 @@ export default function ChatMessages({
                   const liveWidgets = inlineWidgetsByMessageId?.[message.id];
                   const liveSubAgents = subAgentsByMessageId?.[message.id];
                   const liveFindings = findingsByMessageId?.[message.id];
-                  const liveSynths = synthsByMessageId?.[message.id];
                   const liveArtifactEmits = artifactEmitsByMessageId?.[message.id];
                   // visual_render / app_render / artifact_render persisted
                   // hydration is handled by the typed-block path
@@ -761,78 +745,11 @@ export default function ChatMessages({
                   const artifactEmitsFromSaved = persisted
                     .filter((f: any) => f && f.type === 'artifact_emit' && f.data)
                     .map((f: any) => f.data);
-                  // E1 — synth lifecycle replay. Fold the 8 frame types back
-                  // through applySynthLifecycleFrame so the same Synth shape
-                  // SynthCard expects emerges. Drop orphan frames silently
-                  // (planned wins; other frames update by artifact_id).
-                  const synthFrames = persisted.filter(
-                    (f: any) =>
-                      f &&
-                      typeof f.type === 'string' &&
-                      f.type.startsWith('synth_') &&
-                      f.data,
-                  );
-                  let synthsFromSaved: any[] = [];
-                  if (synthFrames.length > 0) {
-                    // Avoid an import cycle — replay inline rather than
-                    // pulling applySynthLifecycleFrame into the JSX closure.
-                    const byId: Record<string, any> = {};
-                    for (const f of synthFrames) {
-                      const d = f.data ?? {};
-                      const aid = typeof d.artifact_id === 'string' ? d.artifact_id : '';
-                      if (!aid) continue;
-                      if (f.type === 'synth_planned') {
-                        byId[aid] = {
-                          artifactId: aid,
-                          stage: 'planned',
-                          intent: typeof d.intent === 'string' ? d.intent : '',
-                          capabilities: Array.isArray(d.capabilities) ? d.capabilities : [],
-                          riskLevel:
-                            d.risk_level === 'low' || d.risk_level === 'medium' ||
-                            d.risk_level === 'high' || d.risk_level === 'critical'
-                              ? d.risk_level
-                              : 'medium',
-                          riskReason: typeof d.risk_reason === 'string' ? d.risk_reason : undefined,
-                          code: '',
-                          codeLang: typeof d.code_lang === 'string' ? d.code_lang : 'python',
-                          stdout: '',
-                          stderr: '',
-                        };
-                      } else if (!byId[aid]) {
-                        continue;
-                      } else if (f.type === 'synth_code_chunk') {
-                        byId[aid].code += typeof d.code_fragment === 'string' ? d.code_fragment : '';
-                      } else if (f.type === 'synth_approval_requested') {
-                        byId[aid].stage = 'awaiting_approval';
-                      } else if (f.type === 'synth_approved') {
-                        byId[aid].stage = 'approved';
-                      } else if (f.type === 'synth_denied') {
-                        byId[aid].stage = 'denied';
-                        if (typeof d.reason === 'string') byId[aid].denialReason = d.reason;
-                      } else if (f.type === 'synth_executing') {
-                        byId[aid].stage = 'executing';
-                        if (typeof d.started_at === 'number') byId[aid].startedAt = d.started_at;
-                      } else if (f.type === 'synth_stdout') {
-                        const chunk = typeof d.chunk === 'string' ? d.chunk : '';
-                        if (d.stream === 'stderr') byId[aid].stderr += chunk;
-                        else byId[aid].stdout += chunk;
-                      } else if (f.type === 'synth_completed') {
-                        const exitCode = typeof d.exit_code === 'number' ? d.exit_code : 0;
-                        const failed = exitCode !== 0 || typeof d.error === 'string';
-                        byId[aid].stage = failed ? 'failed' : 'completed';
-                        byId[aid].exitCode = exitCode;
-                        if (typeof d.duration_ms === 'number') byId[aid].durationMs = d.duration_ms;
-                        if (typeof d.error === 'string') byId[aid].error = d.error;
-                      }
-                    }
-                    synthsFromSaved = Object.values(byId);
-                  }
                   const hasLive =
                     (liveTables && liveTables.length > 0) ||
                     (liveWidgets && liveWidgets.length > 0) ||
                     (liveSubAgents && liveSubAgents.length > 0) ||
                     (liveFindings && liveFindings.length > 0) ||
-                    (liveSynths && liveSynths.length > 0) ||
                     (liveArtifactEmits && liveArtifactEmits.length > 0);
                   if (hasLive) return null;
                   return (
@@ -869,18 +786,6 @@ export default function ChatMessages({
                           ))}
                         </div>
                       )}
-                      {synthsFromSaved.length > 0 && (
-                        <div data-testid="persisted-synths">
-                          {synthsFromSaved.map((synth: any) => (
-                            <SynthCard
-                              key={`saved-synth-${synth.artifactId}`}
-                              synth={synth}
-                              onApprove={onApproveSynth}
-                              onDeny={onDenySynth}
-                            />
-                          ))}
-                        </div>
-                      )}
                       {artifactEmitsFromSaved.length > 0 && (
                         <div data-testid="persisted-download-tiles">
                           {artifactEmitsFromSaved.map((a: any, idx: number) => (
@@ -891,31 +796,6 @@ export default function ChatMessages({
                           ))}
                         </div>
                       )}
-                    </div>
-                  );
-                })()}
-                {/*
-                 * AC-C — synth lifecycle strip. One <SynthCard> per
-                 * artifactId tracked by the synth lifecycle reducer.
-                 * Streams the model's authored Python + approval CTA
-                 * + executing/stdout/completed states inline.
-                 */}
-                {(() => {
-                  const synths =
-                    message.role === 'assistant'
-                      ? synthsByMessageId?.[message.id] ?? []
-                      : [];
-                  if (synths.length === 0) return null;
-                  return (
-                    <div className="cm-v2" data-testid="synth-card-strip">
-                      {synths.map((synth) => (
-                        <SynthCard
-                          key={synth.artifactId}
-                          synth={synth}
-                          onApprove={onApproveSynth}
-                          onDeny={onDenySynth}
-                        />
-                      ))}
                     </div>
                   );
                 })()}

@@ -149,10 +149,10 @@ export interface RunCtx {
   /**
    * Typed accessor for the user's Azure AD ACCESS token (chatmode-rip
    * Phase C.6). Set once per turn by `runChat.ts` via `extractUserJwt`.
-   * The synth dispatcher (Phase C.5) and any future OBO-aware tool reads
-   * `ctx.userJwt` instead of sniffing `ctx.user` so the contract stays
-   * typed and CredentialBroker.brokerFor never receives an idToken by
-   * accident (which would silently 401 at ARM/STS).
+   * The OBO-aware cloud-MCP dispatch path reads `ctx.userJwt` instead of
+   * sniffing `ctx.user` so the contract stays typed and an idToken never
+   * reaches the cloud OBO exchange by accident (which would silently 401
+   * at ARM/STS).
    */
   userJwt?: string;
 }
@@ -520,22 +520,6 @@ export interface RunChatInput {
  * rename to `buildChatDeps` in a follow-up rip).
  */
 /**
- * Minimal CredentialBroker surface the chat pipeline exercises — the
- * `brokerFor(userJwt, clouds[])` entry point that `SynthOBODispatcher`
- * calls. Kept structural so unit tests can inject `{ brokerFor: vi.fn() }`
- * stubs without instantiating the full broker (which would otherwise read
- * `AWS_OBO_ROLE_ARN` / `GOOGLE_APPLICATION_CREDENTIALS_JSON` from env at
- * construction time).
- *
- * Production wiring: `buildChatV2Deps.ts` resolves
- * `opts.synthCredentialBroker ?? getCredentialBroker()` (lazy singleton)
- * so the chat plugin gets one broker per process.
- */
-export interface SynthCredentialBrokerLike {
-  brokerFor: (userJwt: string, clouds: Array<'aws' | 'azure' | 'gcp'>) => Promise<unknown>;
-}
-
-/**
  * Minimal ToolResultCacheService surface the chat pipeline exercises — only
  * the two cross-user cache entry points. Kept structural so unit tests can
  * inject `{ searchCache: vi.fn(), cacheResult: vi.fn() }` stubs without
@@ -546,7 +530,7 @@ export interface SynthCredentialBrokerLike {
  * MCP fall-through tool call gets a cache lookup before MCP execution and
  * a fire-and-forget cache write after a successful execution. Meta-tools
  * (Task, compose_visual, render_artifact, request_clarification,
- * memory_search, read_large_result, synth, synth_execute, browser_sandbox,
+ * memory_search, read_large_result, browser_sandbox,
  * memorize, tool_search, agent_search, pattern_save, pattern_recall, agent_*)
  * bypass the wrap because they never route through executeMcpTool.
  *
@@ -619,16 +603,6 @@ export interface RunChatDeps {
    * the chat factory hardcodes 30*1024.
    */
   thresholdBytes?: number;
-  /**
-   * Phase C.5 (2026-05-11) — CredentialBroker for the OBO-aware synth
-   * dispatcher. The `synth` arm in dispatchTool routes through
-   * `executeSynthOBO` which calls `broker.brokerFor(userJwt, clouds)` to
-   * mint per-cloud short-lived credentials. When omitted (test paths or
-   * mis-wired plugins), the synth dispatcher returns a structured
-   * ok:false rather than crashing the loop — production MUST inject the
-   * singleton via `buildChatV2Deps`.
-   */
-  synthCredentialBroker?: SynthCredentialBrokerLike;
   /**
    * Phase D.1 (2026-05-11) — Pipeline hook runner.
    *

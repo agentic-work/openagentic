@@ -918,182 +918,10 @@ export function applyInlineWidgetFrame(
   }
   return { ...map, [messageId]: [...existing, next] };
 }
-
 /**
- * AC-B — synth lifecycle. One unified entry per artifactId accumulates
- * across the lifecycle frames the API streams as the model authors +
- * executes Python in the synth-executor sandbox.
- */
-export type SynthRiskLevel = 'low' | 'medium' | 'high' | 'critical';
-export type SynthStage =
-  | 'planned'
-  | 'awaiting_approval'
-  | 'approved'
-  | 'denied'
-  | 'executing'
-  | 'completed'
-  | 'failed';
-
-export interface Synth {
-  artifactId: string;
-  stage: SynthStage;
-  intent: string;
-  capabilities: string[];
-  riskLevel: SynthRiskLevel;
-  riskReason?: string;
-  code: string;
-  codeLang: string;
-  stdout: string;
-  stderr: string;
-  startedAt?: number;
-  completedAt?: number;
-  durationMs?: number;
-  exitCode?: number;
-  error?: string;
-  denialReason?: string;
-}
-
-export type SynthLifecycleFrame =
-  | {
-      type: 'synth_planned';
-      artifact_id: string;
-      intent: string;
-      capabilities: string[];
-      risk_level: SynthRiskLevel;
-      risk_reason?: string;
-      code_lang: string;
-    }
-  | {
-      type: 'synth_code_chunk';
-      artifact_id: string;
-      chunk_index: number;
-      code_fragment: string;
-    }
-  | { type: 'synth_approval_requested'; artifact_id: string }
-  | { type: 'synth_approved'; artifact_id: string }
-  | { type: 'synth_denied'; artifact_id: string; reason?: string }
-  | { type: 'synth_executing'; artifact_id: string; started_at: number }
-  | {
-      type: 'synth_stdout';
-      artifact_id: string;
-      chunk: string;
-      stream: 'stdout' | 'stderr';
-    }
-  | {
-      type: 'synth_completed';
-      artifact_id: string;
-      duration_ms: number;
-      exit_code: number;
-      error?: string;
-    };
-
-const SYNTH_RISK_LEVELS = new Set<SynthRiskLevel>(['low', 'medium', 'high', 'critical']);
-
-/**
- * Pure reducer: fold one synth lifecycle frame into the per-message
- * map. `synth_planned` is the only frame that creates new state;
- * subsequent lifecycle frames update an existing entry by
- * `artifact_id` or are dropped silently.
- */
-export function applySynthLifecycleFrame(
-  map: Record<string, Synth[]>,
-  messageId: string,
-  frame: SynthLifecycleFrame,
-): Record<string, Synth[]> {
-  if (!messageId) return map;
-  const artifactId = typeof frame.artifact_id === 'string' ? frame.artifact_id.trim() : '';
-  if (!artifactId) return map;
-  const existing = map[messageId] ?? [];
-  const idx = existing.findIndex((s) => s.artifactId === artifactId);
-
-  if (frame.type === 'synth_planned') {
-    const next: Synth = {
-      artifactId,
-      stage: 'planned',
-      intent: typeof frame.intent === 'string' ? frame.intent : '',
-      capabilities: Array.isArray(frame.capabilities) ? frame.capabilities : [],
-      riskLevel: SYNTH_RISK_LEVELS.has(frame.risk_level) ? frame.risk_level : 'medium',
-      ...(typeof frame.risk_reason === 'string' ? { riskReason: frame.risk_reason } : {}),
-      code: '',
-      codeLang: typeof frame.code_lang === 'string' ? frame.code_lang : 'python',
-      stdout: '',
-      stderr: '',
-    };
-    if (idx >= 0) {
-      const replaced = [...existing];
-      replaced[idx] = next;
-      return { ...map, [messageId]: replaced };
-    }
-    return { ...map, [messageId]: [...existing, next] };
-  }
-
-  // Non-planned frames update an existing entry; orphans drop.
-  if (idx < 0) return map;
-  const cur = existing[idx];
-  let updated: Synth | null = null;
-
-  switch (frame.type) {
-    case 'synth_code_chunk':
-      updated = {
-        ...cur,
-        code: cur.code + (typeof frame.code_fragment === 'string' ? frame.code_fragment : ''),
-      };
-      break;
-    case 'synth_approval_requested':
-      updated = { ...cur, stage: 'awaiting_approval' };
-      break;
-    case 'synth_approved':
-      updated = { ...cur, stage: 'approved' };
-      break;
-    case 'synth_denied':
-      updated = {
-        ...cur,
-        stage: 'denied',
-        ...(typeof frame.reason === 'string' ? { denialReason: frame.reason } : {}),
-      };
-      break;
-    case 'synth_executing':
-      updated = {
-        ...cur,
-        stage: 'executing',
-        startedAt: typeof frame.started_at === 'number' ? frame.started_at : cur.startedAt,
-      };
-      break;
-    case 'synth_stdout': {
-      const chunk = typeof frame.chunk === 'string' ? frame.chunk : '';
-      if (frame.stream === 'stderr') {
-        updated = { ...cur, stderr: cur.stderr + chunk };
-      } else {
-        updated = { ...cur, stdout: cur.stdout + chunk };
-      }
-      break;
-    }
-    case 'synth_completed': {
-      const exitCode = typeof frame.exit_code === 'number' ? frame.exit_code : 0;
-      const failed = exitCode !== 0 || typeof frame.error === 'string';
-      updated = {
-        ...cur,
-        stage: failed ? 'failed' : 'completed',
-        durationMs: typeof frame.duration_ms === 'number' ? frame.duration_ms : undefined,
-        exitCode,
-        ...(typeof frame.error === 'string' ? { error: frame.error } : {}),
-      };
-      break;
-    }
-    default:
-      return map;
-  }
-
-  if (!updated) return map;
-  const replaced = [...existing];
-  replaced[idx] = updated;
-  return { ...map, [messageId]: replaced };
-}
-
-/**
- * AC-D1 — artifact_emit. Server emits this when synth-executor (or
- * any tool) finishes writing bytes to UserStorageService. The UI
- * renders one <DownloadTile> per entry, click → presigned MinIO URL.
+ * AC-D1 — artifact_emit. Server emits this when a tool finishes writing
+ * bytes to UserStorageService. The UI renders one <DownloadTile> per
+ * entry, click → presigned MinIO URL.
  */
 export interface ArtifactEmit {
   artifactId: string;
@@ -1102,7 +930,6 @@ export interface ArtifactEmit {
   sizeBytes: number;
   downloadUrl: string;
   producedBy?: string;
-  synthArtifactId?: string;
 }
 
 export interface ArtifactEmitFrame {
@@ -1113,7 +940,6 @@ export interface ArtifactEmitFrame {
   size_bytes: number;
   download_url: string;
   produced_by?: string;
-  synth_artifact_id?: string;
 }
 
 /**
@@ -1142,7 +968,6 @@ export function applyArtifactEmitFrame(
     sizeBytes: typeof frame.size_bytes === 'number' ? frame.size_bytes : 0,
     downloadUrl,
     ...(typeof frame.produced_by === 'string' ? { producedBy: frame.produced_by } : {}),
-    ...(typeof frame.synth_artifact_id === 'string' ? { synthArtifactId: frame.synth_artifact_id } : {}),
   };
   const existing = map[messageId] ?? [];
   const idx = existing.findIndex((a) => a.artifactId === artifactId);
@@ -1418,7 +1243,7 @@ export type SubAgentCompletedFrame = {
 /**
  * Variant mapping for SubAgentCard. Drives the left-border colour +
  * avatar gradient. Both hyphen and underscore separators are accepted
- * — the api emits hyphens, but synth/cli paths sometimes underscore.
+ * — the api emits hyphens, but some paths use underscores.
  */
 export function subAgentVariantFor(role: string): 'c' | 'g' | 's' | 'k' {
   const r = (role || '').toLowerCase();
@@ -2041,16 +1866,8 @@ export const useChatStream = ({
     Record<string, InlineWidget[]>
   >({});
 
-  // AC-B — per-message synth lifecycle entries. One Synth per
-  // artifactId accumulates through the 8 lifecycle frames the API
-  // streams as the model authors + executes Python in synth-executor.
-  // Reducer pure-tested at useChatStream.synthLifecycle.test.ts.
-  const [synthsByMessageId, setSynthsByMessageId] = useState<
-    Record<string, Synth[]>
-  >({});
-
   // AC-D — per-message clickable download tiles. Server emits
-  // artifact_emit when synth-executor finishes writing bytes to
+  // artifact_emit when a tool finishes writing bytes to
   // UserStorageService. Reducer pure-tested at
   // useChatStream.artifactEmit.test.ts.
   const [artifactEmitsByMessageId, setArtifactEmitsByMessageId] = useState<
@@ -2234,7 +2051,6 @@ export const useChatStream = ({
       setStreamingTablesByMessageId({});
       setFindingsByMessageId({});
       setInlineWidgetsByMessageId({});
-      setSynthsByMessageId({});
       setArtifactEmitsByMessageId({});
       // Audit §10 step 16 — drop HITL map on session switch.
       // (follow-up chip row ripped 2026-05-12 — user directive.)
@@ -4200,36 +4016,9 @@ export const useChatStream = ({
                   break;
                 }
 
-                // AC-B — synth lifecycle frames. The 8 frame types
-                // (synth_planned / _code_chunk / _approval_requested /
-                // _approved / _denied / _executing / _stdout /
-                // _completed) all fold into a single per-message Synth
-                // entry by artifact_id. Reducer pure-tested at
-                // useChatStream.synthLifecycle.test.ts.
-                case 'synth_planned':
-                case 'synth_code_chunk':
-                case 'synth_approval_requested':
-                case 'synth_approved':
-                case 'synth_denied':
-                case 'synth_executing':
-                case 'synth_stdout':
-                case 'synth_completed': {
-                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
-                  if (flushKey) {
-                    setSynthsByMessageId((prev) =>
-                      applySynthLifecycleFrame(
-                        prev,
-                        flushKey,
-                        safeData as SynthLifecycleFrame,
-                      ),
-                    );
-                  }
-                  break;
-                }
-
-                // AC-D — clickable download tile. Emitted when
-                // synth-executor (or any tool) finishes writing bytes
-                // to UserStorageService and returns a presigned URL.
+                // AC-D — clickable download tile. Emitted when a tool
+                // finishes writing bytes to UserStorageService and
+                // returns a presigned URL.
                 // Reducer pure-tested at useChatStream.artifactEmit.test.ts.
                 case 'artifact_emit': {
                   const flushKey = getAssistantPlaceholderId?.() || messageId || '';
@@ -6295,11 +6084,6 @@ export const useChatStream = ({
     // #502 — per-message inline widgets (kpi_grid / savings_card /
     // stages_strip / wave_timeline / runbook / stack_grid / annotated_code).
     inlineWidgetsByMessageId,
-    // AC-B — per-message synth lifecycle entries. ChatMessages renders
-    // a <SynthCard> per entry showing the model's authored Python
-    // streaming in, the approval CTA, the executing/stdout state, and
-    // the completion/failed state.
-    synthsByMessageId,
     // AC-D — per-message clickable download tiles. ChatMessages
     // renders one <DownloadTile> per entry with filename + size +
     // click → presigned MinIO URL.
