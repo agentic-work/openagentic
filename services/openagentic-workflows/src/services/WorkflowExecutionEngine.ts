@@ -14,7 +14,7 @@ import { PricingLookup } from './pricingLookup.js';
 import { MODELS } from '../config/models.js';
 import { canAutoApprove } from './approvalGate.js';
 import { createApprovalRecord } from './approvalRecord.js';
-import { createDataRequestRecord, type DataRequestField } from './dataRequestRecord.js';
+import { createDataRequestRecord } from './dataRequestRecord.js';
 import { redactSecrets, redactLogMeta, type RedactionMap } from './secretRedaction.js';
 import { checkSecretAcl } from './secretAcl.js';
 import type { AclSecretRow } from './secretAcl.js';
@@ -1805,17 +1805,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       // the outer pause logic suspends the run after the executor returns
       // awaiting_input. POST /resume-execution re-enters with the user's
       // submitted values.
-      requestData: async (payload: {
-        nodeId: string;
-        fields: DataRequestField[];
-        title: string;
-        description: string;
-        timeoutSeconds: number;
-        timeoutAction: string;
-        assignTo: string[];
-        channel: string;
-        input?: unknown;
-      }) => {
+      requestData: async (payload) => {
         const request = await createDataRequestRecord(prisma, {
           executionId: this.context.executionId,
           nodeId: payload.nodeId,

@@ -174,7 +174,7 @@ if [[ "$MODE" == "env-file" ]]; then
   fi
 
   step "docker compose up"
-  docker compose up -d 2>&1 | tail -8
+  docker compose --profile milvus up -d 2>&1 | tail -8
 
   info 'Waiting for api healthy (~90s on first boot)…'
   s=unknown
