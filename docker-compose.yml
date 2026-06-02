@@ -400,14 +400,6 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
 
-  synth:
-    <<: *defaults
-    image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-synth:${OPENAGENTIC_TAG:-latest}
-    build:
-      context: ./services/openagentic-synth
-    environment:
-      API_URL: http://api:8000
-
 networks:
   oap:
     driver: bridge

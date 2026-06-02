@@ -14,7 +14,7 @@
 
 <div align="center">
 
-![Incident root-cause analysis, end to end](./demos/incident-rca.gif)
+![Chat with ops MCPs, end to end](./demos/chat.gif)
 
 *Alert fires → openagentic queries Prometheus + Loki + kubectl **in parallel** → root-cause narrative **with the evidence** → proposes a fix behind a **human approval gate** → you click Approve → it executes → an **immutable audit-log** entry. 60 seconds, on your laptop, your own Ollama, nothing leaving the box.*
 
@@ -26,7 +26,7 @@
 
 Every credible AI-SRE today is closed SaaS that wants to **ingest your infra logs** to do its job. If you run a DORA-regulated bank, anything touching PHI, a government system, or anything under EU/NIS2, you are often *legally forbidden* from shipping those logs to someone else's model — and you're watching the observability bill climb at the same time.
 
-openagentic is the wedge nobody else ships self-hostable: a **full ops platform** — chat + visual ops **Flows** + **RAG/memory** + **admin dashboards** — whose **14 MCPs actually touch** AWS, Kubernetes, Prometheus, and Loki. The open point tools (HolmesGPT, k8sgpt, kagent) have no UI, no Flows, no RAG. The cross-domain agents (Cleric, Resolve.ai, the cloud-vendor agents) are closed SaaS that ingest your data.
+openagentic is the wedge nobody else ships self-hostable: a **full ops platform** — chat + visual ops **Flows** + **RAG/memory** + **admin dashboards** — whose **MCPs actually touch** AWS, Kubernetes, Prometheus, and Loki. The open point tools (HolmesGPT, k8sgpt, kagent) have no UI, no Flows, no RAG. The cross-domain agents (Cleric, Resolve.ai, the cloud-vendor agents) are closed SaaS that ingest your data.
 
 This is one `docker compose up` box you can **fork, audit, and run on your own hardware**. Model-agnostic. **Zero telemetry.** Your data never leaves.
 
@@ -39,6 +39,8 @@ This is one `docker compose up` box you can **fork, audit, and run on your own h
 ```bash
 curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/install.sh | bash
 ```
+
+> The `curl | bash` one-liners below are the **public-launch** install path. While the repo is still private, that URL 404s and prebuilt public images aren't published yet — clone the repo (see *Prerequisites + manual install*) and run `./install.sh` from the checkout instead.
 
 **Kubernetes (Helm)** — same one-liner, `--helm`. Runs `helm upgrade --install openagentic ./helm/openagentic` into the `openagentic` namespace:
 
@@ -57,12 +59,14 @@ Want a careful walk-through (provider keys, MCP picks)? Add `--wizard` — an In
 - ~8 GB RAM, ~20 GB disk for the default stack
 
 ```bash
-git clone https://github.com/agentic-work/openagentic ~/.openagentic
+git clone git@github.com:agentic-work/openagentic.git ~/.openagentic   # SSH — repo is private until launch
 cd ~/.openagentic
-cp .env.example .env          # admin email/password, OLLAMA_HOST, optional provider keys
-docker compose up -d          # wait ~90s for openagentic-api to go healthy
+cp .env.example .env          # set POSTGRES_PASSWORD (required), admin email/password, OLLAMA_HOST, optional provider keys
+docker compose --profile milvus up -d   # the milvus profile (etcd/minio/milvus) is required for semantic tool search
 open http://localhost:8080
 ```
+
+> **The `milvus` profile is required.** etcd/minio/milvus are gated behind `--profile milvus`, and the API connects to Milvus on boot — it exits if it can't reach it — so always bring the stack up with `--profile milvus`. Until prebuilt public images are published, the first run **builds** every service image from source (a cold, multi-GB build), and images are amd64-only today.
 
 The Helm chart lives at [`helm/openagentic/`](./helm/openagentic/) for the manual k8s path.
 
@@ -74,14 +78,13 @@ The Helm chart lives at [`helm/openagentic/`](./helm/openagentic/) for the manua
 - **Ops Flows** — visual agent runbooks. Drag-drop nodes, branching, tool calls, RAG — the whole loop, on a canvas.
 - **RAG + memory** — Milvus-backed knowledge and per-user memory that survives across sessions.
 - **Admin dashboards** — live Prometheus-driven analytics on usage, cost, and model behavior. In-box, never phoned home.
-- **14 first-party MCP servers** — and they *do things*:
+- **9 first-party MCP servers** — and they *do things*:
 
   | Cloud | Ops | Knowledge / Meta |
   |---|---|---|
-  | AWS · Azure · GCP | Kubernetes · Prometheus · Loki · Alertmanager | Web · Knowledge (RAG) · GitHub |
-  | | Incident · Runbook | Admin · Agent Architect |
+  | AWS · Azure · GCP | Kubernetes · Prometheus · Loki | Web · GitHub · Admin |
 
-  All disabled by default. The agent routes calls **semantically** (Milvus-indexed by description), so you can have all 14 active and it still picks the right one. Paste any Claude-Desktop-format JSON config into the admin panel and `mcp-proxy` installs + indexes your own MCPs too.
+  These are the MCPs the proxy actually wires (`mcp_manager.initialize_servers`). All disabled by default. The agent routes calls **semantically** (Milvus-indexed by description), so you can have all of them active and it still picks the right one. Paste any Claude-Desktop-format JSON config into the admin panel and `mcp-proxy` installs + indexes your own MCPs too.
 
 - **Bring your own model** — Ollama for free local inference, or plug in Anthropic / OpenAI / Azure OpenAI / Vertex AI keys.
 

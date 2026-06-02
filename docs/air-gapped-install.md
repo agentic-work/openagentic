@@ -58,10 +58,14 @@ checkout before mirroring — pins move with releases.
 | `searxng/searxng:latest` | Web-search backend for the `web` MCP | if `web` MCP enabled |
 | `prom/prometheus:v2.54.1` | Metrics for the admin dashboard | `prometheus.enabled: true` |
 
-> **Trim the list to what you enable.** A minimal air-gapped install can disable
-> Milvus (set `milvus.enabled: false` and run the API in pgvector-only mode via
-> `MILVUS_ENABLED=false`), skip Prometheus, and drop SearXNG if you don't need
-> the `web` MCP. Fewer images to mirror, fewer moving parts behind the perimeter.
+> **Trim the list to what you enable.** Milvus (with its etcd + MinIO) is
+> required — the API connects to it on boot. A minimal air-gapped install can
+> still skip Prometheus and drop SearXNG if you don't need the `web` MCP. Fewer
+> optional images to mirror, fewer moving parts behind the perimeter.
+
+> **Compose note:** under Docker Compose, the milvus/etcd/minio images are only
+> used when you bring the stack up with `docker compose --profile milvus up -d`.
+> A bare `up` runs pgvector-only and never pulls those three.
 
 ---
 
@@ -267,22 +271,22 @@ cluster, Prometheus, Loki, and Alertmanager.
 
 ## Step 5 — Install
 
-The stateful deps (Postgres/pgvector, Redis, Milvus) are deployed separately so
-the rendered release stays under etcd's object limit — mirror their charts too,
-or use the in-chart templates per `helm/openagentic/README.md`. Then:
+The stateful deps (Postgres/pgvector, Redis, Milvus) ship as in-chart
+`Deployment`s — there is nothing to install separately. Milvus is gated on
+`milvus.enabled` (and bundles its own etcd + MinIO). Then:
 
 ```bash
 helm install openagentic ./helm/openagentic -n openagentic \
   -f my-airgapped-values.yaml --wait --timeout 10m
 ```
 
-Verify rollout:
+Verify rollout (the api Deployment + Service are named `api`):
 
 ```bash
 kubectl get pods -n openagentic
-kubectl rollout status deploy/openagentic-api -n openagentic
+kubectl rollout status deploy/api -n openagentic
 
-kubectl port-forward -n openagentic svc/openagentic-api 8080:8000 &
+kubectl port-forward -n openagentic svc/api 8080:8000 &
 curl -s http://localhost:8080/api/health | jq .
 ```
 
@@ -376,9 +380,11 @@ docker login registry.internal:5000
 # In .env:
 #   OLLAMA_HOST=http://ollama.internal:11434   # remote, or host.docker.internal for a host Ollama
 
-docker compose pull          # pulls every service image from your registry
-docker compose up -d
-docker compose ps            # all services healthy/running
+# Include `--profile milvus` for the Milvus-backed stack (etcd/minio/milvus are
+# profile-gated); drop the profile for a pgvector-only install.
+docker compose --profile milvus pull   # pulls every service image from your registry
+docker compose --profile milvus up -d
+docker compose --profile milvus ps     # all services healthy/running
 curl -s http://localhost:8080/api/health | jq .
 ```
 

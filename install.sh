@@ -331,10 +331,11 @@ else
   warn 'Run `az login` / `aws configure` / `gcloud auth login` to wire them up.'
 fi
 
-# 6. Bring it up.
+# 6. Bring it up. The milvus profile (etcd/minio/milvus) is REQUIRED — the api
+# connects to Milvus on boot and exits if it can't reach it (server.ts).
 step "docker compose up"
 info 'Pulling images and starting services (first boot pulls a few GB)…'
-docker compose up -d 2>&1 | tail -8
+docker compose --profile milvus up -d 2>&1 | tail -8
 
 # 7. Wait for api healthy.
 info 'Waiting for api healthy (~90s on first boot)…'

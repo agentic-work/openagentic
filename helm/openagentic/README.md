@@ -5,8 +5,9 @@ engine, MCP proxy, and the bundled MCP servers).
 
 > **Status:** templates-first. The chart renders the full platform, but
 > the supported, batteries-included install path today is the
-> Docker Compose stack at the repo root (`docker compose up -d`). Use
-> Helm if you already run Kubernetes and want to manage OpenAgentic the
+> Docker Compose stack at the repo root (`docker compose --profile milvus up -d`
+> — the `milvus` profile is required; the API connects to Milvus on boot).
+> Use Helm if you already run Kubernetes and want to manage OpenAgentic the
 > same way you manage everything else. Env-specific values
 > (hostnames, storage classes, GPU node selectors) are yours to supply.
 
@@ -27,13 +28,16 @@ dependencies:
 | Layer | Components |
 |---|---|
 | **App** | `api`, `ui`, `workflows`, `mcp-proxy`, `proxy`, `synth` |
-| **MCP servers** | aws, azure, gcp, kubernetes, prometheus, loki, alertmanager, github, admin, agent-architect, incident, knowledge, runbook, web |
-| **Data** | PostgreSQL (pgvector), Redis, Milvus, MinIO |
+| **MCP servers** | aws, azure, gcp, kubernetes, prometheus, loki, github, admin, web |
+| **Data** | PostgreSQL (pgvector), Redis, Milvus (bundles etcd + MinIO) |
 | **Models** | Ollama (chat + embeddings), or external LLM providers |
 
-The stateful dependencies are **not** subcharts of this release — they're
-deployed separately so the rendered release stays under etcd's 1 MB object
-limit. Install them first (next section), then install this chart.
+This chart is **self-contained** (`Chart.yaml: dependencies: []`). PostgreSQL
+(pgvector), Redis, Ollama, and Milvus all ship as plain `Deployment`s in this
+chart — there are no external subcharts to install first. Milvus is gated on
+`.Values.milvus.enabled` (default `true`) and bundles its own etcd + MinIO
+inline (there is no separate MinIO release). A single `helm install` brings up
+the whole stack.
 
 ## Install
 
@@ -56,27 +60,14 @@ kubectl create secret docker-registry registry-pull-secret \
 
 ### 2. Stateful dependencies
 
-Deploy these in your cluster however you prefer. Reference commands using
-upstream charts:
+There is nothing to install separately. PostgreSQL (pgvector), Redis, and
+Milvus (with its bundled etcd + MinIO) all ship as in-chart `Deployment`s and
+come up with the core `helm install` in the next steps. Set `milvus.enabled:
+false` in your values to run pgvector-only and skip the Milvus/etcd/MinIO pods.
 
-```bash
-helm repo add bitnami https://charts.bitnami.com/bitnami
-helm repo add zilliztech https://zilliztech.github.io/milvus-helm/
-helm repo update
-
-helm install postgresql bitnami/postgresql -n openagentic \
-  -f your-postgresql-values.yaml   # must enable the pgvector extension
-helm install redis      bitnami/redis      -n openagentic -f your-redis-values.yaml
-helm install milvus     zilliztech/milvus  -n openagentic -f your-milvus-values.yaml
-```
-
-MinIO ships as templates in this chart (used by Milvus + artifact
-storage); it comes up with the core install.
-
-> **pgvector:** OpenAgentic needs the `vector` extension. Use a Postgres
-> image that bundles pgvector, or run `CREATE EXTENSION IF NOT EXISTS
-> vector;` as an init step. The Compose stack does this automatically via
-> `scripts/postgres-init/`.
+> **pgvector:** OpenAgentic needs the `vector` extension. The bundled Postgres
+> image (`pgvector/pgvector`) already includes it, and the chart enables it on
+> first boot — no manual `CREATE EXTENSION` step required.
 
 ### 3. Ollama / models
 
@@ -107,10 +98,11 @@ Copy one, fill in the placeholders, and pass it with `-f`.
 
 ```bash
 kubectl get pods -n openagentic
-kubectl rollout status deploy/openagentic-api -n openagentic
+kubectl rollout status deploy/api -n openagentic
 
-# API health (port-forward or via your ingress)
-kubectl port-forward -n openagentic svc/openagentic-api 8080:8000 &
+# API health (port-forward or via your ingress). The Service is named `api`
+# on port 8000. For the UI, port-forward `svc/ui 8080:80` instead.
+kubectl port-forward -n openagentic svc/api 8080:8000 &
 curl -s http://localhost:8080/api/health | jq .
 ```
 
@@ -157,10 +149,10 @@ All knobs live in `values.yaml`. The most common ones:
 
 | Key | What it controls |
 |---|---|
-| `global.imageRegistry` / `global.imageTag` | Where images are pulled from |
+| `image.registry` / `image.tag` | Where the app images are pulled from |
 | `api.*`, `ui.*`, `workflows.*`, `mcpProxy.*` | Per-service replicas, resources, env |
-| `awp*Mcp.enabled` | Enable/disable each bundled MCP server |
-| `postgresql.*`, `redis.*`, `milvus.*`, `ollama.*` | Connection details for the external deps |
+| `mcps.enabled` | CSV of bundled MCPs to enable (e.g. `"web,knowledge,admin,kubernetes,prometheus"`) |
+| `postgres.*`, `redis.*`, `milvus.*`, `ollama.*` | Tuning for the in-chart deps (Milvus gated on `milvus.enabled`) |
 | `ingress.*` | Ingress class, hosts, TLS |
 | `imagePullSecrets` | Private-registry pull secrets (empty by default) |
 
@@ -171,17 +163,17 @@ hardcoded node names in the chart.
 
 ## Templates
 
-Under `templates/`, grouped by concern: `core/` (api, ui, workflows,
-postgres/redis/milvus wiring), `mcp-proxy/`, the per-MCP `awp-*-mcp/`
-groups, `synth-executor/`, `oat-executor/`, `agent-proxy/`, `searxng/`,
-`minio/`, `grafana/`, plus `hooks/` and `tests/` (Helm test hooks).
+Flat under `templates/`, one file per concern: `api.yaml`, `ui.yaml`,
+`workflows.yaml`, `mcp-proxy.yaml` (+ `mcp-proxy-rbac.yaml`), `proxy.yaml`,
+`postgres.yaml`, `redis.yaml`, `ollama.yaml`, `milvus.yaml` (gated on
+`milvus.enabled`; bundles etcd + MinIO), `searxng.yaml`, `prometheus.yaml`,
+`ingress.yaml`, and `secret.yaml`, plus `_helpers.tpl`.
 
 ## Uninstall
 
 ```bash
 helm uninstall openagentic -n openagentic
-# then the separately-installed deps:
-helm uninstall postgresql redis milvus -n openagentic
+# Postgres/Redis/Milvus are in-chart, so this removes them too.
 # PVCs are retained by default — delete them explicitly if you want the data gone:
 kubectl delete pvc -l app.kubernetes.io/instance=openagentic -n openagentic
 ```

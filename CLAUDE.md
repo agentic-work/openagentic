@@ -39,7 +39,7 @@ curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/instal
 cd ~/path/to/openagentic
 (cd tools/setup && npm install)  # first run only
 ./tools/setup/node_modules/.bin/tsx tools/setup/src/index.tsx
-# then: docker compose up -d
+# then: docker compose --profile milvus up -d  (Milvus/etcd/minio are profile-gated; the api requires Milvus on boot, so a bare up won't come up healthy)
 ```
 
 **On osx specifically**, the wizard defaults `OLLAMA_HOST` to `http://host.docker.internal:11434` so containers can reach Ollama running on the host. Docker Desktop's file-sharing must include the user's home dir (for `~/.openagentic/cloud-secrets` mounts) — this is the default, but verify under Docker Desktop → Settings → Resources → File sharing.
@@ -48,6 +48,7 @@ Health check after launch:
 
 ```bash
 # all services should be healthy or running
+# (run after `docker compose --profile milvus up -d` so etcd/minio/milvus appear)
 docker compose ps
 
 # api self-reports connection status to each dependency
@@ -111,5 +112,5 @@ This doc is meant to let `claude --continue` on a fresh clone (osx or linux) pic
 2. `claude --continue` in this directory — the memory system will pull prior context (user profile, feedback rules, project state).
 3. Re-run the wizard against the local checkout as above, or use `curl | bash` for the real install.sh flow.
 4. Run the PTY harness to confirm the wizard still walks cleanly.
-5. Bring the stack up with `docker compose up -d`; wait for `docker inspect --format '{{.State.Health.Status}}' openagentic-api-1` to report `healthy` (usually ~90s first boot because Prisma schema push + Milvus collections).
+5. Bring the stack up with `docker compose --profile milvus up -d` (a bare `up` does NOT start Milvus, which the api requires on boot); wait for `docker inspect --format '{{.State.Health.Status}}' openagentic-api-1` to report `healthy` (usually ~90s first boot because Prisma schema push + Milvus collections).
 6. Smoke test: login via `/api/auth/local/login`, send a chat with `/api/chat/stream`, verify tool calls succeed (the mcp-proxy auto-spawns web/knowledge/admin MCPs; cloud MCPs require creds in `~/.openagentic/cloud-secrets/*.env`).
