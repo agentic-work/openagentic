@@ -395,9 +395,9 @@ async function initializeServices() {
     // Embedding models are discovered dynamically from providers
     loggers.services.info('🔄 Embedding models will be discovered from configured providers...');
 
-    // Initialize Milvus connection with retry logic (OPTIONAL - don't fail startup)
-    // SKIP_MILVUS_SERVICES=true will skip all Milvus-dependent features for faster startup
-    // Milvus is MANDATORY — connect with retry
+    // Milvus is MANDATORY: connect with retry, and exit(1) after 10 failed
+    // attempts (below). There is no skip flag — the api cannot run without a
+    // reachable vector store. Start the stack with `--profile milvus`.
     loggers.services.info('🔄 Connecting to Milvus vector database (MANDATORY)...');
     let milvusConnectAttempt = 0;
     while (true) {

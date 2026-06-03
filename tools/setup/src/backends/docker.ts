@@ -12,12 +12,16 @@ export interface BackendHooks {
 }
 
 export async function launchDocker(cfg: WizardConfig, hooks: BackendHooks): Promise<string> {
-  hooks.onBuild?.('docker compose build (first run may take several minutes)');
-  await execa('docker', ['compose', 'build'], { cwd: REPO_ROOT });
+  // Milvus is mandatory — the api exits on boot without a reachable vector store
+  // (see server.ts + commit 6a375998c). The `milvus` compose profile starts
+  // etcd + minio + milvus alongside the core stack; install.sh uses the same
+  // profile on both its paths. A bare `up` would crash the api at boot.
+  hooks.onBuild?.('docker compose --profile milvus build (first run may take several minutes)');
+  await execa('docker', ['compose', '--profile', 'milvus', 'build'], { cwd: REPO_ROOT });
   hooks.onBuildDone?.();
 
-  hooks.onStart?.('docker compose up -d');
-  await execa('docker', ['compose', 'up', '-d'], { cwd: REPO_ROOT });
+  hooks.onStart?.('docker compose --profile milvus up -d');
+  await execa('docker', ['compose', '--profile', 'milvus', 'up', '-d'], { cwd: REPO_ROOT });
   hooks.onStartDone?.();
 
   const url = `http://localhost:${cfg.uiPort}`;

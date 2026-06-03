@@ -52,16 +52,17 @@ services:
       timeout: 3s
       retries: 10
 
-  # Milvus standalone (etcd + minio + milvus together)
-  # ─── Optional: Milvus + its deps (etcd + minio) ───────────────────────────
-  # Default install uses pgvector inside the postgres container for vector
-  # search — three fewer containers, ~1.5 GB less memory. Enable Milvus
-  # only if you specifically need it (large embeddings corpora, distributed
-  # search). Bring it up with:
+  # ─── Milvus standalone (etcd + minio + milvus) — REQUIRED ─────────────────
+  # Milvus is MANDATORY: the api connects to it on boot and exits(1) if it is
+  # unreachable (server.ts) — there is no pgvector-only fallback. These three
+  # services are gated behind the `milvus` profile purely so they can be pulled
+  # as one unit; both install.sh and the setup wizard always start them:
   #
   #   docker compose --profile milvus up -d
   #
-  # …and set MILVUS_HOST=milvus in your .env so the api picks it up.
+  # MILVUS_HOST defaults to `milvus` (the service name below), so a profile-up
+  # install needs no extra .env. A bare `docker compose up -d` (no profile)
+  # will crash the api at boot.
   etcd:
     <<: *defaults
     profiles: ["milvus"]
@@ -179,10 +180,11 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-openagentic}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-openagentic}
       REDIS_URL: redis://redis:6379
-      # Default install uses pgvector inside postgres for vector search;
-      # Milvus is only reachable when `docker compose --profile milvus up`
-      # is used. SKIP_TOOL_SEMANTIC_CACHE=true makes the api skip the
-      # Milvus boot path entirely when the profile is off.
+      # Milvus is REQUIRED — the api connects on boot and exits without it
+      # (server.ts). It is reachable when started with `--profile milvus`
+      # (install.sh + the wizard always do). SKIP_TOOL_SEMANTIC_CACHE only
+      # gates tool-embedding generation / RAG indexing — it does NOT make the
+      # api skip the mandatory Milvus boot connection.
       MILVUS_HOST: ${MILVUS_HOST:-milvus}
       MILVUS_PORT: "19530"
       SKIP_TOOL_SEMANTIC_CACHE: ${SKIP_TOOL_SEMANTIC_CACHE:-true}
