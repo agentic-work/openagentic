@@ -85,6 +85,13 @@ export {
   type NormalizerOptions as AnthropicShapeNormalizerOptions,
 } from './AnthropicShapeToOpenagentic.js';
 
+export {
+  createGemmaToOpenagenticNormalizer,
+  type GemmaChunk,
+  type Normalizer as GemmaNormalizer,
+  type NormalizerOptions as GemmaNormalizerOptions,
+} from './GemmaToOpenagentic.js';
+
 // Format-discriminated factory dispatch — single entry-point downstream
 // consumers use to obtain the right normalizer for a given provider stream.
 export {

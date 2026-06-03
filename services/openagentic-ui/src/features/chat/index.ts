@@ -8,7 +8,7 @@ export * from './components/ChatMessages';
 export * from './components/ChatSidebar';
 
 // Hooks
-export { useChatStream, useSSEChat } from './hooks/useChatStream';
+export { useChatStream } from './hooks/useChatStream';
 export { useTextToSpeech } from './hooks/useTextToSpeech';
 
 // Services

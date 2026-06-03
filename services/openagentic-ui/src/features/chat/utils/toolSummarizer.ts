@@ -534,9 +534,9 @@ const SUMMARIZERS: Record<string, Summarizer> = {
   // Rendered as a rich "📚 N docs from <collections>" summary with the top
   // source filenames as items. Triggered both by the canonical key and
   // (via fuzzy lookup) by the synthesized "RAG Knowledge (N docs)" tool
-  // name emitted from useSSEChat.ts when the rag.stage event arrives.
+  // name emitted from useChatStream.ts when the rag.stage event arrives.
   rag_context: (args, r) => {
-    // Synthetic RAG steps from useSSEChat.ts (rag_context SSE event)
+    // Synthetic RAG steps from useChatStream.ts (rag_context SSE event)
     // store their payload on `args` (the JSON-stringified content set
     // when the block was synthesized at retrieval time) — there's no
     // separate tool_result event for them. Fall back to `args` when
@@ -706,7 +706,7 @@ export function summarizeToolCall(
 
   // Fuzzy lookup: some synthesized "tool" steps don't carry a clean MCP id
   // in toolName (e.g. RAG retrieval is currently labeled
-  // "RAG Knowledge (5 docs)" — see useSSEChat.ts:2209). Match a known
+  // "RAG Knowledge (5 docs)" — synthesized in useChatStream.ts). Match a known
   // prefix into the registry so they get rich summaries too.
   const lookupKey = SUMMARIZERS[toolName]
     ? toolName

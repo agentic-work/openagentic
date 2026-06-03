@@ -21,6 +21,93 @@ import { getRedisClient } from '../../utils/redis-client.js';
 import { ollamaAgent } from '../../utils/ollama-agent.js';
 import { NormalizedStreamEvent } from '../NormalizedStreamTypes.js';
 
+/**
+ * Node's native `fetch` honours an undici `dispatcher` option that isn't part
+ * of the DOM `RequestInit` lib type. This is the one legitimate wire-boundary
+ * shape that the standard lib doesn't model — declare it once instead of
+ * scattering `as any` over every Ollama fetch call.
+ */
+type OllamaFetchInit = RequestInit & { dispatcher: typeof ollamaAgent };
+
+// ──────────────────────────────────────────────────────────────────────────
+// Ollama wire shapes (/api/chat). These describe what Ollama actually puts on
+// the wire so the stream boundary doesn't have to launder every chunk through
+// `any`. They're intentionally permissive (most fields optional) because the
+// wire varies by model/version, but the fields we read are named & typed.
+// ──────────────────────────────────────────────────────────────────────────
+
+/** A single tool call as Ollama emits it inside `message.tool_calls`. */
+interface OllamaWireToolCall {
+  id?: string;
+  type?: string;
+  function?: {
+    name?: string;
+    /** Ollama emits a parsed object; older/proxy paths can send a JSON string. */
+    arguments?: unknown;
+  };
+}
+
+/** The `message` object on an Ollama chat chunk/response. */
+interface OllamaWireMessage {
+  role?: string;
+  content?: string;
+  thinking?: string;
+  tool_calls?: OllamaWireToolCall[];
+  images?: string[];
+}
+
+/** A streamed NDJSON chunk from POST /api/chat (stream:true). */
+interface OllamaWireChunk {
+  model?: string;
+  message?: OllamaWireMessage;
+  done?: boolean;
+  prompt_eval_count?: number;
+  eval_count?: number;
+}
+
+/** The single-object response from POST /api/chat (stream:false). */
+interface OllamaWireResponse {
+  model?: string;
+  message?: OllamaWireMessage;
+  done?: boolean;
+  prompt_eval_count?: number;
+  eval_count?: number;
+}
+
+/** A message in the Ollama-format request body we build from CompletionRequest. */
+interface OllamaRequestMessage {
+  role: string;
+  content: string;
+  images?: string[];
+  tool_calls?: Array<{ function: { name?: string; arguments: unknown } }>;
+}
+
+/** The request body we POST to Ollama /api/chat. */
+interface OllamaChatRequest {
+  model: string;
+  messages: OllamaRequestMessage[];
+  options: {
+    temperature: number;
+    top_p: number;
+    num_predict: number;
+  };
+  stream: boolean;
+  keep_alive: string;
+  think?: boolean;
+  tools?: unknown[];
+}
+
+/**
+ * What `streamCompletion` yields. It is a union of:
+ *  - Anthropic-style content-block envelopes (passed through verbatim by
+ *    streamProvider's CanonicalEvent path), and
+ *  - OpenAI-compatible chat.completion.chunk objects (carrying tool calls /
+ *    finish_reason — the Ollama drop-fix relies on these reaching the consumer).
+ * Kept structurally loose (index signature) so downstream pass-through code
+ * sees the same runtime objects it always has.
+ */
+type OllamaStreamYield = Record<string, unknown>;
+
 // Simple semaphore for single-GPU concurrency control
 class Semaphore {
   private permits: number;
@@ -152,7 +239,7 @@ export class OllamaProvider extends BaseLLMProvider {
         headers: this.getHeaders(),
         dispatcher: ollamaAgent,
         signal: AbortSignal.timeout(10_000),
-      } as any);
+      } as OllamaFetchInit);
       if (response.ok) {
         const data = await response.json();
         for (const m of (data.models || [])) {
@@ -204,7 +291,7 @@ export class OllamaProvider extends BaseLLMProvider {
       body: JSON.stringify({ name: modelId }),
       dispatcher: ollamaAgent,
       signal: AbortSignal.timeout(10_000),
-    } as any);
+    } as OllamaFetchInit);
 
     if (response.status === 404) {
       this.logger.warn({ modelId }, '[OllamaProvider] discoverModelDetails: model not pulled locally');
@@ -368,7 +455,7 @@ export class OllamaProvider extends BaseLLMProvider {
   /**
    * Create chat completion
    */
-  async createCompletion(request: CompletionRequest): Promise<CompletionResponse | AsyncGenerator<any>> {
+  async createCompletion(request: CompletionRequest): Promise<CompletionResponse | AsyncGenerator<OllamaStreamYield>> {
     // Concurrency gate — wait for a permit before hitting the GPU
     const queueDepth = this.completionSemaphore.pending;
     if (queueDepth > 0) {
@@ -444,12 +531,11 @@ export class OllamaProvider extends BaseLLMProvider {
       const supportsThinking = requestThinkingType === 'enabled' || requestThinkingType === 'adaptive' ||
                                thinkingModels.some(m => modelLower.includes(m));
 
-      // REMOVED: gpt-oss system prompt injection - gpt-oss DOES support native Ollama tool calling!
-      // Testing confirmed gpt-oss outputs tool_calls in the response when passed tools via the tools API.
-      // See: curl test showing tool_calls: [{ "id": "call_xxx", "function": { "name": "...", "arguments": {...} } }]
+      // gpt-oss supports native Ollama tool calling: it outputs tool_calls in
+      // the response when passed tools via the tools API (no prompt injection needed).
 
       // Build Ollama request
-      const ollamaRequest: any = {
+      const ollamaRequest: OllamaChatRequest = {
         model: modelName,
         messages: this.convertMessages(request.messages),
         options: {
@@ -540,12 +626,12 @@ export class OllamaProvider extends BaseLLMProvider {
    * For gpt-oss: breaks thinking into smaller chunks for interleaved display
    */
   private async *streamCompletion(
-    ollamaRequest: any,
+    ollamaRequest: OllamaChatRequest,
     modelName: string,
     startTime: number,
     isGptOss: boolean = false,
     gptOssThinkingChunkSize: number = 100
-  ): AsyncGenerator<any> {
+  ): AsyncGenerator<OllamaStreamYield> {
     try {
       const url = `${this.baseUrl}/api/chat`;
 
@@ -553,7 +639,7 @@ export class OllamaProvider extends BaseLLMProvider {
       // Ollama models (especially gpt-oss) break with multiple system messages —
       // they stop generating content after tool results when confused by the message structure.
       if (ollamaRequest.messages?.length > 1) {
-        const merged: any[] = [];
+        const merged: OllamaRequestMessage[] = [];
         for (const msg of ollamaRequest.messages) {
           const prev = merged[merged.length - 1];
           if (prev && prev.role === 'system' && msg.role === 'system') {
@@ -595,7 +681,7 @@ export class OllamaProvider extends BaseLLMProvider {
       }
 
       // Log request summary
-      const msgSummary = ollamaRequest.messages?.map((m: any) => ({
+      const msgSummary = ollamaRequest.messages?.map((m) => ({
         role: m.role,
         contentLen: (m.content || '').length,
         hasToolCalls: !!(m.tool_calls?.length),
@@ -616,7 +702,7 @@ export class OllamaProvider extends BaseLLMProvider {
         headers: this.getHeaders(),
         body: JSON.stringify(ollamaRequest),
         dispatcher: ollamaAgent,
-      } as any);
+      } as OllamaFetchInit);
 
       if (!response.ok) {
         // DEBUG: Log the failed response details
@@ -641,7 +727,7 @@ export class OllamaProvider extends BaseLLMProvider {
       let totalTokens = 0;
       let accumulatedContent = ''; // Accumulate content for gpt-oss tool call parsing
       let hasNativeToolCalls = false;
-      let storedToolCalls: any[] = []; // Store tool calls when they arrive (before done:true)
+      let storedToolCalls: OllamaWireToolCall[] = []; // Store tool calls when they arrive (before done:true)
 
       // INTERLEAVED THINKING: Track block indices for proper interleaving
       let blockIndex = 0;
@@ -674,7 +760,7 @@ export class OllamaProvider extends BaseLLMProvider {
           if (!line.trim()) continue;
 
           try {
-            const chunk = JSON.parse(line);
+            const chunk = JSON.parse(line) as OllamaWireChunk;
 
             // DEBUG: Log every chunk to trace tool call detection
             if (chunk.done || chunk.message?.tool_calls) {
@@ -683,7 +769,7 @@ export class OllamaProvider extends BaseLLMProvider {
                 done: chunk.done,
                 hasToolCalls: !!chunk.message?.tool_calls,
                 toolCallsLength: chunk.message?.tool_calls?.length || 0,
-                toolNames: chunk.message?.tool_calls?.map((tc: any) => tc.function?.name) || [],
+                toolNames: chunk.message?.tool_calls?.map((tc) => tc.function?.name) || [],
                 hasContent: !!chunk.message?.content,
                 hasThinking: !!chunk.message?.thinking,
                 chunkKeys: Object.keys(chunk),
@@ -699,7 +785,7 @@ export class OllamaProvider extends BaseLLMProvider {
               this.logger.info({
                 model: modelName,
                 toolCount: storedToolCalls.length,
-                tools: storedToolCalls.map((tc: any) => tc.function?.name),
+                tools: storedToolCalls.map((tc) => tc.function?.name),
                 chunkDone: chunk.done
               }, '[OllamaProvider] 🔧 Detected native tool calls');
             }
@@ -852,7 +938,7 @@ export class OllamaProvider extends BaseLLMProvider {
                 this.logger.info({
                   model: modelName,
                   toolCount: storedToolCalls.length,
-                  tools: storedToolCalls.map((tc: any) => tc.function?.name)
+                  tools: storedToolCalls.map((tc) => tc.function?.name)
                 }, '[OllamaProvider] 🔧 Emitting stored native tool calls at stream completion');
 
                 // Emit the native tool calls in OpenAI-compatible format
@@ -864,7 +950,7 @@ export class OllamaProvider extends BaseLLMProvider {
                   choices: [{
                     index: 0,
                     delta: {
-                      tool_calls: storedToolCalls.map((tc: any, index: number) => ({
+                      tool_calls: storedToolCalls.map((tc, index) => ({
                         index,
                         id: tc.id || `call_${Date.now()}_${index}`,
                         type: 'function',
@@ -950,7 +1036,7 @@ export class OllamaProvider extends BaseLLMProvider {
    * Non-streaming completion
    */
   private async nonStreamCompletion(
-    ollamaRequest: any,
+    ollamaRequest: OllamaChatRequest,
     modelName: string,
     startTime: number
   ): Promise<CompletionResponse> {
@@ -960,13 +1046,13 @@ export class OllamaProvider extends BaseLLMProvider {
         headers: this.getHeaders(),
         body: JSON.stringify({ ...ollamaRequest, stream: false }),
         dispatcher: ollamaAgent,
-      } as any);
+      } as OllamaFetchInit);
 
       if (!response.ok) {
         throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as OllamaWireResponse;
       const totalTokens = (data.prompt_eval_count || 0) + (data.eval_count || 0);
       const latency = Date.now() - startTime;
       this.trackSuccess(latency, totalTokens, 0);
@@ -989,8 +1075,17 @@ export class OllamaProvider extends BaseLLMProvider {
   /**
    * Convert OpenAI messages to Ollama format (handles multimodal content with images)
    */
-  private convertMessages(messages: CompletionRequest['messages']): any[] {
-    const result: any[] = [];
+  /**
+   * Map an inbound message role to the Ollama wire role. Typed on `string`
+   * (not the narrowed union) so the conversion stays valid regardless of the
+   * control-flow narrowing at each call site.
+   */
+  private toOllamaRole(role: string): OllamaRequestMessage['role'] {
+    return role === 'tool' ? 'tool' : role === 'assistant' ? 'assistant' : role === 'system' ? 'system' : 'user';
+  }
+
+  private convertMessages(messages: CompletionRequest['messages']): OllamaRequestMessage[] {
+    const result: OllamaRequestMessage[] = [];
 
     for (const msg of messages) {
       // Handle Anthropic-format content blocks (from /v1/messages endpoint)
@@ -1019,23 +1114,38 @@ export class OllamaProvider extends BaseLLMProvider {
         // Anthropic assistant messages with tool_use and thinking blocks
         if (hasToolUse || msg.role === 'assistant') {
           const textParts: string[] = [];
-          const toolCalls: any[] = [];
+          const toolCalls: OllamaRequestMessage['tool_calls'] = [];
 
           for (const part of msg.content) {
             if (part.type === 'text' && part.text) {
               textParts.push(part.text);
             } else if (part.type === 'tool_use') {
+              // Mirror the OpenAI-format guard below: gpt-oss (and chatLoop's own
+              // `{_raw}`/string fallback) can persist a malformed JSON string here.
+              // An unguarded JSON.parse would throw a SyntaxError out of
+              // createCompletion and abort the whole turn — wrap it and fall back
+              // to a sentinel so the turn survives a single bad tool_use block.
+              let toolArgs: unknown;
+              if (typeof part.input === 'string') {
+                try {
+                  toolArgs = part.input.trim() ? JSON.parse(part.input) : {};
+                } catch {
+                  toolArgs = { __malformed_args: true, _raw: part.input };
+                }
+              } else {
+                toolArgs = part.input || {};
+              }
               toolCalls.push({
                 function: {
                   name: part.name,
-                  arguments: typeof part.input === 'string' ? JSON.parse(part.input) : (part.input || {}),
+                  arguments: toolArgs,
                 },
               });
             }
             // Skip thinking/redacted_thinking blocks — Ollama doesn't need them
           }
 
-          const assistantMsg: any = {
+          const assistantMsg: OllamaRequestMessage = {
             role: 'assistant',
             content: textParts.join('\n'),
           };
@@ -1062,8 +1172,8 @@ export class OllamaProvider extends BaseLLMProvider {
           }
         }
 
-        const ollamaMsg: any = {
-          role: (msg as any).role === 'tool' ? 'tool' : (msg as any).role === 'assistant' ? 'assistant' : (msg as any).role === 'system' ? 'system' : 'user',
+        const ollamaMsg: OllamaRequestMessage = {
+          role: this.toOllamaRole(msg.role),
           content: textParts.join('\n'),
         };
         if (images.length > 0) {
@@ -1074,8 +1184,8 @@ export class OllamaProvider extends BaseLLMProvider {
       }
 
       // Simple string content
-      const ollamaMsg: any = {
-        role: msg.role === 'tool' ? 'tool' : msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
+      const ollamaMsg: OllamaRequestMessage = {
+        role: this.toOllamaRole(msg.role),
         content: msg.content,
       };
 
@@ -1207,153 +1317,23 @@ export class OllamaProvider extends BaseLLMProvider {
   }
 
   /**
-   * Injects tool descriptions into the system prompt for gpt-oss models.
-   * gpt-oss uses a channel-based syntax instead of the native Ollama tools API.
-   * 
-   * gpt-oss tool call format:
-   * <|start|>assistant<|channel|>commentary to=functions.tool_name <|constrain|>json<|message|>{"arg": "value"}<|call|>
-   */
-  private injectGptOssToolPrompt(messages: CompletionRequest['messages'], tools: any[]): CompletionRequest['messages'] {
-    if (!tools || tools.length === 0) {
-      return messages;
-    }
-
-    // Build tool descriptions
-    const toolDescriptions = tools.map(tool => {
-      const fn = tool.function || tool;
-      const name = fn.name;
-      const description = fn.description || 'No description provided';
-      const params = fn.parameters || {};
-      
-      let paramStr = '';
-      if (params.properties) {
-        const required = params.required || [];
-        paramStr = Object.entries(params.properties).map(([pName, pSchema]: [string, any]) => {
-          const isRequired = required.includes(pName);
-          const typeStr = pSchema.type || 'any';
-          const desc = pSchema.description || '';
-          return `  - ${pName} (${typeStr}${isRequired ? ', required' : ''}): ${desc}`;
-        }).join('\n');
-      }
-
-      return `### ${name}
-${description}
-${paramStr ? `Parameters:\n${paramStr}` : 'No parameters'}`;
-    }).join('\n\n');
-
-    // Create the tool injection system prompt
-    const toolPrompt = `
-## Available Tools
-
-You have access to the following tools. To use a tool, you MUST use this EXACT format:
-
-<|start|>assistant<|channel|>commentary to=functions.TOOL_NAME <|constrain|>json<|message|>{"param1": "value1", "param2": "value2"}<|call|>
-
-IMPORTANT:
-- Replace TOOL_NAME with the actual tool name
-- The JSON after <|message|> must contain valid JSON with the tool parameters
-- You can add brief commentary before "to=" to explain your reasoning
-- Always end the tool call with <|call|>
-
-${toolDescriptions}
-
-When you need information from a tool, use the format above. After receiving tool results, incorporate them into your response.
-`;
-
-    // Find existing system message or create one
-    const result = [...messages];
-    const systemIndex = result.findIndex(m => m.role === 'system');
-    
-    if (systemIndex >= 0) {
-      // Append to existing system message
-      const existingContent = typeof result[systemIndex].content === 'string' 
-        ? result[systemIndex].content 
-        : (result[systemIndex].content as any[]).map((c: any) => c.text || '').join('\n');
-      
-      result[systemIndex] = {
-        ...result[systemIndex],
-        content: existingContent + '\n\n' + toolPrompt
-      };
-    } else {
-      // Insert new system message at the beginning
-      result.unshift({
-        role: 'system',
-        content: toolPrompt
-      });
-    }
-
-    return result;
-  }
-
-  /**
-   * Convert Ollama streaming chunk to OpenAI format
-   */
-  private convertOllamaChunkToOpenAI(chunk: any, model: string): any | null {
-    if (!chunk.message) return null;
-
-    const delta: any = {};
-
-    // Handle thinking content from Ollama (when think=true is set)
-    // See: https://docs.ollama.com/capabilities/thinking
-    // Ollama returns thinking in message.thinking field for models like DeepSeek, Qwen3
-    if (chunk.message.thinking) {
-      delta.thinking = chunk.message.thinking;
-    }
-
-    // Handle content delta
-    if (chunk.message.content) {
-      delta.content = chunk.message.content;
-    }
-
-    // Handle tool calls (native Ollama format)
-    if (chunk.message.tool_calls) {
-      delta.tool_calls = chunk.message.tool_calls.map((tc: any, index: number) => ({
-        index,
-        id: `call_${Date.now()}_${index}`,
-        type: 'function',
-        function: {
-          name: this.sanitizeToolName(tc.function.name),
-          arguments: JSON.stringify(tc.function.arguments)
-        }
-      }));
-    }
-
-    return {
-      id: `chatcmpl-${Date.now()}`,
-      object: 'chat.completion.chunk',
-      created: Math.floor(Date.now() / 1000),
-      model,
-      choices: [{
-        index: 0,
-        delta,
-        finish_reason: chunk.done ? 'stop' : null
-      }],
-      usage: chunk.done ? {
-        prompt_tokens: chunk.prompt_eval_count || 0,
-        completion_tokens: chunk.eval_count || 0,
-        total_tokens: (chunk.prompt_eval_count || 0) + (chunk.eval_count || 0)
-      } : undefined
-    };
-  }
-
-  /**
    * Convert Ollama response to OpenAI format
    */
-  private convertOllamaResponseToOpenAI(data: any, model: string): CompletionResponse {
-    let content = data.message.content || '';
-    let toolCalls: any[] | undefined;
+  private convertOllamaResponseToOpenAI(data: OllamaWireResponse, model: string): CompletionResponse {
+    let content = data.message?.content || '';
+    let toolCalls: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }> | undefined;
 
     // Handle thinking content from Ollama (when think=true is set)
-    const thinking = data.message.thinking;
+    const thinking = data.message?.thinking;
 
     // Handle native Ollama tool calls first
-    if (data.message.tool_calls && data.message.tool_calls.length > 0) {
-      toolCalls = data.message.tool_calls.map((tc: any, index: number) => ({
+    if (data.message?.tool_calls && data.message.tool_calls.length > 0) {
+      toolCalls = data.message.tool_calls.map((tc, index) => ({
         id: `call_${Date.now()}_${index}`,
-        type: 'function',
+        type: 'function' as const,
         function: {
-          name: this.sanitizeToolName(tc.function.name),
-          arguments: JSON.stringify(tc.function.arguments)
+          name: this.sanitizeToolName(tc.function?.name),
+          arguments: JSON.stringify(tc.function?.arguments)
         }
       }));
     } else {

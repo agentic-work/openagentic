@@ -193,7 +193,7 @@ export function humanizeToolName(rawName: string): HumanizedTool {
   const exact = TOOL_MAP[rawName];
   if (exact) return exact;
 
-  // Synthetic RAG row names from useSSEChat: `RAG Knowledge (5 docs)`.
+  // Synthetic RAG row names from useChatStream: `RAG Knowledge (5 docs)`.
   // Map to the Knowledge category so the collapsed/expanded tool rows
   // render with the book-icon badge + cyan pill instead of falling
   // through to the generic Tool fallback.

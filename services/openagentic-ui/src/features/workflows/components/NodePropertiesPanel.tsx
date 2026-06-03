@@ -1179,41 +1179,6 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     </div>
   );
 
-  const renderOpenagenticConfig = () => (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-          Language
-        </label>
-        <select
-          value={nodeData.language || 'javascript'}
-          onChange={(e) => updateData('language', e.target.value as any)}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-          style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-        >
-          <option value="javascript">JavaScript</option>
-          <option value="python">Python</option>
-          <option value="bash">Bash</option>
-        </select>
-        <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
-          Language for the code block. Runs in a secure Openagentic exec pod with full dev tooling.
-        </p>
-      </div>
-
-      <FormTextarea
-        label="Code"
-        value={nodeData.code || ''}
-        onChange={(v) => updateData('code', v)}
-        rows={12}
-        placeholder={`// Access input data:\nconst input = $input;\n\n// Return output:\nreturn { result: input };`}
-        monospace
-        helpText="Use $input to access previous node's output. Executed in an isolated container with persistent workspace."
-        required={isFieldRequired('openagentic', 'code')}
-        error={isFieldRequired('openagentic', 'code') && !nodeData.code?.trim()}
-      />
-    </div>
-  );
-
   const renderBedrockConfig = () => (
     <div className="space-y-4">
       <FormInput
@@ -2636,8 +2601,6 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         return renderLoopConfig();
       case 'merge':
         return renderMergeConfig();
-      case 'openagentic':
-        return renderOpenagenticConfig();
       case 'text':
         return renderTextNoteConfig();
       case 'error_handler':

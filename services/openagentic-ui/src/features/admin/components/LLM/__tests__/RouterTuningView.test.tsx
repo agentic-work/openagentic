@@ -318,6 +318,36 @@ describe('RouterTuningView', () => {
   });
 
   // -------------------------------------------------------------------------
+  // 5b. Save with a non-ok (500) response must NOT report success and must
+  //     KEEP the pending edits (no silent-success / data loss).
+  // -------------------------------------------------------------------------
+  it('Save with a 500 response surfaces an error and keeps pending changes', async () => {
+    mockApiRequest.mockImplementation(() => mkResponse(false, { message: 'weight out of range' }));
+    renderView();
+
+    // Make a dirty change
+    fireEvent.click(screen.getByTitle(/edit costWeight/i));
+    const input = screen.getByLabelText(/edit costWeight/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '0.6' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => expect(screen.getByText(/change.*pending/i)).toBeDefined());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /save.*apply/i }));
+    });
+
+    // Error surfaced from the response body
+    await waitFor(() => {
+      expect(screen.getByText(/weight out of range/i)).toBeDefined();
+    });
+
+    // Pending edits are NOT cleared (no false "Saved successfully")
+    expect(screen.getByText(/change.*pending/i)).toBeDefined();
+    expect(screen.queryByText(/saved successfully/i)).toBeNull();
+  });
+
+  // -------------------------------------------------------------------------
   // 6. Reset calls POST /api/admin/router-tuning/reset
   // -------------------------------------------------------------------------
   it('Reset button calls POST /api/admin/router-tuning/reset', async () => {

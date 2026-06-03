@@ -343,9 +343,21 @@ const SimpleTextView: React.FC<{ text: string }> = ({ text }) => (
 // ---------------------------------------------------------------------------
 
 const STATUS_COLORS = {
-  success: { accent: '#2ea043', icon: '#2ea043', bg: 'rgba(46, 160, 67, 0.06)' },
-  error: { accent: '#da3633', icon: '#da3633', bg: 'rgba(218, 54, 51, 0.06)' },
-  calling: { accent: '#58a6ff', icon: '#58a6ff', bg: 'rgba(88, 166, 255, 0.06)' },
+  success: {
+    accent: 'var(--cm-success)',
+    icon: 'var(--cm-success)',
+    bg: 'color-mix(in srgb, var(--cm-success) 6%, transparent)',
+  },
+  error: {
+    accent: 'var(--cm-error)',
+    icon: 'var(--cm-error)',
+    bg: 'color-mix(in srgb, var(--cm-error) 6%, transparent)',
+  },
+  calling: {
+    accent: 'var(--cm-info)',
+    icon: 'var(--cm-info)',
+    bg: 'color-mix(in srgb, var(--cm-info) 6%, transparent)',
+  },
 } as const;
 
 // ---------------------------------------------------------------------------

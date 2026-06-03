@@ -133,16 +133,19 @@ export interface PromptComposeDeps {
     connected?: ReadonlyArray<string>;
     needsAuth?: ReadonlyArray<string>;
   };
-  // AC-7 rip (2026-05-10) — P-Live-5 composer dep + composerInput
-  // were REMOVED. The composer appended ~4–5K tokens of dynamic modules
-  // on top of the RBAC base, blowing the 5,000-token cap (live evidence:
-  // promptTokensEst:8768). Spec §50: "Three plain functions. … No
-  // registry. No composer. No priority sort. No intent filter."
+  // WHY no composer dep here: the module-based PromptComposer appended
+  // ~4–5K tokens of dynamic modules on top of the RBAC base, blowing the
+  // 5,000-token cap (live evidence: promptTokensEst:8768). This function
+  // is the lean assembler — role-keyed .md base + three plain dynamic
+  // sections (session-facts / memories / tool-catalog), no module
+  // registry, no priority sort, no intent filter.
   //
-  // Composer rip completed in Phase E.3 (deleted the dynamic prompt
-  // assembler + module seeder + the prompt_modules table). This function
-  // simply stops calling it. The two .md files in prompts/ are now the
-  // sole source of role identity + tool-use principles.
+  // NOTE: the legacy DB composer is NOT deleted — ModuleSeeder
+  // (server.ts seedIfEmpty) + PromptComposer + the prompt_modules table
+  // still ship and run. The two systems coexist behind a flag split:
+  // getSystemPromptForRole is the runChat (V2) path; the composer is the
+  // legacy path. The `USE_RBAC_PROMPT` flag (featureFlags.useRbacPrompt)
+  // gates the eventual cutover to a single SoT — see RbacSystemPromptService.
 }
 
 /**

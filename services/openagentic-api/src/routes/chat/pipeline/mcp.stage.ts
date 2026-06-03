@@ -7,8 +7,30 @@ import { getToolPgvectorSearchService } from '../../../services/ToolPgvectorSear
 // large tool results stored by DataLayerService (>16KB auto-stored)
 import { getDataLayerTools } from '../../../services/DataQueryTool.js';
 import { getMemoryToolDefinitions } from '../../../services/AgentMemoryService.js';
+import { modelFamily } from '../../../services/model-routing/modelFamily.js';
 // TODO: System MCPs moved to MCP Proxy (oap-diagram-mcp) - keeping import for future use
 // import { getSystemMcpTools, isDiagramRequest } from '../../../services/system-mcps/index.js';
+
+/**
+ * Detect locally-served (Ollama-family) models, which support native tool
+ * calling and therefore must NEVER have their tools stripped by the
+ * smart-tool-strip heuristic. Family classification routes through the
+ * canonical `modelFamily()` SOT for the families it recognizes
+ * (gpt-oss / llama / qwen / deepseek) and falls back to the two markers it
+ * does not yet model (the literal "ollama" provider tag and "mistral"). No
+ * bare model-id literals live here — see docs/rules/no-hardcoded-models.md.
+ */
+export function isLocalModelFamily(id: string | undefined | null): boolean {
+  if (!id) return false;
+  const lower = id.toLowerCase();
+  // Markers not classified by modelFamily(): the provider tag and mistral.
+  if (lower.includes('ollama') || lower.includes('mistral')) return true;
+  const fam = modelFamily(id);
+  return fam === 'openai:gpt-oss' ||
+         fam === 'meta:llama' ||
+         fam === 'qwen:qwen' ||
+         fam === 'deepseek:deepseek';
+}
 
 /**
  * MCP Stage - Semantic tool selection for LLM context
@@ -363,18 +385,7 @@ export class MCPStage implements PipelineStage {
       // Check BOTH context.config.model (pipeline config) AND context.request.model (user's selection)
       const configuredModel = context.config.model || context.request.model || process.env.LLM_DEFAULT_MODEL || '';
       const requestedModel = context.request.model || '';
-      const isOllamaModel = configuredModel.toLowerCase().includes('ollama') ||
-                           configuredModel.toLowerCase().includes('gpt-oss') ||
-                           configuredModel.toLowerCase().includes('llama') ||
-                           configuredModel.toLowerCase().includes('mistral') ||
-                           configuredModel.toLowerCase().includes('qwen') ||
-                           configuredModel.toLowerCase().includes('deepseek') ||
-                           requestedModel.toLowerCase().includes('ollama') ||
-                           requestedModel.toLowerCase().includes('gpt-oss') ||
-                           requestedModel.toLowerCase().includes('llama') ||
-                           requestedModel.toLowerCase().includes('mistral') ||
-                           requestedModel.toLowerCase().includes('qwen') ||
-                           requestedModel.toLowerCase().includes('deepseek');
+      const isOllamaModel = isLocalModelFamily(configuredModel) || isLocalModelFamily(requestedModel);
 
       // Also check ENABLE_SMART_TOOL_STRIP env var - default to FALSE to preserve tools
       // Set to 'true' only if you're sure simple queries don't need tools

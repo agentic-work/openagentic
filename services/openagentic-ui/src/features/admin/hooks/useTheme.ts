@@ -42,8 +42,8 @@ function readTheme(): Theme {
     if (ac === 'system' && typeof window !== 'undefined' && window.matchMedia) {
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
     }
-    const awp = localStorage.getItem(OpenAgentic_THEME_KEY)
-    if (awp === 'dark' || awp === 'light') return awp
+    const oa = localStorage.getItem(OpenAgentic_THEME_KEY)
+    if (oa === 'dark' || oa === 'light') return oa
   } catch { /* ignore */ }
   return 'dark'
 }
@@ -87,9 +87,9 @@ function readAccent(): Accent {
       const token = mapAccentObjectToToken(parsed)
       if (token) return token
     }
-    const awp = localStorage.getItem(OpenAgentic_ACCENT_KEY)
+    const oa = localStorage.getItem(OpenAgentic_ACCENT_KEY)
     const valid: readonly Accent[] = ['orange', 'gcp', 'green', 'teal', 'amber', 'violet', 'magenta']
-    if (awp && (valid as readonly string[]).includes(awp)) return awp as Accent
+    if (oa && (valid as readonly string[]).includes(oa)) return oa as Accent
   } catch { /* ignore */ }
   // Missing/unknown stored accent → brand signal orange (#FF5722), NOT the
   // old blue/amber default.

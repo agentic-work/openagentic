@@ -58,6 +58,7 @@ import { useUserPermissions } from '@/hooks/useUserPermissions';
 // Import sub-components
 import ChatSidebar from './ChatSidebar';
 import ChatMessages from './ChatMessages';
+import { storeMessagesToChatMessages } from '../utils/messageNormalizer';
 import ChatInputBar from './ChatInputBar';
 import SSEErrorBoundary from '@/shared/components/SSEErrorBoundary';
 import MetricsPanel from './MetricsPanel';
@@ -159,7 +160,10 @@ interface FileWithPreview extends File {
 }
 
 interface ChatProps {
-  theme: 'light' | 'dark';
+  // `theme` prop removed: the parent no longer feeds a JS color palette. The
+  // app theme is the CSS SOT (theme.css flips every --color-* off [data-theme]);
+  // Chat reads settings.theme (a 'light' | 'dark' string) internally and the
+  // CSS vars do the rest. onThemeChange persists the user's light/dark choice.
   onThemeChange?: (theme: 'light' | 'dark') => void;
   onFunctionsReady?: (functions: {
     createNewSession: () => void;
@@ -344,8 +348,12 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     renderSessionId ? sessions[renderSessionId] : null,
     [renderSessionId, sessions]
   );
+  // Convert the store-internal `Message[]` into the canonical `ChatMessage[]`
+  // render contract (string timestamps, typed visualizations) up front, so the
+  // whole component tree consumes a single typed shape. Replaces the prior
+  // double-cast (store Message -> any -> ChatMessage[]) at the ChatMessages call site.
   const messages = useMemo(() =>
-    currentSession?.messages || [],
+    storeMessagesToChatMessages(currentSession?.messages || []),
     [currentSession?.messages]
   );
 
@@ -410,7 +418,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     chartData: []
   });
   const [userUsageData, setUserUsageData] = useState<any>(null);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<FileWithPreview[]>([]);
   const [canvasContent, setCanvasContent] = useState<any>(() => {
     // Restore last artifact from sessionStorage so closing the canvas doesn't lose it
     try {
@@ -439,8 +447,8 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     return () => {
       // Clean up all preview URLs on unmount
       selectedFiles.forEach(file => {
-        if ((file as any).previewUrl) {
-          URL.revokeObjectURL((file as any).previewUrl);
+        if (file.previewUrl) {
+          URL.revokeObjectURL(file.previewUrl);
         }
       });
       
@@ -453,7 +461,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
       resetStreaming();
       setActiveMcpCalls([]);
       
-      // Note: SSE cleanup is handled by useSSEChat hook
+      // Note: SSE cleanup is handled by the useChatStream hook
     };
   }, []);
 
@@ -556,7 +564,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   // thinkingStartTime, thinkingTime now provided by useChatStreamingStore
   const streamingPlaceholderIdRef = useRef<string | null>(null); // Track current streaming message ID
 
-  // First-message race fix (mirrors useSSEChat.ts:409-412): on the FIRST send of
+  // First-message race fix (mirrors the same guard in useChatStream): on the FIRST send of
   // a brand-new chat, createNewSession() sets the store's activeSessionId + returns
   // the new id, but this component's `activeSessionId` closure is still '' until the
   // store update re-renders. Every render/callback surface that keys on the closure
@@ -587,6 +595,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     pipelineState,
     cotSteps, // Chain of Thought steps for COT UI display
     contentBlocks, // Interleaved content blocks for thinking/text display
+    canonicalContentBlocks, // Pure-reducer ContentBlock[] (applyCanonicalFrame SoT)
     contextCompaction, // Context compaction notification (auto-dismisses)
     normalizedEvents, // Normalized stream events for UnifiedActivityTree (UNIFIED_STREAM=true)
   } = useChatStream({
@@ -761,7 +770,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
       setStreamingStatus('streaming');
       // Update unified agent state
       agentHandlers.onContentDelta(content);
-      // Don't accumulate here - currentMessage from useSSEChat already has the full content
+      // Don't accumulate here - currentMessage from useChatStream already has the full content
       // This callback is just for status updates
     },
     onPipelineStage: (stage, data) => {
@@ -1164,8 +1173,8 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
 
     // Clean up preview URLs before clearing files
     selectedFiles.forEach(file => {
-      if ((file as any).previewUrl) {
-        URL.revokeObjectURL((file as any).previewUrl);
+      if (file.previewUrl) {
+        URL.revokeObjectURL(file.previewUrl);
       }
     });
     setSelectedFiles([]);
@@ -1707,8 +1716,8 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     return () => {
       // Clean up any remaining file preview URLs
       selectedFiles.forEach(file => {
-        if ((file as any).previewUrl) {
-          URL.revokeObjectURL((file as any).previewUrl);
+        if (file.previewUrl) {
+          URL.revokeObjectURL(file.previewUrl);
         }
       });
     };
@@ -2150,7 +2159,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
             {/* Export Button - DISABLED (not working) */}
             <ChatMessages
               theme={settings.theme || 'dark'}
-              messages={messages as any as ChatMessage[]}
+              messages={messages}
               streamingContent={currentMessage}
               smoothStreaming={true}
               isLoading={isStreaming}
@@ -2169,6 +2178,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
               cotSteps={cotSteps}
               agentState={agentState}
               contentBlocks={contentBlocks}
+              canonicalContentBlocks={canonicalContentBlocks}
               thinkingProgress={thinkingProgress}
               normalizedEvents={normalizedEvents}
               onExpandToCanvas={handleExpandToCanvas}
@@ -2253,12 +2263,12 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
                   messageHistory={messageHistory}
                   onFileSelect={(files) => {
                     // Create file objects with preview URLs for images
-                    const filesWithPreviews = files.map(file => {
+                    const filesWithPreviews: FileWithPreview[] = files.map((file: FileWithPreview) => {
                       if (file.type.startsWith('image/') && !file.type.includes('svg')) {
                         // Create a preview URL for the image
                         const previewUrl = URL.createObjectURL(file);
                         // Store the preview URL on the file object
-                        (file as any).previewUrl = previewUrl;
+                        file.previewUrl = previewUrl;
                       }
                       return file;
                     });
@@ -2267,8 +2277,8 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
                   onFileRemove={(fileId) => {
                     // Clean up preview URLs when removing files
                     const fileToRemove = selectedFiles.find(f => f.name === fileId);
-                    if (fileToRemove && (fileToRemove as any).previewUrl) {
-                      URL.revokeObjectURL((fileToRemove as any).previewUrl);
+                    if (fileToRemove && fileToRemove.previewUrl) {
+                      URL.revokeObjectURL(fileToRemove.previewUrl);
                     }
                     setSelectedFiles(selectedFiles.filter(f => f.name !== fileId));
                   }}
@@ -2302,7 +2312,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
                       id: file.name,
                       file,
                       type: fileType,
-                      preview: (file as any).previewUrl
+                      preview: file.previewUrl
                     };
                   })}
                   // Toolbar props

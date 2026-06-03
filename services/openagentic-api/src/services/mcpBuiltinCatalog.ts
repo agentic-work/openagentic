@@ -2,11 +2,11 @@
  * Built-in MCP catalog — the single API-side source of truth for the known
  * built-in MCP fleet.
  *
- * The 14 built-in MCPs are NOT modeled as DB rows (the DB registry only holds
+ * The 9 built-in MCPs are NOT modeled as DB rows (the DB registry only holds
  * admin-added servers). They are spawned by mcp-proxy, gated on `*_MCP_DISABLED`
  * env flags. When a built-in is env-disabled the proxy never registers it, so it
  * vanishes from `GET ${MCP_PROXY_URL}/servers` entirely — which made the admin
- * MCP Fleet silently drop aws/azure/gcp/loki/alertmanager/github instead of
+ * MCP Fleet silently drop aws/azure/gcp/loki/github instead of
  * showing them as "available but not yet enabled".
  *
  * This module gives every fleet-facing endpoint a stable catalog to merge the
@@ -45,10 +45,14 @@ export interface BuiltinMcpDef {
 }
 
 /**
- * The intended built-in set — mirrors the mcp-proxy spawn catalog
- * (`services/openagentic-mcp-proxy/src/mcp_manager.py` `initialize_servers()`).
- * Keyed by the canonical bare id. This is what SHOULD exist; the running subset
- * is whatever the proxy reports live.
+ * The intended built-in set (9 wired servers) — mirrors the mcp-proxy spawn
+ * catalog (`services/openagentic-mcp-proxy/src/mcp_manager.py`
+ * `initialize_servers()`). Keyed by the canonical bare id. This is what SHOULD
+ * exist; the running subset is whatever the proxy reports live.
+ *
+ * Keep this in lockstep with `initialize_servers()`. alertmanager was removed
+ * upstream (out of scope 2026-05-01) and must NOT be re-added here — a phantom
+ * catalog entry surfaces a "needs-config" Fleet row the proxy can never enable.
  */
 export const BUILTIN_MCP_CATALOG: Record<string, BuiltinMcpDef> = {
   admin: {
@@ -105,13 +109,6 @@ export const BUILTIN_MCP_CATALOG: Record<string, BuiltinMcpDef> = {
     name: 'Loki',
     description: 'Loki log query tools',
     category: 'loki',
-    needsConfig: true,
-  },
-  alertmanager: {
-    id: 'alertmanager',
-    name: 'Alertmanager',
-    description: 'Alertmanager alert tools',
-    category: 'alertmanager',
     needsConfig: true,
   },
   github: {

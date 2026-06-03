@@ -33,9 +33,9 @@ vi.mock('@/app/providers/AuthContext', () => ({
 }));
 
 // useSSEChat retired — the streaming engine is now useChatStream, which
-// re-exports `useSSEChat` as a back-compat alias and carries the same
-// first-message live-session (effectiveSessionId) fix this asserts.
-import { useSSEChat } from '../useChatStream';
+// carries the first-message live-session (effectiveSessionId) fix this
+// asserts. Aliased locally so the test body reads unchanged.
+import { useChatStream as useSSEChat } from '../useChatStream';
 import { useChatStore } from '@/stores/useChatStore';
 
 const NEW_SESSION_ID = 'sess_freshly_created_123';

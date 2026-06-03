@@ -18,6 +18,7 @@ export interface ChatMessage {
   thinkingSteps?: ThinkingStep[]; // Thinking process steps (from streaming)
   reasoningTrace?: ReasoningTrace | string; // Complete reasoning trace
   tokenUsage?: TokenUsage;
+  tokens?: number; // Flat token count for feedback tracking (richer detail in tokenUsage)
   metadata?: any;
   imageUrl?: string; // For image attachments
   // Enhanced content properties

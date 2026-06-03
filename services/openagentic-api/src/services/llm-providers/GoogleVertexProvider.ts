@@ -258,8 +258,17 @@ export class GoogleVertexProvider extends BaseLLMProvider {
     const startTime = Date.now();
 
     try {
-      // Determine model from request or use default — passed directly to SDK
-      const rawModel = request.model || process.env.VERTEX_DEFAULT_MODEL || process.env.DEFAULT_MODEL;
+      // Determine model from request or provider-specific VERTEX_DEFAULT_MODEL
+      // bootstrap env. Registry SoT: the cross-provider DEFAULT_MODEL env
+      // fallback is removed — when neither is present, resolve the chat role
+      // from the Registry (admin.model_role_assignments via the canonical
+      // ModelConfigurationService accessor) instead of reading a
+      // cross-provider env var that may point at a non-Vertex model.
+      const rawModel = request.model || process.env.VERTEX_DEFAULT_MODEL ||
+        (await (async () => {
+          const { ModelConfigurationService } = await import('../ModelConfigurationService.js');
+          return ModelConfigurationService.getDefaultChatModel().catch(() => '');
+        })());
       // Translate Model Garden third-party models to Vertex AI publisher paths
       const modelName = this.resolveModelGardenPath(rawModel);
 
@@ -1653,9 +1662,19 @@ export class GoogleVertexProvider extends BaseLLMProvider {
     }
 
     try {
+      // Registry SoT: provider-specific VERTEX_AI_EMBEDDING_MODEL (bootstrap
+      // env) wins; else resolve the embedding role from the Registry
+      // (admin.model_role_assignments via RegistryReader) instead of the
+      // cross-provider EMBEDDING_MODEL env var that may point at a non-Vertex
+      // embedding model.
       const embeddingModel =
         process.env.VERTEX_AI_EMBEDDING_MODEL ||
-        process.env.EMBEDDING_MODEL;
+        (await (async () => {
+          const { RegistryReader } = await import('../model-registry/RegistryReader.js');
+          return new RegistryReader().getDefaultModel('embedding')
+            .then((row) => row.model)
+            .catch(() => '');
+        })());
 
       const texts = Array.isArray(text) ? text : [text];
       const embeddings: number[][] = [];

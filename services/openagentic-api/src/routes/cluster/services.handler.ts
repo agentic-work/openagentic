@@ -70,7 +70,6 @@ const DISPLAY_NAMES: Record<string, string> = {
   'openagentic-mcp-proxy': 'MCP Proxy',
   'openagentic-openagentic-proxy': 'Agent Proxy',
   'openagentic-workflows': 'Workflows',
-  'openagentic-synth-executor': 'Synth Executor',
   'oap-openagentic-admin-mcp': 'OpenAgentic Admin MCP',
   'oap-openagentic-azure-mcp': 'Azure MCP',
   'oap-openagentic-aws-mcp': 'AWS MCP',
@@ -85,7 +84,6 @@ function classify(name: string): ServiceRow['category'] {
   if (/^openagentic-(api|ui)$/.test(name)) return 'core';
   if (/^openagentic-(mcp-proxy|openagentic-)/.test(name)) return 'mcp';
   if (/^openagentic-(openagentic-proxy|workflows)$/.test(name)) return 'agent';
-  if (/^openagentic-synth-executor/.test(name)) return 'auxiliary';
   if (/^(milvus|pgvector|redis|.*minio)/.test(name)) return 'data';
   return 'auxiliary';
 }
@@ -95,11 +93,10 @@ function classify(name: string): ServiceRow['category'] {
 // usermin-minio vs minio) all link up cleanly without per-env hardcoding.
 const STATIC_EDGES: Record<string, string[]> = {
   'openagentic-ui': ['openagentic-api'],
-  'openagentic-api': ['pgvector-postgresql-primary', 'redis', 'milvus-standalone', 'openagentic-mcp-proxy', 'openagentic-openagentic-proxy', 'openagentic-workflows', 'openagentic-synth-executor', 'usermin-minio'],
+  'openagentic-api': ['pgvector-postgresql-primary', 'redis', 'milvus-standalone', 'openagentic-mcp-proxy', 'openagentic-openagentic-proxy', 'openagentic-workflows', 'usermin-minio'],
   'openagentic-openagentic-proxy': ['openagentic-mcp-proxy'],
   'openagentic-mcp-proxy': ['oap-openagentic-admin-mcp', 'oap-openagentic-azure-mcp', 'oap-openagentic-aws-mcp'],
   'openagentic-workflows': ['pgvector-postgresql-primary', 'openagentic-mcp-proxy'],
-  'openagentic-synth-executor': ['openagentic-api'],
   'milvus-standalone': ['milvus-etcd', 'milvus-minio'],
 };
 

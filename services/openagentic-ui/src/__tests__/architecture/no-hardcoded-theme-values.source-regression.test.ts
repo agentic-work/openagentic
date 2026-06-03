@@ -48,7 +48,22 @@ import { relative, resolve } from 'path';
  */
 
 const SRC_ROOT = resolve(__dirname, '../..');
+// Package root (one level above src/) — so the guard ALSO scans the theme-unit
+// config files that sit outside src/ and previously escaped it.
+const PKG_ROOT = resolve(SRC_ROOT, '..');
 const THEME_SOT = 'styles/theme.css';
+
+/**
+ * Theme-bearing config files at the PACKAGE ROOT (outside src/). These define
+ * the Tailwind utility→token bridge and PostCSS pipeline; they MUST read
+ * var(--token) only (no raw hex/rgb) and MUST NOT define a radius/shadow/font
+ * token (theme.css is the sole definer). Relative keys are prefixed
+ * `@root/` so they never collide with a src-relative allowlist entry.
+ */
+const ROOT_CONFIG_FILES: ReadonlyArray<string> = [
+  'tailwind.config.js',
+  'postcss.config.js',
+];
 
 /** Legit, permanent exemptions — raw literals here are correct by design. */
 const ALLOWLIST: ReadonlyArray<string> = [
@@ -113,13 +128,10 @@ const TEMPORARY_ALLOWLIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   { prefix: 'utils/theme.ts', reason: 'theme util default fallbacks — P3 review' },
   { prefix: 'assets/icons/', reason: 'icon SVG fills (mostly on-accent/categorical) — P3 review' },
   { prefix: 'shared/components/', reason: 'one residual font literal — P3' },
-  // The ThemeContext `themes = {dark,light}` JS palette still mirrors theme.css
-  // because <Chat theme={themes[resolvedTheme]} /> consumes the color VALUES as
-  // a prop. Per the design spec this JS palette should be DELETED once Chat
-  // reads var(--color-*) directly; until that refactor it is kept (and matches
-  // the brand palette). TODO(theme-sot): refactor Chat's `theme` prop to read
-  // CSS vars, then delete the themes object.
-  { prefix: 'contexts/ThemeContext.jsx', reason: 'themes={dark,light} JS palette consumed by <Chat theme=…> prop — delete after Chat reads CSS vars (P3)' },
+  // NOTE: the former `contexts/ThemeContext.jsx` entry was REMOVED — the
+  // duplicate `themes={dark,light}` JS palette is deleted; <Chat> reads the CSS
+  // var SOT directly now, so ThemeContext.jsx is fully tokenized and the guard
+  // enforces it forever.
 ];
 
 // ── Detection ────────────────────────────────────────────────────────────────
@@ -226,7 +238,7 @@ function inTemp(rel: string): boolean {
 }
 
 function readSrcFiles(): Array<{ rel: string; content: string; isCss: boolean }> {
-  return globSync('**/*.{ts,tsx,js,jsx,css}', { cwd: SRC_ROOT, absolute: true })
+  const src = globSync('**/*.{ts,tsx,js,jsx,css}', { cwd: SRC_ROOT, absolute: true })
     .filter((p) => !p.includes('__tests__'))
     .filter((p) => !p.endsWith('.d.ts'))
     .map((p) => ({
@@ -234,6 +246,16 @@ function readSrcFiles(): Array<{ rel: string; content: string; isCss: boolean }>
       content: readFileSync(p, 'utf8'),
       isCss: p.endsWith('.css'),
     }));
+  // Also scan the theme-bearing PACKAGE-ROOT config files (tailwind/postcss).
+  // They previously escaped this guard because it only globbed src/. Keyed
+  // `@root/<name>` so the allowlist/temp matchers never confuse them with a
+  // src-relative path.
+  const root = ROOT_CONFIG_FILES.map((name) => ({
+    rel: `@root/${name}`,
+    content: readFileSync(resolve(PKG_ROOT, name), 'utf8'),
+    isCss: name.endsWith('.css'),
+  }));
+  return [...src, ...root];
 }
 
 describe('ONE-SOT no-hardcoding guard (theme.css is the sole definer)', () => {
@@ -260,8 +282,14 @@ describe('ONE-SOT no-hardcoding guard (theme.css is the sole definer)', () => {
     ).toEqual([]);
   });
 
-  it('theme.css is the ONLY definition site for --color-* / canonical theme tokens (SOT guard)', () => {
-    const TOKEN_DEF = /^\s*--color-[A-Za-z][\w-]*\s*:/;
+  it('theme.css is the ONLY definition site for --color-* / --radius-* / --shadow-* / --font-* tokens (SOT guard)', () => {
+    // Single-definition enforcement for the canonical theme namespaces. A
+    // duplicate definition in another file silently shadows theme.css (the M3
+    // design-tokens.css + index.css copies of --radius-card/-sm/-full did
+    // exactly this — they were unlayered + loaded later, so the soft 20px/6px
+    // values won over theme.css's brutalist scale). Extending past --color-* to
+    // --radius-*/-shadow-*/-font-* makes ALL four namespaces single-site.
+    const TOKEN_DEF = /^\s*--(?:color|radius|shadow|font)-[A-Za-z][\w-]*\s*:/;
     const offenders: string[] = [];
     for (const { rel, content } of files) {
       if (rel === THEME_SOT) continue;
@@ -276,14 +304,18 @@ describe('ONE-SOT no-hardcoding guard (theme.css is the sole definer)', () => {
           if (lines[k].includes('{')) { sel = lines[k]; break; }
         }
         if (/\.code-mode/.test(sel)) return;
+        // Sandboxed-iframe srcdoc injectors (allowlisted) MUST inline a
+        // self-contained --font-*/--color-* set — the iframe has no parent vars.
         if (inList(rel, ALLOWLIST)) return;
         offenders.push(`${rel}:L${i + 1}: ${line.trim().slice(0, 120)}`);
       });
     }
     expect(
       offenders,
-      `Canonical --color-* theme tokens must be defined ONLY in ${THEME_SOT}. ` +
-        `Move these definitions into theme.css as one-line aliases:\n${offenders.join('\n')}`,
+      `Canonical --color-* / --radius-* / --shadow-* / --font-* theme tokens must ` +
+        `be defined ONLY in ${THEME_SOT}. Move these definitions into theme.css ` +
+        `(or, if they are a distinct concern, rename to a non-canonical namespace ` +
+        `e.g. --radius-m3-*):\n${offenders.join('\n')}`,
     ).toEqual([]);
   });
 

@@ -29,7 +29,6 @@ vi.mock('../../components/LLM/OllamaManagementView', () => ({ OllamaManagementVi
 vi.mock('../../components/LLM/TieredFCConfigView', () => ({ default: () => <div /> }))
 vi.mock('../../components/LLM/RouterTuningView', () => ({ default: () => <div /> }))
 vi.mock('../../components/LLM/LLMPerformanceMetrics', () => ({ default: () => <div /> }))
-vi.mock('../../components/MCP/MCPManagementView', () => ({ MCPManagementView: () => <div /> }))
 vi.mock('../../components/MCP/MCPCallLogsView', () => ({ MCPCallLogsView: () => <div /> }))
 vi.mock('../../components/Synth', () => ({
   SynthManagementView: () => <div />,

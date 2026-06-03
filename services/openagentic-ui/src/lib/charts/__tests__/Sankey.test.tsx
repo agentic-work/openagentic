@@ -24,6 +24,25 @@ describe('<Sankey>', () => {
     expect(container.textContent).toContain('no flow data');
   });
 
+  // H7 — compose_visual is model-generated; a malformed payload (missing
+  // arrays / null) must fall back to the empty-state, never throw
+  // `data.nodes.map is not a function` on the chat transcript.
+  it('does NOT throw and shows the empty-state on malformed data (missing arrays)', () => {
+    const { container } = render(<Sankey data={{} as unknown as SankeyData} />);
+    expect(container.textContent).toContain('no flow data');
+  });
+
+  it('does NOT throw and shows the empty-state on null data', () => {
+    const { container } = render(<Sankey data={null as unknown as SankeyData} />);
+    expect(container.textContent).toContain('no flow data');
+  });
+
+  it('does NOT throw when nodes/links are non-arrays', () => {
+    expect(() =>
+      render(<Sankey data={{ nodes: 'x', links: 7 } as unknown as SankeyData} />),
+    ).not.toThrow();
+  });
+
   it('mounts svg + content group with both gradient defs (one per source)', () => {
     const { container } = render(<Sankey data={SAMPLE} />);
     const svg = container.querySelector('svg');

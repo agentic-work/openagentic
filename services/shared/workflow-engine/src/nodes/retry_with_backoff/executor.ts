@@ -13,10 +13,14 @@
  * throws a clear error that names the last failure, the attempt count, and the
  * total time spent — never swallows the failure into a falsy-but-ok shape.
  *
- * The engine wires `ctx.runSubStep` to a single executeNode pass over this
- * node's outgoing edges, surfacing the first rejection. Unit tests inject a
- * stub attempt function via `_attemptForTests` on node.data so the retry/
- * backoff logic is exercised without an engine.
+ * Both WorkflowExecutionEngine copies wire `ctx.runSubStep` to a single
+ * executeNode pass over this node's outgoing (non-error) edges, surfacing the
+ * first rejection — and add `retry_with_backoff` to ROUTING_OWNS_DOWNSTREAM so
+ * the outer walker does not also re-fire those edges. Unit tests inject a stub
+ * attempt function via `_attemptForTests` on node.data so the retry/backoff
+ * logic is exercised without an engine; executor.engine.test.ts additionally
+ * drives the REAL plugin through a faithful runSubStep mirror against a real
+ * downstream node (no injected attempt) so the wiring itself is covered.
  *
  * Backoff sleeps are abort-signal aware so cancelled executions exit promptly.
  */

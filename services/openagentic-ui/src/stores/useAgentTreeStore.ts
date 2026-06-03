@@ -483,7 +483,7 @@ export const useAgentTreeStore = create<AgentTreeStore>()(
           'clearTree'
         ),
 
-      // Wipe all agent trees — called by useSSEChat when the chat session
+      // Wipe all agent trees — called by useChatStream when the chat session
       // changes, so previous-session orchestrations don't bleed into the new
       // one's UI (the "ghost agent cards" bug).
       clearAllTrees: () =>

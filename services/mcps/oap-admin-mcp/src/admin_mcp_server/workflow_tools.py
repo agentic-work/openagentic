@@ -20,6 +20,39 @@ logger = logging.getLogger("admin-mcp.workflow-tools")
 # API base URL - resolves to the openagentic-api service inside k8s
 API_BASE = os.getenv("API_BASE_URL", "http://openagentic-api:8000")
 
+
+def _internal_headers() -> Dict[str, str]:
+    """
+    Headers that authenticate this call to the openagentic-api as a trusted
+    in-cluster service.
+
+    `/api/workflows/*` is `authMiddleware`-gated, but the middleware grants an
+    INTERNAL-SERVICE bypass when `x-request-from` is a known internal service
+    AND `x-internal-secret` matches `INTERNAL_SERVICE_SECRET` (timing-safe).
+    Without these, every workflow_* tool 401s and fails closed.
+
+    The internal secret is the AUTHENTICATION; `x-user-id`/`x-user-email` are
+    the IDENTITY CLAIM the API uses to resolve the real end-user so userId-
+    filtered queries (workflows.created_by) resolve correctly. When the proxy
+    provides the acting user via MCP_USER_ID/MCP_USER_EMAIL we forward it;
+    otherwise the API falls back to the internal-service identity.
+    """
+    headers: Dict[str, str] = {
+        "Content-Type": "application/json",
+        "x-request-from": "mcp-proxy",
+    }
+    secret = os.getenv("INTERNAL_SERVICE_SECRET", "")
+    if secret:
+        headers["x-internal-secret"] = secret
+    user_id = os.getenv("MCP_USER_ID") or os.getenv("API_USER_ID")
+    if user_id:
+        headers["x-user-id"] = user_id
+    user_email = os.getenv("MCP_USER_EMAIL") or os.getenv("API_USER_EMAIL")
+    if user_email:
+        headers["x-user-email"] = user_email
+    return headers
+
+
 async def _api_call(
     method: str,
     path: str,
@@ -29,7 +62,7 @@ async def _api_call(
 ) -> Dict[str, Any]:
     """Make an internal API call to the workflow endpoints."""
     url = f"{API_BASE}/api/workflows{path}"
-    headers = {"Content-Type": "application/json"}
+    headers = _internal_headers()
 
     async with httpx.AsyncClient(timeout=timeout) as client:
         response = await client.request(
@@ -317,7 +350,7 @@ async def workflow_status(
     """Check execution status by execution ID (no workflow ID needed)."""
     # Use the global executions endpoint that doesn't require workflow_id
     url = f"{API_BASE}/api/workflows/executions"
-    headers = {"Content-Type": "application/json"}
+    headers = _internal_headers()
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url, params={"limit": 50}, headers=headers)

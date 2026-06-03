@@ -40,6 +40,7 @@ import adminV3ExtrasRoutes from '../routes/admin/v3-extras.js';
 import adminV3ExtrasMutationsRoutes from '../routes/admin/v3-extras-mutations.js';
 import adminV3ExtrasMiscRoutes from '../routes/admin/v3-extras-misc.js';
 import adminPermissionsRoutes from '../routes/admin/permissions.js';
+import { sloRoutes } from '../routes/admin/slo.js';
 
 interface AdminPluginOptions {
   ollamaEnabled?: boolean;
@@ -125,9 +126,16 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
     }, { prefix: '/api/admin' });
     loggers.routes.info('Admin missing routes registered at /api/admin/mcp/health, /api/admin/mcp-tools/status');
 
-    // Register capabilities routes at /api/capabilities/*
-    await fastify.register(capabilitiesRoutes, { prefix: '/api/capabilities' });
-    loggers.routes.info('Capabilities routes registered at /api/capabilities/*');
+    // Register capabilities routes at /api/capabilities/*.
+    // SECURITY: these disclose configured LLM providers (env-derived), MCP
+    // server names, tool counts, and feature flags — admin-only, never public.
+    // Wrap in an encapsulated child instance with adminMiddleware so the guard
+    // actually applies (a bare sibling register inherits NO auth hook).
+    await fastify.register(async (instance) => {
+      instance.addHook('preHandler', adminMiddleware);
+      await instance.register(capabilitiesRoutes);
+    }, { prefix: '/api/capabilities' });
+    loggers.routes.info('Capabilities routes registered at /api/capabilities/* with admin middleware');
     successCount++;
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register admin missing routes');
@@ -323,6 +331,26 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
     successCount++;
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register admin tool-permissions routes');
+    failCount++;
+  }
+
+  // Register Admin SLO routes — Phase 12 CRUD on SLODefinition rows +
+  // live status evaluation against the prom-client default registry.
+  //   - GET    /api/admin/slo                  list
+  //   - GET    /api/admin/slo/:metric          get one
+  //   - POST   /api/admin/slo                  upsert
+  //   - PATCH  /api/admin/slo/:metric/toggle   flip enabled
+  //   - DELETE /api/admin/slo/:metric          remove
+  //   - GET    /api/admin/slo/:metric/status   live evaluation
+  try {
+    await fastify.register(async (instance) => {
+      instance.addHook('preHandler', adminMiddleware);
+      await instance.register(sloRoutes);
+    }, { prefix: '/api/admin/slo' });
+    loggers.routes.info('Admin SLO routes registered at /api/admin/slo/* with admin middleware');
+    successCount++;
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin SLO routes');
     failCount++;
   }
 

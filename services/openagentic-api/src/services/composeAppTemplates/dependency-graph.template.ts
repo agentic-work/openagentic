@@ -40,8 +40,6 @@ const exampleParams: Params = {
     { id: 'milvus',      label: 'milvus',           group: 'data',     size: 18 },
     { id: 'postgres',    label: 'postgres',         group: 'data',     size: 22 },
     { id: 'redis',       label: 'redis',            group: 'data',     size: 16 },
-    { id: 'synth-cdn',   label: 'synth-cdn',        group: 'platform', size: 12 },
-    { id: 'synth-exec',  label: 'synth-executor',   group: 'platform', size: 14 },
     { id: 'aws-mcp',     label: 'oap-aws-mcp',      group: 'mcp',      size: 14 },
     { id: 'azure-mcp',   label: 'oap-azure-mcp',    group: 'mcp',      size: 14 },
     { id: 'gcp-mcp',     label: 'oap-gcp-mcp',      group: 'mcp',      size: 14 },
@@ -54,9 +52,6 @@ const exampleParams: Params = {
     { from: 'api',        to: 'aws-mcp',     weight: 1 },
     { from: 'api',        to: 'azure-mcp',   weight: 1 },
     { from: 'api',        to: 'gcp-mcp',     weight: 1 },
-    { from: 'api',        to: 'synth-exec',  weight: 2 },
-    { from: 'synth-exec', to: 'synth-cdn',   weight: 1 },
-    { from: 'ui',         to: 'synth-cdn',   weight: 1 },
   ],
 };
 

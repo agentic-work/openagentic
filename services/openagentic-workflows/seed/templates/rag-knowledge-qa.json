@@ -1,0 +1,157 @@
+{
+  "slug": "rag-knowledge-qa",
+  "name": "RAG Knowledge-Base Q&A",
+  "description": "Grounded, cited question answering over the platform knowledge base. Expands the user's question into multiple retrieval queries (multi_query), embeds it, semantically searches the shared_knowledge collection (knowledge_search), re-ranks the retrieved chunks for relevance (rerank), fact-checks the drafted answer against the retrieved evidence (grounding_check), synthesizes a cited HTML answer (llm_completion), runs it through guardrails, and publishes it as an openable artifact. The two quality nodes — multi_query and rerank — widen recall then tighten precision so the model sees the most relevant evidence first. Every claim is grounded against the retrieved chunks; nothing is invented.",
+  "category": "rag",
+  "template": true,
+  "meta": {
+    "purpose": "Grounded RAG Q&A that answers a question USING ONLY retrieved knowledge-base evidence, with multi-query recall expansion + cross-encoder-style rerank precision + grounding verification + citations.",
+    "how_it_works": [
+      "1. multi_query expands the user's question into N retrieval query variants (deterministic rule-based reformulation) so a single phrasing doesn't miss relevant chunks.",
+      "2. embedding vectorizes the question via /api/v1/embeddings (demonstrates the embed primitive; knowledge_search does its own server-side embedding for retrieval).",
+      "3. knowledge_search semantically searches the shared_knowledge Milvus collection for the question, returning ranked chunks.",
+      "4. rerank re-orders the retrieved chunks by lexical relevance to the question (deterministic BM25-style scorer) and keeps the top-N — turning recall@k into precision@k.",
+      "5. grounding_check verifies that the entities named in the question are present in the reranked evidence (deterministic, no second LLM call) so downstream synthesis can only cite real evidence.",
+      "6. llm_completion synthesizes a cited HTML answer from the reranked chunks, citing each claim with a [N] marker tied to the chunk source. It is instructed to answer ONLY from the provided evidence.",
+      "7. guardrails screens the synthesized answer for policy violations before it is published.",
+      "8. webhook_response renders the grounded, cited answer as an openable HTML artifact in the artifact rail."
+    ],
+    "expected_output": "Openable HTML artifact: the question header, an LLM-synthesized answer that cites the retrieved chunks with [N] markers, a retrieval-metadata footer (queries expanded, chunks retrieved, chunks kept after rerank, grounding verdict). The answer is grounded — every claim traces to a retrieved chunk.",
+    "useful_when": "Any internal-knowledge Q&A where a wrong/invented answer is worse than 'the knowledge base doesn't cover this'. The rerank + grounding_check gates make this a trust-grade RAG flow.",
+    "tools_used": [
+      "multi_query",
+      "embedding",
+      "knowledge_search",
+      "rerank",
+      "grounding_check",
+      "llm_completion",
+      "guardrails",
+      "webhook_response"
+    ],
+    "version": "1.0",
+    "tags": ["rag", "knowledge-base", "grounded", "cited", "rerank", "multi-query"]
+  },
+  "defaultInputs": {
+    "question": "What are the key features and architectural decisions behind OpenAgentic's Flows engine?",
+    "collection": "shared"
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "position": { "x": 80, "y": 240 },
+        "data": {
+          "triggerType": "manual",
+          "label": "Question",
+          "input_schema": {
+            "question": "string",
+            "collection": "string"
+          }
+        }
+      },
+      {
+        "id": "expand",
+        "type": "multi_query",
+        "position": { "x": 340, "y": 240 },
+        "data": {
+          "label": "Expand into retrieval queries",
+          "question": "{{trigger.question}}",
+          "numQueries": 4,
+          "includeOriginal": true
+        }
+      },
+      {
+        "id": "embed",
+        "type": "embedding",
+        "position": { "x": 600, "y": 240 },
+        "data": {
+          "label": "Embed the question",
+          "model": ""
+        }
+      },
+      {
+        "id": "search",
+        "type": "knowledge_search",
+        "position": { "x": 860, "y": 240 },
+        "data": {
+          "label": "Semantic search knowledge base",
+          "query": "{{trigger.question}}",
+          "topK": 10
+        }
+      },
+      {
+        "id": "rerank",
+        "type": "rerank",
+        "position": { "x": 1120, "y": 240 },
+        "data": {
+          "label": "Rerank retrieved chunks",
+          "query": "{{trigger.question}}",
+          "chunksPath": "result.results",
+          "topN": 4,
+          "contentField": "content"
+        }
+      },
+      {
+        "id": "ground",
+        "type": "grounding_check",
+        "position": { "x": 1380, "y": 240 },
+        "data": {
+          "label": "Ground the question vs evidence",
+          "claim": "{{trigger.question}}",
+          "groundTruth": "{{steps.rerank.chunks}}",
+          "strictMode": false
+        }
+      },
+      {
+        "id": "synth",
+        "type": "llm_completion",
+        "position": { "x": 1640, "y": 240 },
+        "data": {
+          "label": "Synthesize cited answer",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 1800,
+          "responseFormat": "text",
+          "systemPrompt": "You are a retrieval-augmented question-answering assistant. You will receive a question and an array of retrieved knowledge-base chunks (each with content + score + source). Answer the question USING ONLY the provided chunks. Do NOT invent facts. If the chunks do not support an answer, say so directly.\n\nOutput rules:\n- Emit semantic HTML only: <h3>, <p>, <ul>/<li>, <strong>, <em>, <blockquote>. No <html>/<head>/<body> wrappers.\n- Open with a 1-2 sentence executive summary in a <p>.\n- Break the answer into 1-3 sections with <h3> headers.\n- Cite EVERY factual claim with a [N] marker tied to the chunk's position in the provided array (chunk 1 is [1], etc.). Never invent a citation.\n- Close with a one-line <p><em>Method:</em> note: how many chunks were retrieved and whether the answer is well-supported.\n- Do NOT include any preamble, chain-of-thought, or 'here is the answer' wrapper — emit the HTML directly.",
+          "prompt": "Question: {{trigger.question}}\n\nRetrieved + reranked chunks (most relevant first):\n{{steps.rerank.chunks}}\n\nGrounding verdict: {{steps.ground.violationSummary}}\n\nWrite the cited HTML answer now using ONLY these chunks."
+        }
+      },
+      {
+        "id": "screen",
+        "type": "guardrails",
+        "position": { "x": 1900, "y": 240 },
+        "data": {
+          "label": "Screen the answer",
+          "checks": ["pii", "toxicity", "injection"],
+          "action": "warn"
+        }
+      },
+      {
+        "id": "publish",
+        "type": "webhook_response",
+        "position": { "x": 2160, "y": 240 },
+        "data": {
+          "label": "Publish cited answer",
+          "statusCode": 200,
+          "contentType": "text/html",
+          "bodyTemplate": "<article class=\"rag-answer\" style=\"font-family:-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6;max-width:840px;margin:0 auto;padding:24px;\">\n  <header style=\"border-bottom:1px solid #e5e7eb;padding-bottom:16px;margin-bottom:24px;\">\n    <h1 style=\"margin:0 0 8px 0;font-size:24px;\">Knowledge-Base Answer</h1>\n    <p style=\"margin:0;color:#6b7280;font-size:14px;\"><strong>Question:</strong> {{trigger.question}}</p>\n    <p style=\"margin:8px 0 0 0;color:#6b7280;font-size:13px;\">Queries expanded: {{steps.expand.count}} &middot; Chunks retrieved: {{steps.search.result.resultCount}} &middot; Chunks kept after rerank: {{steps.rerank.outputCount}} &middot; Grounding: {{steps.ground.violationSummary}}</p>\n  </header>\n  <section class=\"answer\">\n    {{steps.synth.content}}\n  </section>\n  <footer style=\"margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:13px;\">\n    <p style=\"margin:0;\">Grounded, cited answer from the OpenAgentic knowledge base. multi_query recall expansion + rerank precision + grounding_check verification.</p>\n  </footer>\n</article>",
+          "persistAsArtifact": true,
+          "artifactTitle": "RAG answer: {{trigger.question}}",
+          "artifactMimeType": "text/html",
+          "artifactTags": ["rag", "knowledge-base", "grounded", "cited"]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "expand" },
+      { "id": "e2", "source": "expand", "target": "embed" },
+      { "id": "e3", "source": "embed", "target": "search" },
+      { "id": "e4", "source": "search", "target": "rerank" },
+      { "id": "e5", "source": "rerank", "target": "ground" },
+      { "id": "e6", "source": "ground", "target": "synth" },
+      { "id": "e7", "source": "synth", "target": "screen" },
+      { "id": "e8", "source": "screen", "target": "publish" }
+    ]
+  }
+}

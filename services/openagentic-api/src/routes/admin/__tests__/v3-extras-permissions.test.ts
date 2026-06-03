@@ -77,10 +77,13 @@ describe('GET /api/admin/permissions/available-mcps', () => {
     expect(res.statusCode).toBe(200);
     const json = JSON.parse(res.body);
     const ids = json.servers.map((s: any) => s.id);
-    // every known built-in surfaces (so disabled ones are still grantable)
-    for (const builtin of ['admin', 'web', 'kubernetes', 'prometheus', 'aws', 'azure', 'gcp', 'loki', 'alertmanager', 'github']) {
+    // every known built-in surfaces (so disabled ones are still grantable).
+    // 9 wired built-ins — alertmanager was removed upstream (not in the proxy
+    // spawn catalog) so it must NOT appear here.
+    for (const builtin of ['admin', 'web', 'kubernetes', 'prometheus', 'aws', 'azure', 'gcp', 'loki', 'github']) {
       expect(ids).toContain(builtin);
     }
+    expect(ids).not.toContain('alertmanager');
     // the extra admin-added server is included too
     expect(ids).toContain('custom-mcp');
     // built-in `web` reconciles to ONE entry (no duplicate from the DB row)

@@ -19,6 +19,7 @@ import { MilvusClient, DataType } from '@zilliz/milvus2-sdk-node';
 import { UniversalEmbeddingService } from './UniversalEmbeddingService.js';
 import type { ProviderManager } from './llm-providers/ProviderManager.js';
 import { BlobStorageService } from './BlobStorageService.js';
+import { escapeMilvusFilterValue } from '../utils/milvusFilter.js';
 
 export interface StoredImage {
   id: string;
@@ -380,7 +381,7 @@ export class ImageStorageService {
 
     try {
       const queryEmbedding = await this.generateEmbedding(queryPrompt);
-      const filter = userId ? `userId == "${userId}"` : undefined;
+      const filter = userId ? `userId == "${escapeMilvusFilterValue(userId)}"` : undefined;
 
       const searchResult = await this.milvusClient.search({
         collection_name: this.COLLECTION_NAME,

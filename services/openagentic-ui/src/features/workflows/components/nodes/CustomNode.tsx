@@ -455,7 +455,7 @@ function getTooltipConfigPreview(data: Record<string, any>, nodeType: string): s
     if (data.language) items.push(`Language: ${data.language}`);
     if (data.code) items.push(`Code: ${data.code.split('\n').length} lines`);
   }
-  if (nodeType === 'synth' || nodeType === 'oat') {
+  if (nodeType === 'synth') {
     if (data.intent) items.push(`Intent: ${data.intent.substring(0, 100)}${data.intent.length > 100 ? '...' : ''}`);
   }
   if (nodeType === 'delay' || nodeType === 'wait') {

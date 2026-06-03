@@ -171,13 +171,35 @@
   --tracking-eyebrow:  0.16em;   /* +UPPERCASE small-caps mono   */
   --tracking-button:   0.04em;   /* mono uppercase btn label     */
 
-  /* ---- Radius (neo-brutalist: sharp) ---- */
+  /* ---- Radius — the SOLE definition site for the --radius-* scale ----
+     theme.css is the ONE SOT (the no-hardcoded-theme-values guard enforces
+     single-definition for --radius-* / --shadow-* / --font-*). The
+     neo-brutalist core is SHARP; the soft M3 container/control sizes below
+     keep the values the (now-deleted) design-tokens.css :root block used to
+     carry, so the admin slide-in panels, toasts, tables, popovers and the
+     workflow canvas render unchanged — but from a single definition site.
+     The colliding names (card/input/sm/full) now resolve to the brutalist
+     value here, fixing the prior drift where the unlayered design-tokens.css
+     copy shadowed these to 20px/28px/6px. */
   --radius-card:  0px;
   --radius-btn:   0px;
   --radius-input: 2px;
   --radius-sm:    4px;
   --radius-chip:  6px;
   --radius-full:  9999px;
+  /* M3 container/control sizes (soft) — consumed via tailwind rounded-*
+     utilities + a few direct var() reads (admin SlideInPanel, workflow
+     canvas). Previously lived in design-tokens.css :root (collapsed here). */
+  --radius-md:        12px;   /* workflow node / generic medium control      */
+  --radius-input-sm:  16px;   /* text inputs, selects, textareas             */
+  --radius-panel:     24px;   /* modals, side panels, dialogs                */
+  --radius-message:   20px;   /* chat message bubbles                        */
+  --radius-toast:     14px;   /* toast notifications                         */
+  --radius-table:     16px;   /* outer table frame                           */
+  --radius-popover:   16px;   /* dropdowns, popovers                         */
+  --radius-checkbox:   6px;   /* checkbox (radio stays --radius-full)        */
+  --radius-btn-pill:  9999px; /* primary buttons, tags, send button          */
+  --radius-btn-soft:  12px;   /* secondary + icon buttons, toolbar           */
 
   /* ---- Border (2px solid ink — the #2 brutalist signature) ---- */
   --border-w:   2px;

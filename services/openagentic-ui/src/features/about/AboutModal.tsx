@@ -27,7 +27,6 @@ const SERVICES: Array<{ name: string; label: string }> = [
   { name: 'openagentic-mcp-proxy', label: 'MCP Proxy' },
   { name: 'openagentic-workflows', label: 'Workflows' },
   { name: 'openagentic-proxy',     label: 'Proxy' },
-  { name: 'openagentic-synth',     label: 'Synth' },
 ];
 
 interface AboutModalProps {

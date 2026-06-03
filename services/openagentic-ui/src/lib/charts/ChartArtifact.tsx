@@ -75,6 +75,15 @@ function renderChart(
   data: unknown,
   rest: Omit<ChartArtifactProps, 'template' | 'data' | 'caption'>,
 ) {
+  // compose_visual is model-generated, so `data` can be null/undefined/a
+  // primitive for a known template. Surface that as an inline empty-state
+  // instead of passing a non-object down to a leaf chart that would throw
+  // on `data.nodes.map(...)` and blow up the chat transcript. Leaf charts
+  // still own per-shape normalization (e.g. Sankey coerces nodes/links).
+  if (data == null || typeof data !== 'object') {
+    return <MalformedDataError template={String(template)} />;
+  }
+
   switch (template) {
     case 'sankey':
       return <Sankey data={data as SankeyData} {...(rest as Omit<ChartProps<SankeyData>, 'data'>)} />;
@@ -115,6 +124,26 @@ function renderChart(
     default:
       return <UnknownTemplateError template={template} />;
   }
+}
+
+function MalformedDataError({ template }: { template: string }) {
+  return (
+    <div
+      role="alert"
+      style={{
+        padding: 16,
+        border: '1px dashed var(--color-err)',
+        borderRadius: 'var(--radius-sm, 4px)',
+        color: 'var(--color-err)',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 12,
+        background: 'color-mix(in srgb, var(--color-err) 6%, transparent)',
+      }}
+    >
+      ChartArtifact: malformed or missing <code>data</code> for template{' '}
+      <code>{template}</code>.
+    </div>
+  );
 }
 
 function UnknownTemplateError({ template }: { template: string }) {

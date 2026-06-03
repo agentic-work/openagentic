@@ -31,6 +31,21 @@ describe('<ChartArtifact>', () => {
     expect(() => render(<ChartArtifact template="garbage_template_xyz" data={null} />)).not.toThrow();
   });
 
+  // H7 — a KNOWN template with malformed model `data` (null / {} / primitive)
+  // must surface an inline alert instead of throwing `data.nodes.map(...)` and
+  // blowing up the chat transcript. The earlier null-data test used a *garbage*
+  // template that never reached a leaf chart; these reach the real dispatcher.
+  it('renders an inline alert (not a crash) for a known template with null data', () => {
+    const { container } = render(<ChartArtifact template="sankey" data={null} />);
+    expect(container.querySelector('[role="alert"]')).not.toBeNull();
+    expect(container.textContent).toContain('malformed or missing');
+  });
+
+  it('does NOT throw for a known template with a primitive/empty-object data payload', () => {
+    expect(() => render(<ChartArtifact template="sankey" data={42} />)).not.toThrow();
+    expect(() => render(<ChartArtifact template="network" data={undefined} />)).not.toThrow();
+  });
+
   it('REGISTERED_TEMPLATES always includes "sankey" (smoke)', () => {
     expect(REGISTERED_TEMPLATES).toContain('sankey');
   });

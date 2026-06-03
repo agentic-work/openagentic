@@ -215,7 +215,7 @@ function AppContent(): React.ReactElement {
   // Capability selection handler removed — starter prompts now inline in ChatContainer
   const { isAuthenticated, user, getAuthHeaders, isApiDown } = useAuth();
   const { notifications, removeNotification } = useNotifications();
-  const { theme, resolvedTheme, changeTheme, changeAccentColor, accentColors, toggleBackgroundAnimations, backgroundAnimations, backgroundEffect, setBackgroundEffect, themes } = useTheme();
+  const { changeTheme, changeAccentColor, accentColors, toggleBackgroundAnimations, backgroundEffect } = useTheme();
 
   // Check if DEV_LOGIN_PAGE environment variable is set (runtime config)
   const useDevLoginPage = getDevLoginPage();
@@ -370,7 +370,6 @@ function AppContent(): React.ReactElement {
                 <Routes>
                   <Route path="/" element={
                     <Chat
-                      theme={themes[resolvedTheme]}
                       onThemeChange={handleThemeChange}
                       onFunctionsReady={setChatFunctions}
                       showMetricsPanel={showMetricsPanel}
@@ -378,7 +377,6 @@ function AppContent(): React.ReactElement {
                   } />
                   <Route path="/chat" element={
                     <Chat
-                      theme={themes[resolvedTheme]}
                       onThemeChange={handleThemeChange}
                       onFunctionsReady={setChatFunctions}
                       showMetricsPanel={showMetricsPanel}
@@ -392,7 +390,6 @@ function AppContent(): React.ReactElement {
                       fragment is consumed by AdminShellV2 sidebar router. */}
                   <Route path="/admin/*" element={
                     <Chat
-                      theme={themes[resolvedTheme]}
                       onThemeChange={handleThemeChange}
                       onFunctionsReady={setChatFunctions}
                       showMetricsPanel={showMetricsPanel}
@@ -400,7 +397,6 @@ function AppContent(): React.ReactElement {
                   } />
                   <Route path="/admin" element={
                     <Chat
-                      theme={themes[resolvedTheme]}
                       onThemeChange={handleThemeChange}
                       onFunctionsReady={setChatFunctions}
                       showMetricsPanel={showMetricsPanel}

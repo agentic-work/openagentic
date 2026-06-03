@@ -21,6 +21,11 @@ export interface TopBarProps {
    * `<div>` with no handler, so clicking it did nothing.
    */
   onOpenAgent?: () => void
+  /**
+   * Optional deployment scope chip (env · region). Only rendered when the
+   * host passes a real scope from config — there is intentionally NO default,
+   * so the admin shell never bakes in an environment string or brand name.
+   */
   scope?: { env: string; region: string }
   user?: { initials: string; name?: string }
   agentLabel?: string
@@ -34,7 +39,7 @@ export const TopBar = ({
   onOpenActivity,
   onClose,
   onOpenAgent,
-  scope = { env: 'agentic-dev', region: 'us-west' },
+  scope,
   user = { initials: 'tw' },
   agentLabel = 'admin agent',
   version,
@@ -100,16 +105,20 @@ export const TopBar = ({
             confused operators about where canonical theme state was
             controlled. */}
 
-        {/* Scope chip */}
-        <button className="aw-topbar__chip" type="button">
-          <span className="aw-topbar__chip-label">env</span>
-          <span style={{ color: 'var(--fg-0)' }}>{scope.env}</span>
-          <span style={{ color: 'var(--fg-3)' }}>·</span>
-          <span style={{ color: 'var(--fg-0)' }}>{scope.region}</span>
-          <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2">
-            <path d="M2 4l3 3 3-3" />
-          </svg>
-        </button>
+        {/* Scope chip — only when the host supplies a real env/region from
+            config. No default: the shell must never bake in an environment or
+            brand string. */}
+        {scope && (
+          <button className="aw-topbar__chip" type="button">
+            <span className="aw-topbar__chip-label">env</span>
+            <span style={{ color: 'var(--fg-0)' }}>{scope.env}</span>
+            <span style={{ color: 'var(--fg-3)' }}>·</span>
+            <span style={{ color: 'var(--fg-0)' }}>{scope.region}</span>
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2">
+              <path d="M2 4l3 3 3-3" />
+            </svg>
+          </button>
+        )}
 
         {/* Cmd+K search */}
         <button className="aw-topbar__search" onClick={onOpenCmdK} type="button">

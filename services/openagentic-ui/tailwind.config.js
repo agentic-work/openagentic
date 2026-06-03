@@ -49,40 +49,45 @@ export default {
           primary: 'var(--color-border)',
           hover: 'var(--color-borderHover)',
         },
+        // All literal fallbacks dropped — the vars they fell back from are
+        // ALWAYS defined in theme.css (LAYER-3), so the hexes/rgbas were dead
+        // AND escaped the no-hardcoding guard (which now scans this file). Each
+        // entry reads a canonical var(--color-*) so the [data-theme] override
+        // wins at runtime.
         'primary': {
-          500: 'var(--color-primary, #0A84FF)',  // Apple Blue fallback
-          600: 'var(--color-primary, #007AFF)',
+          500: 'var(--color-primary)',
+          600: 'var(--color-primary)',
         },
         glass: {
-          light: 'rgba(255, 255, 255, 0.1)',
-          DEFAULT: 'rgba(255, 255, 255, 0.05)',
-          dark: 'rgba(0, 0, 0, 0.1)',
+          light: 'var(--glass-surf-1)',
+          DEFAULT: 'var(--glass-surf-2)',
+          dark: 'var(--glass-page-bg)',
         },
         blue: {
-          glow: '#0A84FF',   // Apple Blue
-          deep: '#007AFF',
-          dark: '#0056CC',
+          glow: 'var(--color-primary)',
+          deep: 'var(--color-primary)',
+          dark: 'var(--color-primary)',
         },
-        // Semantic status colors - Apple-style real colors (not neon)
+        // Semantic status colors — read the canonical tokens.
         success: {
-          DEFAULT: 'var(--color-success, #30D158)',
-          light: 'var(--color-success, #30D158)',
-          bg: 'var(--callout-success-bg, rgba(48, 209, 88, 0.1))',
+          DEFAULT: 'var(--color-success)',
+          light: 'var(--color-success)',
+          bg: 'var(--callout-success-bg)',
         },
         error: {
-          DEFAULT: 'var(--color-error, #FF453A)',
-          light: 'var(--color-error, #FF453A)',
-          bg: 'var(--callout-error-bg, rgba(255, 69, 58, 0.1))',
+          DEFAULT: 'var(--color-error)',
+          light: 'var(--color-error)',
+          bg: 'var(--callout-error-bg)',
         },
         warning: {
-          DEFAULT: 'var(--color-warning, #FF9F0A)',
-          light: 'var(--color-warning, #FF9F0A)',
-          bg: 'var(--callout-warning-bg, rgba(255, 159, 10, 0.1))',
+          DEFAULT: 'var(--color-warning)',
+          light: 'var(--color-warning)',
+          bg: 'var(--callout-warning-bg)',
         },
         info: {
-          DEFAULT: 'var(--accent-info, #0A84FF)',
-          light: 'var(--accent-info, #0A84FF)',
-          bg: 'var(--callout-info-bg, rgba(10, 132, 255, 0.1))',
+          DEFAULT: 'var(--accent-info)',
+          light: 'var(--accent-info)',
+          bg: 'var(--callout-info-bg)',
         },
         // Accent color (user-selectable)
         accent: {
@@ -115,8 +120,8 @@ export default {
         hot: 'var(--warn)',
         // Neutral grays using CSS vars
         muted: {
-          DEFAULT: 'var(--color-textMuted, #8E8E93)',
-          light: 'var(--color-textMuted, #8E8E93)',
+          DEFAULT: 'var(--color-textMuted)',
+          light: 'var(--color-textMuted)',
           bg: 'var(--color-surfaceSecondary)',
         },
         // M3 Expressive tonal surface scale (task #160) — tint-based
@@ -132,7 +137,8 @@ export default {
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-        'glass-gradient': 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%)',
+        // Reads the canonical glass surface gradient (theme.css --glass-bg).
+        'glass-gradient': 'var(--glass-bg)',
       },
       backdropBlur: {
         xs: '2px',
@@ -164,9 +170,11 @@ export default {
         },
       },
       boxShadow: {
-        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.15)',  // Neutral shadow, not purple
-        'glow': '0 0 30px rgba(10, 132, 255, 0.5)',   // Apple Blue glow
-        'glow-blue': '0 0 30px rgba(10, 132, 255, 0.5)',
+        // Read the canonical glass/accent shadow tokens (theme.css). The glow
+        // now follows the user accent instead of a hardcoded Apple-blue.
+        'glass': 'var(--glass-shadow)',
+        'glow': '0 0 30px var(--glass-accent-glow)',
+        'glow-blue': '0 0 30px var(--glass-accent-glow)',
         // M3 Expressive soft shadows (task #160) — low opacity, heavy blur.
         'soft-sm': 'var(--shadow-soft-sm)',
         'soft':    'var(--shadow-soft-md)',
@@ -176,7 +184,7 @@ export default {
         'focus-ring': 'var(--focus-ring)',
       },
       borderRadius: {
-        'glass': '12px',
+        'glass': 'var(--glass-radius)',
         // M3 Expressive shape scale (task #160).
         'pill':     'var(--radius-btn-pill)',
         'btn':      'var(--radius-btn-soft)',

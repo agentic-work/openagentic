@@ -13,6 +13,7 @@ import { Logger } from 'pino';
 import * as crypto from 'crypto';
 import { getModelCapabilityDiscoveryService } from './ModelCapabilityDiscoveryService.js';
 import { dynamicModelManager } from './DynamicModelManager.js';
+import { escapeMilvusFilterValue } from '../utils/milvusFilter.js';
 
 interface AzureDocSource {
   name: string;
@@ -684,7 +685,7 @@ export class AzureSDKKnowledgeIngester {
       const filters: string[] = [];
 
       if (options.category) {
-        filters.push(`category == "${options.category}"`);
+        filters.push(`category == "${escapeMilvusFilterValue(options.category)}"`);
       }
       if (options.minPriority) {
         filters.push(`priority >= ${options.minPriority}`);

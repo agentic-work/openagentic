@@ -23,9 +23,8 @@ const RouterTuningView = lazy(() => import('../components/LLM/RouterTuningView')
 const LLMPerformanceMetrics = lazy(() => import('../components/LLM/LLMPerformanceMetrics'))
 
 // Tools / MCP
-const MCPManagementView = lazy(() =>
-  import('../components/MCP/MCPManagementView').then(m => ({ default: m.MCPManagementView })),
-)
+// MCPManagementView retired 2026-06-02 — the `mcp-management` legacy id below
+// already routes to the consolidated MCPFleet page (v3 is the live shell).
 const MCPCallLogsView = lazy(() =>
   import('../components/MCP/MCPCallLogsView').then(m => ({ default: m.MCPCallLogsView })),
 )

@@ -242,10 +242,14 @@ const TieredFCConfigView: React.FC = () => {
     setActionLoading(true);
     setError(null);
     try {
-      await apiRequest('/admin/tiered-fc', {
+      const res = await apiRequest('/admin/tiered-fc', {
         method: 'PUT',
         body: JSON.stringify(editForm),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.message || `Failed to save configuration (HTTP ${res.status})`);
+      }
 
       setSuccess('Configuration saved successfully');
       setShowEditPanel(false);
@@ -267,6 +271,10 @@ const TieredFCConfigView: React.FC = () => {
       const response = await apiRequest('/admin/tiered-fc/clear-cache', {
         method: 'POST',
       });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || `Failed to clear cache (HTTP ${response.status})`);
+      }
       const result = await response.json();
 
       setSuccess(`Cleared ${result.entriesCleared} cached decisions`);
@@ -296,6 +304,10 @@ const TieredFCConfigView: React.FC = () => {
           toolCount: testToolCount,
         }),
       });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || `Failed to test decision (HTTP ${response.status})`);
+      }
       const result = await response.json();
       setTestResult(result);
     } catch (err) {

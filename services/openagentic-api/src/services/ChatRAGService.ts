@@ -12,6 +12,7 @@
 import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import type { Logger } from 'pino';
 import { getMilvusClient } from '../utils/MilvusConnectionManager.js';
+import { escapeMilvusFilterValue } from '../utils/milvusFilter.js';
 
 interface RAGResult {
   content: string;
@@ -293,7 +294,7 @@ export class ChatRAGService {
         data: [queryEmbedding],
         output_fields: ['content', 'metadata', 'user_id', 'chunk_id'],
         limit: topK,
-        filter: `user_id == "${userId}" || user_id == "shared"`,
+        filter: `user_id == "${escapeMilvusFilterValue(userId)}" || user_id == "shared"`,
       });
 
       return (results.results || []).map((r: any) => ({

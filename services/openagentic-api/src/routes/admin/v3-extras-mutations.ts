@@ -921,9 +921,14 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
   // Defence-in-depth admin guard. Production mounts adminMiddleware on the
   // parent register scope (admin.plugin.ts); this preHandler is for test
   // rigs that mount the plugin bare.
+  // SECURITY: fail CLOSED — these are MUTATING routes, so a missing
+  // `request.user` is rejected (401), never silently allowed through.
   fastify.addHook('preHandler', async (request, reply): Promise<void> => {
     const user = (request as any).user;
-    if (!user) return;
+    if (!user) {
+      reply.code(401).send({ success: false, error: 'Authentication required' });
+      return;
+    }
     if (!isAdminUser(request)) {
       reply.code(403).send({ success: false, error: 'Admin access required' });
       return;

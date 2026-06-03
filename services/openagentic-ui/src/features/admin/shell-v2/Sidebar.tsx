@@ -27,9 +27,7 @@ function groupVisible(featureGate: 'mcp' | undefined, flags: Flags): boolean {
   return Boolean((flags as any)[featureGate])
 }
 
-function childVisible(leafId: string, flags: Flags): boolean {
-  // synth-* leaves inside Tools Management are gated on flags.synth.
-  if (leafId.startsWith('synth-')) return Boolean((flags as any).synth)
+function childVisible(_leafId: string, _flags: Flags): boolean {
   return true
 }
 

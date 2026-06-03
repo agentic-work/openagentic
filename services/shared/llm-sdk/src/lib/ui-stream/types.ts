@@ -14,7 +14,7 @@
  *
  *   - `AgenticEvent` (`./agentic-events/types.ts`) — the 14-layer SUPERSET
  *     of canonical + tool execution + sub-agents + HITL + artifacts + RAG
- *     + cost + flows + codemode + session events. Names match what the
+ *     + cost + flows + session events. Names match what the
  *     SDK would emit if the SDK owned the entire platform-wide event
  *     taxonomy.
  *
@@ -170,6 +170,30 @@ export interface UIAppRenderFrame {
   _ts?: number;
 }
 
+/** Inline generated-image frame (UI dialect of `AgenticEvent.generate_image`).
+ *  Emitted single-shot AFTER the platform's image model generates a raster
+ *  image and ImageStorageService persists it. `image_url` is ALWAYS a
+ *  same-origin `/api/images/:id` path — NEVER an external host (the
+ *  generate_image tool refuses to emit external URLs). */
+export interface UIImageRenderFrame {
+  type: 'image_render';
+  artifact_id: string;
+  /** Same-origin path served by routes/images.ts — e.g. /api/images/img_xxx.png */
+  image_url: string;
+  /** The prompt the image was generated from. Doubles as alt text. */
+  prompt?: string;
+  /** Resolved imageGen default model id. */
+  model?: string;
+  /** Provider that owns the imageGen model. */
+  provider?: string;
+  /** Raster format. */
+  format?: string;
+  /** Explicit alt text (defaults to prompt when absent). */
+  alt?: string;
+  group_id?: string;
+  _ts?: number;
+}
+
 /** Generic artifact-render frame — discriminates to viz_render OR app_render
  *  based on `kind`. Kept as a separate frame type so the api can emit a
  *  single envelope and the reducer routes it. */
@@ -244,6 +268,7 @@ export type UIStreamFrame =
   | UIToolCallCompleteFrame
   | UIVisualRenderFrame
   | UIAppRenderFrame
+  | UIImageRenderFrame
   | UIArtifactRenderFrame
   | UIFollowUpFrame
   | UIToolRoundStartFrame
@@ -301,6 +326,8 @@ export type UIContentBlockType =
   // Layer 3 — artifact blocks (compose_visual / compose_app analogues)
   | 'viz_render'
   | 'app_render'
+  // Inline generated raster image (generate_image analogue)
+  | 'image_render'
   // Layer 4 — end-of-turn UI chips
   | 'follow_up';
 
@@ -439,6 +466,20 @@ export interface UIContentBlock {
   pyodideRequired?: boolean;
   /** app_render only — per-render CSP nonce supplied by composeAppValidator. */
   nonce?: string | null;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // image_render block fields (type: 'image_render')
+  // ─────────────────────────────────────────────────────────────────────
+
+  /** image_render only — same-origin /api/images/:id url for the <img> src.
+   *  NEVER an external host (the generate_image tool refuses external URLs). */
+  imageUrl?: string;
+  /** image_render only — prompt the image was generated from (alt text). */
+  prompt?: string;
+  /** image_render only — resolved imageGen default model id. */
+  model?: string;
+  /** image_render only — provider that owns the imageGen model. */
+  provider?: string;
 
   // ─────────────────────────────────────────────────────────────────────
   // follow_up block fields (type: 'follow_up')

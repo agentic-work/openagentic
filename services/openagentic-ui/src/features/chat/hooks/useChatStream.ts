@@ -1,14 +1,16 @@
 /**
- * useSSEChat Hook
- * Server-Sent Events (SSE) implementation for real-time chat streaming
- * Features: Message streaming, pipeline state tracking, error recovery, MCP tool handling
- * Pipeline stages: auth → validation → prompt → mcp → completion → response
- * Methods:
- * - sendMessage: Sends user message and initiates SSE stream
- * - stopStreaming: Aborts current stream
- * - resetError: Clears error state
- * Handles: Token usage tracking, thinking blocks, tool calls, message formatting
- * @see docs/chat/streaming-architecture.md
+ * useChatStream — the live chat streaming engine.
+ *
+ * Consumes the `/api/chat/stream` SSE feed and drives the in-flight render:
+ * content/thinking deltas, tool-call events, pipeline-stage state, token
+ * usage, and the approval-gate `approval_required` event. Pairs with the
+ * pure reducer in ./streamReducer (applyCanonicalFrame/deriveFlatMessage),
+ * which owns canonical block accumulation.
+ *
+ * Public surface:
+ * - sendMessage: send a user turn and open the SSE stream
+ * - stopStreaming: abort the current stream
+ * - resetError: clear error state
  */
 
 import { useState, useCallback, useRef, useEffect, startTransition } from 'react';
@@ -2347,8 +2349,12 @@ export const useChatStream = ({
           groundingEnabled: (() => {
             try {
               // Lazy global read so this hook stays free of cross-store
-              // import order ambiguity at module-init time.
-              const raw = localStorage.getItem('awp.grounding.v1');
+              // import order ambiguity at module-init time. Falls back to the
+              // pre-rename `awp.` key in case useGroundingStore (which performs
+              // the one-time key migration) hasn't been imported on this route.
+              const raw =
+                localStorage.getItem('openagentic:grounding.v1') ??
+                localStorage.getItem('awp.grounding.v1');
               if (!raw) return false;
               const parsed = JSON.parse(raw);
               return Boolean(parsed?.state?.enabled);
@@ -4541,7 +4547,7 @@ export const useChatStream = ({
                 // Artifact events emitted by agent orchestration when agents produce HTML artifacts
                 case 'artifact_start': {
                   // Store accumulator for artifact content
-                  (window as any).__pendingArtifact = {
+                  window.__pendingArtifact = {
                     type: safeData.type || safeData.artifactType || 'html',
                     title: safeData.title || 'Artifact',
                     content: '',
@@ -4581,14 +4587,14 @@ export const useChatStream = ({
                     break;
                   }
                   // Legacy chat-artifact path (agent HTML artifacts).
-                  const pending = (window as any).__pendingArtifact;
+                  const pending = window.__pendingArtifact;
                   if (pending) {
                     pending.content += safeData.content || '';
                   }
                   break;
                 }
                 case 'artifact_end': {
-                  const artifact = (window as any).__pendingArtifact;
+                  const artifact = window.__pendingArtifact;
                   if (artifact && artifact.content) {
                     const lang = artifact.type === 'html' ? 'html' : artifact.type === 'react' ? 'tsx' : artifact.type;
                     window.dispatchEvent(new CustomEvent('openagentic:open-canvas', {
@@ -4600,7 +4606,7 @@ export const useChatStream = ({
                       }
                     }));
                   }
-                  (window as any).__pendingArtifact = null;
+                  window.__pendingArtifact = null;
                   break;
                 }
 
@@ -4844,26 +4850,26 @@ export const useChatStream = ({
 
                   // OpenAgentic format: blockType + content directly on safeData
                   if (safeData.blockType && safeData.content !== undefined) {
-                    const awpBlockType = safeData.blockType;
-                    const awpContent = safeData.content || '';
+                    const oapBlockType = safeData.blockType;
+                    const oapContent = safeData.content || '';
 
                     // Update contentBlocks for interleaved display
                     if (deltaIndex !== undefined) {
                       setContentBlocks(prev => prev.map(block =>
                         block.index === deltaIndex
-                          ? { ...block, content: block.content + awpContent }
+                          ? { ...block, content: block.content + oapContent }
                           : block
                       ));
                       contentBlocksRef.current = contentBlocksRef.current.map(block =>
                         block.index === deltaIndex
-                          ? { ...block, content: block.content + awpContent }
+                          ? { ...block, content: block.content + oapContent }
                           : block
                       );
                     }
 
                     // Also update legacy state for backwards compatibility
-                    if (awpBlockType === 'thinking') {
-                      const newAccumulatedThinking = currentThinkingRef.current + awpContent;
+                    if (oapBlockType === 'thinking') {
+                      const newAccumulatedThinking = currentThinkingRef.current + oapContent;
                       currentThinkingRef.current = newAccumulatedThinking;
                       setCurrentThinking(newAccumulatedThinking);
                       onThinkingContent?.(newAccumulatedThinking);
@@ -4871,22 +4877,22 @@ export const useChatStream = ({
                       // deltas from the OpenAgentic/OpenAI-normalized path (chars/4
                       // estimate). Activity = last non-empty thinking line
                       // truncated to one inline-tight summary.
-                      if (awpContent.length > 0) {
-                        setLiveTokensOut(prev => prev + Math.max(1, Math.round(awpContent.length / 4)));
+                      if (oapContent.length > 0) {
+                        setLiveTokensOut(prev => prev + Math.max(1, Math.round(oapContent.length / 4)));
                         const lastLine = newAccumulatedThinking.split('\n').filter(Boolean).pop() ?? '';
                         const trimmed = lastLine.trim().slice(0, 110);
                         if (trimmed) setLiveActivity(trimmed);
                       }
-                    } else if (awpBlockType === 'text') {
+                    } else if (oapBlockType === 'text') {
                       // Track B Phase 3 — `assistantMessage += ` + `setCurrentMessage`
                       // RIPPED. Canonical reducer accumulates text via
                       // content_block_delta. The onStream callback stays for
                       // downstream activity-stream consumers.
-                      onStream?.(awpContent);
+                      onStream?.(oapContent);
                       // LiveTurnStatus — bump ↓ output tokens on text deltas
                       // from the OpenAgentic/OpenAI-normalized path.
-                      if (awpContent.length > 0) {
-                        setLiveTokensOut(prev => prev + Math.max(1, Math.round(awpContent.length / 4)));
+                      if (oapContent.length > 0) {
+                        setLiveTokensOut(prev => prev + Math.max(1, Math.round(oapContent.length / 4)));
                         setLiveActivity('writing response');
                       }
                     }
@@ -6109,9 +6115,3 @@ export const useChatStream = ({
     contentFilterBannerByMessageId,
   };
 };
-
-// Back-compat alias for importers mid-migration.
-// Remove after all call sites migrate to `useChatStream`.
-export const useSSEChat = useChatStream;
-
-// build-bust: 1fd3915c-rebuild-1

@@ -194,7 +194,7 @@ export interface ToolExecutingEvent {
   /** OpenAI-shape preview of input args (≤200 chars) for UI display. */
   args_preview: string;
   /** Where the tool runs: 'mcp', 'meta', 'subagent', 'sandbox'. */
-  surface: 'mcp' | 'meta' | 'subagent' | 'sandbox' | 'oat';
+  surface: 'mcp' | 'meta' | 'subagent' | 'sandbox';
   ts: number;
 }
 

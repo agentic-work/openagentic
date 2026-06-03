@@ -32,77 +32,23 @@ export const accentColors = [
   { name: 'Purple', primary: '#7C3AED', secondary: '#A855F7' },       // True purple
 ];
 
-export const themes = {
-  dark: {
-    // Accent — openagentic signal orange (respects the accent picker)
-    primary: 'var(--user-accent-primary, #FF5722)',
-    secondary: 'var(--user-accent-secondary, #FFB87E)',
-    accent: 'var(--user-accent-color, #FF5722)',
-    success: '#22C55E',       // green
-    warning: '#F59E0B',       // amber (distinct from signal accent)
-    error: '#FF453A',         // red
-
-    // Warm field-guide "terminal" dark — not cold macOS grey.
-    background: '#18130C',
-    surface: '#211A11',
-    surfaceHover: '#2C2418',
-
-    // Text hierarchy — cream on warm-black
-    text: '#F4EFE6',
-    textSecondary: '#CDC4B2',
-    textMuted: '#968B76',
-    textDisabled: '#6E6657',
-
-    // Borders — warm cream alpha
-    border: 'rgba(244, 239, 230, 0.08)',
-    borderHover: 'rgba(244, 239, 230, 0.16)',
-
-    shadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
-
-    gradientPrimary: 'var(--user-accent-primary, #FF5722)',
-    gradientSecondary: 'var(--user-accent-secondary, #FFB87E)',
-    gradientDark: 'linear-gradient(180deg, #18130C 0%, #211A11 100%)',
-
-    statusHealthy: '#22C55E',
-    statusWarning: '#F59E0B',
-    statusError: '#FF453A',
-    statusUnknown: '#968B76',
-  },
-  light: {
-    // Accent — signal orange on paper
-    primary: 'var(--user-accent-primary, #FF5722)',
-    secondary: 'var(--user-accent-secondary, #E8835A)',
-    accent: 'var(--user-accent-color, #B83A0E)',
-    success: '#16A34A',       // green
-    warning: '#B45309',       // amber-brown for paper contrast
-    error: '#DC2626',         // red
-
-    // Warm "paper" light — bone cream, not pure white.
-    background: '#F4EFE6',
-    surface: '#EFE9DD',
-    surfaceHover: '#E2DACB',
-
-    // Text hierarchy — ink on paper
-    text: '#0E0D0B',
-    textSecondary: '#46402F',
-    textMuted: '#7A7058',
-    textDisabled: '#A89E88',
-
-    border: 'rgba(14, 13, 11, 0.10)',
-    borderHover: 'rgba(14, 13, 11, 0.18)',
-
-    shadow: '0 2px 8px rgba(46, 36, 20, 0.10)',
-
-    gradientPrimary: 'var(--user-accent-primary, #FF5722)',
-    gradientSecondary: 'var(--user-accent-secondary, #E8835A)',
-    gradientDark: 'linear-gradient(180deg, #F4EFE6 0%, #EFE9DD 100%)',
-
-    statusHealthy: '#16A34A',
-    statusWarning: '#B45309',
-    statusError: '#DC2626',
-    statusUnknown: '#7A7058',
-  }
-};
+/**
+ * Legacy `--color-<key>` names that OLDER builds wrote inline on
+ * document.documentElement (via the now-deleted `themes={dark,light}` JS
+ * palette). theme.css is the SOLE source of truth for the palette now — it
+ * defines every token and flips them off `[data-theme]`. This list exists only
+ * so `applyTheme` can DEFENSIVELY clear any stale inline residue a returning
+ * user might still carry, letting theme.css's values win. It is NOT a palette
+ * (no color values) — just the key names to strip.
+ */
+const LEGACY_INLINE_COLOR_KEYS = [
+  'primary', 'secondary', 'accent', 'success', 'warning', 'error',
+  'background', 'surface', 'surfaceHover',
+  'text', 'textSecondary', 'textMuted', 'textDisabled',
+  'border', 'borderHover', 'shadow',
+  'gradientPrimary', 'gradientSecondary', 'gradientDark',
+  'statusHealthy', 'statusWarning', 'statusError', 'statusUnknown',
+];
 
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
@@ -144,8 +90,16 @@ export const ThemeProvider = ({ children }) => {
     }
     return accentColors[0];
   });
-  // Background effect: always 'subtle' (zero GPU, static gradients)
-  const [backgroundEffect] = useState('subtle');
+  // Background effect: 'subtle' (zero-GPU static gradients) or 'off'. Restored
+  // from localStorage so the user's choice survives reloads, matching the
+  // setBackgroundEffect persistence below.
+  const [backgroundEffect, setBackgroundEffectState] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ac-background-effect');
+      return saved === 'off' || saved === 'subtle' ? saved : 'subtle';
+    }
+    return 'subtle';
+  });
 
   // Backwards compatibility alias
   const backgroundAnimations = backgroundEffect !== 'off';
@@ -259,8 +213,10 @@ export const ThemeProvider = ({ children }) => {
     root.setAttribute('data-theme', themeName);
 
     // Defensive cleanup: remove any stale inline --color-* overrides written by
-    // older builds so theme.css's [data-theme] values take effect.
-    Object.keys(themes.dark).forEach((key) => {
+    // OLDER builds (the deleted themes={dark,light} JS palette used to write
+    // these inline). theme.css is now the SOT and flips every token off
+    // [data-theme]; this just clears legacy inline residue so those values win.
+    LEGACY_INLINE_COLOR_KEYS.forEach((key) => {
       root.style.removeProperty(`--color-${key}`);
     });
 
@@ -374,7 +330,6 @@ export const ThemeProvider = ({ children }) => {
     theme,
     resolvedTheme,
     changeTheme,
-    themes,
     accentColor,
     accentColors,
     changeAccentColor,

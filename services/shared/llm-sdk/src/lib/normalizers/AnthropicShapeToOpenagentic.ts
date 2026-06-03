@@ -142,6 +142,10 @@ function createImpl(opts: NormalizerOptions): Normalizer {
     consume(chunk: AnthropicShapeChunk): CanonicalEvent[] {
       const out: CanonicalEvent[] = [];
       if (messageStopped) return out;
+      // Malformed-chunk resilience: a null/undefined/non-object chunk (a bare
+      // `null` keep-alive line, a truncated frame, an empty parse) is a no-op,
+      // never a mid-stream crash. finalize() still closes the envelope cleanly.
+      if (chunk === null || typeof chunk !== 'object' || Array.isArray(chunk)) return out;
 
       switch (chunk.type) {
         case 'message_start': {

@@ -10,7 +10,66 @@
  * - Frontend: Normalizes on display for consistency
  */
 
-import { ChatMessage } from '@/types/index';
+import { ChatMessage, VisualizationData, ThinkingStep } from '@/types/index';
+import type { Message as StoreMessage } from '@/stores/useChatStore';
+
+/**
+ * Convert a single store-internal `Message` (useChatStore) into the canonical
+ * `ChatMessage` shape (`@/types/index`) the render layer consumes.
+ *
+ * The two shapes are intentionally distinct: the store keeps a richer mutable
+ * model (e.g. `timestamp: Date | string`, render-frame `visualizations`), while
+ * `ChatMessage` is the SoT contract ChatMessages/MessageBubble render against
+ * (`timestamp` is ALWAYS an ISO string). This adapter performs the real,
+ * field-aware conversion that previously hid behind a `messages as any as
+ * ChatMessage[]` double-cast in ChatContainer — normalizing `timestamp` to a
+ * string and carrying the heterogeneous inline render-frame `visualizations`
+ * across via a single localized field narrowing (the frames are typed
+ * `{ type: string; data: unknown }` in the store but read structurally by the
+ * `visualizations` fallback in ChatMessages).
+ */
+export function storeMessageToChatMessage(message: StoreMessage): ChatMessage {
+  const timestamp =
+    typeof message.timestamp === 'string'
+      ? message.timestamp
+      : message.timestamp instanceof Date
+        ? message.timestamp.toISOString()
+        : new Date().toISOString();
+
+  // Inline render-frame visualizations are structurally compatible with the
+  // `visualizations` fallback consumer but typed loosely in the store; narrow
+  // through `unknown` here (one explicit field-level cast) rather than laundering
+  // the whole message object through `any`.
+  const visualizations = message.visualizations as unknown as VisualizationData[] | undefined;
+
+  // The store's ThinkingStep union is a superset of the render-layer one (it
+  // adds 'mcp' | 'thinking' kinds). MessageBubble renders steps structurally
+  // (by content/timestamp), so widen the kind via a single field-level cast
+  // rather than dropping the extra kinds or casting the whole object.
+  const thinkingSteps = message.thinkingSteps as unknown as ThinkingStep[] | undefined;
+
+  // The store's ReasoningTrace is structurally looser than the SoT one (it omits
+  // a few fields the renderer treats as optional in practice). It's consumed
+  // read-only by MessageBubble; narrow it at the field level here too.
+  const reasoningTrace = message.reasoningTrace as ChatMessage['reasoningTrace'];
+
+  return {
+    ...message,
+    timestamp,
+    visualizations,
+    thinkingSteps,
+    reasoningTrace,
+  };
+}
+
+/**
+ * Array form of {@link storeMessageToChatMessage}. Returns `[]` for nullish /
+ * non-array input so callers can use it directly in `useMemo` selectors.
+ */
+export function storeMessagesToChatMessages(messages: StoreMessage[]): ChatMessage[] {
+  if (!messages || !Array.isArray(messages)) return [];
+  return messages.map(storeMessageToChatMessage);
+}
 
 /**
  * Normalize a single message for consistent rendering

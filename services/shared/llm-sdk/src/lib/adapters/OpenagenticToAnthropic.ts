@@ -149,8 +149,25 @@ export class OpenagenticToAnthropic implements IOutboundAdapter {
     if (req.disable_parallel_tool_use) {
       (body.tool_choice as any).disable_parallel_tool_use = true;
     }
-    if (req.thinking) {
+    // C2 — Anthropic API constraint: when tool_choice forces tool use ('any' or
+    // named-function 'tool'), extended thinking MUST be stripped from the wire
+    // body. Sending both causes:
+    //   "Thinking may not be enabled when tool_choice forces tool use"
+    // Only tool_choice:'auto' and tool_choice:'none' are compatible with
+    // extended thinking. Strip silently (log via debug) so chatLoop doesn't
+    // need to know about this Anthropic-specific constraint.
+    // Source: https://platform.claude.com/docs/en/agents-and-tools/tool-use
+    //         §"Forcing tool use" — extended thinking note.
+    const forcedToolType = (body.tool_choice as { type?: string } | undefined)?.type;
+    const thinkingForcingConflict =
+      !!req.thinking && (forcedToolType === 'any' || forcedToolType === 'tool');
+    if (req.thinking && !thinkingForcingConflict) {
       body.thinking = req.thinking;
+    } else if (thinkingForcingConflict) {
+      // eslint-disable-next-line no-console
+      console.debug(
+        `[OpenagenticToAnthropic] stripping thinking: incompatible with tool_choice.type="${forcedToolType}" (Anthropic API constraint)`,
+      );
     }
     if (req.stop_sequences && req.stop_sequences.length > 0) {
       body.stop_sequences = req.stop_sequences;

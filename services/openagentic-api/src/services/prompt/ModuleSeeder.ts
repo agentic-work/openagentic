@@ -520,9 +520,6 @@ export async function seedIfEmpty(): Promise<void> {
       // Backfill: add any SEED_MODULES that don't yet exist (handles upgrades that
       // ship new modules — e.g. cloud_operations adding cloud-ops-* modules).
       await backfillMissingModules();
-      // Migration: ensure intent-gated modules have their requiresUserIntent
-      // rule, even if admin-edited (version > 1). One-time fix for #327.
-      await migrateIntentGates();
       return;
     }
 
@@ -712,56 +709,3 @@ async function migrateIdentitySplit(): Promise<void> {
   }
 }
 
-/**
- * One-time migration: ensure modules whose content is intrinsically about
- * visualization / chart rendering carry `requiresUserIntent: ['visualization']`
- * on their injection rule, even if an admin previously edited them through
- * the UI (version > 1). Without this, modules like `chart-rendering` keep
- * injecting chart-format guidance on every tool-capable request, reinforcing
- * the bias #327 was filed against.
- *
- * Runs on every startup. Idempotent — if the rule is already set, no-op.
- * The module's content and admin edits are preserved; only the injection
- * JSON gains the intent gate.
- */
-const INTENT_GATED_MODULE_NAMES = ['chart-rendering'];
-
-async function migrateIntentGates(): Promise<void> {
-  try {
-    const rows = await prisma.promptModule.findMany({
-      where: { name: { in: INTENT_GATED_MODULE_NAMES } },
-      select: { id: true, name: true, injection: true },
-    });
-
-    let patched = 0;
-    for (const row of rows) {
-      const current = (row.injection ?? {}) as Record<string, unknown>;
-      const currentIntents = Array.isArray(current.requiresUserIntent)
-        ? (current.requiresUserIntent as string[])
-        : [];
-      if (currentIntents.includes('visualization')) continue;
-
-      const next = {
-        ...current,
-        requiresUserIntent: Array.from(new Set([...currentIntents, 'visualization'])),
-      };
-      await prisma.promptModule.update({
-        where: { id: row.id },
-        data: { injection: next as any },
-      });
-      patched++;
-    }
-
-    if (patched > 0) {
-      log.info(
-        { patched, modules: INTENT_GATED_MODULE_NAMES },
-        '[ModuleSeeder] Intent-gate migration: added requiresUserIntent=["visualization"]',
-      );
-    }
-  } catch (err) {
-    // Non-fatal — migration is best-effort on startup. Missing gate degrades
-    // to the previous behaviour (always-inject for tool-capable models),
-    // which is the status quo, not a regression.
-    log.warn({ err }, '[ModuleSeeder] Intent-gate migration failed (non-fatal)');
-  }
-}

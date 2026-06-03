@@ -29,6 +29,7 @@ import {
   indexFoundationSummaries,
 } from './BedrockCapabilityInference.js';
 import { toConverseToolConfig } from './helpers/bedrockToolConverter.js';
+import { buildBedrockToolDef } from './helpers/bedrockToolExamples.js';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import https from 'https';
 import type { Logger } from 'pino';
@@ -1812,11 +1813,14 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       // Add tools if provided (Claude supports tools via Bedrock)
       if (request.tools && request.tools.length > 0) {
         bedrockRequest.tools = request.tools.map((tool: any, index: number) => {
-          const toolDef: any = {
-            name: tool.function?.name || tool.name,
-            description: tool.function?.description || tool.description || '',
-            input_schema: flattenTopLevelUnions(tool.function?.parameters || tool.input_schema || {})
-          };
+          // #1112 — propagate `input_examples` into the tool description as
+          // concrete JSON exemplars. The Anthropic Messages API (spoken by
+          // Bedrock-served Claude) has no dedicated `input_examples` wire
+          // field; inlining them in the description is the canonical pattern
+          // so the model sees the expected input shapes at schema-prompt time.
+          // Logic lives in helpers/bedrockToolExamples.ts (single SoT, tested
+          // directly by AWSBedrockProvider.input-examples.test.ts).
+          const toolDef: any = buildBedrockToolDef(tool, flattenTopLevelUnions);
 
           // Add cache_control to last tool definition for tool schema caching
           // This caches all preceding tools as a prefix

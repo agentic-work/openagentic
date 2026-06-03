@@ -141,14 +141,12 @@ const KNOWN_VIOLATORS: Record<string, number> = {
   //   in admin response now resolves from ModelConfigurationService instead
   //   of process.env.DEFAULT_MODEL.
   'routes/admin-embeddings.ts': 5,
-  'routes/code.ts': 5,
   // 'routes/local-auth.ts': closed 2026-05-05 (M17i). getDefaultModel
   //   helper now returns ModelConfigurationService.getDefaultChatModel()
   //   instead of process.env.AZURE_OPENAI_DEPLOYMENT || process.env.DEFAULT_MODEL.
   // 'routes/v1/vector.ts': closed 2026-05-05 (M17b). Bespoke fetch +
   //   text-embedding-ada-002 fallback ripped; goes through
   //   UniversalEmbeddingService now.
-  'routes/code-mode/chat-stream.handler.ts': 5,
   'routes/openagentic.ts': 5,
   'routes/advanced-prompting/prompts.ts': 5,
   'routes/chat/pipeline/completion-simple.stage.ts': 30,

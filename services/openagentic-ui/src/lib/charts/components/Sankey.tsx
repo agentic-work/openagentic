@@ -69,6 +69,12 @@ export function Sankey({ data, title, height = 460, disableFrame, wheelZoom, onE
   // transcript. Admin renders are unaffected (admin defines vars on :root).
   const tokens = useThemeTokens(svgRef);
 
+  // Normalize model-generated payloads: compose_visual can emit malformed
+  // `data` ({}/null/missing arrays). Coerce to safe arrays so a bad payload
+  // renders the empty-state below instead of throwing on the chat transcript.
+  const nodes = Array.isArray(data?.nodes) ? data.nodes : [];
+  const links = Array.isArray(data?.links) ? data.links : [];
+
   const layout = useMemo(() => {
     const width = 1180;
     const margin = { top: 20, right: 200, bottom: 28, left: 180 };
@@ -76,7 +82,7 @@ export function Sankey({ data, title, height = 460, disableFrame, wheelZoom, onE
     const innerH = height - margin.top - margin.bottom;
 
     const idToIdx = new Map<string, number>();
-    const internalNodes: InternalNode[] = data.nodes.map((n, i) => {
+    const internalNodes: InternalNode[] = nodes.map((n, i) => {
       idToIdx.set(n.id, i);
       return {
         id: n.id,
@@ -87,7 +93,7 @@ export function Sankey({ data, title, height = 460, disableFrame, wheelZoom, onE
       };
     });
     const internalLinks: InternalLink[] = [];
-    for (const l of data.links) {
+    for (const l of links) {
       const s = idToIdx.get(l.source);
       const t = idToIdx.get(l.target);
       if (s == null || t == null) continue;
@@ -113,7 +119,7 @@ export function Sankey({ data, title, height = 460, disableFrame, wheelZoom, onE
     });
 
     return { width, height, nodes: graph.nodes, links: graph.links, margin };
-  }, [data, height]);
+  }, [nodes, links, height]);
 
   // Default palette: use theme tokens for source colors (cycled), neutral slate for sink
   const sourceColors = useMemo(() => {
@@ -123,12 +129,12 @@ export function Sankey({ data, title, height = 460, disableFrame, wheelZoom, onE
 
   const colorBySource = useMemo(() => {
     const out: Record<string, string> = {};
-    const sourceIds = [...new Set(data.links.map((l) => l.sourceId ?? l.source))];
+    const sourceIds = [...new Set(links.map((l) => l.sourceId ?? l.source))];
     sourceIds.forEach((id, i) => {
-      out[id] = data.colorBySource?.[id] ?? sourceColors[i % sourceColors.length];
+      out[id] = data?.colorBySource?.[id] ?? sourceColors[i % sourceColors.length];
     });
     return out;
-  }, [data.links, data.colorBySource, sourceColors]);
+  }, [links, data?.colorBySource, sourceColors]);
 
   useChartFrame(svgRef, contentRef, { title: title ?? 'sankey', disabled: disableFrame, wheelZoom, onExpand });
 

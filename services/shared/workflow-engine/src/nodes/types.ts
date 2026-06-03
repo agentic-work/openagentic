@@ -156,14 +156,6 @@ export interface NodeExecutionContext {
    */
   readonly openagenticProxyUrl?: string;
   /**
-   * Optional Openagentic Manager base URL — used by the openagentic node to
-   * spawn isolated code-execution sessions (Task #46). Engine wires this
-   * from `process.env.OPENAGENTIC_MANAGER_URL` (default
-   * `http://openagentic-code-manager:8080`); the executor throws a config
-   * error when the value is empty.
-   */
-  readonly openagenticManagerUrl?: string;
-  /**
    * Optional internal-auth secret for the openagentic-proxy. The executors send it
    * as `Authorization: Bearer <key>` along with `X-Agent-Proxy: true`. When
    * absent, executors fall back to ctx.getInternalAuthHeaders().

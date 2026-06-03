@@ -17,7 +17,7 @@ const SERVICE_MAP: Record<string, { component: string; displayName: string; crit
   ui: { component: 'ui', displayName: 'Frontend (UI)' },
   'mcp-proxy': { component: 'mcp-proxy', displayName: 'MCP Proxy' },
   'openagentic-proxy': { component: 'openagentic-proxy', displayName: 'Agent Proxy' },
-  'synth-executor': { component: 'synth-executor', displayName: 'Synth Executor' },
+  workflows: { component: 'workflows', displayName: 'Workflows Engine' },
   minio: { component: 'minio', displayName: 'MinIO Storage' },
   attu: { component: 'attu', displayName: 'Attu (Milvus UI)' },
   postgres: { component: 'postgresql', displayName: 'PostgreSQL', critical: true },

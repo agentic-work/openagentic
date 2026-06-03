@@ -11,9 +11,7 @@ const services = [
   'openagentic-ui',
   'openagentic-workflows',
   'openagentic-mcp-proxy',
-  'openagentic-manager',
   'openagentic-proxy',
-  'openagentic-synth',
 ];
 
 const helmStructure = [

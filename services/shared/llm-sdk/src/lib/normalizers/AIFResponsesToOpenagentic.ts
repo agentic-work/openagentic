@@ -111,9 +111,12 @@ export interface AIFResponsesEnvelope {
   id: string;
   model?: string;
   output: AIFOutputItem[];
-  status?: 'completed' | 'incomplete' | string;
+  status?: 'completed' | 'incomplete' | 'failed' | string;
   incomplete_details?: { reason?: string };
-  // usage, error, etc. ignored.
+  /** Top-level error on a `status:'failed'` envelope. May be `null` for the
+   * transient `response.failed(null error)` class. */
+  error?: { code?: string; message?: string } | null;
+  // usage, etc. ignored.
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +131,13 @@ export interface NormalizerOptions {
 export interface Normalizer {
   consume(envelope: AIFResponsesEnvelope): CanonicalEvent[];
   finalize(): CanonicalEvent[];
+  /** Out-of-band accessor: returns the error of a `status:'failed'`
+   * envelope so the caller's retry path can fire, or `null` for clean
+   * completed / incomplete envelopes (no false positives). A failed envelope
+   * with `error:null` (the `response.failed(null)` transient) still reports a
+   * synthesized non-null error — a hard failure is never swallowed as a clean
+   * `end_turn`. The canonical event stream shape is unchanged. */
+  getEnvelopeError(): { code: string; message: string } | null;
 }
 
 export function createAIFResponsesToOpenagenticNormalizer(opts: NormalizerOptions): Normalizer {
@@ -141,6 +151,9 @@ export function createAIFResponsesToOpenagenticNormalizer(opts: NormalizerOption
   let hasToolUse = false;
   let hasRefusal = false;
   let nextBlockIndex = 0;
+  // Captured out-of-band so a `status:'failed'` envelope is never silently
+  // normalized as a clean `end_turn` that hides the failure.
+  let envelopeError: { code: string; message: string } | null = null;
 
   function emitMessageStart(out: CanonicalEvent[]): void {
     if (messageStarted) return;
@@ -275,6 +288,29 @@ export function createAIFResponsesToOpenagenticNormalizer(opts: NormalizerOption
 
   function applyStatus(envelope: AIFResponsesEnvelope): void {
     const reason = envelope.incomplete_details?.reason;
+    if (envelope.status === 'failed') {
+      // Capture the failure out-of-band. Keep the canonical event stream
+      // shape unchanged; expose via getEnvelopeError() so the caller can
+      // retry. A hard failure must never collapse to a clean end_turn.
+      const e = envelope.error;
+      if (e && typeof e === 'object') {
+        envelopeError = {
+          code: typeof e.code === 'string' && e.code.length > 0 ? e.code : 'aif_response_failed',
+          message:
+            typeof e.message === 'string' && e.message.length > 0
+              ? e.message
+              : 'AIF Responses API returned status:failed',
+        };
+      } else {
+        // The exact response.failed(null) transient — synthesize a non-null
+        // error so the retry path fires; never swallow it.
+        envelopeError = {
+          code: 'aif_response_failed_null',
+          message: 'AIF Responses API returned status:failed with a null error (transient)',
+        };
+      }
+      return;
+    }
     if (envelope.status === 'incomplete') {
       if (reason === 'max_output_tokens' || reason === 'max_tokens') {
         stopReason = 'max_tokens';
@@ -314,6 +350,10 @@ export function createAIFResponsesToOpenagenticNormalizer(opts: NormalizerOption
     consume(envelope: AIFResponsesEnvelope): CanonicalEvent[] {
       const out: CanonicalEvent[] = [];
       if (messageStopped) return out;
+      // Malformed-chunk resilience: a null/undefined/non-object envelope (a bare
+      // `null` keep-alive line, a truncated frame, an empty parse) is a no-op,
+      // never a mid-stream crash. finalize() still closes the envelope cleanly.
+      if (envelope === null || typeof envelope !== 'object' || Array.isArray(envelope)) return out;
 
       emitMessageStart(out);
 
@@ -363,6 +403,10 @@ export function createAIFResponsesToOpenagenticNormalizer(opts: NormalizerOption
       out.push({ type: 'message_stop' });
       messageStopped = true;
       return out;
+    },
+
+    getEnvelopeError(): { code: string; message: string } | null {
+      return envelopeError;
     },
   };
 }

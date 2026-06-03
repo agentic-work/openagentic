@@ -156,7 +156,7 @@ export function useSSEToAgentState() {
 
       case 'start':
         if (event.orchestrationId) {
-          // executionPlan is string[] (array of role names) from useSSEChat.MultiModelEvent
+          // executionPlan is string[] (array of role names) from useChatStream MultiModelEvent
           const roles = Array.isArray(event.executionPlan) ? event.executionPlan : (event.executionPlan as any)?.roles || [];
           startMultiModel(event.orchestrationId, roles);
         }
@@ -256,7 +256,7 @@ export function useSSEToAgentState() {
   ]);
 
   return {
-    // Handlers to pass to useSSEChat (memoized)
+    // Handlers to pass to useChatStream (memoized)
     handlers,
 
     // Direct state access

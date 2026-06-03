@@ -172,7 +172,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
 
       // Surface env-DISABLED built-ins. The proxy only registers built-ins whose
       // `*_MCP_DISABLED` flag is unset, so disabled ones (commonly
-      // aws/azure/gcp/loki/alertmanager/github on a creds-less deploy) are absent
+      // aws/azure/gcp/loki/github on a creds-less deploy) are absent
       // from the proxy list and would silently vanish from the Fleet. Render them
       // from the known built-in catalog as `available` / `needs-config` (a
       // distinct state from the running ones) so the operator sees the full fleet

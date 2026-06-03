@@ -22,9 +22,9 @@ vi.mock('@/app/providers/AuthContext', () => ({
 }));
 
 // useSSEChat retired — the streaming engine is now useChatStream, which
-// re-exports `useSSEChat` as a back-compat alias and carries the same
-// OSS-only `approval_required` (auditId) discriminator surface this asserts.
-import { useSSEChat } from '../useChatStream';
+// carries the OSS-only `approval_required` (auditId) discriminator surface
+// this asserts. Aliased locally so the test body reads unchanged.
+import { useChatStream as useSSEChat } from '../useChatStream';
 import { useAgentTreeStore } from '@/stores/useAgentTreeStore';
 
 // ── helper: build a fetch Response whose body streams the given frames ───────

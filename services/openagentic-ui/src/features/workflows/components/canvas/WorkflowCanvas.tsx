@@ -36,7 +36,7 @@ const nodeTypes: Record<string, typeof CustomNode> = {
   http_request: CustomNode, webhook_response: CustomNode,
   approval: CustomNode, human_approval: CustomNode, wait: CustomNode,
   agent_spawn: CustomNode, a2a: CustomNode,
-  synth: CustomNode, openagentic: CustomNode,
+  synth: CustomNode,
   openagentic_llm: CustomNode, multi_agent: CustomNode,
   text: CustomNode, reasoning: CustomNode, structured_output: CustomNode,
   rag_query: CustomNode, data_source_query: CustomNode, file_upload: CustomNode,

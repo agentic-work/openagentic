@@ -1932,19 +1932,30 @@ const start = async () => {
         }))
       }, '✅ Smart Model Router initialized - Ollama preferred for simple queries (FREE)');
 
-      // Pre-warm Ollama model into GPU VRAM so first user request gets instant TTFT.
-      // Without this, first request after restart takes 2-5s for model loading.
+      // Pre-warm the default chat model into GPU VRAM so the first user
+      // request gets instant TTFT. Without this, the first request after a
+      // restart takes 2-5s for model loading. Resolve the model id from the
+      // SOT (admin.model_role_assignments) rather than hardcoding it — see
+      // docs/rules/no-hardcoded-models.md. Skip the warm-up entirely if no
+      // chat model is configured yet.
       try {
-        const warmStart = Date.now();
-        await providerManager.createCompletion({
-          model: 'gpt-oss',
-          messages: [{ role: 'user', content: 'hi' }],
-          max_tokens: 1,
-          stream: false,
-        });
-        loggers.services.info({ warmupMs: Date.now() - warmStart }, '🔥 Ollama model pre-warmed — first user request will be fast');
+        const { ModelConfigurationService } = await import('./services/ModelConfigurationService.js');
+        const warmupModel = await ModelConfigurationService.getDefaultChatModel()
+          .catch(() => process.env.DEFAULT_MODEL || '');
+        if (warmupModel) {
+          const warmStart = Date.now();
+          await providerManager.createCompletion({
+            model: warmupModel,
+            messages: [{ role: 'user', content: 'hi' }],
+            max_tokens: 1,
+            stream: false,
+          });
+          loggers.services.info({ warmupMs: Date.now() - warmStart, warmupModel }, '🔥 Default chat model pre-warmed — first user request will be fast');
+        } else {
+          loggers.services.info('⏭️ Model pre-warm skipped — no default chat model configured yet');
+        }
       } catch (warmErr: any) {
-        loggers.services.warn({ error: warmErr?.message }, '⚠️ Ollama warm-up failed (non-fatal) — first request will be slower');
+        loggers.services.warn({ error: warmErr?.message }, '⚠️ Model warm-up failed (non-fatal) — first request will be slower');
       }
 
       // Schedule periodic feedback ingestion for self-improving routing

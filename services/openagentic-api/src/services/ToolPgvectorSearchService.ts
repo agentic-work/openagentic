@@ -13,7 +13,7 @@ import { PrismaClient } from '@prisma/client';
 import { Logger } from 'pino';
 import { PrismaVectorClient, getPrismaVectorClient } from './database/PrismaVectorClient.js';
 import { UniversalEmbeddingService } from './UniversalEmbeddingService.js';
-import { OpenAIFunction } from './ToolSemanticCacheService.js';
+import { OpenAIFunction, detectCloudProvidersInText } from './ToolSemanticCacheService.js';
 
 // Cloud provider detection for score boosting
 interface CloudConfig {
@@ -477,36 +477,10 @@ export class ToolPgvectorSearchService {
    * Detect cloud providers mentioned in the query for score boosting
    */
   private detectCloudProviders(query: string): Map<string, CloudConfig> {
-    const lowerQuery = query.toLowerCase();
-    const detectedClouds = new Map<string, CloudConfig>();
-
-    const awsKeywords = ['aws', 'amazon', 'ec2', 'iam', 's3', 'lambda', 'dynamodb', 'rds', 'cloudwatch',
-      'cloudformation', 'sqs', 'sns', 'eks', 'ecs', 'fargate', 'bedrock', 'sagemaker',
-      'route53', 'vpc', 'elastic', 'kinesis', 'redshift', 'aurora', 'secretsmanager'];
-    if (awsKeywords.some(kw => lowerQuery.includes(kw))) {
-      detectedClouds.set('aws', { serverPatterns: ['aws', 'amazon'], boost: 2.0 });
-    }
-
-    const azureKeywords = ['azure', 'microsoft', 'subscription', 'resource group', 'aks', 'acr', 'cosmos',
-      'keyvault', 'app service', 'function app', 'blob', 'storage account', 'sql server',
-      'entra', 'active directory', 'aad', 'rbac', 'arm', 'bicep'];
-    if (azureKeywords.some(kw => lowerQuery.includes(kw))) {
-      detectedClouds.set('azure', { serverPatterns: ['azure', 'microsoft'], boost: 2.0 });
-    }
-
-    const gcpKeywords = ['gcp', 'google cloud', 'gke', 'bigquery', 'cloud run', 'cloud function',
-      'firestore', 'pubsub', 'vertex', 'spanner', 'dataflow', 'gcs'];
-    if (gcpKeywords.some(kw => lowerQuery.includes(kw))) {
-      detectedClouds.set('gcp', { serverPatterns: ['google', 'gcp', 'vertex'], boost: 2.0 });
-    }
-
-    const k8sKeywords = ['kubernetes', 'k8s', 'kubectl', 'helm', 'pod', 'deployment', 'service', 'ingress',
-      'docker', 'container', 'orchestration'];
-    if (k8sKeywords.some(kw => lowerQuery.includes(kw))) {
-      detectedClouds.set('kubernetes', { serverPatterns: ['kubernetes', 'k8s', 'aks', 'eks', 'gke'], boost: 1.5 });
-    }
-
-    return detectedClouds;
+    // Delegate to the single shared cloud-detection owner so the keyword/boost
+    // table lives in exactly one place (ToolSemanticCacheService) and the two
+    // semantic-search paths (Milvus + pgvector) can never drift.
+    return detectCloudProvidersInText(query);
   }
 
   /**

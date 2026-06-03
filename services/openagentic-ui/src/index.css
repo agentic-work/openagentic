@@ -226,21 +226,14 @@
   --leading-normal: 1.6;    /* Body text — more breathing room */
   --leading-relaxed: 1.7;   /* Long-form reading — Gemini uses 1.75 */
 
-  /* Font weights */
-  --font-normal: 400;
-  --font-medium: 500;
-  --font-semibold: 600;
+  /* Font weight / size --font-* tokens removed: they had ZERO consumers and
+     collided with theme.css's --font-* family namespace (the SOLE --font-* SOT,
+     enforced by the no-hardcoded-theme-values single-definition guard). */
 
   /* Letter spacing */
   --tracking-tight: -0.02em;   /* Headings */
   --tracking-normal: 0;        /* Body — no compression, let text breathe */
   --tracking-wide: 0.01em;     /* All caps, labels */
-
-  /* Legacy size aliases for compatibility */
-  --font-code-size: var(--text-sm);
-  --font-code-line-height: var(--leading-normal);
-  --font-admin-size: var(--text-sm);
-  --font-admin-line-height: var(--leading-normal);
 
   /* COLOR / surface / text / accent / cm / callout / status / shadow tokens
      formerly defined here are now in src/styles/theme.css (the one SOT) and its
@@ -278,11 +271,13 @@
   --space-12: 48px;
 
   /* ==========================================================================
-     RADIUS - Only two sizes needed
+     RADIUS — moved to src/styles/theme.css (the SOLE --radius-* SOT).
+     This unlayered :root copy used to shadow theme.css's brutalist scale
+     (it loads after theme.css's @layer theme), forcing --radius-sm to 6px
+     instead of the intended 4px. Removed so theme.css is the one definition
+     site (the no-hardcoded-theme-values guard now enforces single-definition
+     for --radius-* / --shadow-* / --font-*).
      ========================================================================== */
-  --radius-sm: 6px;             /* Buttons, inputs, small cards */
-  --radius-md: 12px;            /* Cards, modals */
-  --radius-full: 9999px;        /* Pills, avatars */
 
   /* ==========================================================================
      CODE-MODE DEFAULTS + THINKING-BLOCK + LIGHT-THEME color palette:

@@ -20,45 +20,20 @@
  * wire field — the canonical pattern is to inline the examples in the
  * description. This test pins that the Bedrock serializer inlines them.
  *
- * Test strategy: invoke the public buildBedrockRequest path indirectly
- * by reading the in-memory transformation. AWSBedrockProvider's tool-
- * serialization is inline in `createCompletion`, so we test it by
- * calling a thin reproduction helper instead of mocking the entire
- * SDK call. The fix lives at AWSBedrockProvider.ts:1812-1840.
+ * Test strategy: exercise the REAL provider serializer. The tool-def
+ * builder used by `AWSBedrockProvider.convertToBedrock` was extracted into
+ * `helpers/bedrockToolExamples.ts` (single source of truth) so the provider
+ * map and this test invoke the SAME code path — no mirror copy that could
+ * drift. `buildBedrockToolDef` is exactly what the provider calls for each
+ * tool entry; the schema-passthrough default mirrors the provider's identity
+ * case (the provider wires `flattenTopLevelUnions` as the schema transform).
  */
 import { describe, it, expect } from 'vitest';
+import { buildBedrockToolDef } from '../helpers/bedrockToolExamples.js';
 
-/**
- * Mirror of the fix logic at AWSBedrockProvider.ts:1812-1840 so we
- * can pin it without booting the full provider. If the prod code
- * changes, this test will start passing-without-prod-fix only if
- * the prod code stays in sync — pinned via the source-grep at
- * the bottom of this file.
- */
+/** Thin alias so the assertions read against the real provider helper. */
 function buildToolDef(tool: any): any {
-  const baseDescription = tool.function?.description || tool.description || '';
-  const examples = tool.function?.input_examples || tool.input_examples;
-  let description = baseDescription;
-  if (Array.isArray(examples) && examples.length > 0) {
-    const lines = ['', '', '## Example inputs (use these shapes verbatim — do not invent new shapes):'];
-    for (const ex of examples) {
-      let body: string;
-      try {
-        body = JSON.stringify(ex, null, 2);
-      } catch {
-        continue;
-      }
-      lines.push('```json');
-      lines.push(body);
-      lines.push('```');
-    }
-    description = baseDescription + lines.join('\n');
-  }
-  return {
-    name: tool.function?.name || tool.name,
-    description,
-    input_schema: tool.function?.parameters || tool.input_schema || {},
-  };
+  return buildBedrockToolDef(tool);
 }
 
 describe('#1112 — AWSBedrockProvider inlines tool.input_examples into description', () => {

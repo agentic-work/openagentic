@@ -632,7 +632,24 @@ PRESERVE = {
     'services/openagentic-ui/src/features/about/AboutModal.tsx',
     'services/openagentic-ui/src/features/docs/DocsViewer.tsx',
     'services/openagentic-ui/src/features/workflows/components/WorkflowsPage.tsx',
+
+    # Tool-dispatch + the LLM provider interface — dispatchTool.ts routes the
+    # model's tool call through the approval/audit seam (and carries the OSS
+    # auto-resolve-unknown-tool fix); ILLMProvider.ts already preserved above.
+    'services/openagentic-api/src/routes/chat/pipeline/chat/dispatchTool.ts',
 }
+
+# Directory PREFIXES whose every (current + future) file must survive a sync.
+# Exact membership in PRESERVE can't cover a directory of OSS-only code that may
+# grow new files, so these are matched by `mapped.startswith(prefix)`.
+#   approval/ — the mutating-tool approval gate + tool classifier + registry.
+#   audit/    — the append-only auth/activity audit aggregation.
+# Both are the launch-headline trust seam (approval + immutable audit) and have
+# NO enterprise upstream equivalent; a sync must never write into them.
+PRESERVE_PREFIXES = (
+    'services/openagentic-api/src/services/approval/',
+    'services/openagentic-api/src/services/audit/',
+)
 
 # Content-level brand rewrite
 CONTENT_RENAMES = [
@@ -670,9 +687,13 @@ MCP_CAMEL = re.compile(r'openagentic([A-Z][A-Za-z0-9]*)Mcp')
 #   (?<!open/Open/OPEN) — never re-prefix something already openagentic-…
 #   agentic([-_])   — literal prefix followed by an identifier separator only
 #                     (hyphen/underscore — NOT a space, so prose is untouched)
+#   (?!work(?![a-z0-9])) — CRITICAL: never rewrite the org/scope `agentic-work`
+#                     (e.g. `@agentic-work/llm-sdk`, `ghcr.io/agentic-work`).
+#                     `work` must be a COMPLETE token here, so `agentic-workflows`
+#                     / `agentic-worker` still fold to openagentic-… correctly.
 #   (?=[a-z0-9])    — separator must lead into an identifier token
 AGENTIC_PREFIX = re.compile(
-    r'(?<![A-Za-z0-9])(?<!open)(?<!Open)(?<!OPEN)agentic([-_])(?=[a-z0-9])'
+    r'(?<![A-Za-z0-9])(?<!open)(?<!Open)(?<!OPEN)agentic([-_])(?!work(?![a-z0-9]))(?=[a-z0-9])'
 )
 
 def map_path(path):
@@ -727,7 +748,9 @@ def main():
             if should_skip(rel_up) or should_skip(mapped):
                 stats['filtered'] += 1
                 continue
-            if mapped in PRESERVE:
+            if mapped in PRESERVE or any(
+                mapped.startswith(p) for p in PRESERVE_PREFIXES
+            ):
                 preserved_seen.append(mapped)
                 stats['preserved'] += 1
                 continue

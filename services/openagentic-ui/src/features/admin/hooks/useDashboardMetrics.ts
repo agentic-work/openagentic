@@ -34,11 +34,6 @@ export interface DashboardSummary {
   totalEmbeddings: number
   contextWindowAvgUtil: number
 
-  totalCodeTokens: number
-  totalCodeCost: number
-  totalCodeMessages: number
-  totalCodeSessions: number
-
   totalWorkflowExecutions: number
   totalWorkflows: number
   activeWorkflows: number
@@ -65,11 +60,9 @@ export interface DashboardTimeSeries {
   images: TimeSeriesPoint[]
   embeddings: TimeSeriesPoint[]
   contextUtilization: TimeSeriesPoint[]
-  codeTokenUsage: TimeSeriesPoint[]
   workflowExecutions: TimeSeriesPoint[]
   agentExecutions: TimeSeriesPoint[]
   apiRequests: TimeSeriesPoint[]
-  codeSessions: TimeSeriesPoint[]
 }
 
 export interface ModelUsageRow {
@@ -191,10 +184,6 @@ export function useDashboardMetrics(
           totalMcpCalls: 0,
           totalEmbeddings: 0,
           contextWindowAvgUtil: 0,
-          totalCodeTokens: 0,
-          totalCodeCost: 0,
-          totalCodeMessages: 0,
-          totalCodeSessions: 0,
           totalWorkflowExecutions: q.data.flowRuns,
           totalWorkflows: q.data.workflows,
           activeWorkflows: 0,
@@ -213,11 +202,9 @@ export function useDashboardMetrics(
           images: [],
           embeddings: [],
           contextUtilization: [],
-          codeTokenUsage: [],
           workflowExecutions: [],
           agentExecutions: [],
           apiRequests: [],
-          codeSessions: [],
         },
         modelUsage: [],
         costByModel: [],
@@ -933,156 +920,6 @@ export function usePromHealth() {
   return useAdminQuery<PromHealthResponse>(
     ['prom-health'],
     '/api/admin/prom/health',
-    { staleTime: 30_000, refetchInterval: 60_000 },
-  )
-}
-
-export interface AgenticodeApiKeyRow {
-  id: string
-  prefix: string | null
-  owner: string
-  ownerName: string | null
-  name: string
-  lastUsed: string | null
-  createdAt: string
-  expiresAt: string | null
-  rateLimitTier: string | null
-}
-
-export interface AgenticodeApiKeysResponse {
-  success: boolean
-  keys: AgenticodeApiKeyRow[]
-  count: number
-}
-
-export function useAgenticodeApiKeys() {
-  return useAdminQuery<AgenticodeApiKeysResponse>(
-    ['agenticode-api-keys'],
-    '/api/admin/agenticode/api-keys',
-    { staleTime: 60_000, refetchInterval: 120_000 },
-  )
-}
-
-// ============================================================
-// Tool Synthesis (Synth) — admin hub data
-// ============================================================
-//
-// Three v2 leaves consolidate into one v3 hub:
-//   - synth-management → /api/admin/synth/config        (read)
-//   - synth-approvals  → /api/admin/synth/approvals     (read)
-//   - synth-stats      → /api/admin/synth/stats|history (read)
-//
-// Read-only on the v3 surface. Mutations (approve / reject / save
-// config) are stubbed pending wire-up.
-
-export interface SynthConfig {
-  enabled?: boolean
-  visibleToLLM?: boolean
-  provider?: string
-  model?: string
-  baseUrl?: string
-  synthesisTemperature?: number
-  maxSynthesisTokens?: number
-  timeoutSeconds?: number
-  executorUrl?: string
-  maxMemoryMb?: number
-  maxConcurrentExecutions?: number
-  maxDailySynthesesPerUser?: number
-  defaultUserDailyBudgetUsd?: number
-  defaultGroupDailyBudgetUsd?: number
-  autoApproveLowRisk?: boolean
-  autoApproveMediumRisk?: boolean
-  approvalTimeoutSeconds?: number
-  approvalTimeoutAction?: 'reject' | 'approve' | string
-  allowedCapabilities?: string[]
-  blockedCapabilities?: string[]
-  adminOnlyCapabilities?: string[]
-  useSemanticToolSearch?: boolean
-  semanticSearchTopK?: number
-  authMode?: string
-  credentialSource?: string
-  sessionBasedOAuth?: boolean
-}
-
-export interface SynthConfigResponse {
-  config?: SynthConfig
-}
-
-export function useSynthConfig() {
-  return useAdminQuery<SynthConfigResponse>(
-    ['synth', 'config'],
-    '/api/admin/synth/config',
-    { staleTime: 30_000, refetchInterval: 60_000 },
-  )
-}
-
-export interface SynthApprovalRow {
-  id: string
-  toolId: string
-  userId: string
-  userEmail?: string
-  userName?: string
-  intent: string
-  riskLevel: 'low' | 'medium' | 'high' | 'critical' | string
-  code: string
-  status?: string
-  expiresAt?: string
-  createdAt: string
-}
-
-export interface SynthApprovalsResponse {
-  approvals?: SynthApprovalRow[]
-}
-
-export function useSynthApprovals() {
-  return useAdminQuery<SynthApprovalsResponse>(
-    ['synth', 'approvals'],
-    '/api/admin/synth/approvals',
-    { staleTime: 10_000, refetchInterval: 15_000 },
-  )
-}
-
-export interface SynthStatsRow {
-  totalSyntheses: number
-  successfulSyntheses: number
-  failedSyntheses: number
-  totalCostUsd: number
-  avgExecutionMs: number
-  riskBreakdown?: Record<string, number>
-  topCapabilities?: Array<{ name: string; count: number }>
-  dailyUsage?: Array<{ date: string; count: number; cost: number }>
-}
-export interface SynthStatsResponse {
-  stats?: SynthStatsRow
-}
-
-export function useSynthStats(days = 7) {
-  return useAdminQuery<SynthStatsResponse>(
-    ['synth', 'stats', String(days)],
-    `/api/admin/synth/stats?days=${days}`,
-    { staleTime: 60_000, refetchInterval: 60_000 },
-  )
-}
-
-export interface SynthHistoryRow {
-  toolId: string
-  userId: string
-  userEmail?: string
-  intent: string
-  success: boolean
-  riskLevel: string
-  executionTimeMs: number
-  costUsd: number
-  createdAt: string
-}
-export interface SynthHistoryResponse {
-  history?: SynthHistoryRow[]
-}
-
-export function useSynthHistory(limit = 50) {
-  return useAdminQuery<SynthHistoryResponse>(
-    ['synth', 'history', String(limit)],
-    `/api/admin/synth/history?limit=${limit}`,
     { staleTime: 30_000, refetchInterval: 60_000 },
   )
 }

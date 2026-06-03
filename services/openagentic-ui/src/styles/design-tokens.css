@@ -16,28 +16,18 @@
    ========================================================================== */
 
 :root {
-  /* ── Shape scale ──────────────────────────────────────────────────────── */
-  /* Buttons */
-  --radius-btn-pill: 9999px;       /* Primary buttons, tags, send button */
-  --radius-btn-soft: 12px;         /* Secondary + icon buttons, toolbar */
-
-  /* Inputs */
-  --radius-input: 28px;            /* Chat composer */
-  --radius-input-sm: 16px;         /* Text inputs, selects, textareas */
-
-  /* Containers */
-  --radius-card: 20px;             /* Cards, list tiles */
-  --radius-panel: 24px;            /* Modals, side panels, dialogs */
-  --radius-toast: 14px;            /* Toast notifications */
-  --radius-message: 20px;          /* Chat message bubbles */
-  --radius-table: 16px;            /* Outer table frame */
-  --radius-popover: 16px;          /* Dropdowns, popovers */
-  --radius-checkbox: 6px;          /* Checkbox (radio stays --radius-btn-pill) */
-
-  /* Legacy aliases (kept for compatibility during migration) */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-full: 9999px;
+  /* ── Shape scale ──────────────────────────────────────────────────────────
+     The entire --radius-* scale now lives ONCE in src/styles/theme.css (the
+     SOLE SOT — the no-hardcoded-theme-values guard enforces single-definition
+     for --radius-* / --shadow-* / --font-*). The duplicate :root copy that
+     used to live here unintentionally shadowed theme.css's brutalist values
+     (card/input/sm/full) because this file is imported later AND unlayered,
+     while theme.css's @theme emits into @layer theme — so the soft 20px/28px
+     copies won the cascade and ChipsRow/ToolsIndexedPill/.sharp rendered round
+     instead of sharp. Removing it here makes theme.css the single radius
+     definition site; the M3 container/control sizes (panel/toast/table/…)
+     moved there verbatim, so tailwind rounded-* utilities + direct var() reads
+     resolve unchanged. */
 
   /* --primary-rgb (focus-ring alpha driver), the --surface-0..4 tonal scale,
      and the --shadow-soft-* scale are now defined ONCE in src/styles/theme.css

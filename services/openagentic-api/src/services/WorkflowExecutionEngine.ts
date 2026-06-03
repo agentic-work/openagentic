@@ -180,7 +180,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
   private outgoingEdges: Map<string, WorkflowEdge[]>;
   private mcpProxyUrl: string;
   private apiUrl: string;
-  private openagenticManagerUrl: string;
   private nodeRetryState: Map<string, number>; // Track retry counts per node
   private abortController: AbortController;
   private pendingNodeOutputs: Map<string, any>; // Accumulated node outputs for batch write
@@ -212,7 +211,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
     // Get service URLs from environment
     this.mcpProxyUrl = process.env.MCP_PROXY_URL || 'http://openagentic-mcp-proxy:8080';
     this.apiUrl = process.env.API_URL || 'http://localhost:8000';
-    this.openagenticManagerUrl = process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-code-manager:3050';
 
     // Initialize retry state tracking
     this.nodeRetryState = new Map();
@@ -423,7 +421,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
           if (content.length < 100 || content.length > 10000) continue;
 
           // Determine importance based on node type
-          const importance = ['llm_completion', 'openagentic_llm', 'code', 'openagentic'].includes(node.type)
+          const importance = ['llm_completion', 'openagentic_llm', 'code'].includes(node.type)
             ? 0.7  // AI-generated content is high value
             : ['mcp_tool', 'http_request'].includes(node.type)
               ? 0.6  // Tool results are medium-high
@@ -723,8 +721,11 @@ export class WorkflowExecutionEngine extends EventEmitter {
           }
         }
 
-        // Execute downstream nodes (unless condition which handles its own routing)
-        if (node.type !== 'condition') {
+        // Execute downstream nodes — UNLESS the node owns its own routing.
+        // condition routes via ctx.routeBranches; retry_with_backoff drives +
+        // re-runs its downstream via ctx.runSubStep. Re-firing those outgoing
+        // edges here would double-execute the guarded subgraph.
+        if (node.type !== 'condition' && node.type !== 'retry_with_backoff') {
           const outgoing = this.outgoingEdges.get(nodeId) || [];
           if (outgoing.length > 1) {
             // Fan-out: execute parallel branches concurrently
@@ -916,9 +917,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
         return this.executeVertexNode(node, input);
       case 'azure_ai':
         return this.executeAzureAINode(node, input);
-      // (openagentic — now schema-driven via shared nodes/openagentic/, see
-      //  registry above. Legacy executeOpenagenticNode is dead code retained
-      //  for now (Task #46))
       // Integration nodes — notifications, ticketing, messaging
       case 'slack_message':
         return this.executeSlackNode(node, input);
@@ -1071,6 +1069,28 @@ export class WorkflowExecutionEngine extends EventEmitter {
         return results;
       },
 
+      // retry_with_backoff: execute the node's outgoing subgraph exactly once
+      // and surface the FIRST rejection. Mirrors the workflows-service impl —
+      // sequential over the happy-path edges, no allSettled, so a downstream
+      // failure rejects this hook and the executor's retry loop catches it to
+      // back off. Returns the terminal subgraph result.
+      runSubStep: async (fromNodeId: string, branchInput: unknown) => {
+        const outgoing = (this.outgoingEdges.get(fromNodeId) || []).filter(
+          (e) => e.sourceHandle !== 'error' && e.label !== 'error',
+        );
+        if (outgoing.length === 0) {
+          throw new Error(
+            `retry_with_backoff[${fromNodeId}]: no downstream step to run — ` +
+              'connect a node to its output so there is an operation to retry.',
+          );
+        }
+        let last: unknown;
+        for (const edge of outgoing) {
+          last = await this.executeNode(edge.target, branchInput);
+        }
+        return last;
+      },
+
       // trigger node hook — publish first-event payload onto the execution
       // context so {{trigger.body.*}} resolves for downstream nodes.
       setTriggerData: (triggerData) => {
@@ -1110,11 +1130,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
         }
         return result.value;
       },
-
-      // Openagentic-manager URL — forwarded onto ctx so the openagentic
-      // executor can reach the spawn-isolated-session endpoint without
-      // re-reading process.env on every node execution.
-      openagenticManagerUrl: this.openagenticManagerUrl,
 
       // sub_workflow hook — the api copy never historically supported the
       // sub_workflow legacy switch case, but the schema-driven plugin now
@@ -3328,53 +3343,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
       usage: response.data?.usage,
       provider: 'azure_openai'
     };
-  }
-
-  /**
-   * Execute an Openagentic node -- runs code in a managed execution pod via the code manager
-   */
-  private async executeOpenagenticNode(node: WorkflowNode, input: any): Promise<any> {
-    const { language, code, timeout: execTimeout } = node.data;
-    const resolvedCode = this.interpolateTemplate(code || '', input);
-
-    logger.info({
-      nodeId: node.id,
-      language: language || 'python',
-      codeLength: resolvedCode.length
-    }, '[WorkflowEngine] Executing Openagentic node');
-
-    try {
-      const response = await abortableAxiosPost(
-        this,
-        `${this.openagenticManagerUrl}/api/execute`,
-        {
-          language: language || 'python',
-          code: resolvedCode,
-          timeout: execTimeout || 30000,
-          workflowExecutionId: this.context.executionId
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': this.context.authToken || '',
-            'X-Internal-Service': process.env.INTERNAL_SERVICE_SECRET || ''
-          },
-          timeout: (execTimeout || 30000) + 10000
-        }
-      );
-
-      return {
-        stdout: response.data?.stdout || '',
-        stderr: response.data?.stderr || '',
-        exitCode: response.data?.exitCode ?? 0,
-        language: language || 'python'
-      };
-    } catch (error: any) {
-      if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-        throw new Error(`Openagentic manager is not reachable at ${this.openagenticManagerUrl}`);
-      }
-      throw new Error(`Openagentic execution failed: ${error.response?.data?.error || error.message}`);
-    }
   }
 
   /**

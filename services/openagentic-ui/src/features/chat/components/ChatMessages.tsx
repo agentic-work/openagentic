@@ -422,7 +422,7 @@ export default function ChatMessages({
   // REMOVED: agentTrees subscription + activeTreeEntries memo.
   // These existed to feed the inline AgentExecutionTree render, which has
   // been deleted to fix the "double agents" duplicate-render bug. The store
-  // is still populated by useSSEChat from legacy SSE events because
+  // is still populated by useChatStream from legacy SSE events because
   // AgenticActivityStream.tsx peeks at it for agent task descriptions.
 
   /**
@@ -621,7 +621,7 @@ export default function ChatMessages({
                  *
                  * The store is still used by AgenticActivityStream for task
                  * description lookups (line 2081 of that file), so we keep
-                 * the legacy event handlers in useSSEChat — we just stop
+                 * the legacy event handlers in useChatStream — we just stop
                  * rendering them as a separate tree here.
                  */}
                 {/*

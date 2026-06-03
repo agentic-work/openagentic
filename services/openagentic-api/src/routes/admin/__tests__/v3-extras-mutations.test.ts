@@ -371,6 +371,18 @@ describe('Defence-in-depth admin guard', () => {
     expect(res.statusCode).toBe(403);
     await app.close();
   });
+
+  it('fails closed: 401 when no user is attached (no upstream auth ran)', async () => {
+    // SECURITY: mutating routes must NOT fail open for an unauthenticated caller.
+    const app = await buildApp({ noUserAttached: true });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/admin/llm-providers/registry/refresh-all',
+      payload: {},
+    });
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
 });
 
 // ===========================================================================

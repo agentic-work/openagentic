@@ -566,4 +566,14 @@ describe('Defence-in-depth admin guard', () => {
     expect(res.statusCode).toBe(403);
     await app.close();
   });
+
+  it('fails closed: 401 when no user is attached (no upstream auth ran)', async () => {
+    // SECURITY: the guard must NOT fail open for an unauthenticated caller.
+    // If these routes are ever mounted without the parent adminMiddleware,
+    // a missing `request.user` must be rejected (401), not silently allowed.
+    const app = await buildApp({ noUserAttached: true });
+    const res = await app.inject({ method: 'GET', url: '/api/admin/router/decisions' });
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
 });

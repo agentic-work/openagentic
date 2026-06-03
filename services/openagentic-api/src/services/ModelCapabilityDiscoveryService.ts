@@ -24,6 +24,7 @@ import OpenAI from 'openai';
 import { ExtendedCapabilitiesService } from './ModelCapabilitiesService.js';
 import { prisma } from '../utils/prisma.js';
 import { getModelCapabilityRegistry } from './ModelCapabilityRegistry.js';
+import { escapeMilvusFilterValue } from '../utils/milvusFilter.js';
 
 // Discovery mode types
 export type DiscoveryMode = 'lazy' | 'eager' | 'disabled';
@@ -896,7 +897,7 @@ export class ModelCapabilityDiscoveryService {
     try {
       const results = await this.milvusClient.query({
         collection_name: this.config.milvus.collectionName || 'model_capabilities',
-        filter: `model_id == "${modelId}"`,
+        filter: `model_id == "${escapeMilvusFilterValue(modelId)}"`,
         output_fields: ['model_id', 'provider', 'capabilities', 'performance', 'cost', 'metadata'],
         limit: 1
       });

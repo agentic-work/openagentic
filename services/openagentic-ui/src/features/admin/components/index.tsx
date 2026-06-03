@@ -44,9 +44,9 @@ export {
 } from './LLM';
 
 // MCP - Model Context Protocol management
+// MCPManagementView + MCPAccessControlView retired 2026-06-02 — v3 MCPFleetV3 is
+// the single MCP-management + IAM surface (see components/MCP/index.tsx).
 export {
-  MCPManagementView,
-  MCPAccessControlView,
   MCPToolsView,
   MCPInspectorView,
   MCPCallLogsView

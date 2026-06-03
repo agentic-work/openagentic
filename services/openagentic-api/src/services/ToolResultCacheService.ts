@@ -27,6 +27,7 @@ import { UniversalEmbeddingService } from './UniversalEmbeddingService.js';
 import { checkMCPAccess } from './MCPAccessControlService.js';
 import crypto from 'crypto';
 import prisma from '../utils/prisma.js';
+import { escapeMilvusFilterValue } from '../utils/milvusFilter.js';
 
 // =================================================================
 // Configuration
@@ -781,11 +782,11 @@ export class ToolResultCacheService {
 
       // 3. MILVUS L3: Cross-user archive search (historical, RBAC)
       // Build filter - enforce user isolation: own results OR shared results with matching resource scope
-      let filter = `tenant_id == "${tenantId}" && tool_name == "${toolName}" && expires_at > ${now}`;
+      let filter = `tenant_id == "${escapeMilvusFilterValue(tenantId)}" && tool_name == "${escapeMilvusFilterValue(toolName)}" && expires_at > ${now}`;
 
       if (resourceScope) {
         // CROSS-USER SEARCH: User's own results OR shared results with matching resource scope
-        filter += ` && (original_user_id == "${userId || ''}" || (is_shared == true && resource_scope == "${resourceScope}"))`;
+        filter += ` && (original_user_id == "${escapeMilvusFilterValue(userId || '')}" || (is_shared == true && resource_scope == "${escapeMilvusFilterValue(resourceScope)}"))`;
         this.logger.debug({
           resourceScope,
           toolName,
@@ -793,7 +794,7 @@ export class ToolResultCacheService {
         }, '[SEMANTIC-CACHE] Cross-user cache search with resource scope + user isolation');
       } else {
         // NO resource scope: strict user isolation (personal results only)
-        filter += ` && original_user_id == "${userId || ''}"`;
+        filter += ` && original_user_id == "${escapeMilvusFilterValue(userId || '')}"`;
       }
 
       // Search with HNSW index for fast approximate nearest neighbor search

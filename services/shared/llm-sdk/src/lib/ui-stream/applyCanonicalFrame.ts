@@ -296,6 +296,9 @@ export function applyCanonicalFrame(state: FrameState, frame: WireFrame): FrameS
     case 'app_render':
       return foldAppRenderFrame(state, frame, ts);
 
+    case 'image_render':
+      return foldImageRenderFrame(state, frame, ts);
+
     case 'artifact_render':
       return foldArtifactRenderFrame(state, frame, ts);
 
@@ -471,6 +474,45 @@ function foldAppRenderFrame(state: FrameState, frame: WireFrame, ts: number): Fr
     timestamp: ts,
     startTime: ts,
   };
+  if (groupId !== undefined) block.groupId = groupId;
+  return upsertArtifactBlock(state, block, groupId);
+}
+
+type ImageFrame = {
+  artifact_id?: string;
+  image_url?: string;
+  prompt?: string;
+  model?: string;
+  provider?: string;
+  format?: string;
+  alt?: string;
+  group_id?: string;
+};
+
+function foldImageRenderFrame(state: FrameState, frame: WireFrame, ts: number): FrameState {
+  const f = frame as unknown as ImageFrame;
+  const artifactId = typeof f.artifact_id === 'string' ? f.artifact_id : '';
+  const imageUrl = typeof f.image_url === 'string' ? f.image_url : '';
+  // Defensive: drop frames with no id/url OR an external host. The
+  // generate_image tool already refuses external URLs server-side; this is
+  // belt-and-suspenders so a malformed wire frame never renders a fabricated
+  // off-platform image.
+  if (!artifactId || !imageUrl || /^https?:\/\//i.test(imageUrl)) return state;
+  const groupId = typeof f.group_id === 'string' ? f.group_id : undefined;
+  const block: UIContentBlock = {
+    id: artifactId,
+    index: state.nextBlockIndex,
+    type: 'image_render',
+    content: '',
+    imageUrl,
+    isComplete: true,
+    title: typeof f.alt === 'string' ? f.alt : (typeof f.prompt === 'string' ? f.prompt : 'Generated image'),
+    timestamp: ts,
+    startTime: ts,
+  };
+  if (typeof f.prompt === 'string') block.prompt = f.prompt;
+  if (typeof f.model === 'string') block.model = f.model;
+  if (typeof f.provider === 'string') block.provider = f.provider;
   if (groupId !== undefined) block.groupId = groupId;
   return upsertArtifactBlock(state, block, groupId);
 }

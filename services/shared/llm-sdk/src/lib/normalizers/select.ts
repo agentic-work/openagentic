@@ -20,6 +20,7 @@ import {
   createAnthropicShapeToOpenagenticNormalizer,
   createBedrockToOpenagenticNormalizer,
   createFoundryAnthropicToOpenagenticNormalizer,
+  createGemmaToOpenagenticNormalizer,
   createOllamaToOpenagenticNormalizer,
   createOpenAIToOpenagenticNormalizer,
   createVertexAnthropicToOpenagenticNormalizer,
@@ -39,6 +40,7 @@ import {
  * - `openai`           — OpenAI Chat Completions (Azure OpenAI, OpenAI direct)
  * - `gemini`           — Vertex AI Gemini streaming
  * - `aif-responses`    — Azure AI Foundry Responses API (`/v1/responses`)
+ * - `gemma`            — Gemma open-model text/tool-call stream (```tool_calls fenced)
  */
 export type CanonicalStreamFormat =
   | 'anthropic'
@@ -48,7 +50,8 @@ export type CanonicalStreamFormat =
   | 'ollama'
   | 'openai'
   | 'gemini'
-  | 'aif-responses';
+  | 'aif-responses'
+  | 'gemma';
 
 export interface CanonicalNormalizerOptions {
   /** Stable id for the assistant message — used as `message.id` in the canonical
@@ -86,6 +89,8 @@ export function selectCanonicalNormalizer(
       return createVertexGeminiToOpenagenticNormalizer(opts);
     case 'aif-responses':
       return createAIFResponsesToOpenagenticNormalizer(opts);
+    case 'gemma':
+      return createGemmaToOpenagenticNormalizer(opts);
     default: {
       const _exhaustive: never = format;
       throw new Error(

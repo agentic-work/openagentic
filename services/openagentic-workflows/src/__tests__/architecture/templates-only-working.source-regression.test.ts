@@ -251,6 +251,32 @@ const KEPT_SLUGS: ReadonlyArray<string> = [
   'incident-triage',
   'cost-anomaly',
   'failed-deploy-rca',
+  // Slug 5 (2026-06-02, upstream flows-template sync — RAG quality chain):
+  // `rag-knowledge-qa` is the grounded, cited Q&A flow ported from the
+  // upstream templates gallery. Unlike the AIOps slugs above it has NO
+  // external-MCP dependency — it runs entirely on the core platform data
+  // layer (Milvus shared_knowledge collection + the Smart-Router LLM), the
+  // same round-trip `research-and-publish` already exercises live. Every
+  // node type it uses is registered in the OSS workflow-engine registry
+  // (services/shared/workflow-engine/src/nodes/): multi_query, embedding,
+  // knowledge_search, rerank, grounding_check, llm_completion, guardrails,
+  // webhook_response. The deterministic quality nodes (multi_query / rerank /
+  // grounding_check are rule-based, no model call) make its per-node output
+  // reproducible.
+  //
+  // Port adaptations (upstream → OSS executor contracts):
+  //   - category `enterprise` → `rag` (OSS ships no enterprise tier).
+  //   - knowledge_search wraps its output as { result: { resultCount,
+  //     results } }, so the report footer reads {{steps.search.result.
+  //     resultCount}} (upstream's flat {{steps.search.resultCount}} would
+  //     have rendered empty against the OSS executor) and the rerank node
+  //     reads chunksPath:"result.results" (upstream relied on rerank's
+  //     auto-detect fallback).
+  //   - multi_query / rerank / grounding_check return FLAT objects in OSS,
+  //     so {{steps.expand.count}}, {{steps.rerank.chunks}}, {{steps.rerank.
+  //     outputCount}}, {{steps.ground.violationSummary}} are correct as-is.
+  //   - brand-normalized the upstream copy + default inputs to OpenAgentic.
+  'rag-knowledge-qa',
 ] as const;
 
 describe('templates gallery only contains live-verified templates', () => {

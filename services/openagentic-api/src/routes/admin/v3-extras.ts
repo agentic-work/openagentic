@@ -1100,14 +1100,18 @@ const adminV3ExtrasRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Defence-in-depth: if mounted without the parent adminMiddleware (e.g. tests),
-  // a non-admin user calling any of these returns 403. Production prefix in
-  // admin.plugin.ts adds adminMiddleware to the parent register scope.
-  // Use preHandler (not onRequest) so test rigs that attach `request.user`
-  // in their own preHandler are visible to this guard.
+  // an unauthenticated caller returns 401 and a non-admin user returns 403.
+  // Production prefix in admin.plugin.ts adds adminMiddleware to the parent
+  // register scope. Use preHandler (not onRequest) so test rigs that attach
+  // `request.user` in their own preHandler are visible to this guard.
+  // SECURITY: fail CLOSED — a missing `request.user` is rejected (401), never
+  // silently allowed through.
   fastify.addHook('preHandler', async (request, reply): Promise<void> => {
-    // Skip for unauthenticated test rigs that explicitly want to see the 401.
     const user = (request as any).user;
-    if (!user) return;
+    if (!user) {
+      reply.code(401).send({ success: false, error: 'Authentication required' });
+      return;
+    }
     if (!isAdminUser(request)) {
       reply.code(403).send({ success: false, error: 'Admin access required' });
       return;

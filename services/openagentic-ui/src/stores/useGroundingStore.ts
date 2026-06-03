@@ -21,6 +21,28 @@ interface GroundingState {
   setEnabled: (next: boolean) => void;
 }
 
+// Persisted-key namespace. The original key carried the pre-rename `awp.`
+// prefix; the canonical namespace is now `openagentic:`. We can't just rename
+// it — existing users have their opt-in choice stored under the old key.
+const STORAGE_KEY = 'openagentic:grounding.v1';
+const LEGACY_STORAGE_KEY = 'awp.grounding.v1';
+
+// One-time read-fallback migration: if a user previously toggled grounding,
+// their choice lives under LEGACY_STORAGE_KEY. Seed the new key from it (once)
+// so the preference survives the rename, then drop the stale entry. Runs at
+// module load, before the store hydrates from STORAGE_KEY.
+if (typeof localStorage !== 'undefined') {
+  try {
+    if (localStorage.getItem(STORAGE_KEY) === null) {
+      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacy !== null) localStorage.setItem(STORAGE_KEY, legacy);
+    }
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {
+    /* private-mode / quota — fall through to default-OFF */
+  }
+}
+
 export const useGroundingStore = create<GroundingState>()(
   persist(
     (set) => ({
@@ -29,7 +51,7 @@ export const useGroundingStore = create<GroundingState>()(
       setEnabled: (next: boolean) => set({ enabled: next }),
     }),
     {
-      name: 'awp.grounding.v1',
+      name: STORAGE_KEY,
       version: 1,
     },
   ),

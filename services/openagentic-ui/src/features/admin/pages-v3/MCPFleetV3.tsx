@@ -1373,7 +1373,10 @@ const ConfigTab = ({ server }: { server: MCPServer }) => {
 }
 
 function toEnvFlag(name: string): string {
-  return `${String(name).toUpperCase().replace(/-/g, '_')}_MCP_DISABLED`
+  // Must match the exact flag the proxy reads (mcp_manager.py) and the wizard
+  // writes (tools/setup mcps.ts `disabledEnv`): `OpenAgentic_<NAME>_MCP_DISABLED`.
+  // Without the `OpenAgentic_` prefix the operator sets a flag the proxy ignores.
+  return `OpenAgentic_${String(name).toUpperCase().replace(/-/g, '_')}_MCP_DISABLED`
 }
 
 // ============================================================

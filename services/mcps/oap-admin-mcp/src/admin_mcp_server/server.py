@@ -1001,7 +1001,6 @@ async def admin_system_network_connectivity_check() -> Dict[str, Any]:
         ("openagentic-api", 8000, "API"),
         ("openagentic-mcp-proxy", 8080, "MCP Proxy"),
         ("openagentic-minio", 9000, "MinIO"),
-        ("openagentic-code-manager", 8080, "Code Manager"),
     ]
 
     results = []

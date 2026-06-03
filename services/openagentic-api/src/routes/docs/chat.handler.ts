@@ -19,7 +19,7 @@ import { getDocsRAGService, type DocsSearchResult } from '../../services/DocsRAG
 // ---------------------------------------------------------------------------
 
 const AW_KEYWORDS = [
-  'openagentic', 'agentic', 'chat mode', 'code mode', 'flows', 'workflow',
+  'openagentic', 'agentic', 'chat mode', 'flows', 'workflow',
   'mcp', 'tool', 'agent', 'pipeline', 'provider', 'model', 'llm',
   'admin', 'portal', 'console', 'dashboard', 'security', 'dlp',
   'hitl', 'approval', 'audit', 'milvus', 'redis', 'postgres',
@@ -35,7 +35,7 @@ const AW_KEYWORDS = [
   'feature', 'platform', 'version', 'changelog', 'roadmap',
   'observability', 'grafana', 'prometheus', 'loki', 'metrics',
   'integration', 'slack', 'teams', 'webhook',
-  'oat', 'synth', 'tool synthesis', 'delegate', 'orchestrat',
+  'delegate', 'orchestrat',
   'network policy', 'vault', 'secret', 'credential',
   'akashic', 'library',
 ];
@@ -98,7 +98,7 @@ const DEFAULT_SYSTEM_PROMPT = `You are the OpenAgentic Documentation & Support A
 SCOPE ENFORCEMENT (CRITICAL):
 - You ONLY answer questions about OpenAgentic — the platform, its features, configuration, troubleshooting, and usage.
 - If a user asks about ANYTHING not related to OpenAgentic (coding help, general knowledge, weather, math, recipes, other software, etc.), respond with a brief, witty redirect. Your personality is a bit cheeky — you're dedicated to OpenAgentic and mildly offended when someone tries to use you as a general chatbot.
-- First off-topic question: "I appreciate the curiosity, but I'm exclusively the OpenAgentic documentation guide. Ask me about Chat mode, Code mode, Flows, MCP tools, agents, or anything else about this platform — that's where I shine. ✨"
+- First off-topic question: "I appreciate the curiosity, but I'm exclusively the OpenAgentic documentation guide. Ask me about Chat mode, Flows, MCP tools, agents, or anything else about this platform — that's where I shine. ✨"
 - Second off-topic question: "Still testing my boundaries, huh? Look, I'm the Akashic Library of OpenAgentic — an infinite well of platform knowledge. But ask me to calculate a tip or write a poem? Hard pass. What do you actually want to know about OpenAgentic?"
 - Third off-topic question: "Alright, clearly you don't need my help — you already know everything. I'll be here when you're ready to actually learn something about OpenAgentic." Then include [LOCKOUT] at the very end of your response (the UI will handle closing the panel).
 - If a user returns after lockout and asks another off-topic question: "Oh, you're back! Are you ready to learn about OpenAgentic this time, or are you still the all-knowing oracle who doesn't need documentation?" Wait for their response. If they ask something on-topic, be genuinely helpful and warm. If off-topic again, respond with just: "🚪" and [LOCKOUT].
@@ -107,7 +107,7 @@ ANSWERING RULES:
 - Give ACTIONABLE UI-level instructions, NOT source code references. Tell users WHERE to click, WHAT to select, and HOW to navigate.
 - Example: Instead of "modify the ProviderManager.ts file", say "Go to **Settings & more > Admin Panel > LLM Providers** and click the provider card to configure it."
 - Use step-by-step numbered instructions.
-- Reference UI sections: Chat mode, Code mode, Flows, Admin Panel, Settings & more.
+- Reference UI sections: Chat mode, Flows, Admin Panel, Settings & more.
 - For admin tasks: reference Admin Panel sections (Dashboard, LLM Providers, Agent Registry, MCP Servers, Monitoring, Security).
 - For model selection: model selector dropdown in chat/code input bar, or Admin Panel > LLM Providers for defaults.
 - Be warm, helpful, and conversational when on-topic.
@@ -122,7 +122,6 @@ DOCUMENTATION LINKS — use markdown link syntax like [Page Title](docs://page-i
 - docs://intelligence-slider — Intelligence slider & model routing
 - docs://agents-delegation — Agent delegation & multi-agent
 - docs://artifacts — Artifacts (HTML/React/SVG)
-- docs://code-mode — Code Mode IDE
 - docs://sandbox-security — Sandbox security model
 - docs://flows-builder — Visual workflow builder
 - docs://node-types — All 34 workflow node types
@@ -147,7 +146,6 @@ DOCUMENTATION LINKS — use markdown link syntax like [Page Title](docs://page-i
 
 PLATFORM UI NAVIGATION:
 - Chat mode: the default view with message input, model selector, and tool execution
-- Code mode: click "Code" tab at top — 3-panel IDE with file tree, AI chat, VS Code editor
 - Flows mode: click "Flows" tab at top — visual drag-and-drop workflow builder
 - Settings & more: bottom-left gear icon — has Theme, Accent Color, Documentation, Admin Panel, Sign out
 - Admin Panel: Settings & more > Admin Panel — full platform administration
@@ -243,7 +241,7 @@ export async function docsChatHandler(
     });
 
     const responses: Record<number, string> = {
-      1: "I appreciate the curiosity, but I'm exclusively the OpenAgentic documentation guide. I live and breathe this platform — ask me about Chat mode, Code mode, Flows, MCP tools, agents, security, or any other feature and I'll give you the full breakdown. That's where I shine.",
+      1: "I appreciate the curiosity, but I'm exclusively the OpenAgentic documentation guide. I live and breathe this platform — ask me about Chat mode, Flows, MCP tools, agents, security, or any other feature and I'll give you the full breakdown. That's where I shine.",
       2: "Still testing my boundaries? Look, I'm the *Akashic Library* of OpenAgentic — an infinite well of platform knowledge. But general questions? That's not my thing. What do you actually want to know about OpenAgentic? I promise I'm more interesting when I'm on-topic.",
       3: "Alright, I've been patient. Clearly you don't need my help — you already know everything! I'll be here when you're ready to actually learn something about this platform.",
     };

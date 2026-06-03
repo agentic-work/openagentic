@@ -217,8 +217,6 @@ services:
       # Flow execution is delegated to the workflows service (POST /execute-sync).
       # Without this, every flow run fails with "WORKFLOW_SERVICE_URL is not set".
       WORKFLOW_SERVICE_URL: ${WORKFLOW_SERVICE_URL:-http://workflows:3400}
-      SYNTH_HOST: synth
-      SYNTH_PORT: "8090"
       OPENAGENTIC_PROXY_URL: http://proxy:3300
       # LLM provider keys (passed through if set)
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}

@@ -204,15 +204,12 @@ import { execute as parallelExecute } from './parallel/executor.js';
 import loopSchemaJson from './loop/schema.json' with { type: 'json' };
 import { execute as loopExecute } from './loop/executor.js';
 
-// Batch 8 — code (JS sandbox) and openagentic (isolated code-manager
-// sessions) close the code-execution gap. After this batch the schema-driven
-// registry covers 100% of node types — the legacy switch/case lives on only
-// as dead-code historical reference.
+// Batch 8 — code (JS sandbox, in-process V8 isolate) closes the
+// code-execution gap. After this batch the schema-driven registry covers
+// 100% of node types — the legacy switch/case lives on only as dead-code
+// historical reference.
 import codeSchemaJson from './code/schema.json' with { type: 'json' };
 import { execute as codeExecute } from './code/executor.js';
-
-import openagenticSchemaJson from './openagentic/schema.json' with { type: 'json' };
-import { execute as openagenticExecute } from './openagentic/executor.js';
 
 // Batch 9 — AIOps capability nodes (audit AUDIT-2026-05-03 punch list).
 // anomaly_detect is the keystone: other AIOps capabilities (policy_guard,
@@ -477,9 +474,8 @@ register(switchSchemaJson, switchExecute);
 register(parallelSchemaJson, parallelExecute);
 register(loopSchemaJson, loopExecute);
 
-// Batch 8 — code + openagentic bring schema coverage to 100%.
+// Batch 8 — code (JS sandbox) brings schema coverage to 100%.
 register(codeSchemaJson, codeExecute);
-register(openagenticSchemaJson, openagenticExecute);
 
 // Batch 9 — AIOps capability nodes
 register(anomalyDetectSchemaJson, anomalyDetectExecute);

@@ -47,12 +47,17 @@ describe('registry', () => {
     expect(registry.has('llm_completion')).toBe(true);
   });
 
-  // Task #46 — code + openagentic node types are now schema-driven. This
-  // test is retained as a positive coverage assertion: every
-  // previously-unmigrated type is now in the registry.
-  it('registers ALL node types — schema coverage reaches 100% (Task #46)', () => {
+  // The in-process JavaScript `code` node (V8 isolate) is schema-driven.
+  // The `openagentic`/`agenticode` code-execution nodes (which spawned
+  // isolated sessions in the removed code-manager service) were excised
+  // from the OSS edition — no code-execution surface ships.
+  it('registers the in-process JS `code` node', () => {
     expect(registry.has('code')).toBe(true);
-    expect(registry.has('openagentic')).toBe(true);
+  });
+
+  it('does NOT register the excised openagentic/agenticode code-exec nodes', () => {
+    expect(registry.has('openagentic')).toBe(false);
+    expect(registry.has('agenticode')).toBe(false);
   });
 
   it('returns a NodePlugin { schema, execute } pair for each migrated type', () => {
@@ -76,10 +81,11 @@ describe('registry', () => {
     expect(types).toContain('text');
     expect(types).toContain('http_request');
     expect(types).toContain('llm_completion');
-    // After Task #46 the registry covers 100% of node types. The previously
-    // unmigrated types (code, openagentic) are now schema-driven.
+    // The in-process JS `code` node is schema-driven; the excised
+    // openagentic/agenticode code-exec nodes are not registered.
     expect(types).toContain('code');
-    expect(types).toContain('openagentic');
+    expect(types).not.toContain('openagentic');
+    expect(types).not.toContain('agenticode');
   });
 
   it('every schema has the required top-level fields', () => {

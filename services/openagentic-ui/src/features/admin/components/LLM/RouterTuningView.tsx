@@ -1340,10 +1340,14 @@ const RouterTuningView: React.FC = () => {
     setSaving(true);
     setSaveError(null);
     try {
-      await apiRequest('/api/admin/router-tuning', {
+      const res = await apiRequest('/api/admin/router-tuning', {
         method: 'PUT',
         body: JSON.stringify(dirty),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.message || `Save failed (HTTP ${res.status})`);
+      }
       setDirty({});
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -1358,7 +1362,11 @@ const RouterTuningView: React.FC = () => {
     setResetting(true);
     setSaveError(null);
     try {
-      await apiRequest('/api/admin/router-tuning/reset', { method: 'POST' });
+      const res = await apiRequest('/api/admin/router-tuning/reset', { method: 'POST' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.message || `Reset failed (HTTP ${res.status})`);
+      }
       setDirty({});
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);

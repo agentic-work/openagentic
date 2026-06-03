@@ -9,8 +9,10 @@
  * brand area should use the same component so the visual identity is
  * consistent across all four product surfaces.
  */
+import type { ReactElement } from 'react'
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render as rtlRender, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 let companyLogoCalls: any[] = []
 vi.mock('@/components/CompanyLogo', () => ({
@@ -21,6 +23,14 @@ vi.mock('@/components/CompanyLogo', () => ({
 }))
 
 import { TopBar } from '../TopBar'
+
+// TopBar mounts <NotificationsBell>, which uses react-query (useAdminQuery).
+// Wrap renders in a client so the bell's query has a provider (it stays
+// idle/disabled in tests) instead of throwing "No QueryClient set".
+const render = (ui: ReactElement) => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return rtlRender(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
 
 describe('Phase B-prime · TopBar brand uses shared CompanyLogo', () => {
   it('renders the shared CompanyLogo component in the brand slot', () => {
@@ -44,5 +54,29 @@ describe('Phase B-prime · TopBar brand uses shared CompanyLogo', () => {
     // the brand surface.
     expect(container.querySelector('.aw-topbar__brand-name')).toBeNull()
     expect(container.textContent ?? '').not.toMatch(/OPENAGENTIC/)
+  })
+})
+
+describe('H7 · TopBar scope chip has no baked-in env/brand default', () => {
+  it('does NOT render the scope chip (or any "agentic-dev" env leak) when no scope is passed', () => {
+    companyLogoCalls = []
+    const { container } = render(<TopBar crumbs={[{ label: 'admin' }]} />)
+    // The live mount (AdminPortalHostV3) passes no scope — the chip must be
+    // absent so the shell never bakes in an environment string or the
+    // pre-scrub "agentic-dev" brand name.
+    expect(container.querySelector('.aw-topbar__chip')).toBeNull()
+    expect(container.textContent ?? '').not.toMatch(/agentic-dev/)
+    expect(container.textContent ?? '').not.toMatch(/us-west/)
+  })
+
+  it('renders the env/region chip only when the host supplies a real scope', () => {
+    companyLogoCalls = []
+    const { container } = render(
+      <TopBar crumbs={[{ label: 'admin' }]} scope={{ env: 'production', region: 'eu-central' }} />,
+    )
+    const chip = container.querySelector('.aw-topbar__chip')
+    expect(chip).not.toBeNull()
+    expect(chip?.textContent ?? '').toContain('production')
+    expect(chip?.textContent ?? '').toContain('eu-central')
   })
 })

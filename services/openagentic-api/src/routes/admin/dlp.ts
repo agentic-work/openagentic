@@ -254,8 +254,14 @@ export default async function dlpRoutes(fastify: FastifyInstance) {
 
       // Use Ollama directly for the summary (lightweight, always available)
       const http = await import('http');
-      const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://10.0.0.142:11434';
-      const model = process.env.DEFAULT_MODEL || 'gpt-oss';
+      const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+      // Resolve the chat model from the SOT (admin.model_role_assignments)
+      // rather than hardcoding an id; fall back to the env override if the
+      // registry has no enabled chat row yet. No bare model literal here —
+      // see docs/rules/no-hardcoded-models.md.
+      const { ModelConfigurationService } = await import('../../services/ModelConfigurationService.js');
+      const model = await ModelConfigurationService.getDefaultChatModel()
+        .catch(() => process.env.DEFAULT_MODEL || '');
       const summaryText = await new Promise<string>((resolve) => {
         const postData = JSON.stringify({
           model,

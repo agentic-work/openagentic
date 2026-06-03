@@ -596,7 +596,7 @@ export class WorkflowCompiler {
       }
 
       // --- Code nodes: check code body ---
-      if (node.type === 'code' || node.type === 'openagentic') {
+      if (node.type === 'code') {
         if (!d.code || d.code.trim().length === 0) {
           issues.push({ code: 'EMPTY_CODE', message: `"${nodeLabel}" has no code`, nodeId: node.id });
         }
@@ -707,7 +707,7 @@ export class WorkflowCompiler {
     }
 
     // --- Check data flow: nodes that require input but have no incoming edges ---
-    const inputRequiringTypes = new Set(['llm_completion', 'transform', 'condition', 'merge', 'code', 'openagentic']);
+    const inputRequiringTypes = new Set(['llm_completion', 'transform', 'condition', 'merge', 'code']);
     for (const node of definition.nodes) {
       if (node.type === 'trigger') continue; // Triggers generate data
       if (inputRequiringTypes.has(node.type)) {

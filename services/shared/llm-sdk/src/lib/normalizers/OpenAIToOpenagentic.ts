@@ -218,6 +218,10 @@ export function createOpenAIToOpenagenticNormalizer(opts: NormalizerOptions): No
     consume(chunk: OpenAIChunk): CanonicalEvent[] {
       const out: CanonicalEvent[] = [];
       if (messageStopped) return out;
+      // Malformed-chunk resilience: a null/undefined/non-object chunk (a bare
+      // `null` keep-alive line, a truncated frame, an empty parse) is a no-op,
+      // never a mid-stream crash. finalize() still closes the envelope cleanly.
+      if (chunk === null || typeof chunk !== 'object' || Array.isArray(chunk)) return out;
 
       // G1 — capture chunk.usage if present (emitted on trailing
       // include_usage:true chunk after finish_reason). May arrive on a

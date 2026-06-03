@@ -139,8 +139,6 @@ export const adminMissingRoutes: FastifyPluginAsync = async (fastify) => {
   // Cluster fleet — multi-node coordination.
   // NOTE: /cluster/health is owned by admin/v3-extras-misc.ts already.
   fastify.get('/cluster/services', notConfigured);
-  // Code Mode API keys.
-  fastify.get('/agenticode/api-keys', notConfigured);
 };
 
 /**

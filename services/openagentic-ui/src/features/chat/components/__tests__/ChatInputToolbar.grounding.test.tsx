@@ -21,7 +21,10 @@ describe('chat input toolbar — grounding differentiator icon', () => {
   beforeEach(() => {
     useGroundingStore.setState({ enabled: false });
     if (typeof localStorage !== 'undefined') {
-      try { localStorage.removeItem('awp.grounding.v1'); } catch { /* noop */ }
+      try {
+        localStorage.removeItem('openagentic:grounding.v1');
+        localStorage.removeItem('awp.grounding.v1');
+      } catch { /* noop */ }
     }
   });
 

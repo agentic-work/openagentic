@@ -31,4 +31,4 @@ export { AgenticActivityStream, AgenticActivityStream as default } from './Agent
 export * from './types/activity.types';
 
 // Re-export hooks
-export { useActivityParser, useInlineStepsAdapter } from './hooks';
+export { useInlineStepsAdapter } from './hooks';

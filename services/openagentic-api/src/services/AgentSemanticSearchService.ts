@@ -27,6 +27,7 @@
 import { DataType } from '@zilliz/milvus2-sdk-node';
 import type { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import type { Logger } from 'pino';
+import { escapeMilvusFilterValue } from '../utils/milvusFilter.js';
 
 const COLLECTION_NAME = 'agents';
 
@@ -207,7 +208,7 @@ export class AgentSemanticSearchService {
     try {
       await this.client.delete({
         collection_name: COLLECTION_NAME,
-        filter: `id == "${def.id}"`,
+        filter: `id == "${escapeMilvusFilterValue(def.id)}"`,
       });
     } catch {
       // pre-existing-row delete is best-effort

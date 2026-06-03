@@ -226,11 +226,12 @@ const circuitBreakerState: Map<string, {
  * - condition / switch / llm_router own routing via ctx.routeBranches
  * - parallel owns routing via ctx.fanOutBranches
  * - loop owns routing via ctx.iterateOver
+ * - retry_with_backoff drives + re-runs its downstream via ctx.runSubStep
  * The outer walker MUST NOT re-fire their outgoing edges or it
  * double-executes downstream nodes (and breaks merge-gate arrival counts).
  */
 const ROUTING_OWNS_DOWNSTREAM = new Set<string>([
-  'condition', 'loop', 'switch', 'parallel', 'llm_router',
+  'condition', 'loop', 'switch', 'parallel', 'llm_router', 'retry_with_backoff',
 ]);
 
 /**
@@ -264,7 +265,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
   private outgoingEdges: Map<string, WorkflowEdge[]>;
   private mcpProxyUrl: string;
   private apiUrl: string;
-  private openagenticManagerUrl: string;
   private nodeRetryState: Map<string, number>; // Track retry counts per node
   private abortController: AbortController;
   private pendingNodeOutputs: Map<string, any>; // Accumulated node outputs for batch write
@@ -315,7 +315,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
     // Get service URLs from environment
     this.mcpProxyUrl = process.env.MCP_PROXY_URL || 'http://openagentic-mcp-proxy:8080';
     this.apiUrl = process.env.API_URL || 'http://openagentic-api:8000';
-    this.openagenticManagerUrl = process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-code-manager:8080';
 
     // Initialize retry state tracking
     this.nodeRetryState = new Map();
@@ -676,7 +675,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
           if (content.length < 100 || content.length > 10000) continue;
 
           // Determine importance based on node type
-          const importance = ['llm_completion', 'openagentic_llm', 'code', 'openagentic'].includes(node.type)
+          const importance = ['llm_completion', 'openagentic_llm', 'code'].includes(node.type)
             ? 0.7  // AI-generated content is high value
             : ['mcp_tool', 'http_request'].includes(node.type)
               ? 0.6  // Tool results are medium-high
@@ -1565,35 +1564,106 @@ export class WorkflowExecutionEngine extends EventEmitter {
         }));
       },
 
-      // loop: per-iteration subgraph execution. For each item, build the
-      // loop-aware input shape that mirrors the legacy executeLoopNode
-      // (primitive items pass through bare; object items are spread with
-      // `${itemVariable}` + `__loopIndex` + `__loopTotal` metadata) and
-      // dispatch to every outgoing edge sequentially. Returns the
-      // concatenated per-iteration results.
-      iterateOver: async (fromNodeId, items, itemVariable, baseInput) => {
+      // loop / map_reduce: per-iteration subgraph execution. For each item,
+      // build the loop-aware input shape that mirrors the legacy
+      // executeLoopNode (primitive items pass through bare; object items are
+      // spread with `${itemVariable}` + `__loopIndex` + `__loopTotal`
+      // metadata) and dispatch to every outgoing edge. Returns the
+      // per-iteration results in INPUT ORDER (edge-major within each item),
+      // independent of completion order.
+      //
+      // `concurrency` (default 1 / sequential — loop's historical behaviour)
+      // bounds how many items run their subgraph at once. map_reduce passes a
+      // configured limit to fan out; a bounded sliding window keeps at most
+      // `concurrency` item-subgraphs in flight while preserving result order.
+      iterateOver: async (fromNodeId, items, itemVariable, baseInput, concurrency?: number) => {
         const outgoing = this.outgoingEdges.get(fromNodeId) || [];
-        const results: unknown[] = [];
-        for (let i = 0; i < items.length; i++) {
-          const currentItem = items[i];
-          let loopInput: unknown;
+        const limit = Math.max(
+          1,
+          Math.min(
+            items.length || 1,
+            typeof concurrency === 'number' && Number.isFinite(concurrency)
+              ? Math.floor(concurrency)
+              : 1,
+          ),
+        );
+
+        const buildInput = (currentItem: unknown, i: number): unknown => {
           if (typeof currentItem !== 'object' || currentItem === null) {
-            loopInput = currentItem;
-          } else {
-            loopInput = {
-              ...(typeof baseInput === 'object' && baseInput !== null ? baseInput : {}),
-              ...(currentItem as Record<string, unknown>),
-              [itemVariable]: currentItem,
-              __loopIndex: i,
-              __loopTotal: items.length,
-            };
+            return currentItem;
           }
+          return {
+            ...(typeof baseInput === 'object' && baseInput !== null ? baseInput : {}),
+            ...(currentItem as Record<string, unknown>),
+            [itemVariable]: currentItem,
+            __loopIndex: i,
+            __loopTotal: items.length,
+          };
+        };
+
+        // Run one item's subgraph: every outgoing edge, sequentially within
+        // the item, returning that item's edge results in edge order.
+        const runItem = async (i: number): Promise<unknown[]> => {
+          const loopInput = buildInput(items[i], i);
+          const perEdge: unknown[] = [];
           for (const edge of outgoing) {
-            const result = await this.executeNode(edge.target, loopInput);
-            results.push(result);
+            perEdge.push(await this.executeNode(edge.target, loopInput));
           }
+          return perEdge;
+        };
+
+        // Sequential fast-path preserves the exact prior behaviour (loop and
+        // map_reduce with concurrency=1) — no Promise scheduling overhead.
+        if (limit === 1) {
+          const results: unknown[] = [];
+          for (let i = 0; i < items.length; i++) {
+            results.push(...(await runItem(i)));
+          }
+          return results;
         }
-        return results;
+
+        // Bounded sliding window: a shared cursor hands the next index to each
+        // of `limit` workers. Per-item results are written into a slot keyed by
+        // the item's index, so the final flattened array is in input order
+        // regardless of which worker finished first.
+        const perItem: unknown[][] = new Array(items.length);
+        let next = 0;
+        const worker = async (): Promise<void> => {
+          for (;;) {
+            const i = next++;
+            if (i >= items.length) return;
+            perItem[i] = await runItem(i);
+          }
+        };
+        await Promise.all(Array.from({ length: limit }, () => worker()));
+        return perItem.flat();
+      },
+
+      // retry_with_backoff: execute the node's outgoing subgraph exactly once
+      // with the supplied input and surface the FIRST rejection so the
+      // executor can decide whether to back off and retry. Distinct from
+      // iterateOver (never re-runs the same item) and fanOutBranches (swallows
+      // rejections into a settled array). Each happy-path edge is executed
+      // sequentially; if any rejects, the rejection propagates immediately
+      // (no allSettled). Returns the terminal subgraph result (last edge's
+      // value, or the lone edge's value). A retry node with no downstream is a
+      // misconfiguration — we reject so the executor's exhaustion path names it.
+      runSubStep: async (fromNodeId: string, branchInput: unknown) => {
+        const outgoing = (this.outgoingEdges.get(fromNodeId) || []).filter(isHappyEdge);
+        if (outgoing.length === 0) {
+          throw new Error(
+            `retry_with_backoff[${fromNodeId}]: no downstream step to run — ` +
+              'connect a node to its output so there is an operation to retry.',
+          );
+        }
+        let last: unknown;
+        for (const edge of outgoing) {
+          // Awaited sequentially: the first rejection escapes the loop and
+          // rejects this hook, which is exactly the signal the executor's
+          // retry loop catches to back off.
+          last = await this.executeNode(edge.target, branchInput);
+        }
+        return last;
       },
 
       // trigger: publish the workflow's first event onto the execution
@@ -1637,11 +1707,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
         }
         return result.value;
       },
-
-      // Openagentic-manager URL — forwarded onto ctx so the openagentic
-      // executor can reach the spawn-isolated-session endpoint without
-      // re-reading process.env on every node execution.
-      openagenticManagerUrl: this.openagenticManagerUrl,
 
       // conversation_memory (gap-analysis 2026-05-14 P0 #2): Prisma-backed
       // chat history service. Lazy-imported so the harness mock at
@@ -3186,8 +3251,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
       return this.executeJavaScript(code, input, node.data.timeoutMs, node.data.memoryCapMb);
     }
 
-    // For Python, would route to openagentic-manager
-    // For now, throw error for unsupported languages
+    // Only the in-process JavaScript V8 isolate is supported; other
+    // languages have no execution backend in the OSS edition.
     throw new Error(`Language ${language} execution not yet implemented in workflows`);
   }
 
@@ -4598,53 +4663,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
       usage: response.data?.usage,
       provider: 'azure_openai'
     };
-  }
-
-  /**
-   * Execute an Openagentic node -- runs code in a managed execution pod via the code manager
-   */
-  private async executeOpenagenticNode(node: WorkflowNode, input: any): Promise<any> {
-    const { language, code, timeout: execTimeout } = node.data;
-    const resolvedCode = this.interpolateTemplate(code || '', input);
-
-    logger.info({
-      nodeId: node.id,
-      language: language || 'python',
-      codeLength: resolvedCode.length
-    }, '[WorkflowEngine] Executing Openagentic node');
-
-    try {
-      const response = await abortableAxiosPost(
-        this,
-        `${this.openagenticManagerUrl}/api/execute`,
-        {
-          language: language || 'python',
-          code: resolvedCode,
-          timeout: execTimeout || 30000,
-          workflowExecutionId: this.context.executionId
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': this.context.authToken || '',
-            'X-Internal-Service': process.env.INTERNAL_SERVICE_SECRET || ''
-          },
-          timeout: (execTimeout || 30000) + 10000
-        }
-      );
-
-      return {
-        stdout: response.data?.stdout || '',
-        stderr: response.data?.stderr || '',
-        exitCode: response.data?.exitCode ?? 0,
-        language: language || 'python'
-      };
-    } catch (error: any) {
-      if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-        throw new Error(`Openagentic manager is not reachable at ${this.openagenticManagerUrl}`);
-      }
-      throw new Error(`Openagentic execution failed: ${error.response?.data?.error || error.message}`);
-    }
   }
 
   /**

@@ -314,7 +314,7 @@ export const LLMProviderManagement: React.FC<LLMProviderManagementProps> = ({ th
           <>
             Adding a provider stores its credentials and runs a health probe. It does
             <b> not</b> import any of the provider's catalog into the Model Registry. To
-            make models routable across chat / flows / agents / code-mode, go to{' '}
+            make models routable across chat / flows / agents, go to{' '}
             <span className="font-mono">Models → "+ Add Model"</span> and pick from the
             provider's catalog explicitly.
           </>
