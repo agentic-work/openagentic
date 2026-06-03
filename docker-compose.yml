@@ -200,8 +200,15 @@ services:
       BOOTSTRAP_PROVIDER_NAME: ${BOOTSTRAP_PROVIDER_NAME-ollama-local}
       BOOTSTRAP_PROVIDER_DISPLAY_NAME: ${BOOTSTRAP_PROVIDER_DISPLAY_NAME-Ollama (local)}
       BOOTSTRAP_PROVIDER_TYPE: ${BOOTSTRAP_PROVIDER_TYPE-ollama}
-      BOOTSTRAP_PROVIDER_CONFIG: '{"endpoint":"${OLLAMA_HOST:-http://ollama:11434}"}'
-      BOOTSTRAP_PROVIDER_DEFAULTS: '{"chat":"${OLLAMA_CHAT_MODEL:-}","embedding":"${OLLAMA_EMBED_MODEL:-nomic-embed-text}","embeddingDimension":768}'
+      # CONFIG/DEFAULTS are overridable so the setup wizard's AWS Bedrock JSON
+      # (BOOTSTRAP_PROVIDER_TYPE=aws-bedrock, CONFIG={"region":...}, DEFAULTS with
+      # chat=anthropic.claude-sonnet-4-6) wins over these inline Ollama literals.
+      # When unset (.env has neither), they fall back to the Ollama defaults below.
+      BOOTSTRAP_PROVIDER_CONFIG: ${BOOTSTRAP_PROVIDER_CONFIG-{"endpoint":"${OLLAMA_HOST:-http://ollama:11434}"}}
+      BOOTSTRAP_PROVIDER_DEFAULTS: ${BOOTSTRAP_PROVIDER_DEFAULTS-{"chat":"${OLLAMA_CHAT_MODEL:-}","embedding":"${OLLAMA_EMBED_MODEL:-nomic-embed-text}","embeddingDimension":768}}
+      # Registry seeder version — the wizard bumps this (SEEDER_VERSION=6) on a
+      # Bedrock install so the role='chat' assignment row is (re)written on boot.
+      SEEDER_VERSION: ${SEEDER_VERSION-}
       # Disable RAG retrieval on first boot — prevents pipeline stalls from
       # embedding timeouts when Ollama is shared with chat/tools. Re-enable
       # once a dedicated embedding endpoint or local embed model is set up.
@@ -226,6 +233,10 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_REGION: ${AWS_REGION:-us-east-1}
+      # AWS Bedrock host-creds / named-profile paths: the provider resolves
+      # creds from the mounted host ~/.aws (volume below). AWS_PROFILE selects
+      # a named profile; empty → default credential chain (incl. inline keys).
+      AWS_PROFILE: ${AWS_PROFILE:-}
       GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
       # Auth
       AUTH_PROVIDER: ${AUTH_PROVIDER:-local}
@@ -250,6 +261,12 @@ services:
       # One-shot autologin token consumed by install.sh's browser-open.
       # Empty in normal startups → /api/auth/magic always 401s.
       MAGIC_BOOT_TOKEN: ${MAGIC_BOOT_TOKEN:-}
+    volumes:
+      # AWS Bedrock host-creds / named-profile auth: mount the user's host
+      # ~/.aws read-only so the AWSBedrockProvider default credential chain
+      # (and AWS_PROFILE) can resolve. Harmless when the dir is absent / when
+      # inline IAM keys are used instead.
+      - ${HOME}/.aws:/root/.aws:ro
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }

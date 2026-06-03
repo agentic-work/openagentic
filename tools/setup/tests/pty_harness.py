@@ -112,9 +112,19 @@ def type_and_enter(child: pexpect.spawn, text: str, settle: float = 0.3) -> None
     time.sleep(settle)
 
 
+def clear_and_enter(child: pexpect.spawn, text: str, prefilled_len: int = 20, settle: float = 0.3) -> None:
+    """Like type_and_enter but first clears a prefilled TextInput (e.g. the
+    Bedrock region field, which defaults to us-east-1) with backspaces so the
+    typed value replaces rather than appends to the default."""
+    for _ in range(prefilled_len):
+        child.send(BKSP)
+    time.sleep(0.1)
+    type_and_enter(child, text, settle=settle)
+
+
 # ─── Variation scripts ──────────────────────────────────────────────────────
 def script_minimal(child: pexpect.spawn) -> None:
-    """Accept every default; no MCPs with auth; single LLM key."""
+    """Accept every default (Both: Ollama embeddings + Bedrock chat); 1 MCP, no MCP auth."""
     expect_screen(child, "Where do you want to run openagentic?")
     send(child, ENTER)  # docker
 
@@ -131,9 +141,13 @@ def script_minimal(child: pexpect.spawn) -> None:
     expect_screen(child, "Where is your Ollama?")
     send(child, ENTER)  # accept host.docker.internal:11434 default
 
-    expect_screen(child, "LLM providers")
-    type_and_enter(child, "sk-ant-test")       # anthropic
-    send(child, TAB)                          # skip rest
+    # AWS Bedrock IAM picker (no ~/.aws in sandbox → inline first).
+    expect_screen(child, "AWS Bedrock (Claude via IAM)")
+    send(child, ENTER)                        # "Enter IAM access key"
+    expect_screen(child, "IAM access key")
+    clear_and_enter(child, "us-east-1")        # region (clear default)
+    type_and_enter(child, "AKIA-MIN")         # access key id
+    type_and_enter(child, "min-secret")       # secret access key
 
     expect_screen(child, "Which MCPs do you want enabled?")
     send(child, "n")                          # clear all
@@ -151,8 +165,12 @@ def assert_minimal(env: dict[str, str]) -> list[str]:
     fails = []
     if env.get("ADMIN_SEED_PASSWORD") != "hunter2!!":
         fails.append(f"ADMIN_SEED_PASSWORD expected 'hunter2!!' got {env.get('ADMIN_SEED_PASSWORD')!r}")
-    if env.get("ANTHROPIC_API_KEY") != "sk-ant-test":
-        fails.append(f"ANTHROPIC_API_KEY missing or wrong: {env.get('ANTHROPIC_API_KEY')!r}")
+    if env.get("BOOTSTRAP_PROVIDER_TYPE") != "aws-bedrock":
+        fails.append(f"BOOTSTRAP_PROVIDER_TYPE expected 'aws-bedrock', got {env.get('BOOTSTRAP_PROVIDER_TYPE')!r}")
+    if env.get("AWS_ACCESS_KEY_ID") != "AKIA-MIN":
+        fails.append(f"AWS_ACCESS_KEY_ID expected 'AKIA-MIN', got {env.get('AWS_ACCESS_KEY_ID')!r}")
+    if env.get("ANTHROPIC_API_KEY"):
+        fails.append(f"ANTHROPIC_API_KEY must NOT be written (IAM-only), got {env.get('ANTHROPIC_API_KEY')!r}")
     if env.get("MCPS_ENABLED") != "web":
         fails.append(f"MCPS_ENABLED expected 'web' got {env.get('MCPS_ENABLED')!r}")
     if env.get("OpenAgentic_AWS_MCP_DISABLED") != "true":
@@ -179,8 +197,14 @@ def script_all_mcps_inline(child: pexpect.spawn) -> None:
     expect_screen(child, "Where is your Ollama?")
     send(child, ENTER)
 
-    expect_screen(child, "LLM providers")
-    send(child, TAB)                          # skip all providers
+    # AWS Bedrock picker — exercise the named-profile path (no ~/.aws in
+    # sandbox → menu is [inline, profile]; DOWN once = profile).
+    expect_screen(child, "AWS Bedrock (Claude via IAM)")
+    send(child, DOWN)
+    send(child, ENTER)                        # "Use a named AWS profile"
+    expect_screen(child, "named profile")
+    clear_and_enter(child, "us-east-1")        # region (clear default)
+    clear_and_enter(child, "myprofile", prefilled_len=8)  # profile (clear default 'default')
 
     expect_screen(child, "Which MCPs do you want enabled?")
     send(child, "a", settle=0.5)              # select all — give React a beat to re-render
@@ -228,9 +252,6 @@ def script_all_mcps_inline(child: pexpect.spawn) -> None:
     send(child, ENTER)
     send(child, ENTER)
 
-    expect_screen(child, "Alertmanager: credentials")
-    type_and_enter(child, "https://am.test")
-
 
     expect_screen(child, "Review & launch")
     send(child, ENTER)
@@ -262,12 +283,19 @@ def assert_all_mcps_inline(env: dict[str, str]) -> list[str]:
         ("GITHUB_TOKEN", "ghp_test"),
         ("PROMETHEUS_URL", "https://prom.test"),
         ("LOKI_URL", "https://loki.test"),
-        ("ALERTMANAGER_URL", "https://am.test"),
+        # Bedrock named-profile path writes AWS_PROFILE (region is then
+        # overwritten by the AWS-MCP inline AWS_REGION=us-east-1 above).
+        ("AWS_PROFILE", "myprofile"),
+        ("BOOTSTRAP_PROVIDER_TYPE", "aws-bedrock"),
     ]
     for k, want in creds:
         got = env.get(k)
         if got != want:
             fails.append(f"{k} expected {want!r} got {got!r}")
+    # IAM-only: no raw provider API keys, ever.
+    for forbidden in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY"):
+        if env.get(forbidden):
+            fails.append(f"{forbidden} must NOT be written (IAM-only), got {env.get(forbidden)!r}")
     for mcp_env in ("OpenAgentic_AWS_MCP_DISABLED", "OpenAgentic_AZURE_MCP_DISABLED",
                     "OpenAgentic_GCP_MCP_DISABLED", "OpenAgentic_KUBERNETES_MCP_DISABLED",
                     "OpenAgentic_GITHUB_MCP_DISABLED"):
@@ -288,8 +316,13 @@ def script_skip_all_cloud(child: pexpect.spawn) -> None:
     send(child, ENTER)
     expect_screen(child, "Where is your Ollama?")
     send(child, ENTER)
-    expect_screen(child, "LLM providers")
-    send(child, TAB)
+    # AWS Bedrock picker — inline IAM (no ~/.aws in sandbox).
+    expect_screen(child, "AWS Bedrock (Claude via IAM)")
+    send(child, ENTER)                        # "Enter IAM access key"
+    expect_screen(child, "IAM access key")
+    clear_and_enter(child, "eu-west-1")        # region (clear default us-east-1)
+    type_and_enter(child, "AKIA-SKIP")        # access key id
+    type_and_enter(child, "skip-secret")      # secret access key
 
     expect_screen(child, "Which MCPs do you want enabled?")
     send(child, "a")                          # all on
@@ -320,8 +353,6 @@ def script_skip_all_cloud(child: pexpect.spawn) -> None:
     send(child, ENTER); send(child, ENTER); send(child, ENTER)
     expect_screen(child, "Loki: credentials")
     send(child, ENTER); send(child, ENTER); send(child, ENTER)
-    expect_screen(child, "Alertmanager: credentials")
-    send(child, ENTER)
 
 
     expect_screen(child, "Review & launch")
@@ -351,8 +382,10 @@ def assert_skip_all_cloud(env: dict[str, str]) -> list[str]:
 
 
 def script_cloud_only(child: pexpect.spawn) -> None:
-    """LLM strategy = cloud LLMs only. Verifies Ollama step is skipped
-    and only OpenAI key is captured."""
+    """LLM strategy = AWS Bedrock (cloud) only. Verifies the Ollama step is
+    skipped and the Bedrock IAM picker (inline keys path) is captured. The
+    sandboxed HOME has no ~/.aws so the host-creds option is NOT offered —
+    the mode menu is [inline, profile] with inline first."""
     expect_screen(child, "Where do you want to run openagentic?")
     send(child, ENTER)
     expect_screen(child, "Create your admin account")
@@ -360,14 +393,17 @@ def script_cloud_only(child: pexpect.spawn) -> None:
     type_and_enter(child, "passw0rd!")
 
     expect_screen(child, "How should the platform call LLMs?")
-    send(child, DOWN)                          # "Cloud LLMs" — 2nd option
+    send(child, DOWN)                          # "AWS Bedrock" — 2nd option
     send(child, ENTER)
 
-    # Ollama step MUST be skipped — we should land on Providers next.
-    expect_screen(child, "LLM providers")
-    send(child, ENTER)                         # skip anthropic
-    type_and_enter(child, "sk-openai-test")    # openai
-    send(child, TAB)                           # skip the rest
+    # Ollama step MUST be skipped — we should land on the Bedrock picker next.
+    expect_screen(child, "AWS Bedrock (Claude via IAM)")
+    send(child, ENTER)                         # pick "Enter IAM access key" (first, no ~/.aws)
+
+    expect_screen(child, "IAM access key")     # the inline IAM field screen
+    clear_and_enter(child, "us-west-2")        # region (clear default us-east-1)
+    type_and_enter(child, "AKIA-CLOUD-ONLY")   # access key id
+    type_and_enter(child, "cloud-only-secret") # secret access key
 
     expect_screen(child, "Which MCPs do you want enabled?")
     send(child, "n")                           # clear all
@@ -379,21 +415,131 @@ def script_cloud_only(child: pexpect.spawn) -> None:
     expect_screen(child, "dry-run", timeout=15.0)
 
 
+# The Claude Sonnet 4.6 Bedrock model id the wizard seeds as the default chat
+# (and flows) model. MUST stay in lockstep with Launch.tsx BEDROCK_CHAT_MODEL.
+BEDROCK_CHAT_MODEL = "anthropic.claude-sonnet-4-6"
+
+
 def assert_cloud_only(env: dict[str, str]) -> list[str]:
     fails = []
+    # Ollama fully off in cloud-only mode.
     if env.get("OLLAMA_ENABLED") != "false":
         fails.append(f"OLLAMA_ENABLED expected 'false', got {env.get('OLLAMA_ENABLED')!r}")
     if env.get("OLLAMA_HOST"):
         fails.append(f"OLLAMA_HOST should NOT be set in cloud-only mode, got {env.get('OLLAMA_HOST')!r}")
-    if env.get("OPENAI_API_KEY") != "sk-openai-test":
-        fails.append(f"OPENAI_API_KEY expected 'sk-openai-test', got {env.get('OPENAI_API_KEY')!r}")
+
+    # AWS Bedrock inline-IAM env.
+    if env.get("AWS_REGION") != "us-west-2":
+        fails.append(f"AWS_REGION expected 'us-west-2', got {env.get('AWS_REGION')!r}")
+    if env.get("AWS_ACCESS_KEY_ID") != "AKIA-CLOUD-ONLY":
+        fails.append(f"AWS_ACCESS_KEY_ID expected 'AKIA-CLOUD-ONLY', got {env.get('AWS_ACCESS_KEY_ID')!r}")
+    if env.get("AWS_SECRET_ACCESS_KEY") != "cloud-only-secret":
+        fails.append(f"AWS_SECRET_ACCESS_KEY expected 'cloud-only-secret', got {env.get('AWS_SECRET_ACCESS_KEY')!r}")
+
+    # Bootstrap provider must be aws-bedrock with Sonnet 4.6 as default chat.
+    if env.get("BOOTSTRAP_PROVIDER_TYPE") != "aws-bedrock":
+        fails.append(f"BOOTSTRAP_PROVIDER_TYPE expected 'aws-bedrock', got {env.get('BOOTSTRAP_PROVIDER_TYPE')!r}")
+    if env.get("BOOTSTRAP_PROVIDER_NAME") != "aws-bedrock":
+        fails.append(f"BOOTSTRAP_PROVIDER_NAME expected 'aws-bedrock', got {env.get('BOOTSTRAP_PROVIDER_NAME')!r}")
+    defaults = env.get("BOOTSTRAP_PROVIDER_DEFAULTS", "")
+    try:
+        import json as _json
+        chat = _json.loads(defaults).get("chat")
+    except Exception:
+        chat = None
+    if chat != BEDROCK_CHAT_MODEL:
+        fails.append(f"BOOTSTRAP_PROVIDER_DEFAULTS.chat expected {BEDROCK_CHAT_MODEL!r}, got {chat!r} (raw={defaults!r})")
+    cfg = env.get("BOOTSTRAP_PROVIDER_CONFIG", "")
+    if '"region"' not in cfg or "us-west-2" not in cfg:
+        fails.append(f"BOOTSTRAP_PROVIDER_CONFIG should carry region us-west-2, got {cfg!r}")
+    if not env.get("SEEDER_VERSION"):
+        fails.append("SEEDER_VERSION should be set on a Bedrock install")
+
+    # NO raw provider API keys may EVER be written (IAM-only product decision).
+    for forbidden in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY",
+                      "GOOGLE_GENERATIVE_AI_API_KEY", "AZURE_OPENAI_API_KEY"):
+        if env.get(forbidden):
+            fails.append(f"{forbidden} must NOT be written (IAM-only), got {env.get(forbidden)!r}")
+    return fails
+
+
+def script_bedrock_both(child: pexpect.spawn) -> None:
+    """LLM strategy = Both (Ollama embeddings + AWS Bedrock chat), inline IAM.
+    Asserts the router gotcha: OLLAMA_CHAT_MODEL must NOT be written (so Ollama
+    seeds no role='chat' row and Bedrock wins the default-chat lookup)."""
+    expect_screen(child, "Where do you want to run openagentic?")
+    send(child, ENTER)
+    expect_screen(child, "Create your admin account")
+    send(child, ENTER)
+    type_and_enter(child, "passw0rd!")
+
+    expect_screen(child, "How should the platform call LLMs?")
+    send(child, DOWN); send(child, DOWN)       # "Both" — 3rd option
+    send(child, ENTER)
+
+    expect_screen(child, "Where is your Ollama?")
+    send(child, ENTER)                         # accept default host
+
+    # Bedrock IAM picker (no ~/.aws → inline first).
+    expect_screen(child, "AWS Bedrock (Claude via IAM)")
+    send(child, ENTER)                         # "Enter IAM access key"
+    expect_screen(child, "IAM access key")
+    clear_and_enter(child, "us-east-1")        # region (clear prefilled default, don't append)
+    type_and_enter(child, "AKIA-BOTH-XYZ")
+    type_and_enter(child, "both-secret-xyz")
+
+    expect_screen(child, "Which MCPs do you want enabled?")
+    send(child, "n")
+    send(child, SPACE)                         # web on
+    send(child, ENTER)
+
+    expect_screen(child, "Review & launch")
+    send(child, ENTER)
+    expect_screen(child, "dry-run", timeout=15.0)
+
+
+def assert_bedrock_both(env: dict[str, str]) -> list[str]:
+    fails = []
+    # Ollama ON for embeddings.
+    if env.get("OLLAMA_ENABLED") != "true":
+        fails.append(f"OLLAMA_ENABLED expected 'true' (embeddings), got {env.get('OLLAMA_ENABLED')!r}")
+    if env.get("OLLAMA_EMBED_MODEL") != "nomic-embed-text":
+        fails.append(f"OLLAMA_EMBED_MODEL expected 'nomic-embed-text', got {env.get('OLLAMA_EMBED_MODEL')!r}")
+    # ROUTER GOTCHA: no Ollama chat model → no role='chat' Ollama row → Bedrock wins.
+    if env.get("OLLAMA_CHAT_MODEL"):
+        fails.append(f"OLLAMA_CHAT_MODEL must be EMPTY under 'both' (router gotcha), got {env.get('OLLAMA_CHAT_MODEL')!r}")
+    # Bedrock is the sole chat bootstrap provider.
+    if env.get("BOOTSTRAP_PROVIDER_TYPE") != "aws-bedrock":
+        fails.append(f"BOOTSTRAP_PROVIDER_TYPE expected 'aws-bedrock', got {env.get('BOOTSTRAP_PROVIDER_TYPE')!r}")
+    import json as _json
+    try:
+        d = _json.loads(env.get("BOOTSTRAP_PROVIDER_DEFAULTS", ""))
+    except Exception:
+        d = {}
+    if d.get("chat") != BEDROCK_CHAT_MODEL:
+        fails.append(f"DEFAULTS.chat expected {BEDROCK_CHAT_MODEL!r}, got {d.get('chat')!r}")
+    if d.get("embedding") != "nomic-embed-text":
+        fails.append(f"DEFAULTS.embedding expected 'nomic-embed-text', got {d.get('embedding')!r}")
+    if d.get("embeddingDimension") != 768:
+        fails.append(f"DEFAULTS.embeddingDimension expected 768, got {d.get('embeddingDimension')!r}")
+    # Region must be exactly the typed value — guards the prefilled-field append bug
+    # (clear_and_enter, not type_and_enter) that produced AWS_REGION=us-east-1us-east-1.
+    if env.get("AWS_REGION") != "us-east-1":
+        fails.append(f"AWS_REGION expected 'us-east-1', got {env.get('AWS_REGION')!r}")
+    if "us-east-1us-east-1" in env.get("BOOTSTRAP_PROVIDER_CONFIG", ""):
+        fails.append(f"BOOTSTRAP_PROVIDER_CONFIG has a doubled region (prefill-append bug): {env.get('BOOTSTRAP_PROVIDER_CONFIG')!r}")
+    if env.get("AWS_ACCESS_KEY_ID") != "AKIA-BOTH-XYZ":
+        fails.append(f"AWS_ACCESS_KEY_ID expected 'AKIA-BOTH-XYZ', got {env.get('AWS_ACCESS_KEY_ID')!r}")
+    for forbidden in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY"):
+        if env.get(forbidden):
+            fails.append(f"{forbidden} must NOT be written (IAM-only), got {env.get(forbidden)!r}")
     return fails
 
 
 VARIATIONS: list[Variation] = [
     Variation(
         name="minimal",
-        description="Accept defaults, 1 MCP (web), anthropic key only",
+        description="Accept defaults (Both: Ollama embed + Bedrock chat), 1 MCP (web), no raw keys",
         script=script_minimal,
         assertions=assert_minimal,
     ),
@@ -411,9 +557,15 @@ VARIATIONS: list[Variation] = [
     ),
     Variation(
         name="cloud-only",
-        description="LLM strategy=cloud-only → no Ollama in .env, OpenAI key written",
+        description="AWS Bedrock only → no Ollama, inline IAM, Sonnet 4.6 default, no raw keys",
         script=script_cloud_only,
         assertions=assert_cloud_only,
+    ),
+    Variation(
+        name="bedrock-both",
+        description="Both: Ollama embeddings + Bedrock chat; OLLAMA_CHAT_MODEL empty (router gotcha)",
+        script=script_bedrock_both,
+        assertions=assert_bedrock_both,
     ),
 ]
 

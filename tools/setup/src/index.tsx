@@ -33,13 +33,22 @@ const App: React.FC = () => {
       host: existing.OLLAMA_HOST || DEFAULT_CONFIG.ollama.host,
       embedModel: existing.OLLAMA_EMBED_MODEL || DEFAULT_CONFIG.ollama.embedModel,
     },
-    providers: {
-      anthropic: existing.ANTHROPIC_API_KEY || undefined,
-      openai: existing.OPENAI_API_KEY || undefined,
-      google: existing.GOOGLE_GENERATIVE_AI_API_KEY || undefined,
-      azureOpenAIEndpoint: existing.AZURE_OPENAI_ENDPOINT || undefined,
-      azureOpenAIKey: existing.AZURE_OPENAI_API_KEY || undefined,
-    },
+    // Cloud LLMs are AWS Bedrock (IAM) only — no raw provider API keys.
+    // Hydrate the Bedrock picker from a prior .env so a re-run is sticky:
+    // a region (or any AWS_* cred / profile) on disk implies a prior Bedrock
+    // selection. Inline keys → inline mode; AWS_PROFILE → profile mode;
+    // region-only → host-creds mode.
+    providers: (existing.AWS_REGION || existing.AWS_ACCESS_KEY_ID || existing.AWS_PROFILE)
+      ? {
+          awsBedrock: {
+            region: existing.AWS_REGION || 'us-east-1',
+            accessKeyId: existing.AWS_ACCESS_KEY_ID || undefined,
+            secretAccessKey: existing.AWS_SECRET_ACCESS_KEY || undefined,
+            profile: existing.AWS_PROFILE || undefined,
+            useHostCreds: !existing.AWS_ACCESS_KEY_ID && !existing.AWS_PROFILE ? true : undefined,
+          },
+        }
+      : {},
     mcps: existing.MCPS_ENABLED ? existing.MCPS_ENABLED.split(',').map((s: string) => s.trim()).filter(Boolean) : defaultEnabledMcps(),
     mcpAuth: {},
     uiPort: existing.UI_HOST_PORT ? Number(existing.UI_HOST_PORT) : DEFAULT_CONFIG.uiPort,

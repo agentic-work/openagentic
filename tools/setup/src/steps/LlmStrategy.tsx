@@ -24,14 +24,14 @@ const ITEMS: Array<{ label: string; value: LlmStrategy; hint: string }> = [
     hint: 'Zero API costs, fully offline. Need an Ollama install (https://ollama.com).',
   },
   {
-    label: 'Cloud LLMs — Anthropic / OpenAI / Google / Azure OpenAI',
+    label: 'AWS Bedrock (Claude via IAM)',
     value: 'cloud',
-    hint: 'Bring your own API keys. No Ollama dependency.',
+    hint: 'Authenticate with AWS IAM creds — no raw API keys. Seeds Claude Sonnet 4.6 as the default chat + flows model.',
   },
   {
-    label: 'Both — Ollama for embeddings, cloud LLMs for chat',
+    label: 'Both — Ollama for embeddings, AWS Bedrock (Claude) for chat',
     value: 'both',
-    hint: 'Best of both worlds: free local embeddings + frontier-grade chat models.',
+    hint: 'Best of both worlds: free local embeddings + frontier-grade Claude chat via AWS IAM (no raw keys).',
   },
   {
     label: 'Skip for now — configure later from the admin panel',

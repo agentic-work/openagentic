@@ -88,6 +88,25 @@ spec:
               value: {{ .Values.ollama.embedModel | quote }}
             - name: EMBEDDING_MODEL
               value: {{ .Values.ollama.embedModel | quote }}
+            {{- if .Values.bootstrapProvider.enabled }}
+            # AWS Bedrock (Claude via IAM) is the SOLE chat bootstrap provider.
+            # Seeds claude-sonnet-4-6 as the default chat + flows model. CONFIG
+            # carries ONLY the region (no secrets — creds come from the AWS_*
+            # secret env / pod IAM role). Embeddings stay on the in-cluster
+            # Ollama (nomic-embed-text, 768) for a healthy first boot.
+            - name: BOOTSTRAP_PROVIDER_NAME
+              value: {{ .Values.bootstrapProvider.name | quote }}
+            - name: BOOTSTRAP_PROVIDER_DISPLAY_NAME
+              value: {{ .Values.bootstrapProvider.displayName | quote }}
+            - name: BOOTSTRAP_PROVIDER_TYPE
+              value: {{ .Values.bootstrapProvider.type | quote }}
+            - name: BOOTSTRAP_PROVIDER_CONFIG
+              value: '{"region":"{{ .Values.secrets.awsRegion | default "us-east-1" }}"}'
+            - name: BOOTSTRAP_PROVIDER_DEFAULTS
+              value: '{"chat":"{{ .Values.bootstrapProvider.chatModel }}","embedding":"{{ .Values.ollama.embedModel }}","embeddingDimension":768}'
+            - name: SEEDER_VERSION
+              value: {{ .Values.bootstrapProvider.seederVersion | quote }}
+            {{- else }}
             # Seed a local Ollama provider on first boot so a bare install chats
             # with zero API keys. Chat role seeds only when chatModel is set.
             - name: BOOTSTRAP_PROVIDER_NAME
@@ -100,6 +119,7 @@ spec:
               value: '{"endpoint":"{{ .Values.ollama.chatHost | default "http://ollama:11434" }}"}'
             - name: BOOTSTRAP_PROVIDER_DEFAULTS
               value: '{"chat":"{{ .Values.ollama.chatModel }}","embedding":"{{ .Values.ollama.embedModel }}","embeddingDimension":768}'
+            {{- end }}
             - name: API_HOST
               value: api
             - name: API_PORT

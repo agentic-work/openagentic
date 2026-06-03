@@ -14,15 +14,29 @@ export interface WizardConfig {
   };
   ollama: {
     host: string;                 // e.g. http://localhost:11434
-    embedModel: string;           // default: nomic-embed-text
-    chatModel?: string;           // optional — pre-selects a chat model
+    embedModel: string;           // default: nomic-embed-text (Ollama is embeddings-only now)
   };
   providers: {
-    anthropic?: string;
-    openai?: string;
-    google?: string;
-    azureOpenAIEndpoint?: string;
-    azureOpenAIKey?: string;
+    /**
+     * The only cloud-LLM option the wizard offers. Cloud LLMs authenticate
+     * via AWS IAM ONLY — no raw provider API keys (firm product decision;
+     * Ollama is the sole key-free local exception). When set, the wizard
+     * seeds an `aws-bedrock` bootstrap provider with claude-sonnet-4-6 as
+     * the default chat (and therefore flows) model.
+     *
+     *   region        — AWS region, default us-east-1 (required).
+     *   useHostCreds   — mount + read the user's host ~/.aws creds.
+     *   profile        — a named AWS profile (also needs the ~/.aws mount).
+     *   accessKeyId /
+     *   secretAccessKey— inline IAM keys (no mount required).
+     */
+    awsBedrock?: {
+      region: string;
+      accessKeyId?: string;
+      secretAccessKey?: string;
+      profile?: string;
+      useHostCreds?: boolean;
+    };
   };
   /** MCPs the user chose to enable. Used as compose profiles + MCPS_ENABLED. */
   mcps: string[];

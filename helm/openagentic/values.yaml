@@ -55,6 +55,24 @@ ollama:
   # if you run a big chat model on the IN-CLUSTER Ollama (chatHost empty).
   gpu: false
 
+# Bootstrap LLM provider seeded on first boot (one provider row; the admin UI
+# owns it thereafter). Mirrors the compose/wizard BOOTSTRAP_PROVIDER_* path.
+# When `enabled: true`, the api seeds THIS provider (and its chat model) instead
+# of the default in-cluster Ollama chat provider — set `type: aws-bedrock` +
+# `chatModel: anthropic.claude-sonnet-4-6` to make Claude Sonnet 4.6 the default
+# chat AND flows model (flow agents use model:'auto' → getDefaultChatModel).
+# Requires secrets.awsAccessKeyId/awsSecretAccessKey (or pod IAM role) to be set.
+# Embeddings stay on the in-cluster Ollama (nomic-embed-text, 768). When
+# `enabled: false`, the api falls back to the local Ollama bootstrap provider.
+bootstrapProvider:
+  enabled: false
+  name: aws-bedrock
+  displayName: AWS Bedrock
+  type: aws-bedrock
+  chatModel: anthropic.claude-sonnet-4-6
+  # Bump on a Bedrock install so the role='chat' assignment row is (re)written.
+  seederVersion: 6
+
 # Postgres datastore (pgvector). storage sizes are modest for a demo.
 postgres:
   image: pgvector/pgvector:pg16

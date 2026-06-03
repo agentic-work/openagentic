@@ -8,10 +8,19 @@ import { mcpsThatNeedAuth } from '../lib/mcps.ts';
 const describeStrategy = (s: LlmStrategy): string => {
   switch (s) {
     case 'ollama': return 'local Ollama only';
-    case 'cloud':  return 'cloud LLMs only';
-    case 'both':   return 'Ollama + cloud LLMs';
+    case 'cloud':  return 'AWS Bedrock (Claude via IAM)';
+    case 'both':   return 'Ollama embeddings + AWS Bedrock (Claude) chat';
     case 'skip':   return 'skipped — configure in admin panel';
   }
+};
+
+/** Human summary of the chosen AWS Bedrock auth path for the review screen. */
+const describeBedrock = (b: WizardConfig['providers']['awsBedrock']): string => {
+  if (!b) return 'none — chat will fail until set';
+  if (b.useHostCreds) return `host ~/.aws creds, region ${b.region}`;
+  if (b.profile)      return `profile ${b.profile}, region ${b.region}`;
+  if (b.accessKeyId)  return `inline IAM key, region ${b.region}`;
+  return `region ${b.region}`;
 };
 
 interface Props {
@@ -23,8 +32,6 @@ interface Props {
 }
 
 export const ReviewStep: React.FC<Props> = ({ config, step, total, onLaunch, onCancel }) => {
-  const providerCount = Object.values(config.providers).filter(Boolean).length;
-
   // Summarize MCPs: enabled count + which ones still need creds filled in.
   const needAuth = mcpsThatNeedAuth(config.mcps);
   const missingCreds = needAuth.filter((m) => {
@@ -62,7 +69,9 @@ export const ReviewStep: React.FC<Props> = ({ config, step, total, onLaunch, onC
         {(config.llmStrategy === 'ollama' || config.llmStrategy === 'both') &&
           row('embedding model', config.ollama.embedModel)}
         {(config.llmStrategy === 'cloud' || config.llmStrategy === 'both') &&
-          row('cloud LLM keys', providerCount > 0 ? `${providerCount} configured` : 'none — chat will fail until set')}
+          row('AWS Bedrock', describeBedrock(config.providers.awsBedrock))}
+        {(config.llmStrategy === 'cloud' || config.llmStrategy === 'both') &&
+          row('chat model', 'claude-sonnet-4-6 (default)')}
         {row('MCPs', mcpSummary)}
         {row('UI port', String(config.uiPort))}
         {missingCreds.length > 0 && (

@@ -20,6 +20,23 @@ interface Task { label: string; state: TaskState; detail?: string; }
 
 const DRY_RUN = process.env.WIZARD_DRY_RUN === '1';
 
+// ── AWS Bedrock bootstrap constants ──────────────────────────────────────────
+// The Claude Sonnet 4.6 Bedrock model id, verified to round-trip live (it is
+// both in AWSBedrockProvider.MODEL_TO_INFERENCE_PROFILE → us.* profile AND
+// accepted by `aws bedrock-runtime invoke-model`). This base id is what the
+// seeded role='chat' assignment uses; the provider maps it to the inference
+// profile at call time.
+const BEDROCK_CHAT_MODEL = 'anthropic.claude-sonnet-4-6';
+// Embeddings stay on Ollama nomic-embed-text (768) — the dimension the
+// halfvec columns + Milvus collections are built at, and the only key-free
+// embedding path that boots healthy regardless of when AWS creds resolve.
+const BOOTSTRAP_EMBED_MODEL = 'nomic-embed-text';
+const BOOTSTRAP_EMBED_DIM = 768;
+// Gates RegistryBootstrapSeeder, which only (re)seeds when this value is greater
+// than the registry_seeder_version persisted in the DB (default 0 on a fresh
+// install) — so any value >0 writes the Bedrock chat role-assignment row on boot.
+const BEDROCK_SEEDER_VERSION = '6';
+
 export const LaunchStep: React.FC<Props> = ({ config, step, total, onDone }) => {
   const [tasks, setTasks] = useState<Task[]>(() => {
     const baseLabels = DRY_RUN
@@ -136,12 +153,40 @@ function toEnv(c: WizardConfig): Record<string, string> {
     env.OLLAMA_ENABLED = 'false';
   }
 
-  if (useCloud) {
-    if (c.providers.anthropic)            env.ANTHROPIC_API_KEY = c.providers.anthropic;
-    if (c.providers.openai)               env.OPENAI_API_KEY = c.providers.openai;
-    if (c.providers.google)               env.GOOGLE_GENERATIVE_AI_API_KEY = c.providers.google;
-    if (c.providers.azureOpenAIEndpoint)  env.AZURE_OPENAI_ENDPOINT = c.providers.azureOpenAIEndpoint;
-    if (c.providers.azureOpenAIKey)       env.AZURE_OPENAI_API_KEY = c.providers.azureOpenAIKey;
+  // Cloud LLMs are AWS Bedrock (Claude via IAM) ONLY — no raw provider API
+  // keys (firm product decision). Seed an aws-bedrock bootstrap provider with
+  // Claude Sonnet 4.6 as the default chat model, which the smart router uses
+  // for chat AND for flows (flow agents use model:'auto' → getDefaultChatModel
+  // → the role='chat' assignment row seeded from BOOTSTRAP_PROVIDER_DEFAULTS).
+  const bedrock = c.providers.awsBedrock;
+  if (useCloud && bedrock) {
+    const region = (bedrock.region || 'us-east-1').trim() || 'us-east-1';
+    env.AWS_REGION = region;
+
+    // Credential material per auth path. The bootstrap provider config carries
+    // ONLY the region (no secrets) — the AWSBedrockProvider resolves creds from
+    // the container's AWS_* env / default credential chain (host ~/.aws mount).
+    if (bedrock.accessKeyId && bedrock.secretAccessKey) {
+      // Inline IAM keys.
+      env.AWS_ACCESS_KEY_ID = bedrock.accessKeyId;
+      env.AWS_SECRET_ACCESS_KEY = bedrock.secretAccessKey;
+    } else if (bedrock.profile) {
+      // Named profile — resolved from the mounted host ~/.aws.
+      env.AWS_PROFILE = bedrock.profile;
+    }
+    // host-creds path writes nothing secret — just AWS_REGION + the mount.
+
+    // Bootstrap provider block — Bedrock is the SOLE chat bootstrap provider.
+    env.BOOTSTRAP_PROVIDER_NAME = 'aws-bedrock';
+    env.BOOTSTRAP_PROVIDER_DISPLAY_NAME = 'AWS Bedrock';
+    env.BOOTSTRAP_PROVIDER_TYPE = 'aws-bedrock';
+    env.BOOTSTRAP_PROVIDER_CONFIG = JSON.stringify({ region });
+    env.BOOTSTRAP_PROVIDER_DEFAULTS = JSON.stringify({
+      chat: BEDROCK_CHAT_MODEL,
+      embedding: BOOTSTRAP_EMBED_MODEL,
+      embeddingDimension: BOOTSTRAP_EMBED_DIM,
+    });
+    env.SEEDER_VERSION = BEDROCK_SEEDER_VERSION;
   }
 
   // Per-MCP gating: flip the proxy's *_DISABLED var for anything NOT selected.
