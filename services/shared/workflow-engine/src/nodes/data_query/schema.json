@@ -4,8 +4,15 @@
   "label": "Data Query",
   "description": "Run a vector / collection query against a configured datasource. Returns the matching results so downstream nodes can summarise, rank, or feed an LLM.",
   "icon": "database",
+  "primary": "results",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

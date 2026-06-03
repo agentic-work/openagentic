@@ -4,8 +4,15 @@
   "label": "Filter Array",
   "description": "Filter an array by a typed field predicate. Replaces the JS-expression-only path through `transform` for the common 'keep rows where X' case.",
   "icon": "filter",
+  "primary": "filtered",
   "ports": {
-    "inputs": [{ "name": "items", "type": "array", "required": false }],
+    "inputs": [
+      {
+        "name": "items",
+        "type": "array",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

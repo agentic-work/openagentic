@@ -17,6 +17,7 @@
 import type { WorkflowNode } from '../types.js';
 import type { NodeExecutionContext } from '../types.js';
 import { streamLLMCompletion } from '../../llm/streamLLMCompletion.js';
+import { stripLeadingReasoning } from '../../llm/stripReasoning.js';
 import { withGenAISpan } from '../../observability/GenAITracer.js';
 
 export async function execute(
@@ -86,7 +87,11 @@ export async function execute(
 
   // Non-canonical fields ride on extraBody so streamLLMCompletion can
   // merge them into the request without growing its surface.
-  const extraBody: Record<string, unknown> = {};
+  const extraBody: Record<string, unknown> = {
+    // Ask the OpenAI-shape stream for the trailing usage chunk so the node
+    // result reports real token counts (was total_tokens:0 — live 2026-06-02).
+    stream_options: { include_usage: true },
+  };
   if (sliderOverride !== null && sliderOverride !== undefined) {
     extraBody.sliderPosition = sliderOverride;
   }
@@ -136,7 +141,11 @@ export async function execute(
   );
   const latencyMs = Date.now() - t0;
 
-  const content = result.fullText;
+  // Strip the leaked gpt-oss Harmony "analysis" channel (reasoning prose glued
+  // onto the final answer by the OpenAI shim) so .content is the real answer
+  // and downstream {{steps.X.content}} consumers don't get garbage
+  // (live defect 2026-06-02).
+  const content = stripLeadingReasoning(result.fullText);
   const completionTokens = result.usage?.output_tokens ?? 0;
   const promptTokens = result.usage?.input_tokens ?? 0;
   const usage = {

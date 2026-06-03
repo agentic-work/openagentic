@@ -4,11 +4,26 @@
   "label": "Condition",
   "description": "Evaluate a JavaScript expression and route to the matching downstream branch (true/false or custom labels).",
   "icon": "git-branch",
+  "primary": "matched",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
-      { "name": "true", "type": "any", "required": false },
-      { "name": "false", "type": "any", "required": false }
+      {
+        "name": "true",
+        "type": "any",
+        "required": false
+      },
+      {
+        "name": "false",
+        "type": "any",
+        "required": false
+      }
     ]
   },
   "settings": [

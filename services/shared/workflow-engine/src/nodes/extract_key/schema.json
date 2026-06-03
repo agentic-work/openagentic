@@ -4,14 +4,24 @@
   "label": "Extract Key",
   "description": "Pull a single value at a dot/bracket path from an object, with optional default. Replaces the transform-extract case for the common 'give me steps.X.data.id' pattern.",
   "icon": "key",
+  "primary": "value",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
         "type": "json",
         "required": true,
-        "shape": { "value": "any", "found": "boolean" }
+        "shape": {
+          "value": "any",
+          "found": "boolean"
+        }
       }
     ]
   },

@@ -4,8 +4,15 @@
   "label": "RAG Query",
   "description": "Run a semantic search against a Milvus collection via the platform's /api/v1/vector/search endpoint. Returns ranked results with optional score threshold.",
   "icon": "search",
+  "primary": "results",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

@@ -4,8 +4,15 @@
   "label": "Aggregate (LLM)",
   "description": "LLM-driven reduce over an array. Two modes: `reduce` (single LLM call with the entire array serialized into the prompt → one summary string + one usage entry) and `map` (N LLM calls, one per item → array of N results). Uses the SAME /v1/chat/completions endpoint as llm_completion / llm_router. Smart Router via model:'auto' resolves to the platform's DB-backed registry (SoT). Closes the flowbuilder-gap-analysis P1.16 'LLM-driven reduce' gap.",
   "icon": "list-tree",
+  "primary": "output",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -36,7 +43,10 @@
       "label": "Mode",
       "type": "enum",
       "required": false,
-      "values": ["reduce", "map"],
+      "values": [
+        "reduce",
+        "map"
+      ],
       "default": "reduce",
       "description": "`reduce` = one LLM call over the whole array → one summary. `map` = N LLM calls, one per item → array of N results. Use `reduce` when the model can hold the whole list in its context window; use `map` when items need independent analysis or the array is large."
     },

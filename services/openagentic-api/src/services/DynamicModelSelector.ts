@@ -108,13 +108,17 @@ export class DynamicModelSelector {
   }
 
   async getBestModelForTools(tools: string[]): Promise<string | null> {
-    const models = await this.discoverModels();
-    return models.length > 0 ? models[0].id : null;
+    return this.getBestModel();
   }
 
   async getBestModel(requirements?: any): Promise<string | null> {
     const models = await this.discoverModels();
-    return models.length > 0 ? models[0].id : null;
+    if (models.length === 0) return null;
+    // #1274: never return a non-chat model for a chat/completion caller. Prefer
+    // the first model whose advertised capabilities include 'chat'; only fall
+    // through to models[0] when none advertise capabilities at all.
+    const chatCapable = models.find(m => (m.capabilities ?? []).includes('chat'));
+    return (chatCapable ?? models[0]).id;
   }
 
   async getCacheStatus(): Promise<any> {

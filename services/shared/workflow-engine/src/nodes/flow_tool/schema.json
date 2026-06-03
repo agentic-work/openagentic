@@ -4,8 +4,15 @@
   "label": "Flow as Tool",
   "description": "Wrap a saved Flow as a callable tool. Maps caller args to the wrapped flow's trigger input via inputMapping, runs the flow as a sub-execution, and extracts a value at outputExtract from the result. V1: callable from a parent flow; agent dynamic-tool integration is V1.1.",
   "icon": "git-fork",
+  "primary": "value",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

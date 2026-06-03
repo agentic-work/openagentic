@@ -37,7 +37,24 @@ export async function execute(
   }
 
   const data = (node.data || {}) as Record<string, any>;
-  const approvers: string[] = Array.isArray(data.approvers) ? data.approvers : [];
+  const configuredApprovers: string[] = Array.isArray(data.approvers)
+    ? data.approvers.filter((a): a is string => typeof a === 'string' && a.length > 0)
+    : [];
+  // Default-approver guard (live defect 2026-06-02): a human_approval node with
+  // no approvers persists `required_approvers: []`, and
+  // routes/workflow-approvals.ts gates the decide endpoint on
+  // `required_approvers.includes(userId)` — so an empty list means NO user can
+  // approve/reject and the gate dead-ends. When no approvers are configured,
+  // fall back to the run-trigger user (ctx.userId) so the person who ran the
+  // flow can act on their own gate. When the engine is not user-scoped
+  // (ctx.userId unset, e.g. system/cron runs), preserve the empty list so the
+  // schema-level config validators still surface the misconfiguration.
+  const approvers: string[] =
+    configuredApprovers.length > 0
+      ? configuredApprovers
+      : typeof ctx.userId === 'string' && ctx.userId.length > 0
+        ? [ctx.userId]
+        : [];
   const requiredCount: number = Number.isFinite(data.requiredCount)
     ? Number(data.requiredCount)
     : 1;

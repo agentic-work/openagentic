@@ -38,7 +38,6 @@ const LLM_NODE_TYPES = new Set([
   'agent_spawn',
   'a2a',
   'synth',
-  'openagentic',
   'reasoning',
   'structured_output',
   'llm',
@@ -143,7 +142,7 @@ export function detectOutputType(nodeType: string, output: unknown): RenderedOut
   }
 
   // Code nodes — stdout text
-  if (nodeType === 'code' || nodeType === 'openagentic') {
+  if (nodeType === 'code') {
     const stdout = (output as any).stdout;
     if (isString(stdout)) {
       if (looksLikeMarkdown(stdout)) return 'markdown';
@@ -197,7 +196,7 @@ export function extractRenderable(
       if (isString(o.text)) return o.text;
       if (isString(o.message)) return o.message;
     }
-    if (nodeType === 'code' || nodeType === 'openagentic') {
+    if (nodeType === 'code') {
       if (isString(o.stdout)) return o.stdout;
     }
     // last resort: stringify

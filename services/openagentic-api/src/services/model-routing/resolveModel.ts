@@ -221,3 +221,14 @@ export async function resolveModel(
   // No hints provided → role-based default (F1.6).
   return resolveRoleDefault(prisma, args.role);
 }
+
+/**
+ * Canonical chat model id (Registry SoT). Resolves the highest-priority enabled
+ * role='chat' row's model id. Used by the chat-capable fallback (#1274) so a
+ * `model:"auto"` request can NEVER be routed to an embedding-only model.
+ */
+export async function resolveChatModelId(): Promise<string> {
+  const { prisma } = await import('../../utils/prisma.js');
+  const resolved = await resolveRoleDefault(prisma as any, 'chat');
+  return resolved.modelId;
+}

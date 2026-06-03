@@ -4,8 +4,15 @@
   "label": "Wait For Condition",
   "description": "Poll an expression until it becomes truthy (or a timeout elapses). Differs from `wait`, which sleeps a fixed duration. Useful for: 'wait until job_status == done', 'wait until pod ready', 'wait until queue depth < N'. Reference: n8n's Wait node 'until condition' variant + the n8n/Flowise/Langflow gap analysis (P1 #3).",
   "icon": "loader",
+  "primary": "satisfied",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

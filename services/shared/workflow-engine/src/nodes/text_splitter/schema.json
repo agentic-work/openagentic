@@ -4,8 +4,15 @@
   "label": "Text Splitter",
   "description": "Split text into chunks for embedding. Strategies: recursive (separator-aware) or fixed (fixed-size). Runs in-process, no HTTP.",
   "icon": "scissors",
+  "primary": "chunks",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": true }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": true
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -24,7 +31,11 @@
       "name": "strategy",
       "label": "Strategy",
       "type": "enum",
-      "values": ["recursive", "fixed", "semantic"],
+      "values": [
+        "recursive",
+        "fixed",
+        "semantic"
+      ],
       "default": "recursive",
       "required": false,
       "description": "recursive: respects separators; fixed: pure fixed-size slices; semantic: alias for recursive in this implementation."
@@ -52,7 +63,12 @@
       "label": "Separators (recursive only)",
       "type": "json",
       "required": false,
-      "default": ["\n\n", "\n", ". ", " "]
+      "default": [
+        "\n\n",
+        "\n",
+        ". ",
+        " "
+      ]
     }
   ],
   "ai": {

@@ -4,8 +4,15 @@
   "label": "Guardrails",
   "description": "Validate content against safety rules (PII, toxicity, prompt-injection). Calls the platform's DLP scanner API; falls back to local regex on failure.",
   "icon": "shield",
+  "primary": "passed",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": true }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": true
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -26,14 +33,22 @@
       "label": "Checks to run",
       "type": "json",
       "required": true,
-      "default": ["pii", "toxicity", "injection"],
+      "default": [
+        "pii",
+        "toxicity",
+        "injection"
+      ],
       "description": "Array of check names. Built-ins: pii, toxicity, injection."
     },
     {
       "name": "action",
       "label": "Action on violation",
       "type": "enum",
-      "values": ["block", "redact", "warn"],
+      "values": [
+        "block",
+        "redact",
+        "warn"
+      ],
       "default": "block",
       "required": false
     }

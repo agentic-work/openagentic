@@ -4,8 +4,15 @@
   "label": "K8s Sandbox Run",
   "description": "Apply a kubectl manifest in a fully-isolated ephemeral namespace, wait for resources to be Ready, capture pod logs / status / events, then tear down the namespace. Ideal for infrastructure dry-runs, ephemeral testing, and sandboxed workload experiments.",
   "icon": "container",
+  "primary": "status",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -27,7 +34,11 @@
       "name": "operation",
       "label": "Operation",
       "type": "enum",
-      "values": ["apply_and_wait", "apply_only", "cleanup"],
+      "values": [
+        "apply_and_wait",
+        "apply_only",
+        "cleanup"
+      ],
       "default": "apply_and_wait",
       "required": true,
       "description": "apply_and_wait: create namespace, apply manifest, wait for Ready, capture logs+events, delete namespace. apply_only: create namespace + apply, no wait/cleanup (caller is responsible for cleanup). cleanup: delete a previously-created sandbox namespace by label selector."

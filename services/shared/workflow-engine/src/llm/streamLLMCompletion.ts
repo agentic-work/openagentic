@@ -125,6 +125,66 @@ export interface StreamLLMCompletionOptions {
   format?: 'openai' | 'canonical';
 }
 
+/**
+ * Detect a top-level provider-ERROR frame inside an OpenAI-shape SSE stream
+ * and extract its human-readable message.
+ *
+ * WHY (multi-agent synthesize empty-completion defect — live exec
+ * 64c80b20-…): the api `/api/v1/chat/completions` shim commits
+ * `writeHead(200, text/event-stream)` BEFORE it starts draining the provider.
+ * If the provider then errors mid-stream (e.g. the Smart Router fell back to
+ * an embedding model that "does not support chat", or a context-length
+ * overflow), the shim cannot change the already-sent 200 status — so it writes
+ * the error INTO the stream as a single frame:
+ *     data: {"error": "Ollama API error: 400 Bad Request — … does not support chat"}
+ *     data: [DONE]
+ *
+ * The OpenAI canonical normalizer does not classify a top-level `{error}`
+ * object as a text delta, so without this guard the stream produced ZERO
+ * text_delta events, fullText came back '' and the node returned an empty
+ * completion — masking the REAL, actionable upstream error behind the schema's
+ * generic "returned an empty completion" assertion. We surface the error
+ * verbatim instead.
+ *
+ * Returns the error message string when `chunk` is a provider-error frame,
+ * otherwise `null`. Handles all three observed shapes:
+ *   { error: "string" }                         (Ollama/route mid-stream)
+ *   { error: { message: "…", type, code } }     (OpenAI-shape error object)
+ *   { object: "error", message: "…" }           (defensive — some shims)
+ */
+function extractStreamErrorMessage(chunk: unknown): string | null {
+  if (!chunk || typeof chunk !== 'object') return null;
+  const c = chunk as Record<string, unknown>;
+
+  // A legitimate completion chunk carries `choices` (array). A pure error
+  // frame does not. Only treat `error` as fatal when there is no `choices`
+  // payload alongside it, so a provider that ever attaches a benign `error:null`
+  // to a real delta chunk is never mis-read as a failure.
+  const hasChoices = Array.isArray(c.choices);
+
+  const err = c.error;
+  if (err !== undefined && err !== null && !hasChoices) {
+    if (typeof err === 'string') return err;
+    if (typeof err === 'object') {
+      const eo = err as Record<string, unknown>;
+      if (typeof eo.message === 'string') return eo.message;
+      try {
+        return JSON.stringify(err);
+      } catch {
+        return 'Upstream provider error';
+      }
+    }
+    return String(err);
+  }
+
+  // Defensive: `{ object: 'error', message: '…' }` shape.
+  if (c.object === 'error' && typeof c.message === 'string' && !hasChoices) {
+    return c.message;
+  }
+
+  return null;
+}
+
 export interface StreamLLMCompletionResult {
   /** Concatenated assistant text (sum of all `text_delta` events). */
   fullText: string;
@@ -187,6 +247,19 @@ export async function streamLLMCompletion(
       ? '/api/v1/canonical/completions'
       : '/api/v1/chat/completions';
 
+  // Flows usage-tokens fix (live 2026-06-02, execs 6bfa837c / d63769cc):
+  // the OpenAI-shape `/api/v1/chat/completions` shim only emits the trailing
+  // usage chunk (choices:[], usage:{prompt,completion,total}) when the caller
+  // sets `stream_options.include_usage:true`. Without it the streamed node
+  // result reports total_tokens:0 even though a real completion ran. Request
+  // it by default here so EVERY AI node executor reports real token counts —
+  // not just the ones that remember to set it in extraBody. The canonical
+  // endpoint already carries usage on `message_delta`, so this is a no-op
+  // there; harmless to send. A caller's explicit extraBody.stream_options
+  // still wins (it is spread AFTER this default below).
+  const includeUsageDefault: Record<string, unknown> =
+    effectiveFormat === 'openai' ? { stream_options: { include_usage: true } } : {};
+
   let response: Response;
   try {
     response = await fetch(`${opts.apiUrl}${endpointPath}`, {
@@ -197,8 +270,11 @@ export async function streamLLMCompletion(
         ...opts.headers,
       },
       body: JSON.stringify({
-        // Extras first so canonical fields (model/messages/temperature/
-        // max_tokens/stream) always win — extras CANNOT override them.
+        // include_usage default first, then caller extras (so an explicit
+        // stream_options in extraBody can still override the default), then
+        // canonical fields (model/messages/temperature/max_tokens/stream)
+        // which ALWAYS win — extras CANNOT override them.
+        ...includeUsageDefault,
         ...(opts.extraBody ?? {}),
         model: opts.model,
         messages: sanitizedMessages,
@@ -249,6 +325,13 @@ export async function streamLLMCompletion(
       }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
     };
+    // A 200 JSON envelope can still carry a provider error (no choices). Throw
+    // it instead of synthesizing an empty completion — same rationale as the
+    // streaming-frame guard below (exec 64c80b20… synthesize empty-completion).
+    const jsonErr = extractStreamErrorMessage(json);
+    if (jsonErr) {
+      throw new Error(`streamLLMCompletion: upstream error — ${jsonErr}`);
+    }
     const fallbackNorm = selectCanonicalNormalizer('openai', {
       messageId: opts.messageId,
       model: opts.model,
@@ -359,6 +442,23 @@ export async function streamLLMCompletion(
           } catch {
             continue;
           }
+          // Parity with the OpenAI path: a mid-stream provider-error frame on
+          // the canonical endpoint must throw, not be dropped (→ empty
+          // completion). Canonical events always carry a `type`; an `{error}`
+          // frame does not, so this never swallows a real canonical event.
+          const canonicalStreamErr = extractStreamErrorMessage(parsed);
+          if (canonicalStreamErr) {
+            clearTimeout(timeoutHandle);
+            opts.signal?.removeEventListener('abort', onCallerAbort);
+            try {
+              await reader.cancel();
+            } catch {
+              /* best-effort */
+            }
+            throw new Error(
+              `streamLLMCompletion: upstream stream error — ${canonicalStreamErr}`,
+            );
+          }
           // Defensive: only forward objects with a known `type` — guards
           // against an upstream that accidentally interleaves non-canonical
           // chunks (e.g. an OpenAI-shape frame escaping through). Those
@@ -438,6 +538,22 @@ export async function streamLLMCompletion(
           chunk = JSON.parse(payload);
         } catch {
           continue;
+        }
+        // Surface a mid-stream provider-error frame as a real throw instead of
+        // letting it drop silently (→ empty fullText → generic "empty
+        // completion"). The api route emits `data: {"error":"…"}` when the
+        // provider 400s AFTER the 200/SSE headers are already committed.
+        // (multi-agent synthesize empty-completion defect — exec 64c80b20…)
+        const streamErr = extractStreamErrorMessage(chunk);
+        if (streamErr) {
+          clearTimeout(timeoutHandle);
+          opts.signal?.removeEventListener('abort', onCallerAbort);
+          try {
+            await reader.cancel();
+          } catch {
+            /* best-effort */
+          }
+          throw new Error(`streamLLMCompletion: upstream stream error — ${streamErr}`);
         }
         // OpenAI shim echoes `model` at the chunk top level (not on the
         // canonical message_start, which reflects opts.model). Capture

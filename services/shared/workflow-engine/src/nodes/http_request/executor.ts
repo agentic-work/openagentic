@@ -14,6 +14,12 @@
 import type { WorkflowNode } from '../types.js';
 import type { NodeExecutionContext } from '../types.js';
 import { abortableAxios } from '../../abortableAxios.js';
+import {
+  classifyInternalHost,
+  assertEgressAllowed,
+  filterResponseHeaders,
+  EgressBlockedError,
+} from './urlGuard.js';
 
 /**
  * Recursively interpolate `{{...}}` template expressions inside an object
@@ -89,9 +95,41 @@ export async function execute(
     throw new Error('HTTP Request node requires a url');
   }
 
-  // Auto-inject internal auth for in-cluster API calls (matches legacy behavior).
-  const isInternalUrl =
-    resolvedUrl.includes('openagentic-api') || resolvedUrl.includes('localhost:8000');
+  // ---------------------------------------------------------------------------
+  // SSRF + internal-secret-leak hardening (mirrors WorkflowExecutionEngine S4).
+  //
+  // 1) Parse the URL with `new URL(...)` and classify the HOSTNAME component
+  //    against an exact internal-service allowlist. This replaces the old
+  //    substring check (`resolvedUrl.includes('openagentic-api')`) which let
+  //    `https://attacker.com/openagentic-api/x` masquerade as internal and
+  //    leak the X-Internal-Secret to attacker infra.
+  //
+  // 2) Run the SSRF egress gate BEFORE issuing the request: reject non-http(s)
+  //    schemes and any target resolving to a private / loopback / link-local /
+  //    cloud-metadata IP. Internal-allowlisted hosts are exempt (they resolve
+  //    to cluster-private IPs by design).
+  // ---------------------------------------------------------------------------
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(resolvedUrl);
+  } catch {
+    throw new Error(`HTTP request failed: invalid URL: ${resolvedUrl}`);
+  }
+
+  const isInternalUrl = classifyInternalHost(parsedUrl);
+
+  try {
+    await assertEgressAllowed(parsedUrl, { isInternal: isInternalUrl });
+  } catch (error) {
+    if (error instanceof EgressBlockedError) {
+      // Surface a clear node error; never fall through to the request.
+      throw new Error(error.message);
+    }
+    throw error;
+  }
+
+  // Auto-inject internal auth ONLY for genuinely-internal hosts (strict host
+  // match above), and only when the caller hasn't supplied auth itself.
   if (
     isInternalUrl &&
     !resolvedHeaders['Authorization'] &&
@@ -124,10 +162,14 @@ export async function execute(
     throw new Error(`HTTP request failed: ${error.message}`);
   }
 
+  // Filter sensitive response headers (set-cookie, authorization,
+  // www-authenticate, x-internal-*, etc.) before surfacing them into the flow
+  // output — otherwise a flow author could exfiltrate auth material echoed by
+  // an upstream service.
   const result: Record<string, any> = {
     status: response.status,
     statusText: response.statusText,
-    headers: response.headers,
+    headers: filterResponseHeaders(response.headers),
   };
 
   if (responseType === 'text') {

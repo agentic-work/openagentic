@@ -4,8 +4,15 @@
   "label": "MCP Tool",
   "description": "Invoke an MCP (Model Context Protocol) tool through the platform's mcp-proxy. Auth runs as the user (OBO federation for AWS/Azure).",
   "icon": "plug",
+  "primary": "content",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

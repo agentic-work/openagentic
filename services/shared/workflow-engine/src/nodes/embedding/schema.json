@@ -4,8 +4,15 @@
   "label": "Embedding",
   "description": "Generate vector embeddings for one or more texts via the platform's /api/v1/embeddings endpoint. Falls back to /api/v1/vector/embed on primary failure.",
   "icon": "vector",
+  "primary": "vectors",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": true }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": true
+      }
+    ],
     "outputs": [
       {
         "name": "result",

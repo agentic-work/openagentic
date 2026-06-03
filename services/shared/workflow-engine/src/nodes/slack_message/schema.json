@@ -4,8 +4,15 @@
   "label": "Slack Message",
   "description": "Send a message to a Slack channel via incoming webhook. Supports templated text, channel override, and Block Kit blocks.",
   "icon": "slack",
+  "primary": "sent",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

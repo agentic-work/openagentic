@@ -4,14 +4,24 @@
   "label": "Parse JSON",
   "description": "Parse a JSON string into a structured object. Replaces the JS-expression-only path through `transform` for the common 'LLM returned a JSON string' case.",
   "icon": "code",
+  "primary": "parsed",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
         "type": "json",
         "required": true,
-        "shape": { "parsed": "any", "parseError": "string" }
+        "shape": {
+          "parsed": "any",
+          "parseError": "string"
+        }
       }
     ]
   },
@@ -29,7 +39,11 @@
       "name": "onError",
       "label": "On parse error",
       "type": "enum",
-      "values": ["fail", "null", "empty_object"],
+      "values": [
+        "fail",
+        "null",
+        "empty_object"
+      ],
       "default": "fail",
       "required": false,
       "description": "fail = throw and stop the run; null = return { parsed: null }; empty_object = return { parsed: {} }. The parseError string is always populated on failure for downstream branches."

@@ -4,8 +4,15 @@
   "label": "Multi-Agent",
   "description": "Concurrent fan-out across N agents via openagentic-proxy. Falls back to direct LLM batch when openagentic-proxy is unavailable.",
   "icon": "robot",
+  "primary": "content",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -25,7 +32,12 @@
       "type": "enum",
       "required": false,
       "default": "parallel",
-      "values": ["parallel", "sequential", "supervisor", "debate"],
+      "values": [
+        "parallel",
+        "sequential",
+        "supervisor",
+        "debate"
+      ],
       "description": "How agents collaborate. parallel = fan-out + aggregate. sequential = handoff chain. supervisor = first agent coordinates rest. debate = sequential with pro/con/judge framing."
     },
     {
@@ -51,7 +63,11 @@
       "type": "enum",
       "required": false,
       "default": "merge",
-      "values": ["merge", "first", "vote"]
+      "values": [
+        "merge",
+        "first",
+        "vote"
+      ]
     },
     {
       "name": "sharedContext",

@@ -4,9 +4,22 @@
   "label": "Loop",
   "description": "Iterate over a collection by re-executing the downstream subgraph once per item, with the iteration variable bound in the per-iteration input.",
   "icon": "repeat",
+  "primary": "iterations",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
-    "outputs": [{ "name": "iterations", "type": "any", "required": false }]
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "iterations",
+        "type": "any",
+        "required": false
+      }
+    ]
   },
   "settings": [
     {

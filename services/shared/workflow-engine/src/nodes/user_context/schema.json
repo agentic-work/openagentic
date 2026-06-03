@@ -4,8 +4,15 @@
   "label": "User Context",
   "description": "Inject the calling user's profile, memories, and recent chats into the workflow. Calls the platform's /api/user-context endpoint.",
   "icon": "user",
+  "primary": "context",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -24,7 +31,11 @@
       "label": "Sources",
       "type": "json",
       "required": false,
-      "default": ["chat", "workflow", "memory"],
+      "default": [
+        "chat",
+        "workflow",
+        "memory"
+      ],
       "description": "Array of sources to pull from. Common values: chat, workflow, memory, profile."
     },
     {

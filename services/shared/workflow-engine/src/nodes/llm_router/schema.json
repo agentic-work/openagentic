@@ -4,8 +4,15 @@
   "label": "LLM Router",
   "description": "LLM-as-condition. Given a prompt + a configured set of named routes (each with a description), the model picks exactly one route by name. The chosen route is used as the outgoing `sourceHandle` so downstream branches gate naturally. Goes through the SAME /v1/chat/completions endpoint as `llm_completion` — model selection follows the platform's Smart Router + the DB-backed provider/model registry (SoT). Never bypasses into chatmode's V3 pipeline.",
   "icon": "git-fork",
+  "primary": "route",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

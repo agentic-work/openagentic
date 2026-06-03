@@ -1382,6 +1382,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       userId: this.context.userId,
       authToken: this.context.authToken,
       idToken: this.context.idToken,
+      userEmail: this.context.userEmail,
       interpolateTemplate: (t, i) => this.interpolateTemplate(t, i),
       getInternalAuthHeaders: () => this.getInternalAuthHeaders(),
       logger,
@@ -4229,6 +4230,19 @@ export class WorkflowExecutionEngine extends EventEmitter {
       // Merge resume input with existing context
       const contextInput = resumeInput || this.context.nodeResults.get(fromNodeId) || {};
 
+      // #1262 resume-merge: write the submitted resumeInput BACK into the
+      // resumed node's STORED result so downstream {{steps.<id>.output.values.
+      // <field>}} references resolve to the user-supplied values instead of
+      // staying frozen at the paused-state placeholder ({status:'awaiting_input'}).
+      // This is what makes the HITL needs-input gate's collected values actually
+      // flow to the rest of the graph. Spread-on-top is backward-compatible for
+      // human_approval (it keeps approvalId/status and layers the decision on top).
+      if (resumeInput && typeof resumeInput === 'object') {
+        const prior = this.context.nodeResults.get(fromNodeId);
+        const priorObj = prior && typeof prior === 'object' ? prior : {};
+        this.context.nodeResults.set(fromNodeId, { ...priorObj, ...resumeInput });
+      }
+
       // Continue execution from downstream nodes
       for (const edge of outgoing) {
         await this.executeNode(edge.target, contextInput);
@@ -4844,6 +4858,57 @@ export class WorkflowExecutionEngine extends EventEmitter {
    * Interpolate template variables like {{steps.nodeId.output}}, {{env.VAR}},
    * {{trigger.body.field}}, {{nodeId.output}}, {{now}}, {{item.field}}
    */
+  /**
+   * Look up the declared `schema.primary` for a node TYPE (typed-IO contract,
+   * #1268/#1269). Returns undefined when the type is unknown or declares no
+   * primary — the resolver then falls back to the canonicalNodeOutput heuristic.
+   */
+  private nodePrimaryOf(nodeType: string | undefined): string | undefined {
+    if (!nodeType) return undefined;
+    try {
+      return nodeRegistry.get(nodeType)?.schema.primary;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Canonical "primary output" of a node result for `{{steps.X.output}}` —
+   * prefer an explicit `output`, else fall back to the next most likely
+   * primary-output field (LLM → .content, rag_query → nested .result.results).
+   */
+  private canonicalNodeOutput(r: any): any {
+    if (r === null || r === undefined) return r;
+    if (typeof r !== 'object') return r;
+    if (r.output !== undefined) return r.output;
+    if (r.content !== undefined) return r.content;
+    if (r.text !== undefined) return r.text;
+    if (r.answer !== undefined) return r.answer;
+    if (r.result !== undefined) return this.canonicalNodeOutput(r.result);
+    if (r.results !== undefined) return r.results;
+    if (r.data !== undefined) return r.data;
+    return r;
+  }
+
+  /**
+   * SCHEMA-AWARE primary-output accessor (typed-IO contract, #1268/#1269):
+   *   1. explicit `value.output` wins;
+   *   2. else the SOURCE node TYPE's declared schema.primary if present;
+   *   3. else the canonicalNodeOutput heuristic.
+   */
+  private resolvePrimaryOutput(value: any, nodeType: string | undefined): any {
+    if (value !== null && typeof value === 'object' && value.output !== undefined) {
+      return value.output;
+    }
+    if (value !== null && typeof value === 'object' && nodeType) {
+      const primary = this.nodePrimaryOf(nodeType);
+      if (primary && Object.prototype.hasOwnProperty.call(value, primary)) {
+        return value[primary];
+      }
+    }
+    return this.canonicalNodeOutput(value);
+  }
+
   private interpolateTemplate(template: string, context: any): string {
     if (!template) return template;
 
@@ -4885,6 +4950,10 @@ export class WorkflowExecutionEngine extends EventEmitter {
         const rest = parts.slice(1);
         // Try direct node ID first
         let value = this.context.nodeResults.get(nameOrId);
+        // Track the RESOLVED node id so we can look up its declared schema.primary
+        // (the typed-IO contract). When found by direct id it's nameOrId; when
+        // found by label fallback it's the matched nId.
+        let resolvedSrcId: string | undefined = value !== undefined ? nameOrId : undefined;
         // Fallback: match by node label (case-insensitive, normalize hyphens/spaces)
         if (value === undefined) {
           const normalized = nameOrId.toLowerCase().replace(/[-_\s]+/g, '-');
@@ -4893,6 +4962,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
             const label = (node?.data?.label || '').toLowerCase().replace(/[-_\s]+/g, '-');
             if (label === normalized || nId.toLowerCase() === normalized) {
               value = nResult;
+              resolvedSrcId = nId;
               break;
             }
           }
@@ -4900,10 +4970,15 @@ export class WorkflowExecutionEngine extends EventEmitter {
         if (value !== undefined) {
           const nodeRoot = value;
           for (const key of rest) {
-            // 'output' is a virtual alias meaning the whole node result.
-            // Code nodes return their result directly (no wrapper), so skip 'output' if not a real key.
-            if (key === 'output' && value !== undefined && value[key] === undefined) {
-              // keep value as-is (the node result IS the output)
+            // 'output' is a virtual alias meaning the node's PRIMARY output.
+            // Schema-aware (typed-IO contract, #1268/#1269): when the source node
+            // TYPE declares schema.primary and it's present, return result[primary];
+            // else explicit .output; else the canonicalNodeOutput heuristic (LLM →
+            // .content, rag_query → nested .result.results). An explicit .output
+            // key is left untouched by resolvePrimaryOutput.
+            if (key === 'output' && value !== undefined && (value as any)[key] === undefined) {
+              const srcType = resolvedSrcId ? this.nodeMap.get(resolvedSrcId)?.type : undefined;
+              value = this.resolvePrimaryOutput(value, srcType);
               continue;
             }
             value = value?.[key];

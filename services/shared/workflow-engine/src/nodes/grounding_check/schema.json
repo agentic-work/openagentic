@@ -4,8 +4,15 @@
   "label": "Grounding Check",
   "description": "Verify that an LLM-produced claim references only entities that appear in one or more upstream ground-truth sources. Extracts pod-like / component-like tokens from the claim and intersects with tokens present in the truth sources. Deterministic, no LLM round-trip. Use BEFORE notifying downstream consumers (Slack/email) when running against weak models that hallucinate cluster facts.",
   "icon": "shield-check",
+  "primary": "valid",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

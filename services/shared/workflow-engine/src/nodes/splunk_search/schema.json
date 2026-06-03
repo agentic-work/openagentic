@@ -4,8 +4,15 @@
   "label": "Splunk",
   "description": "Run SPL searches, acknowledge notable events, or push events via HEC against Splunk Enterprise / Splunk Cloud REST APIs.",
   "icon": "search",
+  "primary": "events",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -29,7 +36,11 @@
       "name": "operation",
       "label": "Operation",
       "type": "enum",
-      "values": ["search", "alert_ack", "notable_create"],
+      "values": [
+        "search",
+        "alert_ack",
+        "notable_create"
+      ],
       "required": true,
       "description": "search — run SPL and return events; alert_ack — acknowledge a notable event; notable_create — push event via HEC."
     },

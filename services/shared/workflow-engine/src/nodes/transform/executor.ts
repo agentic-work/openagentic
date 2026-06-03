@@ -103,12 +103,34 @@ export async function execute(
   ctx: NodeExecutionContext,
 ): Promise<unknown> {
   // Accept both field name aliases (same as legacy engine).
-  const { transformType, transformExpression: _txExpr, expression: _expr, operations } =
+  const { transformType: _txType, transformExpression: _txExpr, expression: _expr, operations } =
     node.data as Record<string, any>;
   const transformExpression: string = _txExpr || _expr;
 
+  // ──────────────────────────────────────────────────────────────────────
+  // transformType absence guard (Data Transform Pipeline live bug — exec
+  // cafed695). When a flow is COPIED or AI-authored, the node-data
+  // normalizer can rename `transformExpression` → `expression` AND DROP
+  // `transformType` entirely. The pre-2026-06 switch then hit the `default`
+  // arm and SILENTLY returned the input unchanged (a no-op passthrough) —
+  // so the downstream condition node could never see the `{count}` shape the
+  // expression was meant to produce (`{{steps.transform-parse.output}}` had
+  // no `.count`). When a JS expression is present but no `transformType` was
+  // configured, default to `extract` (whole-value transform) instead of the
+  // silent passthrough. An explicit non-empty UNKNOWN transformType still
+  // falls through to `default` (passthrough) — only the absent/blank case is
+  // reinterpreted, so the documented unknown-type passthrough is preserved.
+  const transformType: string =
+    (typeof _txType === 'string' && _txType.trim()) ||
+    (transformExpression ? 'extract' : (_txType as string));
+
   ctx.logger.info(
-    { nodeId: node.id, transformType, hasOperations: Array.isArray(operations) },
+    {
+      nodeId: node.id,
+      transformType,
+      defaultedToExtract: !( typeof _txType === 'string' && _txType.trim() ) && !!transformExpression,
+      hasOperations: Array.isArray(operations),
+    },
     '[transform] Executing transform node',
   );
 

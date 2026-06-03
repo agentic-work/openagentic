@@ -112,18 +112,6 @@ const NODE_REQUIRED_FIELDS: Record<string, Array<{
   agent_spawn: [
     { field: 'agents', label: 'Agents', check: d => Array.isArray(d.agents) && d.agents.length > 0, category: 'config' },
   ],
-  synth: [
-    { field: 'intent', label: 'Intent', check: d => !!d.intent, category: 'config' },
-  ],
-  oat: [
-    { field: 'intent', label: 'Intent', check: d => !!d.intent, category: 'config' },
-  ],
-  synth_synthesize: [
-    { field: 'intent', label: 'Intent', check: d => !!d.intent, category: 'config' },
-  ],
-  oat_synthesize: [
-    { field: 'intent', label: 'Intent', check: d => !!d.intent, category: 'config' },
-  ],
   approval: [
     { field: 'approvers', label: 'Approvers', check: d => !!(d.approvers || d.approverRole || d.notifyChannel), category: 'config' },
   ],
@@ -398,7 +386,15 @@ export function validateNode(
   // eslint-disable-next-line no-new-func
   if (nodeType === 'condition' && (data?.condition || data?.expression)) {
     try {
-      Function('input', `return (${data.condition || data.expression})`);
+      // (#1266/#1270) Rewrite each {{...}} token to a placeholder identifier
+      // BEFORE the Function() parse-check, mirroring the runtime __cvN
+      // substitution (condition executor binds each ref to a named global). The
+      // raw `{{...}}` is NOT valid JS, so feeding it to Function() threw
+      // "Unexpected token '{'" and surfaced a bogus blocking INVALID_CONDITION
+      // on every template that branches on upstream data.
+      const rawExpr = String(data.condition || data.expression);
+      const parseSafeExpr = rawExpr.replace(/\{\{[^}]+\}\}/g, '__cv');
+      Function('input', `return (${parseSafeExpr})`);
     } catch (e: any) {
       issues.push({
         code: 'INVALID_CONDITION',

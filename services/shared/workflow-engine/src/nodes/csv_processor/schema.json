@@ -4,8 +4,15 @@
   "label": "CSV Processor",
   "description": "Parse CSV text into records (objects keyed by header) or rows (string arrays). V1 ships text-mode only; binary/file mode is a follow-up after the binary data plane lands.",
   "icon": "table",
+  "primary": "records",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -51,7 +58,10 @@
       "name": "outputAs",
       "label": "Output shape",
       "type": "enum",
-      "values": ["records", "rows"],
+      "values": [
+        "records",
+        "rows"
+      ],
       "default": "records",
       "required": false,
       "description": "records = array of {col: value} objects (requires hasHeader). rows = array of string[]."

@@ -253,15 +253,26 @@ export default async function openaiCompatibleRoutes(
               selectedModel = gateResult.model;
             }
           } else {
-            // Fallback: pick first available model only if TaskAnalysis returned nothing
-            const models = await getProviderManager()!.listModels();
+            // Fallback: pick the first CHAT-CAPABLE available model only if
+            // TaskAnalysis returned nothing. #1274: a bare `models[0].id` could
+            // pick an embedding-only model (nomic-embed-text) for a chat request
+            // → Ollama 400 → terminal flow failure. selectChatCapableFallback
+            // filters to authoritative discovered chat capability, else resolves
+            // the Registry chat-role default.
+            const pm = getProviderManager()!;
+            const models = await pm.listModels();
             if (models.length > 0) {
-              selectedModel = models[0].id;
+              const { selectChatCapableFallback } = await import('../services/model-routing/selectChatCapableFallback.js');
+              const { resolveChatModelId } = await import('../services/model-routing/resolveModel.js');
+              selectedModel = await selectChatCapableFallback(models, {
+                getCapabilities: (id: string) => pm.getDiscoveredCapabilities(id)?.capabilities ?? null,
+                resolveChatDefault: () => resolveChatModelId(),
+                logger: logger as any,
+              });
               logger.warn({
                 originalModel: body.model,
                 selectedModel,
-                provider: models[0].provider
-              }, 'Smart router: TaskAnalysis returned no model, falling back to first available');
+              }, 'Smart router: TaskAnalysis returned no model, falling back to first chat-capable model');
             } else {
               throw new Error('No models available from any provider');
             }

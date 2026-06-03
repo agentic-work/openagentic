@@ -110,6 +110,27 @@ export interface NodeSchema {
   description: string;
   /** Icon hint — frontend maps this to its icon registry. */
   icon?: string;
+  /**
+   * TYPED NODE-IO CONTRACT — the keystone (P0 mechanism).
+   *
+   * Names the field in the executor's FLAT runtime result that
+   * `{{steps.X.output}}` / `{{X.output}}` MUST resolve to. This is a runtime
+   * contract, not a UI label: the schema-aware resolver
+   * (WorkflowExecutionEngine.interpolateTemplate) looks up the source node's
+   * TYPE → its schema → `primary`, and when a primary is declared AND present
+   * on the stored result it returns `result[primary]` deterministically —
+   * INSTEAD of running the `canonicalNodeOutput` heuristic ladder.
+   *
+   * BACKWARD-COMPATIBLE: nodes WITHOUT a declared `primary` fall back to the
+   * existing `canonicalNodeOutput` heuristic, so the currently-working nodes
+   * are unaffected. Only declare `primary` when the heuristic returns the wrong
+   * field, or when the safety/semantics demand a specific field (guardrails →
+   * `passed`, NOT the scanned `content`).
+   *
+   * The named field MUST be a key the executor actually returns on its flat
+   * result object (the contract harness asserts this RED→GREEN).
+   */
+  primary?: string;
   ports?: {
     inputs?: ReadonlyArray<NodePort>;
     outputs?: ReadonlyArray<NodePort>;
@@ -178,6 +199,13 @@ export interface NodeExecutionContext {
    * federation (passed as X-AWS-ID-Token / X-Azure-ID-Token).
    */
   readonly idToken?: string;
+  /**
+   * Optional run-user email (#1275) — threaded from ExecutionContext.userEmail.
+   * Sent to openagentic-proxy in the agent dispatch body so the spawned sub-agent
+   * runs AS THE USER (true run-as-user OBO) for audit attribution, instead of
+   * the service principal.
+   */
+  readonly userEmail?: string;
   /**
    * Resolves {{steps.X.field}}, {{trigger.body.X}}, {{secret:NAME}},
    * {{env.NAME}} etc. against the running workflow's context.

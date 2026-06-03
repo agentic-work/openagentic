@@ -4,8 +4,15 @@
   "label": "Google Vertex AI",
   "description": "Send a prompt through Google Vertex AI via the platform's OpenAI-compatible chat-completion endpoint (provider:'vertex').",
   "icon": "google",
+  "primary": "content",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

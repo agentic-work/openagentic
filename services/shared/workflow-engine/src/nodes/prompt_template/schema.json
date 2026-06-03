@@ -4,8 +4,15 @@
   "label": "Prompt Template",
   "description": "Build a reusable prompt with {{variable}} placeholders. Outputs either a single rendered string ('prompt' mode) or a structured chat conversation split on {{system}} / {{user}} / {{assistant}} role markers ('messages' mode).",
   "icon": "sparkles",
+  "primary": "prompt",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -42,7 +49,10 @@
       "name": "outputAs",
       "label": "Output shape",
       "type": "enum",
-      "values": ["prompt", "messages"],
+      "values": [
+        "prompt",
+        "messages"
+      ],
       "default": "prompt",
       "required": false,
       "description": "'prompt' = single rendered string ({{steps.X.prompt}}). 'messages' = structured chat conversation split on role markers ({{steps.X.messages}})."

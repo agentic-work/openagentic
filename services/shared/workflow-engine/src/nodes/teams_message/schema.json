@@ -4,8 +4,15 @@
   "label": "Microsoft Teams Message",
   "description": "Post a message to a Microsoft Teams channel via incoming webhook. Supports plain text or Adaptive Cards.",
   "icon": "teams",
+  "primary": "sent",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

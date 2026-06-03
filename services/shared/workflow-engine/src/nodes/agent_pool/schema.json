@@ -4,8 +4,15 @@
   "label": "Agent Pool",
   "description": "Run a fixed list of agents in parallel through openagentic-proxy. Aggregates their results with the configured strategy (merge/first/vote).",
   "icon": "robot",
+  "primary": "content",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

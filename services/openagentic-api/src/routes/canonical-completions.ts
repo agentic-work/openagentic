@@ -170,10 +170,19 @@ const canonicalCompletionsRoutes: FastifyPluginAsync<CanonicalCompletionsOptions
               '[Smart Router] canonical-completions selected model',
             );
           } else {
-            const pmTmp = getProviderManager();
-            const models = await pmTmp!.listModels();
+            // #1274: never let a chat request fall back to an embedding-only
+            // model. Filter to authoritative chat capability, else the Registry
+            // chat-role default.
+            const pmTmp = getProviderManager()!;
+            const models = await pmTmp.listModels();
             if (models.length > 0) {
-              selectedModel = models[0].id;
+              const { selectChatCapableFallback } = await import('../services/model-routing/selectChatCapableFallback.js');
+              const { resolveChatModelId } = await import('../services/model-routing/resolveModel.js');
+              selectedModel = await selectChatCapableFallback(models, {
+                getCapabilities: (id: string) => pmTmp.getDiscoveredCapabilities(id)?.capabilities ?? null,
+                resolveChatDefault: () => resolveChatModelId(),
+                logger: logger as any,
+              });
             } else {
               throw new Error('No models available from any provider');
             }

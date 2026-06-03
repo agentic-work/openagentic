@@ -4,8 +4,15 @@
   "label": "Document Loader",
   "description": "Fetch a document from a URL (or pass through inline input). Optional parseMode strips HTML or pretty-prints JSON.",
   "icon": "file-text",
+  "primary": "content",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -26,7 +33,10 @@
       "name": "sourceType",
       "label": "Source type",
       "type": "enum",
-      "values": ["url", "string"],
+      "values": [
+        "url",
+        "string"
+      ],
       "default": "url",
       "required": false
     },
@@ -43,7 +53,12 @@
       "name": "parseMode",
       "label": "Parse mode",
       "type": "enum",
-      "values": ["auto", "text", "html", "json"],
+      "values": [
+        "auto",
+        "text",
+        "html",
+        "json"
+      ],
       "default": "auto",
       "required": false,
       "description": "auto: strip HTML if response looks like HTML; text: always strip HTML; html: keep raw; json: keep stringified."

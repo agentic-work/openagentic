@@ -4,8 +4,15 @@
   "label": "Rate Limiter",
   "description": "Fixed-window throttle for fan-out to rate-limited APIs. Per-(tenant, key) counter; choose block (sleep until reset), drop (return without invoking), or error (throw) on overflow.",
   "icon": "gauge",
+  "primary": "allowed",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -57,7 +64,11 @@
       "name": "onLimit",
       "label": "On limit",
       "type": "enum",
-      "values": ["block", "drop", "error"],
+      "values": [
+        "block",
+        "drop",
+        "error"
+      ],
       "default": "block",
       "required": false,
       "description": "block = wait until next window opens (counts as allowed afterwards); drop = return without invoking downstream (allowed=false); error = throw a runtime error."
@@ -66,7 +77,9 @@
       "name": "scope",
       "label": "Scope",
       "type": "enum",
-      "values": ["local"],
+      "values": [
+        "local"
+      ],
       "default": "local",
       "required": false,
       "description": "Where the counter lives. V1 supports `local` (in-memory per-process, accurate on a single replica). V1.1 will add `redis` for multi-replica deployments."

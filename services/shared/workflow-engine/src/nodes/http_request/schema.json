@@ -4,8 +4,15 @@
   "label": "HTTP Request",
   "description": "Make an HTTP/HTTPS request to any external API. Supports GET/POST/PUT/DELETE/PATCH, custom headers, JSON or string bodies, templating, and per-request timeout.",
   "icon": "globe",
+  "primary": "data",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -37,7 +44,14 @@
       "name": "method",
       "label": "Method",
       "type": "enum",
-      "values": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"],
+      "values": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "PATCH",
+        "HEAD"
+      ],
       "default": "GET",
       "required": false
     },
@@ -70,7 +84,10 @@
       "name": "responseType",
       "label": "Response type",
       "type": "enum",
-      "values": ["json", "text"],
+      "values": [
+        "json",
+        "text"
+      ],
       "default": "json",
       "required": false
     },

@@ -4,8 +4,15 @@
   "label": "AWS Bedrock",
   "description": "Send a prompt through AWS Bedrock via the platform's OpenAI-compatible chat-completion endpoint (provider:'bedrock').",
   "icon": "aws",
+  "primary": "content",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

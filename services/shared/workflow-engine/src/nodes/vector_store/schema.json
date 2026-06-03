@@ -4,8 +4,15 @@
   "label": "Vector Store",
   "description": "Upsert or delete vectors in a Milvus collection via the platform's /api/v1/vector/store endpoint. Falls back to /api/files/embed when the primary endpoint fails.",
   "icon": "database",
+  "primary": "stored",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": true }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": true
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -24,7 +31,10 @@
       "name": "operation",
       "label": "Operation",
       "type": "enum",
-      "values": ["upsert", "delete"],
+      "values": [
+        "upsert",
+        "delete"
+      ],
       "default": "upsert",
       "required": false
     },

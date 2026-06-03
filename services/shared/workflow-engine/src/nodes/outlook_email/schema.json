@@ -4,8 +4,15 @@
   "label": "Outlook Email",
   "description": "Send an email via Microsoft 365 / Outlook SMTP (smtp.office365.com:587). Credentials read from OUTLOOK_USER / OUTLOOK_PASSWORD env vars (or SMTP_USER / SMTP_PASS fallback).",
   "icon": "mail",
+  "primary": "messageId",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

@@ -4,8 +4,15 @@
   "label": "Reasoning",
   "description": "Extended chain-of-thought via the platform's Smart Router. Forces enableThinking:true at max quality (sliderPosition:100). Use for hard problems.",
   "icon": "brain",
+  "primary": "content",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

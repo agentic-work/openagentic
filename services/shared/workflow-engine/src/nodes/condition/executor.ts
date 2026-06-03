@@ -33,6 +33,23 @@ export interface ConditionResult {
   condition?: string;
 }
 
+/**
+ * Coerce an interpolated string back to a primitive so condition expressions
+ * keep their natural JS semantics once the value is a named global: a numeric
+ * string becomes a number (so `input.value > {{x}}` and `{{x}} === 5` work),
+ * 'true'/'false' become booleans, everything else stays a string.
+ */
+function coercePrimitive(v: string): unknown {
+  const t = v.trim();
+  if (t !== '' && /^-?\d+(?:\.\d+)?$/.test(t)) {
+    const n = Number(t);
+    if (Number.isFinite(n)) return n;
+  }
+  if (t === 'true') return true;
+  if (t === 'false') return false;
+  return v;
+}
+
 async function evaluateExpression(
   condition: string | undefined,
   input: unknown,
@@ -40,31 +57,49 @@ async function evaluateExpression(
 ): Promise<unknown> {
   if (!condition) return false;
   try {
-    // First attempt: evaluate as JS expression with `input` available.
+    // Bind every {{...}} reference to a NAMED GLOBAL (a real JS value) rather
+    // than splicing the resolved text into the expression source. A prior LLM
+    // node's output is frequently multi-line and quote-bearing; inlining it
+    // produced invalid JS like `Severity: "CRITICAL"....includes('critical')`
+    // → sandbox parse error → the executor silently returned FALSE and routed
+    // critical findings down the "clean" branch (the live flow-7 Code-Review
+    // bug). Ported from the legacy WorkflowExecutionEngine.evaluateCondition,
+    // which resolved {{steps.X}} to named vars for exactly this reason.
+    const globals: Record<string, unknown> = {};
+    let idx = 0;
+    let hadTemplate = false;
+    const rewritten = condition.replace(/\{\{[^}]+\}\}/g, (token) => {
+      hadTemplate = true;
+      const name = `__cv${idx++}`;
+      globals[name] = coercePrimitive(ctx.interpolateTemplate(token, input));
+      return name;
+    });
+
+    if (hadTemplate) {
+      const sandboxed = await runSandboxed(`return (${rewritten});`, {
+        input,
+        globals,
+        timeoutMs: 2000,
+      });
+      if (sandboxed.ok) return sandboxed.value;
+
+      // Legacy compat: a non-JS condition that interpolates to a 'yes'/'no'
+      // sentinel rather than a JS expression.
+      const flat = ctx.interpolateTemplate(condition, input);
+      if (typeof flat === 'string') {
+        const lower = flat.toLowerCase().trim();
+        if (lower === 'true' || lower === 'yes') return true;
+        if (lower === 'false' || lower === 'no' || lower === '') return false;
+      }
+      return false;
+    }
+
+    // No templates → evaluate the raw expression with `input` available.
     const sandboxed = await runSandboxed(`return (${condition});`, {
       input,
       timeoutMs: 2000,
     });
     if (sandboxed.ok) return sandboxed.value;
-
-    // Fallback: resolve template variables inline, then re-evaluate.
-    const resolved = ctx.interpolateTemplate(condition, input);
-    if (resolved !== condition) {
-      const sandboxed2 = await runSandboxed(`return (${resolved});`, {
-        input,
-        timeoutMs: 2000,
-      });
-      if (sandboxed2.ok) return sandboxed2.value;
-    }
-
-    // Final fallback: legacy compat for non-JS conditions like 'yes' / 'no'.
-    const interpolated = ctx.interpolateTemplate(condition, input);
-    if (typeof interpolated === 'boolean') return interpolated;
-    if (typeof interpolated === 'string') {
-      const lower = interpolated.toLowerCase().trim();
-      if (lower === 'true' || lower === 'yes') return true;
-      if (lower === 'false' || lower === 'no' || lower === '') return false;
-    }
     return false;
   } catch {
     return false;

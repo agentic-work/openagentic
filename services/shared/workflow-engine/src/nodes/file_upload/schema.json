@@ -4,8 +4,15 @@
   "label": "File Upload (Embed)",
   "description": "Upload content for chunking + embedding into a Milvus collection via the platform's /api/files/embed endpoint.",
   "icon": "upload",
+  "primary": "chunkCount",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

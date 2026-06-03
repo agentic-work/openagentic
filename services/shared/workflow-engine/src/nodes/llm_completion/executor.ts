@@ -21,6 +21,7 @@
 import type { WorkflowNode } from '../types.js';
 import type { NodeExecutionContext } from '../types.js';
 import { streamLLMCompletion } from '../../llm/streamLLMCompletion.js';
+import { stripLeadingReasoning } from '../../llm/stripReasoning.js';
 import { withGenAISpan } from '../../observability/GenAITracer.js';
 
 export async function execute(
@@ -152,9 +153,15 @@ async function runChat(opts: {
         onCanonical: (event) => {
           ctx.emitCanonical?.(event as unknown as { type: string } & Record<string, unknown>);
         },
-        ...(responseFormat === 'json_object'
-          ? { extraBody: { response_format: { type: 'json_object' } } }
-          : {}),
+        // include_usage:true asks the OpenAI-shape stream to emit the trailing
+        // usage chunk so the node result reports real token counts instead of
+        // total_tokens:0 (live defect 2026-06-02).
+        extraBody: {
+          stream_options: { include_usage: true },
+          ...(responseFormat === 'json_object'
+            ? { response_format: { type: 'json_object' } }
+            : {}),
+        },
       });
       return {
         result: r,
@@ -169,7 +176,11 @@ async function runChat(opts: {
   );
   const latencyMs = Date.now() - t0;
 
-  const content = result.fullText;
+  // Strip the leaked gpt-oss Harmony "analysis" channel that the OpenAI shim
+  // glues onto the final answer (verbatim "We need to…", "The user asks…",
+  // "So say that." before the real content). Downstream {{steps.X.content}}
+  // consumers must see the answer, not the reasoning (live defect 2026-06-02).
+  const content = stripLeadingReasoning(result.fullText);
   const completionTokens = result.usage?.output_tokens ?? 0;
   const promptTokens = result.usage?.input_tokens ?? 0;
   const usage = {

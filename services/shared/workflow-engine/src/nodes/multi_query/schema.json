@@ -4,8 +4,15 @@
   "label": "Multi-Query Expand",
   "description": "Expand one question into N retrieval query variants to widen RAG recall (the 'multi-query retriever' pattern). The default path is a DETERMINISTIC rule-based expander — it derives reformulations (keyword-only, question→statement, synonym/paraphrase prefixes, and the original) without a model round-trip, so it is reproducible and harness-friendly. Wire it at the TOP of a RAG flow so each variant can be embedded + searched and the union of hits reranked. A single phrasing often misses chunks that a paraphrase would catch; expanding the query before retrieval raises recall.",
   "icon": "list-plus",
+  "primary": "queries",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

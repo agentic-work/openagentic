@@ -4,10 +4,21 @@
   "label": "Switch",
   "description": "Evaluate an expression and route to the matching case branch. Supports a default fallback case.",
   "icon": "split-square-horizontal",
+  "primary": "matched",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
-      { "name": "default", "type": "any", "required": false }
+      {
+        "name": "default",
+        "type": "any",
+        "required": false
+      }
     ]
   },
   "settings": [

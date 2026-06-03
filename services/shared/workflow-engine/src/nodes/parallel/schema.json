@@ -4,9 +4,22 @@
   "label": "Parallel",
   "description": "Fan out to all outgoing branches and execute them in parallel. Returns each branch's result + an aggregate success rate.",
   "icon": "git-fork",
+  "primary": "branches",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
-    "outputs": [{ "name": "result", "type": "any", "required": false }]
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "any",
+        "required": false
+      }
+    ]
   },
   "settings": [
     {

@@ -4,8 +4,15 @@
   "label": "Azure OpenAI",
   "description": "Send a prompt through Azure OpenAI via the platform's OpenAI-compatible chat-completion endpoint (provider:'azure_openai').",
   "icon": "azure",
+  "primary": "content",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

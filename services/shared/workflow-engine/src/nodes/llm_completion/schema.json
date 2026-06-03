@@ -4,8 +4,15 @@
   "label": "LLM Completion",
   "description": "Send a prompt to a chat-completion model via the platform's OpenAI-compatible endpoint. Supports system + user messages, automatic context injection, and Smart Router model selection.",
   "icon": "sparkles",
+  "primary": "content",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -58,7 +65,10 @@
       "label": "Response format",
       "type": "enum",
       "required": false,
-      "values": ["text", "json_object"],
+      "values": [
+        "text",
+        "json_object"
+      ],
       "description": "Set to `json_object` to force the model to emit a valid JSON object only (no surrounding prose). Translates to `response_format:{type:'json_object'}` on the wire; the Ollama provider further translates to grammar-constrained `format:'json'` so weaker models (e.g. gpt-oss:20b) that ignore prose-level instructions still emit parseable output. Required upstream of a `structured_output` node when the chosen model is not strong on instruction-following."
     },
     {

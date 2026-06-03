@@ -69,6 +69,29 @@ export function resolveOpenAgenticProxyUrl(ctx: NodeExecutionContext): string {
   return url;
 }
 
+/**
+ * Build the run-as-user OBO credentials for the openagentic-proxy dispatch BODY
+ * (#1275). The run-user's access token must travel in the request body — a bare
+ * `Authorization` header would be mistaken for the service key (X-Agent-Proxy
+ * auth). The proxy reads these to call MCP tools AS THE USER (OBO) instead of as
+ * the service principal. Empty object when the run is not user-scoped (cron /
+ * system) — the proxy then fails fast on any OBO tool rather than substituting
+ * the service principal.
+ */
+export function buildAgentProxyUserAuth(
+  ctx: NodeExecutionContext,
+): { userToken?: string; userIdToken?: string; userEmail?: string } {
+  const out: { userToken?: string; userIdToken?: string; userEmail?: string } = {};
+  const raw = ctx.authToken;
+  if (raw) {
+    // Strip the `Bearer ` scheme — the body must carry the raw access token.
+    out.userToken = raw.startsWith('Bearer ') ? raw.slice(7) : raw;
+  }
+  if (ctx.idToken) out.userIdToken = ctx.idToken;
+  if (ctx.userEmail) out.userEmail = ctx.userEmail;
+  return out;
+}
+
 export async function execute(
   node: WorkflowNode,
   input: unknown,
@@ -155,6 +178,10 @@ export async function execute(
             sessionId: ctx.executionId,
             userId: ctx.userId,
             userMessage: resolvedTask,
+            // #1275 true run-as-user OBO: thread the run-user's AAD token (+ id
+            // token + email) in the BODY so the dispatched sub-agent calls MCP
+            // tools AS THE USER (mcp-proxy OBO), not as a service principal.
+            ...buildAgentProxyUserAuth(ctx),
             totalBudgetCents: costBudget,
             timeoutMs: timeout,
             flowContext: {

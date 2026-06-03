@@ -12,6 +12,34 @@ import {
   type FlowToolSchema,
 } from '../tools/flowTools';
 
+/**
+ * Platform tools that run WITHOUT per-user OBO (web search, tool/agent
+ * discovery, image gen, memorize). These are safe to run for a flow-dispatched
+ * agent that has no run-user token. Everything else is treated as an OBO tool:
+ * a flow-dispatched agent (flowContext present) with NO run-user token calling
+ * one of those MUST fail fast with a clear, actionable error — NEVER silently
+ * fall back to the platform service principal (#1275).
+ */
+const PLATFORM_NON_OBO_TOOLS = new Set<string>([
+  'web_search',
+  'web_news_search',
+  'web_fetch',
+  'url_fetch',
+  'tool_search',
+  'agent_search',
+  'agent_list',
+  'pattern_recall',
+  'request_clarification',
+  'generate_image',
+  'memorize',
+]);
+
+/** True when the tool is a platform tool that runs without per-user OBO. */
+export function isPlatformNonOboTool(toolName: string): boolean {
+  if (!toolName) return false;
+  return PLATFORM_NON_OBO_TOOLS.has(toolName.toLowerCase());
+}
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface AgentSpec {
@@ -719,6 +747,40 @@ ${parentRag.slice(0, 3).map(renderChunk).join('\n\n')}
               toolName,
               args,
               ctx,
+            );
+          } else if (
+            // ── RUN-AS-USER HONESTY GUARD (#1275) ──
+            // A flow-dispatched agent (flowContext present) that has NO run-user
+            // token (async/scheduled run with no stored owner token) must NOT
+            // call a cloud/OBO MCP tool as the platform service principal — that
+            // would silently attribute the user's cloud action to a service
+            // identity (wrong RBAC + wrong audit attribution). Fail fast with a
+            // clear, actionable error. Platform non-OBO tools (web_search /
+            // tool_search / generate_image / memorize) still proceed.
+            !!(ctx as any).flowContext &&
+            !ctx.userToken &&
+            !isPlatformNonOboTool(toolName)
+          ) {
+            result = {
+              toolName,
+              toolCallId: `mcp_${toolName}_${Date.now()}`,
+              result: null,
+              error:
+                `run-as-user token unavailable for this scheduled run — the tool '${toolName}' ` +
+                `requires acting on behalf of the user (OBO), but no user credential is available. ` +
+                `Re-run this flow interactively (so your Azure AD token is attached), or have the ` +
+                `flow owner sign in to refresh their stored token, or configure a service credential ` +
+                `for '${toolName}'. The platform will NOT run this cloud action as a service principal.`,
+              executionTimeMs: 0,
+            };
+            logger.warn(
+              {
+                executionId: ctx.executionId,
+                agentId: spec.agentId,
+                toolName,
+                flowId: (ctx as any).flowContext?.flowId,
+              },
+              'run-as-user OBO token missing for flow-dispatched agent — refusing cloud tool (no SP substitution)',
             );
           } else {
             result = await this.mcpBridge.callTool(toolName, args, authHeaders);

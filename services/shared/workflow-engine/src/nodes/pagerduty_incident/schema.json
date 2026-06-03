@@ -4,8 +4,15 @@
   "label": "PagerDuty Incident",
   "description": "Trigger / acknowledge / resolve a PagerDuty incident via Events API v2. Supports dedupKey, severity, custom_details, and client/client_url fields.",
   "icon": "alert",
+  "primary": "dedupKey",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -25,7 +32,11 @@
       "name": "action",
       "label": "Event action",
       "type": "enum",
-      "values": ["trigger", "acknowledge", "resolve"],
+      "values": [
+        "trigger",
+        "acknowledge",
+        "resolve"
+      ],
       "default": "trigger",
       "required": true
     },
@@ -49,7 +60,12 @@
       "name": "severity",
       "label": "Severity",
       "type": "enum",
-      "values": ["info", "warning", "error", "critical"],
+      "values": [
+        "info",
+        "warning",
+        "error",
+        "critical"
+      ],
       "default": "error",
       "required": false
     },

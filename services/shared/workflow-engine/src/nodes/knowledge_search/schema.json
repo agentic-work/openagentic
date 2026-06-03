@@ -4,8 +4,15 @@
   "label": "Knowledge Search",
   "description": "Semantic search against the platform knowledge base (shared_knowledge + the calling user's private collection) via /api/chat/knowledge/search. Returns ranked chunks merged across both. Pair this with knowledge_ingest: the ingest endpoint writes to shared_knowledge / user_<id>_private, which this node reads from. rag_query targets a different Milvus collection set (code/docs/memories) — use that for code/doc lookups, this one for content the flow itself ingested.",
   "icon": "search",
+  "primary": "results",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

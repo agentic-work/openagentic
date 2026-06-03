@@ -103,3 +103,46 @@ export type {
   ResolvedMcpMock,
 } from './runtime/testMocks.js';
 export { resolveMockMcpResponse } from './runtime/testMocks.js';
+
+// Design-time EDGE GATE — pure graph validation (isValidConnection /
+// validateFlowTopology / validateGraph / validateFlow). Consumed by the builder
+// UI, the api flow-SAVE handler, and the POST /api/workflows/validate endpoint.
+export {
+  isValidConnection,
+  hasPath,
+  buildNodeMap,
+  validateFlowTopology,
+  validateGraph,
+  // P0-3 — the SINGLE contract-aware flow validator (subsumes validateGraph).
+  validateFlow,
+} from './graph/index.js';
+export type {
+  ConnPort,
+  ConnNode,
+  ConnEdge,
+  ConnectionRequest,
+  ConnectionVerdict,
+  TopologyError,
+  TopologyResult,
+  GraphValidationError,
+  GraphValidationResult,
+  // P0-3 validateFlow surface.
+  FlowGraph,
+  FlowNode,
+  FlowEdge,
+  FlowNodeSchemaShape,
+  FlowSettingShape,
+  FlowOutputPortShape,
+  ValidateFlowContext,
+  ValidateFlowResult,
+  ValidateFlowSummary,
+  NodeIssue,
+  NodeIssueGroup,
+  IssueSeverity,
+  RequiredValueHint,
+  UnresolvedRef,
+  RequiredInput,
+  RequiredSecret,
+  EdgeIssue,
+  TopologyIssue,
+} from './graph/index.js';

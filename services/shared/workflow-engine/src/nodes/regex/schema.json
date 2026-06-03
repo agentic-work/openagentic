@@ -4,9 +4,22 @@
   "label": "Regex",
   "description": "Apply a regex pattern to a string. Supports match, replace, and test modes. Replaces the JS-expression-only path through `transform` for pattern extraction and substitution.",
   "icon": "search",
+  "primary": "matches",
   "ports": {
-    "inputs": [{ "name": "input", "type": "text", "required": false }],
-    "outputs": [{ "name": "result", "type": "json", "required": true }]
+    "inputs": [
+      {
+        "name": "input",
+        "type": "text",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true
+      }
+    ]
   },
   "settings": [
     {
@@ -40,7 +53,11 @@
       "name": "mode",
       "label": "Mode",
       "type": "enum",
-      "values": ["match", "replace", "test"],
+      "values": [
+        "match",
+        "replace",
+        "test"
+      ],
       "default": "match",
       "required": true,
       "description": "match = collect all matches and their capture groups; replace = substitute matches with replacement; test = boolean does-it-match check."

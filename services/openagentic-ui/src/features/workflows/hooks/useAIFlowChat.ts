@@ -40,7 +40,6 @@ When generating a workflow, output JSON matching this schema wrapped in a \`\`\`
 ### Actions
 - **mcp_tool** — Call any MCP tool. data: { toolName: string, args: object }
 - **code** — Execute code inline. data: { code, language: "javascript"|"python" }
-- **openagentic** — Run code in sandboxed Claude Code session. data: { prompt, workspace }
 - **http_request** — Make HTTP calls. data: { url, method, headers, body }
 
 ### Logic
@@ -93,22 +92,6 @@ When generating a workflow, output JSON matching this schema wrapped in a \`\`\`
 - Connect nodes with edges: { id: "e_src_dst", source: "src_id", target: "dst_id" }
 
 ## Special Use Cases
-
-### Mobile App Development (Vibecode)
-When a user wants to build a mobile app (iOS/Android) with live preview:
-1. Use an **openagentic** node as the primary builder — it runs Claude Code in a sandboxed session
-2. The prompt should instruct Claude Code to:
-   - Initialize an Expo/React Native project in the workspace
-   - Generate the requested app with all screens/components
-   - Run \`npx expo start --tunnel\` for instant device preview via QR code
-3. Use a **condition** node to check build output for errors
-4. Chain an **openagentic_llm** node to analyze/fix any build errors automatically
-5. Include an **approval** node for the user to confirm they like the preview before continuing
-6. This creates a feedback loop: user describes → AI builds → live preview → user refines → AI iterates
-
-Example flow: trigger → openagentic (scaffold + generate app) → condition (build success?) → [true] approval (user reviews preview) → openagentic (apply user feedback) → [false] openagentic_llm (analyze error) → openagentic (fix and retry)
-
-The openagentic node workspace persists between iterations, so the AI can incrementally improve the app.
 
 ## IMPORTANT
 - Use "openagentic_llm" for ALL LLM calls (not raw provider calls)

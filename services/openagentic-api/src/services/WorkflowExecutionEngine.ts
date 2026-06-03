@@ -968,6 +968,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       userId: this.context.userId,
       authToken: this.context.authToken,
       idToken: this.context.idToken,
+      userEmail: this.context.userEmail,
       interpolateTemplate: (t, i) => this.interpolateTemplate(t, i),
       getInternalAuthHeaders: () => this.getInternalAuthHeaders(),
       logger,
@@ -3490,11 +3491,134 @@ export class WorkflowExecutionEngine extends EventEmitter {
    * Interpolate template variables like {{steps.nodeId.output}}, {{env.VAR}},
    * {{trigger.body.field}}, {{nodeId.output}}, {{now}}, {{item.field}}
    */
+  /**
+   * Look up the declared `schema.primary` for a node TYPE (typed-IO contract,
+   * #1268/#1269). Returns undefined when the type is unknown or declares no
+   * primary — the resolver then falls back to the canonicalNodeOutput heuristic.
+   */
+  private nodePrimaryOf(nodeType: string | undefined): string | undefined {
+    if (!nodeType) return undefined;
+    try {
+      return nodeRegistry.get(nodeType)?.schema.primary;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Canonical "primary output" of a node result for `{{steps.X.output}}` /
+   * `{{X.output}}` references. Node executors disagree on the field name —
+   * LLM/chat nodes return `{ content }`, rag_query returns nested
+   * `{ result: { results } }`, code/transform return `{ output }`, knowledge
+   * nodes `{ text }`/`{ answer }`. Every seed template binds `.output`, so this
+   * makes `.output` a universal accessor: prefer an explicit `output`, else
+   * fall back to the next most likely primary-output field.
+   */
+  private canonicalNodeOutput(r: any): any {
+    if (r === null || r === undefined) return r;
+    if (typeof r !== 'object') return r; // bare string/number IS the output
+    if (r.output !== undefined) return r.output;
+    if (r.content !== undefined) return r.content;
+    if (r.text !== undefined) return r.text;
+    if (r.answer !== undefined) return r.answer;
+    if (r.result !== undefined) return this.canonicalNodeOutput(r.result); // unwrap one level
+    if (r.results !== undefined) return r.results;
+    if (r.data !== undefined) return r.data;
+    return r; // whole object → JSON.stringify downstream
+  }
+
+  /**
+   * SCHEMA-AWARE primary-output accessor — the typed-contract upgrade of
+   * `canonicalNodeOutput` (P0 mechanism, #1268/#1269). Resolution order:
+   *   1. EXPLICIT `value.output` always wins (legacy behavior preserved).
+   *   2. If the SOURCE node's TYPE declares `schema.primary` AND that field is
+   *      PRESENT on `value`, return `value[primary]` (typed contract — fixes the
+   *      BROKEN nodes and the guardrails safety-bypass: .output → .passed).
+   *   3. Otherwise fall back to the canonicalNodeOutput heuristic.
+   */
+  private resolvePrimaryOutput(value: any, nodeType: string | undefined): any {
+    if (value !== null && typeof value === 'object' && value.output !== undefined) {
+      return value.output;
+    }
+    if (value !== null && typeof value === 'object' && nodeType) {
+      const primary = this.nodePrimaryOf(nodeType);
+      if (primary && Object.prototype.hasOwnProperty.call(value, primary)) {
+        return value[primary];
+      }
+    }
+    return this.canonicalNodeOutput(value);
+  }
+
+  /**
+   * Probe whether a plain reference body resolves to a present value. Used ONLY
+   * to give `??` correct nullish semantics — distinguishing "resolved to empty
+   * string" (keep it) from "did not resolve" (use the default).
+   */
+  private refIsUnresolved(refBody: string, context: any): boolean {
+    const trimmed = refBody.trim();
+    const walk = (root: any, parts: string[]): any => {
+      let v = root;
+      for (const k of parts) v = v?.[k];
+      return v;
+    };
+    if (trimmed === 'input' || trimmed.startsWith('input.')) {
+      const parts = trimmed === 'input' ? [] : trimmed.slice('input.'.length).split('.');
+      const v = walk(this.context.input, parts);
+      return v === undefined || v === null;
+    }
+    if (trimmed.startsWith('steps.')) {
+      const parts = trimmed.slice('steps.'.length).split('.');
+      const v = this.context.nodeResults?.get(parts[0]);
+      return v === undefined || v === null;
+    }
+    if (trimmed.startsWith('trigger.')) {
+      const t = this.context.nodeResults?.get('__trigger__') ?? this.context.input;
+      const parts = trimmed.slice('trigger.'.length).split('.');
+      const v = walk(t, parts);
+      return v === undefined || v === null;
+    }
+    if (this.context.variables?.has(trimmed)) return false;
+    const direct = this.nodeMap?.has(trimmed.split('.')[0]);
+    if (direct) return false;
+    return walk(context, trimmed.split('.')) === undefined;
+  }
+
   private interpolateTemplate(template: string, context: any): string {
     if (!template) return template;
 
+    // ───────────────────────────────────────────────────────────────────────
+    // Default-literal fallback: {{ ref || "default" }} / {{ ref ?? "default" }}.
+    // (#1263) The single-path resolver treated `input.url || "https…"` as one
+    // variable name, never resolved it, and emitted '' — so the http_request
+    // executor threw "HTTP Request node requires a url". We recognise ONLY the
+    // minimal, SAFE shape: a reference followed by `||` or `??` and a single-
+    // or double-quoted string literal. NO arbitrary eval — the left side is
+    // resolved by the SAME machinery; the right side is a verbatim literal.
+    // `||` falls back on any falsy left; `??` only on an unresolved (nullish)
+    // left, preserving an intentional empty string.
+    // ───────────────────────────────────────────────────────────────────────
+    const FALLBACK_RE = /^([\s\S]+?)\s*(\|\||\?\?)\s*(["'])([\s\S]*?)\3\s*$/;
+    const resolveRef = (refBody: string): string =>
+      this.interpolateTemplate(`{{${refBody}}}`, context);
+
     return template.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
       const trimmedPath = path.trim();
+
+      // {{ ref || "default" }} / {{ ref ?? "default" }} — default-literal fallback.
+      const fb = trimmedPath.match(FALLBACK_RE);
+      if (fb) {
+        const [, leftRefRaw, op, , literal] = fb as unknown as [string, string, string, string, string];
+        const leftRef = leftRefRaw.trim();
+        // The left side must itself be a plain reference (no nested `||`/`??`).
+        if (!FALLBACK_RE.test(leftRef)) {
+          const leftVal = resolveRef(leftRef);
+          if (op === '||') {
+            return leftVal && leftVal !== 'false' && leftVal !== '0' ? leftVal : literal;
+          }
+          // ?? — nullish only: '' means "resolved to empty string" (kept).
+          return leftVal !== '' ? leftVal : (this.refIsUnresolved(leftRef, context) ? literal : leftVal);
+        }
+      }
 
       // Built-in temporal variables
       if (trimmedPath === 'now') {
@@ -3523,6 +3647,10 @@ export class WorkflowExecutionEngine extends EventEmitter {
         const rest = parts.slice(1);
         // Try direct node ID first
         let value = this.context.nodeResults.get(nameOrId);
+        // Track the RESOLVED node id so we can look up its declared schema.primary
+        // (the typed-IO contract). When the result was found by direct id it's
+        // nameOrId; when found by label fallback it's the matched nId.
+        let resolvedSrcId: string | undefined = value !== undefined ? nameOrId : undefined;
         // Fallback: match by node label (case-insensitive, normalize hyphens/spaces)
         if (value === undefined) {
           const normalized = nameOrId.toLowerCase().replace(/[-_\s]+/g, '-');
@@ -3531,12 +3659,27 @@ export class WorkflowExecutionEngine extends EventEmitter {
             const label = (node?.data?.label || '').toLowerCase().replace(/[-_\s]+/g, '-');
             if (label === normalized || nId.toLowerCase() === normalized) {
               value = nResult;
+              resolvedSrcId = nId;
               break;
             }
           }
         }
         if (value !== undefined) {
-          for (const key of rest) {
+          let walkPath = rest;
+          // {{steps.X.output}} → the node's PRIMARY output. Schema-aware (typed-IO
+          // contract, #1268/#1269): when node X's TYPE declares schema.primary and
+          // that field is present, return result[primary]; else explicit .output;
+          // else the canonicalNodeOutput heuristic (LLM → .content, rag_query →
+          // nested .result.results). An explicit .output is left untouched.
+          if (
+            walkPath[0] === 'output' &&
+            (value === null || typeof value !== 'object' || (value as any).output === undefined)
+          ) {
+            const srcType = resolvedSrcId ? this.nodeMap.get(resolvedSrcId)?.type : undefined;
+            value = this.resolvePrimaryOutput(value, srcType);
+            walkPath = walkPath.slice(1);
+          }
+          for (const key of walkPath) {
             value = value?.[key];
           }
         }
@@ -3625,7 +3768,18 @@ export class WorkflowExecutionEngine extends EventEmitter {
         }
         if (resolvedNodeId) {
           let value = this.context.nodeResults.get(resolvedNodeId);
-          for (const key of rest) {
+          let walkPath = rest;
+          // {{nodeId.output}} → the node's PRIMARY output (schema-aware typed-IO
+          // contract; mirrors the steps.* branch above).
+          if (
+            walkPath[0] === 'output' &&
+            (value === null || typeof value !== 'object' || (value as any).output === undefined)
+          ) {
+            const srcType = this.nodeMap.get(resolvedNodeId)?.type;
+            value = this.resolvePrimaryOutput(value, srcType);
+            walkPath = walkPath.slice(1);
+          }
+          for (const key of walkPath) {
             value = value?.[key];
           }
           if (value !== undefined) {

@@ -4,8 +4,15 @@
   "label": "ServiceNow Ticket",
   "description": "Create a ServiceNow record via the REST Table API. Defaults to creating an incident; supports any configurable table (change_request, problem, etc).",
   "icon": "ticket",
+  "primary": "number",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -25,7 +32,10 @@
       "name": "action",
       "label": "Action",
       "type": "enum",
-      "values": ["create_incident", "create_record"],
+      "values": [
+        "create_incident",
+        "create_record"
+      ],
       "default": "create_incident",
       "required": false
     },

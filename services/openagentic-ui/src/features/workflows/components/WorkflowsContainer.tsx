@@ -1371,6 +1371,24 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
     }
   }, [apiService]);
 
+  // HITL needs-input submit — completes the OSS-only needs-input gate. The
+  // engine pauses on a needs_input frame; the user fills NeedsInputForm; we POST
+  // the collected values back so the engine resumes (and the #1262 resume-merge
+  // writes them into the paused node's result so {{steps.X.output.values.Y}}
+  // resolves).
+  const handleNeedsInputSubmit = useCallback(
+    async (values: Record<string, any>) => {
+      const req = needsInput;
+      const execId = activeExecutionIdRef.current || executionData?.executionId;
+      if (!req || !execId) {
+        throw new Error('No active workflow execution to submit input to.');
+      }
+      await apiService.submitDataRequest(execId, req.requestId, values);
+      setNeedsInput(null);
+    },
+    [needsInput, apiService, executionData],
+  );
+
   const handleRetryNode = useCallback(async (nodeId: string) => {
     if (!workflowId || !executionData?.executionId) return;
     try {
@@ -1814,6 +1832,27 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
             }
           }}
         />
+
+        {/* HITL needs-input gate — render the form when the engine pauses on a
+         * needs_input frame so the user can supply the required run inputs and
+         * resume the flow. */}
+        {needsInput && (
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1000,
+              background: 'color-mix(in srgb, var(--cm-bg, var(--color-bg-primary)) 60%, transparent)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 16,
+            }}
+          >
+            <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(560px, 94vw)', maxHeight: '88vh', overflowY: 'auto' }}>
+              <NeedsInputForm
+                request={needsInput}
+                onSubmit={handleNeedsInputSubmit}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Multi-agent swarm popovers — one per running multi_agent /
          * agent_pool / agent_supervisor node. Built up from `subagent.start`

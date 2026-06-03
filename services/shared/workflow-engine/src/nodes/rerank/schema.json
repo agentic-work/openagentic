@@ -4,8 +4,15 @@
   "label": "Rerank Chunks",
   "description": "Re-order a list of retrieved chunks by relevance to a query using a deterministic lexical relevance scorer (BM25-style term-overlap with IDF weighting + phrase-match boost). No model round-trip on the default path, so it is deterministic and harness-friendly. Optionally an LLM cross-encoder mode can be enabled, but the deterministic scorer is the default and is what RAG flows use to tighten the candidate set before synthesis. Wire it AFTER knowledge_search / rag_query and BEFORE llm_completion so the model sees the most relevant chunks first (and only the top-N).",
   "icon": "sort-desc",
+  "primary": "chunks",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

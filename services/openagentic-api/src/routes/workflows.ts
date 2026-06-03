@@ -1155,6 +1155,109 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
   );
 
   /**
+   * POST /api/workflows/validate (#1270)
+   * Design-time validation of an UNSAVED nodes/edges definition via the SoT
+   * contract-aware validateFlow against the LIVE node registry. Resolves
+   * configuredSecrets by scope + triggerInputs from the run dialog so the UI
+   * can surface per-node issues + required run inputs + required secrets before
+   * the flow is ever saved. Node-type-agnostic (no synth/oat/agenticode code).
+   */
+  fastify.post<{
+    Body: {
+      nodes?: any[];
+      edges?: any[];
+      input?: Record<string, any>;
+      secrets?: string[];
+    };
+  }>(
+    '/validate',
+    async (request, reply) => {
+      try {
+        const user = (request as any).user;
+        const userId = user?.userId || user?.id;
+        const { nodes, edges, input, secrets } = request.body || {};
+
+        if (!Array.isArray(nodes)) {
+          return reply.code(400).send({
+            valid: false,
+            error: 'nodes array is required',
+          });
+        }
+
+        // Wire the validator ctx to the LIVE node registry (same SoT the engine
+        // executes against). Lazy import keeps the heavy registry off the
+        // module-parse path. validateFlow lives on the './graph' subpath.
+        const { validateFlow } = await import('@openagentic/workflow-engine/graph');
+        const { registry } = await import('@openagentic/workflow-engine/nodes/registry');
+        const nodeSchemaOf = (type: string) => registry.get(type)?.schema as any;
+        const nodePrimaryOf = (type: string) => registry.get(type)?.schema.primary;
+
+        // configuredSecrets: explicit override > resolved-by-scope. The
+        // {{secret:X}} branch is NEVER a hard error; this only flips the
+        // `configured` flag so the UI can prompt for the missing ones.
+        let configuredSecrets: string[] | undefined;
+        if (Array.isArray(secrets)) {
+          configuredSecrets = secrets.filter((s) => typeof s === 'string');
+        } else if (userId) {
+          try {
+            const userGroups = await prisma.userGroupMembership
+              .findMany({ where: { user_id: userId }, select: { group_id: true } })
+              .catch(() => [] as { group_id: string }[]);
+            const userGroupIds = userGroups.map((g) => g.group_id);
+            const userWorkflows = await prisma.workflow.findMany({
+              where: { created_by: userId, deleted_at: null },
+              select: { id: true },
+            });
+            const userWorkflowIds = userWorkflows.map((w) => w.id);
+            const rows = await prisma.workflowSecret.findMany({
+              where: {
+                OR: [
+                  { scope: 'global' },
+                  ...(userGroupIds.length > 0
+                    ? [{ scope: 'group', group_id: { in: userGroupIds } }]
+                    : []),
+                  ...(userWorkflowIds.length > 0
+                    ? [{ scope: 'workflow', workflow_id: { in: userWorkflowIds } }]
+                    : []),
+                ],
+              },
+              select: { name: true },
+            });
+            configuredSecrets = rows.map((r) => r.name);
+          } catch (secErr: any) {
+            logger.warn(
+              { err: secErr?.message },
+              '[Workflows] /validate could not resolve configured secrets; treating all as unconfigured',
+            );
+          }
+        }
+
+        // triggerInputs: the keys the run dialog supplied (so a {{input.Y}} ref
+        // the user already answered is `declared:true`).
+        const triggerInputs =
+          input && typeof input === 'object' ? Object.keys(input) : undefined;
+
+        const result = validateFlow(
+          { nodes, edges: Array.isArray(edges) ? edges : [] },
+          { nodeSchemaOf, nodePrimaryOf, configuredSecrets, triggerInputs },
+        );
+
+        return reply.send(result);
+      } catch (error: any) {
+        logger.error(
+          { error: error?.message, stack: error?.stack },
+          '[Workflows] /validate handler threw unexpectedly',
+        );
+        return reply.code(500).send({
+          valid: false,
+          error: 'Validation failed',
+          message: error?.message,
+        });
+      }
+    },
+  );
+
+  /**
    * POST /api/workflows/:id/validate
    * Runtime readiness validation — checks that all node dependencies
    * (secrets, models, MCP tools, URLs, etc.) are properly configured

@@ -4,8 +4,15 @@
   "label": "Data Source Query",
   "description": "Run a query against a configured DataSource. Supports raw SQL/REST queries (mode='raw') and natural-language questions that the platform translates to SQL (mode='nl'). Distinct from data_query which performs vector search.",
   "icon": "database",
+  "primary": "content",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -37,7 +44,13 @@
       "label": "Inline endpoint type",
       "type": "enum",
       "required": false,
-      "values": ["prometheus", "loki", "splunk", "elasticsearch", "rest"],
+      "values": [
+        "prometheus",
+        "loki",
+        "splunk",
+        "elasticsearch",
+        "rest"
+      ],
       "description": "Use this + URL when querying observability endpoints directly without a configured DataSource record."
     },
     {
@@ -54,7 +67,12 @@
       "label": "Query mode",
       "type": "enum",
       "required": false,
-      "values": ["raw", "nl", "range", "instant"],
+      "values": [
+        "raw",
+        "nl",
+        "range",
+        "instant"
+      ],
       "default": "raw",
       "description": "raw = use the `query` verbatim. nl = natural-language → SQL. range = range query (Prom/Loki). instant = instant query (Prom)."
     },

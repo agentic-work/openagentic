@@ -4,8 +4,15 @@
   "label": "Anomaly Detect",
   "description": "Statistical anomaly detection over a time-series window. Flags outliers and exposes a top-level hasAnomaly verdict for downstream branch nodes (policy_guard, runbook_executor, etc.).",
   "icon": "activity",
+  "primary": "hasAnomaly",
   "ports": {
-    "inputs": [{ "name": "series", "type": "array", "required": false }],
+    "inputs": [
+      {
+        "name": "series",
+        "type": "array",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -26,7 +33,9 @@
       "name": "method",
       "label": "Detection method",
       "type": "enum",
-      "values": ["zscore"],
+      "values": [
+        "zscore"
+      ],
       "default": "zscore",
       "required": false,
       "description": "Statistical method used to score each point. v1 supports z-score (mean + stddev)."

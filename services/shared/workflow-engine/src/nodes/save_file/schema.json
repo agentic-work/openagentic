@@ -4,8 +4,15 @@
   "label": "Save File",
   "description": "Persist arbitrary text content to the artifact store (MinIO/GCS/Azure via the platform's BlobStorageService). Returns {artifactId, url, sizeBytes, mimeType}. Text payloads only for now — binary mode lands when the binary plane (Tier 2 #5) is wired through. For string-valued flow outputs (JSON, CSV, HTML, Markdown, logs) the text path already covers the canonical use case.",
   "icon": "save",
+  "primary": "url",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -69,7 +76,9 @@
       "label": "Tags",
       "type": "json",
       "required": false,
-      "default": ["save_file"],
+      "default": [
+        "save_file"
+      ],
       "description": "Array of tags applied to the artifact for search/filter."
     }
   ],

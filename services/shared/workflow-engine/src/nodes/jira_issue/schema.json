@@ -4,8 +4,15 @@
   "label": "Jira Issue",
   "description": "Create a Jira issue via REST API v3. Auth via JIRA_BASE_URL + JIRA_EMAIL + JIRA_API_TOKEN env vars.",
   "icon": "jira",
+  "primary": "key",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
@@ -25,7 +32,9 @@
       "name": "action",
       "label": "Action",
       "type": "enum",
-      "values": ["create"],
+      "values": [
+        "create"
+      ],
       "default": "create",
       "required": false
     },
@@ -63,7 +72,13 @@
       "name": "priority",
       "label": "Priority",
       "type": "enum",
-      "values": ["Highest", "High", "Medium", "Low", "Lowest"],
+      "values": [
+        "Highest",
+        "High",
+        "Medium",
+        "Low",
+        "Lowest"
+      ],
       "default": "Medium",
       "required": false
     },

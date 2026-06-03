@@ -433,6 +433,42 @@ export class OllamaProvider extends BaseLLMProvider {
    * NEVER auto-pulls models. Models must be explicitly managed via Ollama CLI or admin API.
    * Auto-pull caused deleted models to reappear (e.g. qwen deleted from host, re-pulled on next request).
    */
+  /**
+   * Defense-in-depth (#1274): fail FAST when a chat/completion request is
+   * routed to a non-chat (embedding-only) model, instead of letting Ollama
+   * return an opaque `400 "<model>" does not support chat` deep inside the
+   * stream (which surfaced as a silent empty completion). Uses the AUTHORITATIVE
+   * discovered capabilities — unknown capabilities are NOT blocked (let Ollama
+   * decide; never false-positive on an infra hiccup).
+   */
+  private async assertChatCapable(modelName: string): Promise<void> {
+    try {
+      const { getProviderManager } = await import('./ProviderManager.js');
+      const pm = getProviderManager();
+      const disc = pm?.getDiscoveredCapabilities(modelName);
+      const caps = disc?.capabilities as { chat?: boolean; embeddings?: boolean } | undefined;
+      if (!caps) return; // unknown → let Ollama decide; don't false-positive
+      const isChatCapable = caps.chat === true || (caps.embeddings !== true && caps.chat !== false);
+      if (!isChatCapable) {
+        this.logger.error(
+          { model: modelName, capabilities: caps },
+          '[OllamaProvider] 🚫 Chat request routed to a non-chat (embedding-only) model — failing fast',
+        );
+        throw new Error(
+          `Model "${modelName}" is not chat-capable (it is an embedding/non-chat model) and cannot serve a chat/completion request. ` +
+            `This indicates a model-selection bug upstream — a chat request must be routed to a model whose Registry capabilities include chat. ` +
+            `Pick a chat-role model (or omit model:"auto" so the Smart Router selects a chat-capable default).`,
+        );
+      }
+    } catch (err: any) {
+      // Re-throw our own actionable error; swallow lookup failures so the
+      // guard can never block a legitimate request on an infra hiccup.
+      if (typeof err?.message === 'string' && err.message.includes('is not chat-capable')) {
+        throw err;
+      }
+    }
+  }
+
   private async ensureModelExists(modelName: string): Promise<void> {
     try {
       const exists = await this.modelExists(modelName);
@@ -491,6 +527,11 @@ export class OllamaProvider extends BaseLLMProvider {
       } else if (modelName.startsWith('ollama:')) {
         modelName = modelName.substring(7);
       }
+
+      // #1274 defense-in-depth: fail fast if a chat request was routed to a
+      // non-chat (embedding-only) model. Cheap (cached discovered capabilities),
+      // swallows lookup failures, only throws on a PROVEN non-chat model.
+      await this.assertChatCapable(modelName);
 
       // Skip the model-existence check in the hot path — it makes a blocking
       // HTTP call to Ollama (/api/tags) which competes for the same connection

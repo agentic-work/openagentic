@@ -24,6 +24,7 @@ import { abortableAxiosPost } from '../../abortableAxios.js';
 import {
   getOpenAgenticProxyAuthHeaders,
   resolveOpenAgenticProxyUrl,
+  buildAgentProxyUserAuth,
 } from '../agent_spawn/executor.js';
 import { withGenAISpan } from '../../observability/GenAITracer.js';
 
@@ -114,6 +115,8 @@ export async function execute(
             sessionId: ctx.executionId,
             userId: ctx.userId,
             userMessage,
+            // #1275 true run-as-user OBO (token + id token + email in the body).
+            ...buildAgentProxyUserAuth(ctx),
             totalBudgetCents: totalBudget,
             timeoutMs: timeout,
             flowContext: {

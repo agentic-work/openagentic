@@ -4,8 +4,15 @@
   "label": "Discord Message",
   "description": "Send a message to a Discord channel via webhook. Supports plain content, custom username, and embeds.",
   "icon": "discord",
+  "primary": "sent",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",

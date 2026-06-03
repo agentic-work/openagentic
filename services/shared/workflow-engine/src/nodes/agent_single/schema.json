@@ -4,8 +4,15 @@
   "label": "Single Agent",
   "description": "Run one agent through openagentic-proxy with orchestration='parallel'. Returns the unwrapped output plus the per-agent results array.",
   "icon": "robot",
+  "primary": "content",
   "ports": {
-    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
     "outputs": [
       {
         "name": "result",
