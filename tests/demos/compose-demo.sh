@@ -31,16 +31,6 @@ printf "  ${G}tools executed:${N} %s\n" "$(grep -oE '"name":"web_[a-z_]+"' /tmp/
 printf "  ${G}model:${N}          %s\n" "$(grep -oE 'anthropic\.claude-sonnet-4-6' /tmp/demo-chat.ndjson | head -1)"
 printf "  ${G}answer:${N}         %s\n" "$(grep -oE '"text":"[^"]*"' /tmp/demo-chat.ndjson | sed 's/"text":"//;s/"$//' | tr -d '\n' | tail -c 150)"
 
-printf "\n${C}── 4. Run a Flow end-to-end ────────────────────${N}\n"
-WID=$(curl -s "$BASE/api/workflows/templates" -H "x-api-key: $TOK" | jq -r '.templates[]|select(.name|test("Web Page";"i")).id' | head -1)
-printf "  ${D}flow:${N} Web Page → Structured Brief\n"
-EID=$(curl -s -X POST "$BASE/api/workflows/$WID/execute?async=true" -H "x-api-key: $TOK" -H 'content-type: application/json' \
-  -d '{"input":{"url":"https://example.com"},"trigger_type":"manual"}' | jq -r '.executionId // .execution.id // .id')
-printf "  ${D}execution %s — polling…${N}\n" "${EID:0:8}"
-ST="?"
-for i in $(seq 1 40); do
-  ST=$(curl -s "$BASE/api/workflows/$WID/executions" -H "x-api-key: $TOK" | jq -r --arg e "$EID" '(.executions//.)[]|select(.id==$e).status' | head -1)
-  case "$ST" in completed|failed|success|error) break;; esac
-  sleep 2
-done
-printf "  ${G}flow status: %s${N}\n\n" "$ST"
+printf "\n${C}── 4. Flow templates (seeded + ready) ──────────${N}\n"
+curl -s "$BASE/api/workflows/templates" -H "x-api-key: $TOK" | jq -r '.templates[] | "  • " + .name'
+printf "  ${D}(end-to-end flow-run demo deferred until the in-progress upstream flows sync lands)${N}\n\n"
