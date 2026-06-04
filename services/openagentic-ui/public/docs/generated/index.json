@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-06-01T13:39:05.781Z",
-  "version": "0.1.0",
-  "codename": "First Light",
+  "generatedAt": "2026-06-04T23:34:08.732Z",
+  "version": "1.0.0",
+  "codename": "Open Field",
   "categories": [
     {
       "id": "core",
@@ -57,7 +57,7 @@
       "category": "workflows",
       "file": "flow-templates.json",
       "sectionCount": 1,
-      "itemCount": 4,
+      "itemCount": 5,
       "adminOnly": false
     },
     {
@@ -67,7 +67,7 @@
       "category": "workflows",
       "file": "node-types.json",
       "sectionCount": 7,
-      "itemCount": 66,
+      "itemCount": 71,
       "adminOnly": false
     },
     {
@@ -87,7 +87,7 @@
       "category": "infrastructure",
       "file": "helm-templates.json",
       "sectionCount": 1,
-      "itemCount": 13,
+      "itemCount": 14,
       "adminOnly": false
     },
     {
@@ -97,7 +97,7 @@
       "category": "core",
       "file": "api-routes.json",
       "sectionCount": 14,
-      "itemCount": 580,
+      "itemCount": 570,
       "adminOnly": false
     },
     {
@@ -117,7 +117,7 @@
       "category": "core",
       "file": "feature-flags.json",
       "sectionCount": 1,
-      "itemCount": 5,
+      "itemCount": 3,
       "adminOnly": false
     }
   ]

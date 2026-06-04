@@ -170,6 +170,10 @@ services:
       dockerfile: services/openagentic-api/Dockerfile
       args:
         SRC_PATH: services/openagentic-api
+        # Canonical app version (overridable from .env). Drives /api/version
+        # fallbacks + the platform version reported by the api.
+        PLATFORM_VERSION: ${OPENAGENTIC_VERSION:-1.0.0}
+        PLATFORM_CODENAME: ${OPENAGENTIC_CODENAME:-Open Field}
     extra_hosts:
       - "ollama.local:127.0.0.1"
       # host-gateway is the docker keyword that resolves to the host's
@@ -300,6 +304,10 @@ services:
       dockerfile: services/openagentic-ui/Dockerfile
       args:
         SRC_PATH: services/openagentic-ui
+        # Canonical app version (overridable from .env). Flows into the UI as
+        # VITE_APP_VERSION → the baked __APP_VERSION__ the About modal shows.
+        PLATFORM_VERSION: ${OPENAGENTIC_VERSION:-1.0.0}
+        PLATFORM_CODENAME: ${OPENAGENTIC_CODENAME:-Open Field}
     environment:
       API_HOST: api
       API_PORT: "8000"

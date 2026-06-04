@@ -13,7 +13,7 @@ const timelineDiagram: DiagramDefinition = {
   description: 'Milestones from v0.7 through v1.0',
   layout: 'horizontal',
   nodes: [
-    { id: 'v071', label: `v${import.meta.env.VITE_APP_VERSION || '0.7.1'}`, description: `Current: ${import.meta.env.VITE_CODENAME || 'AGENTICHAT'}`, shape: 'rounded', color: 'green' },
+    { id: 'v10', label: `v${import.meta.env.VITE_APP_VERSION || '1.0.0'}`, description: `Current: ${import.meta.env.VITE_CODENAME || 'Open Field'}`, shape: 'rounded', color: 'green' },
     { id: 'v08', label: 'v0.8.0', description: 'A2A + Marketplace', shape: 'rounded', color: 'primary' },
     { id: 'v09', label: 'v0.9.0', description: 'FedRAMP + SOC 2', shape: 'rounded', color: 'purple' },
     { id: 'v10', label: 'v1.0.0', description: 'General Availability', shape: 'rounded', color: 'cyan' },
@@ -256,7 +256,7 @@ const RoadmapPage: React.FC = () => {
             letterSpacing: '0.04em',
           }}
         >
-          Current: v{import.meta.env.VITE_APP_VERSION || '0.7.1'} {import.meta.env.VITE_CODENAME || 'AGENTICHAT'}
+          Current: v{import.meta.env.VITE_APP_VERSION || '1.0.0'} {import.meta.env.VITE_CODENAME || 'Open Field'}
         </span>
       </motion.section>
 
@@ -272,7 +272,7 @@ const RoadmapPage: React.FC = () => {
         <p style={sectionHeadingStyle}>Timeline</p>
         <h2 style={sectionTitleStyle}>Release Milestones</h2>
         <p style={{ ...sectionDescStyle, marginBottom: '32px' }}>
-          The path from the current v{import.meta.env.VITE_APP_VERSION || '0.7.1'} {import.meta.env.VITE_CODENAME || 'AGENTICHAT'} release through general availability.
+          The path from the current v{import.meta.env.VITE_APP_VERSION || '1.0.0'} {import.meta.env.VITE_CODENAME || 'Open Field'} release through general availability.
           Each release builds on the previous, expanding protocol support,
           compliance coverage, and ecosystem depth.
         </p>

@@ -26,9 +26,9 @@ const ThemeContext = createContext();
  * @property {string} secondary - Secondary/lighter color hex value
  */
 export const accentColors = [
-  { name: 'Orange', primary: '#FF5722', secondary: '#FFB87E' },       // Default — openagentic signal orange
+  { name: 'Emerald', primary: '#34D399', secondary: '#6EE7B7' },      // Default — openagentics.io brand green
   { name: 'Blue', primary: '#1E40AF', secondary: '#3B82F6' },         // Professional blue
-  { name: 'Green', primary: '#16A34A', secondary: '#22C55E' },        // True green
+  { name: 'Orange', primary: '#FF5722', secondary: '#FFB87E' },       // Signal orange
   { name: 'Purple', primary: '#7C3AED', secondary: '#A855F7' },       // True purple
 ];
 
@@ -71,11 +71,14 @@ export const ThemeProvider = ({ children }) => {
         // old Orange→amber mapping wrote to localStorage['openagentic-accent']
         // (and data-accent), which forced --color-accent to #ffb547 over the
         // brand signal. applyAccentColor re-derives the correct token on mount.
-        const VER = 'oa-brand-3';
+        const VER = 'oa-brand-4';
         if (localStorage.getItem('oa-theme-version') !== VER) {
           const cur = JSON.parse(localStorage.getItem('ac-accent-color') || 'null');
-          const isOldDefault = !cur || cur.name === 'Dark Blue' ||
-            ['#1E40AF', '#0A84FF', '#007AFF', '#3B82F6'].includes(cur.primary);
+          // Migrate older defaults — the agenticwork "Dark Blue" AND the interim
+          // signal-orange — to the openagentics.io brand green (accentColors[0]).
+          // Explicit non-default accent picks are preserved.
+          const isOldDefault = !cur || cur.name === 'Dark Blue' || cur.name === 'Orange' ||
+            ['#1E40AF', '#0A84FF', '#007AFF', '#3B82F6', '#FF5722'].includes(cur.primary);
           if (isOldDefault) localStorage.setItem('ac-accent-color', JSON.stringify(accentColors[0]));
           // Drop a stale 'amber' admin token left by the previous Orange→amber
           // mapping so it can't override the brand signal on first paint.
@@ -161,6 +164,9 @@ export const ThemeProvider = ({ children }) => {
     const nameToAdminToken = {
       'Dark Blue': 'gcp',
       'Blue': 'gcp',
+      // Brand default — openagentics.io emerald; admin 'green' token is the closest
+      // preset for the data-accent fallback (the inline --user-accent #34D399 wins anyway).
+      'Emerald': 'green',
       'Green': 'green',
       'Teal': 'teal',
       'Amber': 'amber',
@@ -211,6 +217,11 @@ export const ThemeProvider = ({ children }) => {
 
     // Set data attribute — the canonical theme switch.
     root.setAttribute('data-theme', themeName);
+    // Mirror onto <body> too: the admin v3 useTheme hook anchors some legacy
+    // selectors on body[data-theme] (admin-overhaul.css), and writing it here
+    // means a same-tab theme toggle from the chat/admin Settings menu repaints
+    // body-scoped rules instantly — no reload.
+    document.body.setAttribute('data-theme', themeName);
 
     // Defensive cleanup: remove any stale inline --color-* overrides written by
     // OLDER builds (the deleted themes={dark,light} JS palette used to write
@@ -238,6 +249,18 @@ export const ThemeProvider = ({ children }) => {
       .filter((c) => c && !c.endsWith('-theme'));
     classes.push(`${themeName}-theme`);
     document.body.className = classes.join(' ');
+
+    // Same-tab notify (mirrors applyAccentColor). The admin v3 useTheme hook
+    // re-reads theme/accent only on `storage` (which does NOT fire same-tab)
+    // and `focus` — so toggling the theme from the chat/admin Settings menu
+    // while an admin surface is mounted previously needed a reload/blur to
+    // repaint. Dispatch a manual storage event so admin re-syncs instantly.
+    try {
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'ac-theme',
+        newValue: themeName,
+      }));
+    } catch { /* older browsers: best-effort */ }
   };
 
   // Apply theme and accent color immediately on mount
@@ -280,8 +303,13 @@ export const ThemeProvider = ({ children }) => {
     }
 
     setResolvedTheme(actualTheme);
-    applyTheme(actualTheme);
+    // Persist BEFORE applyTheme so the synthetic `ac-theme` storage event that
+    // applyTheme dispatches finds the fresh value when admin's useTheme calls
+    // readTheme(). We store the user's choice verbatim (`theme`, which may be
+    // 'system') so the 'system' sentinel survives; applyTheme paints the
+    // RESOLVED dark/light onto [data-theme].
     localStorage.setItem('ac-theme', theme);
+    applyTheme(actualTheme);
   }, [theme]);
 
   // Report theme/accent preferences to API for analytics (fire-and-forget)

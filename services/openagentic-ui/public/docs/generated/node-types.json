@@ -4,7 +4,7 @@
   "description": "Registered Flow canvas node types, source-derived from the workflow-engine node registry.",
   "icon": "flow",
   "category": "workflows",
-  "generatedAt": "2026-06-01T13:39:05.718Z",
+  "generatedAt": "2026-06-04T23:34:08.677Z",
   "sourceFiles": [
     "services/shared/workflow-engine/src/nodes/registry.ts",
     "services/shared/workflow-engine/src/nodes/text/schema.json",
@@ -50,12 +50,12 @@
     "services/shared/workflow-engine/src/nodes/data_query/schema.json",
     "services/shared/workflow-engine/src/nodes/sub_workflow/schema.json",
     "services/shared/workflow-engine/src/nodes/human_approval/schema.json",
+    "services/shared/workflow-engine/src/nodes/human_input/schema.json",
     "services/shared/workflow-engine/src/nodes/data_source_query/schema.json",
     "services/shared/workflow-engine/src/nodes/condition/schema.json",
     "services/shared/workflow-engine/src/nodes/switch/schema.json",
     "services/shared/workflow-engine/src/nodes/parallel/schema.json",
     "services/shared/workflow-engine/src/nodes/loop/schema.json",
-    "services/shared/workflow-engine/src/nodes/synth/schema.json",
     "services/shared/workflow-engine/src/nodes/anomaly_detect/schema.json",
     "services/shared/workflow-engine/src/nodes/filter_data/schema.json",
     "services/shared/workflow-engine/src/nodes/select_data/schema.json",
@@ -72,7 +72,12 @@
     "services/shared/workflow-engine/src/nodes/llm_router/schema.json",
     "services/shared/workflow-engine/src/nodes/save_file/schema.json",
     "services/shared/workflow-engine/src/nodes/aggregate/schema.json",
-    "services/shared/workflow-engine/src/nodes/knowledge_search/schema.json"
+    "services/shared/workflow-engine/src/nodes/knowledge_search/schema.json",
+    "services/shared/workflow-engine/src/nodes/rerank/schema.json",
+    "services/shared/workflow-engine/src/nodes/multi_query/schema.json",
+    "services/shared/workflow-engine/src/nodes/retry_with_backoff/schema.json",
+    "services/shared/workflow-engine/src/nodes/map_reduce/schema.json",
+    "services/shared/workflow-engine/src/nodes/dedup/schema.json"
   ],
   "sections": [
     {
@@ -110,7 +115,7 @@
     {
       "id": "ai",
       "title": "Ai",
-      "description": "20 ai node types",
+      "description": "21 ai node types",
       "adminOnly": false,
       "items": [
         {
@@ -282,6 +287,18 @@
           "sourceFile": "services/shared/workflow-engine/src/nodes/multi_agent/schema.json"
         },
         {
+          "id": "multi_query",
+          "name": "Multi-Query Expand",
+          "description": "Expand one question into N retrieval query variants to widen RAG recall (the 'multi-query retriever' pattern). The default path is a DETERMINISTIC rule-based expander — it derives reformulations (keyword-only, question→statement, synonym/paraphrase prefixes, and the original) wit",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "multi_query",
+            "category": "ai",
+            "icon": "list-plus"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/multi_query/schema.json"
+        },
+        {
           "id": "openagentic_chat",
           "name": "OpenAgentic Chat",
           "description": "Conversational LLM via the platform's Smart Router. Same shape as openagentic_llm — supports modelOverride, sliderPosition, and chain-of-thought thinking.",
@@ -318,6 +335,18 @@
           "sourceFile": "services/shared/workflow-engine/src/nodes/reasoning/schema.json"
         },
         {
+          "id": "rerank",
+          "name": "Rerank Chunks",
+          "description": "Re-order a list of retrieved chunks by relevance to a query using a deterministic lexical relevance scorer (BM25-style term-overlap with IDF weighting + phrase-match boost). No model round-trip on the default path, so it is deterministic and harness-friendly. Optionally an LLM cr",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "rerank",
+            "category": "ai",
+            "icon": "sort-desc"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/rerank/schema.json"
+        },
+        {
           "id": "structured_output",
           "name": "Structured Output",
           "description": "Force the LLM to emit valid JSON matching the supplied schema. Retries on parse failure.",
@@ -328,18 +357,6 @@
             "icon": "code"
           },
           "sourceFile": "services/shared/workflow-engine/src/nodes/structured_output/schema.json"
-        },
-        {
-          "id": "synth",
-          "name": "Synth (Tool Synthesis)",
-          "description": "Dynamically synthesize and execute a tool from natural-language intent. Routes through the openagentic-api /api/synth/synthesize endpoint; high-risk synth pauses for approval.",
-          "type": "workflow-node",
-          "properties": {
-            "nodeType": "synth",
-            "category": "ai",
-            "icon": "wand"
-          },
-          "sourceFile": "services/shared/workflow-engine/src/nodes/synth/schema.json"
         },
         {
           "id": "vertex",
@@ -378,7 +395,7 @@
     {
       "id": "control",
       "title": "Control",
-      "description": "12 control node types",
+      "description": "16 control node types",
       "adminOnly": false,
       "items": [
         {
@@ -392,6 +409,18 @@
             "icon": "git-branch"
           },
           "sourceFile": "services/shared/workflow-engine/src/nodes/condition/schema.json"
+        },
+        {
+          "id": "dedup",
+          "name": "Deduplicate",
+          "description": "Idempotency gate. Computes a key from the configured expression and drops (or errors on) items whose key has already been seen — within the current execution by default, or across executions with an optional TTL window.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "dedup",
+            "category": "control",
+            "icon": "filter-x"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/dedup/schema.json"
         },
         {
           "id": "error_handler",
@@ -430,6 +459,18 @@
           "sourceFile": "services/shared/workflow-engine/src/nodes/human_approval/schema.json"
         },
         {
+          "id": "human_input",
+          "name": "Request Data from User",
+          "description": "Pause the workflow and ask the user to fill a typed form, then resume with their answers. Unlike human_approval (which only yields approve/reject), human_input collects actual values mid-run — a missing parameter, a decision the model can't make, or a credential to bind. Downstre",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "human_input",
+            "category": "control",
+            "icon": "form-input"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/human_input/schema.json"
+        },
+        {
           "id": "loop",
           "name": "Loop",
           "description": "Iterate over a collection by re-executing the downstream subgraph once per item, with the iteration variable bound in the per-iteration input.",
@@ -440,6 +481,18 @@
             "icon": "repeat"
           },
           "sourceFile": "services/shared/workflow-engine/src/nodes/loop/schema.json"
+        },
+        {
+          "id": "map_reduce",
+          "name": "Map / Reduce",
+          "description": "Fan out over an input collection — run the downstream subgraph once per item under a concurrency limit — then reduce the per-item results into a single value (collect, concat, sum, avg, min, max, count).",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "map_reduce",
+            "category": "control",
+            "icon": "git-fork"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/map_reduce/schema.json"
         },
         {
           "id": "merge",
@@ -476,6 +529,18 @@
             "icon": "gauge"
           },
           "sourceFile": "services/shared/workflow-engine/src/nodes/rate_limiter/schema.json"
+        },
+        {
+          "id": "retry_with_backoff",
+          "name": "Retry with Backoff",
+          "description": "Wraps a downstream operation and retries it with exponential backoff on failure. Returns the first successful result; throws a clear error naming the last failure once all retries are exhausted.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "retry_with_backoff",
+            "category": "control",
+            "icon": "rotate-ccw"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/retry_with_backoff/schema.json"
         },
         {
           "id": "sub_workflow",

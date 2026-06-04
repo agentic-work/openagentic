@@ -59,14 +59,16 @@ const FORBIDDEN: Rule[] = [
 ];
 
 /**
- * Allowlisted files — history / legit sandbox uses that are NOT Code Mode.
- * ChangelogPage keeps the historical record; the bare-word `sandbox` (iframe
+ * Allowlisted files — legit `sandbox` uses that are NOT Code Mode.
+ *
+ * NOTE: ChangelogPage.tsx is intentionally NOT allowlisted. Code Mode was fully
+ * excised from openagentic, so even the historical changelog must be Code-Mode
+ * free — the prose page is now scanned like every other docs source so any
+ * future reintroduction fails the build. The bare-word `sandbox` (iframe
  * sandbox attr, OAT synth "sandboxed runtime", agent playground) is legit and
  * is NOT in the forbidden list above (only the Code-Mode phrasings are).
  */
-const ALLOWLIST = new Set<string>([
-  'pages/ChangelogPage.tsx',
-]);
+const ALLOWLIST = new Set<string>([]);
 
 async function walk(dir: string, exts: string[]): Promise<string[]> {
   const out: string[] = [];

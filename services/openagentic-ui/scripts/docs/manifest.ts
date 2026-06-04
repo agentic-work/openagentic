@@ -44,7 +44,14 @@ export const REMOVED_NODE_TYPES = [
   'k8s_sandbox_run',
 ];
 
-/** Substring patterns that must never appear as a generated id (any domain). */
+/**
+ * Substring patterns that must never appear as a generated id (any domain).
+ *
+ * Scope note: this guards the SOURCE-SCANNED generator output only. Hand-written
+ * prose pages (src/features/docs/pages/*.tsx) are NOT generated here — they are
+ * guarded separately by the docs sync-guard test (no-removed-features.test.ts),
+ * which scans every docs page for the same Code-Mode / sandbox-exec phrasings.
+ */
 export const REMOVED_FEATURE_PATTERNS: Array<string | RegExp> = [
   /code[-_]?mode/i,
   /codemode/i,

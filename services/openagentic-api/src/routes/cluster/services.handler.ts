@@ -20,7 +20,7 @@ function loadReleaseInfo(): { version: string; codename: string; releaseDate?: s
       if (existsSync(path)) {
         const raw = JSON.parse(readFileSync(path, 'utf-8'));
         return {
-          version: raw.version || process.env.PLATFORM_VERSION || '0.0.0',
+          version: raw.version || process.env.PLATFORM_VERSION || '1.0.0',
           codename: raw.codename || process.env.PLATFORM_CODENAME || '',
           releaseDate: raw.releaseDate,
         };
@@ -28,7 +28,7 @@ function loadReleaseInfo(): { version: string; codename: string; releaseDate?: s
     } catch { /* try next */ }
   }
   return {
-    version: process.env.PLATFORM_VERSION || '0.0.0',
+    version: process.env.PLATFORM_VERSION || '1.0.0',
     codename: process.env.PLATFORM_CODENAME || '',
   };
 }

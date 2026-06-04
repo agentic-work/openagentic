@@ -4,7 +4,7 @@
   "description": "Services deployed by the compose stack, source-derived from docker-compose.yml.",
   "icon": "infra",
   "category": "infrastructure",
-  "generatedAt": "2026-06-01T13:39:05.720Z",
+  "generatedAt": "2026-06-04T23:34:08.678Z",
   "sourceFiles": [
     "docker-compose.yml"
   ],
@@ -161,6 +161,17 @@
           "sourceFile": "docker-compose.yml"
         },
         {
+          "id": "prometheus",
+          "name": "prometheus",
+          "description": "Service `prometheus` (image: prom/prometheus:v2.54.1)",
+          "type": "compose-service",
+          "properties": {
+            "category": "auxiliary",
+            "image": "prom/prometheus:v2.54.1"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
+        {
           "id": "proxy",
           "name": "proxy",
           "description": "Service `proxy` (image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-proxy:${OPENAGENTIC_TAG:-latest})",
@@ -179,17 +190,6 @@
           "properties": {
             "category": "auxiliary",
             "image": "searxng/searxng:latest"
-          },
-          "sourceFile": "docker-compose.yml"
-        },
-        {
-          "id": "synth",
-          "name": "synth",
-          "description": "Service `synth` (image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-synth:${OPENAGENTIC_TAG:-latest})",
-          "type": "compose-service",
-          "properties": {
-            "category": "auxiliary",
-            "image": "${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-synth:${OPENAGENTIC_TAG:-latest}"
           },
           "sourceFile": "docker-compose.yml"
         }

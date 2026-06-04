@@ -146,7 +146,7 @@ export const VersionBadge: React.FC<{ className?: string }> = ({ className = '' 
   }
 
   const fallbackVersion =
-    import.meta.env.VITE_APP_VERSION || import.meta.env.VITE_VERSION || 'dev';
+    import.meta.env.VITE_APP_VERSION || import.meta.env.VITE_VERSION || '1.0.0';
   const version = versionData?.version ?? fallbackVersion;
   const environment =
     versionData?.environment === 'production' ? 'prod' : (versionData?.environment ?? 'dev');

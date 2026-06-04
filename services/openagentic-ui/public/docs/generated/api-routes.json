@@ -4,7 +4,7 @@
   "description": "HTTP routes registered across the API",
   "icon": "route",
   "category": "core",
-  "generatedAt": "2026-06-01T13:39:05.768Z",
+  "generatedAt": "2026-06-04T23:34:08.722Z",
   "sourceFiles": [
     "services/openagentic-api/src/routes/account-linking.ts",
     "services/openagentic-api/src/routes/admin-agents.ts",
@@ -20,18 +20,20 @@
     "services/openagentic-api/src/routes/admin-mcp-logs.ts",
     "services/openagentic-api/src/routes/admin-mcp-tools.ts",
     "services/openagentic-api/src/routes/admin-messages.ts",
+    "services/openagentic-api/src/routes/admin-metrics-extra.ts",
     "services/openagentic-api/src/routes/admin-missing-routes.ts",
     "services/openagentic-api/src/routes/admin-network.ts",
     "services/openagentic-api/src/routes/admin-ollama.ts",
     "services/openagentic-api/src/routes/admin-portal-enhanced.ts",
+    "services/openagentic-api/src/routes/admin-prompt-analytics.ts",
     "services/openagentic-api/src/routes/admin-prompting.ts",
     "services/openagentic-api/src/routes/admin-prompts.ts",
     "services/openagentic-api/src/routes/admin-roles.ts",
     "services/openagentic-api/src/routes/admin-service-prompts.ts",
-    "services/openagentic-api/src/routes/admin-synth.ts",
     "services/openagentic-api/src/routes/admin-system.ts",
     "services/openagentic-api/src/routes/admin-teams.ts",
     "services/openagentic-api/src/routes/admin-techniques.ts",
+    "services/openagentic-api/src/routes/admin-tiered-fc.ts",
     "services/openagentic-api/src/routes/admin-tools.ts",
     "services/openagentic-api/src/routes/admin-user-context.ts",
     "services/openagentic-api/src/routes/admin-workflow-secrets.ts",
@@ -61,7 +63,6 @@
     "services/openagentic-api/src/routes/settings.ts",
     "services/openagentic-api/src/routes/setup.ts",
     "services/openagentic-api/src/routes/storage.ts",
-    "services/openagentic-api/src/routes/synth.ts",
     "services/openagentic-api/src/routes/system-config.ts",
     "services/openagentic-api/src/routes/user-context.ts",
     "services/openagentic-api/src/routes/user-settings.ts",
@@ -118,6 +119,7 @@
     "services/openagentic-api/src/routes/admin/registry-tombstones.ts",
     "services/openagentic-api/src/routes/admin/router-tuning.ts",
     "services/openagentic-api/src/routes/admin/shared-kb.ts",
+    "services/openagentic-api/src/routes/admin/slo.ts",
     "services/openagentic-api/src/routes/admin/v3-extras-misc.ts",
     "services/openagentic-api/src/routes/admin/v3-extras-mutations.ts",
     "services/openagentic-api/src/routes/admin/v3-extras.ts",
@@ -505,24 +507,24 @@
           "sourceFile": "services/openagentic-api/src/routes/admin-integrations.ts"
         },
         {
-          "id": "GET-_api_admin_flows_kpis",
-          "name": "GET /api/admin/flows/kpis",
-          "description": "GET /api/admin/flows/kpis",
+          "id": "GET-_flows_kpis",
+          "name": "GET /flows/kpis",
+          "description": "GET /flows/kpis",
           "type": "http-route",
           "properties": {
             "method": "GET",
-            "path": "/api/admin/flows/kpis"
+            "path": "/flows/kpis"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin-kpis.ts"
         },
         {
-          "id": "GET-_api_admin_flows__id_kpis",
-          "name": "GET /api/admin/flows/:id/kpis",
-          "description": "GET /api/admin/flows/:id/kpis",
+          "id": "GET-_flows__id_kpis",
+          "name": "GET /flows/:id/kpis",
+          "description": "GET /flows/:id/kpis",
           "type": "http-route",
           "properties": {
             "method": "GET",
-            "path": "/api/admin/flows/:id/kpis"
+            "path": "/flows/:id/kpis"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin-kpis.ts"
         },
@@ -659,6 +661,28 @@
           "sourceFile": "services/openagentic-api/src/routes/admin-messages.ts"
         },
         {
+          "id": "GET-_metrics_redis",
+          "name": "GET /metrics/redis",
+          "description": "GET /metrics/redis",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/metrics/redis"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-metrics-extra.ts"
+        },
+        {
+          "id": "GET-_metrics_milvus",
+          "name": "GET /metrics/milvus",
+          "description": "GET /metrics/milvus",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/metrics/milvus"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-metrics-extra.ts"
+        },
+        {
           "id": "GET-_mcp_health",
           "name": "GET /mcp/health",
           "description": "GET /mcp/health",
@@ -688,17 +712,6 @@
           "properties": {
             "method": "GET",
             "path": "/cluster/services"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-missing-routes.ts"
-        },
-        {
-          "id": "GET-_agenticode_api-keys",
-          "name": "GET /agenticode/api-keys",
-          "description": "GET /agenticode/api-keys",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/agenticode/api-keys"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin-missing-routes.ts"
         },
@@ -989,6 +1002,17 @@
           "sourceFile": "services/openagentic-api/src/routes/admin-portal-enhanced.ts"
         },
         {
+          "id": "GET-_",
+          "name": "GET /",
+          "description": "GET /",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-prompt-analytics.ts"
+        },
+        {
           "id": "GET-_current",
           "name": "GET /current",
           "description": "GET /current",
@@ -1264,138 +1288,6 @@
           "sourceFile": "services/openagentic-api/src/routes/admin-service-prompts.ts"
         },
         {
-          "id": "GET-_config",
-          "name": "GET /config",
-          "description": "GET /config",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/config"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-synth.ts"
-        },
-        {
-          "id": "PUT-_config",
-          "name": "PUT /config",
-          "description": "PUT /config",
-          "type": "http-route",
-          "properties": {
-            "method": "PUT",
-            "path": "/config"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-synth.ts"
-        },
-        {
-          "id": "GET-_models",
-          "name": "GET /models",
-          "description": "GET /models",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/models"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-synth.ts"
-        },
-        {
-          "id": "GET-_capabilities",
-          "name": "GET /capabilities",
-          "description": "GET /capabilities",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/capabilities"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-synth.ts"
-        },
-        {
-          "id": "GET-_stats",
-          "name": "GET /stats",
-          "description": "GET /stats",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/stats"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-synth.ts"
-        },
-        {
-          "id": "GET-_history",
-          "name": "GET /history",
-          "description": "GET /history",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/history"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-synth.ts"
-        },
-        {
-          "id": "GET-_history__id",
-          "name": "GET /history/:id",
-          "description": "GET /history/:id",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/history/:id"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-synth.ts"
-        },
-        {
-          "id": "POST-_test",
-          "name": "POST /test",
-          "description": "POST /test",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/test"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-synth.ts"
-        },
-        {
-          "id": "GET-_approvals",
-          "name": "GET /approvals",
-          "description": "GET /approvals",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/approvals"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-synth.ts"
-        },
-        {
-          "id": "POST-_approvals__id_approve",
-          "name": "POST /approvals/:id/approve",
-          "description": "POST /approvals/:id/approve",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/approvals/:id/approve"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-synth.ts"
-        },
-        {
-          "id": "POST-_approvals__id_reject",
-          "name": "POST /approvals/:id/reject",
-          "description": "POST /approvals/:id/reject",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/approvals/:id/reject"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-synth.ts"
-        },
-        {
-          "id": "GET-_approvals_stream",
-          "name": "GET /approvals/stream",
-          "description": "GET /approvals/stream",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/approvals/stream"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin-synth.ts"
-        },
-        {
           "id": "GET-_status",
           "name": "GET /status",
           "description": "GET /status",
@@ -1559,6 +1451,17 @@
             "path": "/techniques/test"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin-techniques.ts"
+        },
+        {
+          "id": "GET-_tiered-fc",
+          "name": "GET /tiered-fc",
+          "description": "GET /tiered-fc",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/tiered-fc"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-tiered-fc.ts"
         },
         {
           "id": "GET-_tools_readonly",
@@ -3110,105 +3013,6 @@
             "path": "/api/storage/objects"
           },
           "sourceFile": "services/openagentic-api/src/routes/storage.ts"
-        },
-        {
-          "id": "POST-_synthesize",
-          "name": "POST /synthesize",
-          "description": "POST /synthesize",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/synthesize"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/synth.ts"
-        },
-        {
-          "id": "POST-_exec",
-          "name": "POST /exec",
-          "description": "POST /exec",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/exec"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/synth.ts"
-        },
-        {
-          "id": "GET-_history",
-          "name": "GET /history",
-          "description": "GET /history",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/history"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/synth.ts"
-        },
-        {
-          "id": "GET-_capabilities",
-          "name": "GET /capabilities",
-          "description": "GET /capabilities",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/capabilities"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/synth.ts"
-        },
-        {
-          "id": "GET-_usage",
-          "name": "GET /usage",
-          "description": "GET /usage",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/usage"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/synth.ts"
-        },
-        {
-          "id": "GET-_approvals",
-          "name": "GET /approvals",
-          "description": "GET /approvals",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/approvals"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/synth.ts"
-        },
-        {
-          "id": "POST-_approvals__id_approve",
-          "name": "POST /approvals/:id/approve",
-          "description": "POST /approvals/:id/approve",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/approvals/:id/approve"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/synth.ts"
-        },
-        {
-          "id": "POST-_approvals__id_reject",
-          "name": "POST /approvals/:id/reject",
-          "description": "POST /approvals/:id/reject",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/approvals/:id/reject"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/synth.ts"
-        },
-        {
-          "id": "DELETE-_execution__id",
-          "name": "DELETE /execution/:id",
-          "description": "DELETE /execution/:id",
-          "type": "http-route",
-          "properties": {
-            "method": "DELETE",
-            "path": "/execution/:id"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/synth.ts"
         },
         {
           "id": "GET-_config",
@@ -5900,6 +5704,28 @@
           "sourceFile": "services/openagentic-api/src/routes/admin/llm-providers.ts"
         },
         {
+          "id": "POST-_llm-providers_default-models_reset",
+          "name": "POST /llm-providers/default-models/reset",
+          "description": "POST /llm-providers/default-models/reset",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/llm-providers/default-models/reset"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/llm-providers.ts"
+        },
+        {
+          "id": "GET-_llm-providers_default-models_conflicts",
+          "name": "GET /llm-providers/default-models/conflicts",
+          "description": "GET /llm-providers/default-models/conflicts",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/llm-providers/default-models/conflicts"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/llm-providers.ts"
+        },
+        {
           "id": "GET-_api_admin_mcp_servers",
           "name": "GET /api/admin/mcp/servers",
           "description": "GET /api/admin/mcp/servers",
@@ -6340,6 +6166,28 @@
           "sourceFile": "services/openagentic-api/src/routes/admin/shared-kb.ts"
         },
         {
+          "id": "GET-_",
+          "name": "GET /",
+          "description": "GET /",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/slo.ts"
+        },
+        {
+          "id": "POST-_",
+          "name": "POST /",
+          "description": "POST /",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/slo.ts"
+        },
+        {
           "id": "GET-_cluster_health",
           "name": "GET /cluster/health",
           "description": "GET /cluster/health",
@@ -6457,6 +6305,50 @@
           "properties": {
             "method": "GET",
             "path": "/permissions"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/v3-extras.ts"
+        },
+        {
+          "id": "GET-_permissions_available-mcps",
+          "name": "GET /permissions/available-mcps",
+          "description": "GET /permissions/available-mcps",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/permissions/available-mcps"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/v3-extras.ts"
+        },
+        {
+          "id": "GET-_permissions_available-llms",
+          "name": "GET /permissions/available-llms",
+          "description": "GET /permissions/available-llms",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/permissions/available-llms"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/v3-extras.ts"
+        },
+        {
+          "id": "PUT-_permissions",
+          "name": "PUT /permissions",
+          "description": "PUT /permissions",
+          "type": "http-route",
+          "properties": {
+            "method": "PUT",
+            "path": "/permissions"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin/v3-extras.ts"
+        },
+        {
+          "id": "POST-_permissions_reset",
+          "name": "POST /permissions/reset",
+          "description": "POST /permissions/reset",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/permissions/reset"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin/v3-extras.ts"
         },

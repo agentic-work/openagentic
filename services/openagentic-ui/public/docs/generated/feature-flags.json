@@ -4,7 +4,7 @@
   "description": "Build-time feature flags that determine what ships in the UI.",
   "icon": "shield",
   "category": "core",
-  "generatedAt": "2026-06-01T13:39:05.779Z",
+  "generatedAt": "2026-06-04T23:34:08.731Z",
   "sourceFiles": [
     "services/openagentic-ui/src/config/featureFlags.ts"
   ],
@@ -23,13 +23,6 @@
           "sourceFile": "services/openagentic-ui/src/config/featureFlags.ts"
         },
         {
-          "id": "openagentic",
-          "name": "openagentic",
-          "description": "OpenAgentic agent surface",
-          "type": "feature-flag",
-          "sourceFile": "services/openagentic-ui/src/config/featureFlags.ts"
-        },
-        {
           "id": "multiModel",
           "name": "multiModel",
           "description": "Multi-Model orchestration",
@@ -40,13 +33,6 @@
           "id": "mcp",
           "name": "mcp",
           "description": "MCP (Model Context Protocol)",
-          "type": "feature-flag",
-          "sourceFile": "services/openagentic-ui/src/config/featureFlags.ts"
-        },
-        {
-          "id": "synth",
-          "name": "synth",
-          "description": "Synth (Tool Synthesis) - dynamic tool synthesis VITE_FEATURE_SYNTH is the current env var; VITE_FEATURE_OAT is the transitional alias read during the rename. Drop the alias next release.",
           "type": "feature-flag",
           "sourceFile": "services/openagentic-ui/src/config/featureFlags.ts"
         }

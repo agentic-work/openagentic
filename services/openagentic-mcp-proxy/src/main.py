@@ -1353,7 +1353,7 @@ async def call_mcp_tool(
 # === STATUS AND MONITORING ENDPOINTS ===
 
 # Platform version from build args / environment
-PLATFORM_VERSION = os.getenv("PLATFORM_VERSION", "0.0.0-dev")
+PLATFORM_VERSION = os.getenv("PLATFORM_VERSION", "1.0.0")
 BUILD_TIME = os.getenv("BUILD_TIME", time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
 GIT_COMMIT = os.getenv("GIT_COMMIT", os.getenv("COMMIT_SHA", "unknown"))
 

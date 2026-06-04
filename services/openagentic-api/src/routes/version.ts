@@ -29,8 +29,8 @@ function loadVersionJson(): any {
 
   // Fallback version info
   return {
-    version: process.env.PLATFORM_VERSION || '0.5.0',
-    codename: process.env.PLATFORM_CODENAME || 'Hardened',
+    version: process.env.PLATFORM_VERSION || '1.0.0',
+    codename: process.env.PLATFORM_CODENAME || 'Open Field',
     releaseDate: process.env.PLATFORM_RELEASE_DATE || new Date().toISOString().split('T')[0],
     components: {},
     changelog: []

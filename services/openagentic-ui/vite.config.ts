@@ -2,6 +2,13 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
+import { createRequire } from 'module'
+
+// Canonical app version: the build arg (VITE_APP_VERSION / APP_VERSION) wins,
+// otherwise fall back to this service's package.json version (1.0.0) instead of
+// a stray dev sentinel — so the About modal always shows a real release number.
+const pkg = createRequire(import.meta.url)('./package.json') as { version?: string }
+const APP_VERSION = process.env.VITE_APP_VERSION || process.env.APP_VERSION || pkg.version || '1.0.0'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -29,7 +36,7 @@ export default defineConfig({
   define: {
     // Environment-specific builds
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
-    '__APP_VERSION__': JSON.stringify(process.env.VITE_APP_VERSION || process.env.APP_VERSION || '0.0.0-dev')
+    '__APP_VERSION__': JSON.stringify(APP_VERSION)
   },
   build: {
     // Production optimizations

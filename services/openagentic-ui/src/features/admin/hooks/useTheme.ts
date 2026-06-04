@@ -127,8 +127,18 @@ export function useTheme() {
   // owns them now), so we just set the attribute on <html> + <body> and the
   // whole surface — DashboardOverview cards included — repaints.
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    document.body.dataset.theme = theme
+    // Guard: only write when the attribute actually differs from what's
+    // already on <html>. ThemeContext (the chat-side SOT) sets [data-theme]
+    // synchronously on toggle and fires a synthetic `ac-theme` storage event
+    // that lands us here via setThemeState — by which point documentElement
+    // already carries the resolved theme. Skipping the redundant write means
+    // this hook can never clobber the SOT's value with a stale read.
+    if (document.documentElement.dataset.theme !== theme) {
+      document.documentElement.dataset.theme = theme
+    }
+    if (document.body.dataset.theme !== theme) {
+      document.body.dataset.theme = theme
+    }
     try {
       localStorage.setItem(OpenAgentic_THEME_KEY, theme)
       // Don't clobber 'system' if the user picked it — only mirror dark/light.
@@ -139,8 +149,16 @@ export function useTheme() {
   }, [theme])
 
   useEffect(() => {
-    document.documentElement.dataset.accent = accent
-    document.body.dataset.accent = accent
+    // Guard against clobbering the chat-side accent. ThemeContext writes the
+    // inline --user-accent (which outranks the [data-accent] presets in
+    // theme.css) AND mirrors the [data-accent] token; only re-assert the
+    // dataset token when it actually differs so we never fight the SOT.
+    if (document.documentElement.dataset.accent !== accent) {
+      document.documentElement.dataset.accent = accent
+    }
+    if (document.body.dataset.accent !== accent) {
+      document.body.dataset.accent = accent
+    }
     try { localStorage.setItem(OpenAgentic_ACCENT_KEY, accent) } catch { /* ignore */ }
   }, [accent])
 

@@ -140,7 +140,6 @@ const releases = [
     current: false,
     highlights: [
       'Live artifact streaming — artifacts render as they stream, not after completion',
-      'Warm container pool — instant Code Mode startup via K8s warm pool',
       'Unified version system across all components',
     ],
   },
@@ -150,7 +149,6 @@ const releases = [
     date: 'January 2026',
     current: false,
     highlights: [
-      'Code Mode V2 with VSCode integration',
       'Intelligence Slider for model selection',
       'Multi-provider LLM support (Anthropic, OpenAI, Google, Azure, Ollama)',
       'MCP Tools integration',

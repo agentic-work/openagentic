@@ -1,10 +1,10 @@
 /**
  * About Modal — OpenAgentic Platform (OSS)
  *
- * Static — shows the build-time app version for each service.
- * No live service probes or API calls. Version is sourced from
- * the __APP_VERSION__ build constant injected by vite.config.ts
- * (VITE_APP_VERSION env var → defaults to '0.0.0-dev' in CI-less builds).
+ * Static — no live service probes or API calls. The version comes from the
+ * __APP_VERSION__ build constant injected by vite.config.ts, which derives
+ * from the build arg (PLATFORM_VERSION → VITE_APP_VERSION) and otherwise
+ * falls back to this service's package.json version (the canonical release).
  */
 
 import React, { useEffect } from 'react';
@@ -12,15 +12,24 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OpenAgenticWordmark } from '@/shared/components/OpenAgenticWordmark';
 
-// Build-time version constant — injected by vite.config.ts via define.
-// Falls back to the VITE_APP_VERSION env var or a 'dev' sentinel.
+// Build-time version constant — injected by vite.config.ts via define
+// (build arg → package.json version). The literal fallback below only applies
+// if the define is ever stripped; keep it on the canonical release number.
 declare const __APP_VERSION__: string;
 const APP_VERSION: string =
   (typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : undefined) ??
   (import.meta.env.VITE_APP_VERSION as string | undefined) ??
-  '0.1.0';
+  '1.0.0';
 
-// Canonical service list for the OSS platform.
+// Optional build info injected by the Docker build (unknown in dev builds).
+const GIT_SHORT_COMMIT: string | undefined =
+  (import.meta.env.VITE_GIT_SHORT_COMMIT as string | undefined) || undefined;
+const GIT_BRANCH: string | undefined =
+  (import.meta.env.VITE_GIT_BRANCH as string | undefined) || undefined;
+
+// Canonical service list for the OSS platform. The platform ships as one
+// monorepo release, so every service shares APP_VERSION — shown once below
+// rather than repeated per row.
 const SERVICES: Array<{ name: string; label: string }> = [
   { name: 'openagentic-api',       label: 'API' },
   { name: 'openagentic-ui',        label: 'UI' },
@@ -28,6 +37,8 @@ const SERVICES: Array<{ name: string; label: string }> = [
   { name: 'openagentic-workflows', label: 'Workflows' },
   { name: 'openagentic-proxy',     label: 'Proxy' },
 ];
+
+const COPYRIGHT_YEAR = new Date().getFullYear();
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -101,6 +112,39 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             {/* Content */}
             <div className="px-6 py-5" style={{ overflowY: 'auto', flex: 1 }}>
               <div className="space-y-6">
+                {/* Release — one monorepo version for the whole platform */}
+                <div>
+                  <h3
+                    className="text-xs font-medium uppercase tracking-wider mb-3"
+                    style={{ color: 'var(--color-textMuted)' }}
+                  >
+                    Release
+                  </h3>
+                  <div
+                    className="rounded-lg overflow-hidden px-4 py-3 flex items-baseline justify-between"
+                    style={{
+                      border: '1px solid var(--glass-border)',
+                      backgroundColor: 'var(--ctl-surf)',
+                    }}
+                  >
+                    <span className="text-sm" style={{ color: 'var(--color-text)' }}>
+                      OpenAgentic Platform
+                    </span>
+                    <span className="text-sm font-mono" style={{ color: 'var(--color-text)' }}>
+                      v{APP_VERSION}
+                    </span>
+                  </div>
+                  {(GIT_SHORT_COMMIT || GIT_BRANCH) && (
+                    <p
+                      className="mt-2 text-xs font-mono"
+                      style={{ color: 'var(--color-textMuted)' }}
+                    >
+                      build {GIT_SHORT_COMMIT ?? 'unknown'}
+                      {GIT_BRANCH ? ` · ${GIT_BRANCH}` : ''}
+                    </p>
+                  )}
+                </div>
+
                 {/* Services */}
                 <div>
                   <h3
@@ -117,23 +161,24 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                     }}
                   >
                     <table className="w-full text-xs font-mono">
-                      <thead>
-                        <tr style={{ color: 'var(--color-textMuted)' }}>
-                          <th className="text-left px-3 py-1.5 font-normal">Service</th>
-                          <th className="text-left px-3 py-1.5 font-normal">Version</th>
-                        </tr>
-                      </thead>
                       <tbody>
-                        {SERVICES.map((svc) => (
+                        {SERVICES.map((svc, i) => (
                           <tr
                             key={svc.name}
-                            style={{ borderTop: '1px solid var(--color-border)' }}
+                            style={
+                              i === 0
+                                ? undefined
+                                : { borderTop: '1px solid var(--color-border)' }
+                            }
                           >
                             <td className="px-3 py-1.5" style={{ color: 'var(--color-text)' }}>
                               {svc.label}
                             </td>
-                            <td className="px-3 py-1.5" style={{ color: 'var(--color-textMuted)' }}>
-                              v{APP_VERSION}
+                            <td
+                              className="px-3 py-1.5 text-right"
+                              style={{ color: 'var(--color-textMuted)' }}
+                            >
+                              {svc.name}
                             </td>
                           </tr>
                         ))}
@@ -194,7 +239,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               }}
             >
               <p className="text-xs" style={{ color: 'var(--color-textMuted)' }}>
-                OpenAgentic Platform · v{APP_VERSION} · open source
+                © {COPYRIGHT_YEAR} Agenticwork LLC · Apache License 2.0
               </p>
               <a
                 href="https://agenticwork.io"

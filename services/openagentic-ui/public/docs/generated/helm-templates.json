@@ -4,10 +4,11 @@
   "description": "Kubernetes templates in the platform Helm chart",
   "icon": "infra",
   "category": "infrastructure",
-  "generatedAt": "2026-06-01T13:39:05.722Z",
+  "generatedAt": "2026-06-04T23:34:08.679Z",
   "sourceFiles": [
     "helm/openagentic/templates/api.yaml",
     "helm/openagentic/templates/ingress.yaml",
+    "helm/openagentic/templates/mcp-proxy-rbac.yaml",
     "helm/openagentic/templates/mcp-proxy.yaml",
     "helm/openagentic/templates/milvus.yaml",
     "helm/openagentic/templates/ollama.yaml",
@@ -40,6 +41,13 @@
           "description": "Template ingress.yaml",
           "type": "helm-template",
           "sourceFile": "helm/openagentic/templates/ingress.yaml"
+        },
+        {
+          "id": "mcp-proxy-rbac.yaml",
+          "name": "mcp proxy rbac",
+          "description": "Template mcp-proxy-rbac.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/mcp-proxy-rbac.yaml"
         },
         {
           "id": "mcp-proxy.yaml",

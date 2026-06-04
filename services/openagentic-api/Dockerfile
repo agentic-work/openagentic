@@ -129,7 +129,7 @@ RUN pnpm tsc && pnpm run postbuild:assets
 FROM node:22-slim
 
 # Version build args
-ARG PLATFORM_VERSION=0.0.0
+ARG PLATFORM_VERSION=1.0.0
 ARG PLATFORM_CODENAME=Unknown
 ARG BUILD_TIME=""
 ARG GIT_COMMIT=unknown

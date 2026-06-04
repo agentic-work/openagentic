@@ -80,7 +80,7 @@ RUN cd /shared/llm-sdk && \
 ARG CACHEBUST=1
 
 # Build info arguments
-ARG PLATFORM_VERSION=0.0.0
+ARG PLATFORM_VERSION=1.0.0
 ARG PLATFORM_CODENAME=dev
 ARG GIT_COMMIT=unknown
 ARG GIT_SHORT_COMMIT=unknown

@@ -48,7 +48,7 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
   const [activeTab, setActiveTab] = useState('general');
   const [showDocsViewer, setShowDocsViewer] = useState(false);
   const [showArtifacts, setShowArtifacts] = useState(false);
-  const { accentColor, accentColors, changeAccentColor, backgroundEffect, setBackgroundEffect } = useTheme();
+  const { theme: currentTheme, changeTheme, accentColor, accentColors, changeAccentColor, backgroundEffect, setBackgroundEffect } = useTheme();
 
   const tabs = [
     { id: 'general', label: 'General', icon: SettingsIcon },
@@ -236,10 +236,19 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
                 ].map(({ value, icon: Icon, label }) => (
                   <button
                     key={value}
-                    onClick={() => onSettingsChange({ ...settings, theme: value as any })}
+                    // Drive the canonical ThemeContext switcher so the toggle
+                    // repaints the whole UI instantly (data-theme on <html>) —
+                    // previously this only wrote the inert app-settings `theme`
+                    // field, which never reached the theme SOT (needed reload).
+                    // Still mirror into app-settings so ChatContainer's
+                    // cosmetic `settings.theme` prop stays consistent.
+                    onClick={() => {
+                      changeTheme(value);
+                      onSettingsChange({ ...settings, theme: value as any });
+                    }}
                     className={clsx(
                       'flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all border-2',
-                      settings.theme === value
+                      currentTheme === value
                         ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10'
                         : 'border-[var(--color-border)] hover:border-[var(--color-borderHover)]'
                     )}

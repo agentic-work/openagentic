@@ -4,18 +4,19 @@
   "description": "Pre-built Flow templates seeded into the workflow engine, source-derived from the seed directory.",
   "icon": "flow",
   "category": "workflows",
-  "generatedAt": "2026-06-01T13:39:05.701Z",
+  "generatedAt": "2026-06-04T23:34:08.660Z",
   "sourceFiles": [
     "services/openagentic-workflows/seed/templates/cost-anomaly.json",
     "services/openagentic-workflows/seed/templates/failed-deploy-rca.json",
     "services/openagentic-workflows/seed/templates/incident-triage.json",
+    "services/openagentic-workflows/seed/templates/rag-knowledge-qa.json",
     "services/openagentic-workflows/seed/templates/research-and-publish.json"
   ],
   "sections": [
     {
       "id": "templates",
       "title": "Seeded Templates",
-      "description": "4 Flow templates shipped with the release",
+      "description": "5 Flow templates shipped with the release",
       "adminOnly": false,
       "items": [
         {
@@ -98,6 +99,37 @@
             ]
           },
           "sourceFile": "services/openagentic-workflows/seed/templates/incident-triage.json"
+        },
+        {
+          "id": "rag-knowledge-qa",
+          "name": "RAG Knowledge-Base Q&A",
+          "description": "Grounded, cited question answering over the platform knowledge base. Expands the user's question into multiple retrieval queries (multi_query), embeds it, semantically searches the shared_knowledge collection (knowledge_search), re-ranks the retrieved chunks for relevance (rerank), fact-checks the drafted answer against the retrieved evidence (grounding_check), synthesizes a cited HTML answer (llm",
+          "type": "flow-template",
+          "properties": {
+            "category": "rag",
+            "nodeTypesUsed": [
+              "embedding",
+              "grounding_check",
+              "guardrails",
+              "knowledge_search",
+              "llm_completion",
+              "multi_query",
+              "rerank",
+              "trigger",
+              "webhook_response"
+            ],
+            "toolsUsed": [
+              "embedding",
+              "grounding_check",
+              "guardrails",
+              "knowledge_search",
+              "llm_completion",
+              "multi_query",
+              "rerank",
+              "webhook_response"
+            ]
+          },
+          "sourceFile": "services/openagentic-workflows/seed/templates/rag-knowledge-qa.json"
         },
         {
           "id": "research-and-publish",

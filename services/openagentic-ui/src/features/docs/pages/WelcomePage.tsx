@@ -448,7 +448,7 @@ const WelcomePage: React.FC = () => {
               animation: 'hereFadeIn 0.6s ease-out 0.7s both',
             }}
           >
-            v{import.meta.env.VITE_APP_VERSION || import.meta.env.VITE_VERSION || '0.0.0'}
+            v{import.meta.env.VITE_APP_VERSION || import.meta.env.VITE_VERSION || '1.0.0'}
             {import.meta.env.VITE_CODENAME ? ` · ${import.meta.env.VITE_CODENAME}` : ''}
           </span>
         </div>

@@ -1,16 +1,34 @@
 {
-  "version": "0.1.0",
-  "codename": "First Light",
-  "releaseDate": "2026-04-16",
+  "version": "1.0.0",
+  "codename": "Open Field",
+  "releaseDate": "2026-06-04",
   "components": {
-    "platform": "0.1.0",
-    "api": "0.1.0",
-    "ui": "0.1.0",
+    "platform": "1.0.0",
+    "api": "1.0.0",
+    "ui": "1.0.0",
     "flowise": "2.2.0",
-    "mcpProxy": "0.1.0",
-    "openagenticProxy": "0.1.0"
+    "mcpProxy": "1.0.0",
+    "openagenticProxy": "1.0.0"
   },
   "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-06-04",
+      "codename": "Open Field",
+      "highlights": [
+        "First public open-source release of the OpenAgentic platform",
+        "One-command install (install.sh) — Docker Compose stack with the Ink setup wizard",
+        "Chat with streaming, smart model routing, and zero hardcoded model IDs",
+        "9 built-in MCP servers (aws, azure, gcp, kubernetes, prometheus, loki, github, admin, web)",
+        "Flows workflow engine with ops Flow templates and human-in-the-loop gates",
+        "Immutable audit trail + server-side approval gate on mutating tool calls",
+        "Per-user cross-mode memory shared by chat and flows",
+        "Admin console: providers, MCP fleet, audit log, dashboards",
+        "Zero telemetry — no phone-home, ever"
+      ],
+      "breaking": [],
+      "notes": "Initial public OSS release."
+    },
     {
       "version": "0.6.3",
       "date": "2026-04-10",

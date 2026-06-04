@@ -2,8 +2,9 @@
  * AboutModal — static behavior contract (OSS).
  *
  * The modal must NOT call any API — version info is static (build-time
- * __APP_VERSION__). It lists the 7 platform services with a static
- * version label and links to agenticwork.io.
+ * __APP_VERSION__, derived from package.json = the canonical release). It
+ * lists the 5 public platform services, shows the single platform version,
+ * a copyright + Apache-2.0 line, and links to agenticwork.io.
  */
 
 import React from 'react';
@@ -49,8 +50,17 @@ describe('AboutModal — static (no live probes)', () => {
 
   it('renders a version label in the header', () => {
     render(<AboutModal isOpen={true} onClose={vi.fn()} />);
-    // Header contains "v<version>" — at least "v0" should be present
+    // Header contains "v<version>" — at least "v1" should be present
     const vLabels = screen.getAllByText(/^v\d/);
+    expect(vLabels.length).toBeGreaterThan(0);
+  });
+
+  it('shows the canonical 1.0.0 release version', () => {
+    render(<AboutModal isOpen={true} onClose={vi.fn()} />);
+    // The build constant is not injected under vitest, so the modal renders
+    // its canonical fallback — which must be the real release, not a stale
+    // 0.x / dev sentinel.
+    const vLabels = screen.getAllByText('v1.0.0');
     expect(vLabels.length).toBeGreaterThan(0);
   });
 
@@ -60,6 +70,17 @@ describe('AboutModal — static (no live probes)', () => {
     expect(screen.getByText('UI')).toBeInTheDocument();
     expect(screen.getByText('MCP Proxy')).toBeInTheDocument();
     expect(screen.getByText('Workflows')).toBeInTheDocument();
+  });
+
+  it('shows a copyright + license line', () => {
+    render(<AboutModal isOpen={true} onClose={vi.fn()} />);
+    expect(screen.getByText(/Agenticwork LLC/i)).toBeInTheDocument();
+    expect(screen.getByText(/Apache License 2\.0/i)).toBeInTheDocument();
+  });
+
+  it('does NOT reference Code Mode', () => {
+    render(<AboutModal isOpen={true} onClose={vi.fn()} />);
+    expect(screen.queryByText(/code mode/i)).not.toBeInTheDocument();
   });
 
   it('links to agenticwork.io', () => {

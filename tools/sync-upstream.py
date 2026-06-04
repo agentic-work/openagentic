@@ -637,6 +637,14 @@ PRESERVE = {
     # model's tool call through the approval/audit seam (and carries the OSS
     # auto-resolve-unknown-tool fix); ILLMProvider.ts already preserved above.
     'services/openagentic-api/src/routes/chat/pipeline/chat/dispatchTool.ts',
+
+    # Docs Code-Mode scrub — the in-app Changelog prose page (Code-Mode
+    # highlights removed) + the docs sync-guard that now scans it (allowlist
+    # hole closed) + the source-scanned generator manifest. A sync must never
+    # re-leak Code-Mode changelog copy or re-open the allowlist.
+    'services/openagentic-ui/src/features/docs/pages/ChangelogPage.tsx',
+    'services/openagentic-ui/scripts/docs/__tests__/no-removed-features.test.ts',
+    'services/openagentic-ui/scripts/docs/manifest.ts',
 }
 
 # Directory PREFIXES whose every (current + future) file must survive a sync.
