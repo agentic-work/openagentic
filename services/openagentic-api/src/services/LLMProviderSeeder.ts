@@ -338,21 +338,68 @@ const SECONDARY_OLLAMA_PRIORITY = 50;
 export async function seedSecondaryOllamaProvider(): Promise<void> {
   const log = logger.child({ service: 'LLMProviderSeeder', seed: 'secondary-ollama' });
 
-  if (process.env.OLLAMA_ENABLED !== 'true') return;
-  const chatModel = (process.env.OLLAMA_CHAT_MODEL ?? '').trim();
-  if (!chatModel) return;
-
-  // Only run in the "Both" scenario: a bootstrap provider of a DIFFERENT type
-  // must own the chat default. Without a bootstrap provider this is the
-  // ollama-only path (env-fallback config handles chat) — leave it alone.
-  let bootstrap: BootstrapProviderSeed | null = null;
+  // ── ENTRY diagnostics ──────────────────────────────────────────────
+  // Logged UNCONDITIONALLY at the top so every boot proves this function
+  // was actually entered (the prior live deploy produced ZERO
+  // [SecondaryOllama] lines — which turned out to mean the function was
+  // never reached, NOT that it bailed at a silent early-return). Capture
+  // the exact gating inputs + the current provider-table state up front.
+  const ollamaEnabled = process.env.OLLAMA_ENABLED === 'true';
+  const chatModelRaw = (process.env.OLLAMA_CHAT_MODEL ?? '').trim();
+  let bootstrapForLog: BootstrapProviderSeed | null = null;
   try {
-    bootstrap = parseBootstrapProviderEnv();
+    bootstrapForLog = parseBootstrapProviderEnv();
   } catch {
-    bootstrap = null;
+    bootstrapForLog = null;
   }
-  if (!bootstrap || bootstrap.providerType === 'ollama') {
-    log.info('[SecondaryOllama] no non-Ollama bootstrap provider — skipping (ollama-only or unconfigured)');
+  let providerCountForLog: number | null = null;
+  try {
+    providerCountForLog = await prisma.lLMProvider.count();
+  } catch {
+    providerCountForLog = null;
+  }
+  log.info({
+    OLLAMA_ENABLED: process.env.OLLAMA_ENABLED ?? '<unset>',
+    OLLAMA_CHAT_MODEL: chatModelRaw || '<empty>',
+    bootstrapParsed: !!bootstrapForLog,
+    bootstrapType: bootstrapForLog?.providerType ?? '<none>',
+    existingProviderCount: providerCountForLog,
+  }, '[SecondaryOllama] ENTRY — evaluating whether to seed the secondary Ollama provider');
+
+  if (!ollamaEnabled) {
+    log.info({ OLLAMA_ENABLED: process.env.OLLAMA_ENABLED ?? '<unset>' },
+      '[SecondaryOllama] early-return: OLLAMA_ENABLED !== "true" — no secondary Ollama provider');
+    return;
+  }
+  const chatModel = chatModelRaw;
+  if (!chatModel) {
+    log.info('[SecondaryOllama] early-return: OLLAMA_CHAT_MODEL is empty — nothing to seed');
+    return;
+  }
+
+  // Only run in the "Both" scenario: a non-Ollama chat default must already
+  // own priority. We detect that from EITHER the bootstrap env OR (on a
+  // restart, when bootstrap env can drift) an existing non-Ollama provider
+  // row in the DB. Without either signal this is the ollama-only path
+  // (env-fallback config handles chat) — leave it alone.
+  const bootstrap = bootstrapForLog;
+  let nonOllamaProviderExists = false;
+  try {
+    const otherProvider = await prisma.lLMProvider.findFirst({
+      where: { provider_type: { not: 'ollama' }, enabled: true },
+      select: { id: true },
+    });
+    nonOllamaProviderExists = !!otherProvider;
+  } catch {
+    nonOllamaProviderExists = false;
+  }
+  const hasNonOllamaBootstrap = !!bootstrap && bootstrap.providerType !== 'ollama';
+  if (!hasNonOllamaBootstrap && !nonOllamaProviderExists) {
+    log.info({
+      bootstrapParsed: !!bootstrap,
+      bootstrapType: bootstrap?.providerType ?? '<none>',
+      nonOllamaProviderExists,
+    }, '[SecondaryOllama] early-return: no non-Ollama bootstrap provider (env) AND no non-Ollama provider row (db) — ollama-only or unconfigured, skipping');
     return;
   }
 

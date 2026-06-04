@@ -385,10 +385,11 @@ services:
       # to the same value or every flow MCP-tool node 401s.
       API_INTERNAL_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
-      # Cloud MCPs default to ENABLED — they'll auto-detect creds from the
-      # mounted host CLI configs above. If you don't have e.g. `az login`,
-      # the MCP just returns an "auth missing" error and the agent moves on.
-      MCPS_ENABLED: ${MCPS_ENABLED:-web,knowledge,admin,azure,aws,gcp,kubernetes}
+      # NOTE: MCPS_ENABLED is documentary only — the mcp-proxy does NOT read it.
+      # The actual per-MCP gate is the OpenAgentic_*_MCP_DISABLED flags below
+      # (consumed by mcp_manager.initialize_servers). Keep this list in sync for
+      # readability, but flipping it alone does nothing.
+      MCPS_ENABLED: ${MCPS_ENABLED:-web,admin,aws,azure,gcp,kubernetes,github,prometheus,loki}
       # Free, self-hosted web search backend for the web MCP (no API key needed).
       SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
       OpenAgentic_WEB_MCP_DISABLED: ${OpenAgentic_WEB_MCP_DISABLED:-false}
@@ -399,14 +400,23 @@ services:
       OpenAgentic_AZURE_MCP_DISABLED: ${OpenAgentic_AZURE_MCP_DISABLED:-false}
       OpenAgentic_GCP_MCP_DISABLED: ${OpenAgentic_GCP_MCP_DISABLED:-false}
       OpenAgentic_KUBERNETES_MCP_DISABLED: ${OpenAgentic_KUBERNETES_MCP_DISABLED:-false}
-      OpenAgentic_GITHUB_MCP_DISABLED: ${OpenAgentic_GITHUB_MCP_DISABLED:-true}
-      OpenAgentic_PROMETHEUS_MCP_DISABLED: ${OpenAgentic_PROMETHEUS_MCP_DISABLED:-true}
-      OpenAgentic_LOKI_MCP_DISABLED: ${OpenAgentic_LOKI_MCP_DISABLED:-true}
+      # github/prometheus/loki default to ENABLED so all 9 built-in MCPs SPAWN
+      # out-of-the-box. None of them hard-require a token/URL to start (see
+      # mcp_manager.initialize_servers): the server processes boot and an
+      # unconfigured one only surfaces "needs config" / a connection error on a
+      # tool call (same pattern as azure OBO). prometheus is wired to the
+      # in-stack prometheus:9090 below; github needs a PAT (GITHUB_TOKEN) and
+      # loki needs an external LOKI_URL — both still start without them.
+      OpenAgentic_GITHUB_MCP_DISABLED: ${OpenAgentic_GITHUB_MCP_DISABLED:-false}
+      OpenAgentic_PROMETHEUS_MCP_DISABLED: ${OpenAgentic_PROMETHEUS_MCP_DISABLED:-false}
+      OpenAgentic_LOKI_MCP_DISABLED: ${OpenAgentic_LOKI_MCP_DISABLED:-false}
       OpenAgentic_ALERTMANAGER_MCP_DISABLED: ${OpenAgentic_ALERTMANAGER_MCP_DISABLED:-true}
       # Inline creds (fields-type MCPs — envs go straight into .env from the wizard)
       KUBECONFIG: ${KUBECONFIG:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      PROMETHEUS_URL: ${PROMETHEUS_URL:-}
+      # Point the prometheus MCP at the in-stack prometheus service (:9090) so
+      # its query tools work out-of-the-box against the compose Prometheus.
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-http://prometheus:9090}
       PROMETHEUS_USERNAME: ${PROMETHEUS_USERNAME:-}
       PROMETHEUS_PASSWORD: ${PROMETHEUS_PASSWORD:-}
       LOKI_URL: ${LOKI_URL:-}

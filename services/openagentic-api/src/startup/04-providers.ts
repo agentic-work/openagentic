@@ -211,8 +211,10 @@ export const INIT_PROVIDERS: BootstrapStep = {
       // second chat model. No-op unless OLLAMA_ENABLED=true + OLLAMA_CHAT_MODEL
       // set + a non-Ollama bootstrap provider exists.
       try {
+        loggers.services.info('▶️ Invoking seedSecondaryOllamaProvider (boot step) — second chat model under "Both"');
         const { seedSecondaryOllamaProvider } = await import('../services/LLMProviderSeeder.js');
         await seedSecondaryOllamaProvider();
+        loggers.services.info('✅ seedSecondaryOllamaProvider boot step returned');
       } catch (err: any) {
         loggers.services.warn({ error: err?.message }, 'seedSecondaryOllamaProvider failed — second chat model absent; admin can add via UI');
       }

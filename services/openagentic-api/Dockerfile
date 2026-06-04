@@ -215,10 +215,11 @@ RUN chown -R node:node /app/dist /app/uploads /app/logs /shared/workflow-engine
 EXPOSE 8000
 
 # Health check. start-period covers the FULL first boot (Prisma schema push + Milvus
-# collections + MCP tool indexing ~= 2-3 min). Too short and the container flips
-# `unhealthy` mid-boot, which breaks services that `depends_on api: service_healthy`
-# (e.g. openagentic-workflows, whose template seed needs the api schema push done first).
-HEALTHCHECK --interval=15s --timeout=10s --start-period=300s --retries=5 \
+# collections + MCP tool indexing + secondary seed ~= 6-7 min with all 9 MCPs). Too short
+# and the container flips `unhealthy` mid-boot, which breaks services that
+# `depends_on api: service_healthy` (e.g. openagentic-workflows, whose template seed needs
+# the api schema push done first).
+HEALTHCHECK --interval=15s --timeout=10s --start-period=600s --retries=5 \
   CMD curl -f http://localhost:8000/api/health || exit 1
 
 # Use entrypoint script

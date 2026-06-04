@@ -2289,9 +2289,25 @@ const start = async () => {
   // Seed LLM providers from environment variables to database
   // This ensures DB is the single source of truth while allowing initial config via env vars
   try {
-    const { seedLLMProviders } = await import('./services/LLMProviderSeeder.js');
+    const { seedLLMProviders, seedSecondaryOllamaProvider } = await import('./services/LLMProviderSeeder.js');
     await seedLLMProviders();
     loggers.services.info('✅ LLM provider seeding complete');
+
+    // Secondary Ollama chat provider (wizard "Both" strategy). Additive +
+    // idempotent: lands an Ollama provider row + role='chat' assignment at a
+    // LOWER precedence than the Bedrock bootstrap so Claude Sonnet 4.6 stays the
+    // default while gpt-oss:20b becomes a selectable second chat model. No-op
+    // unless OLLAMA_ENABLED=true + OLLAMA_CHAT_MODEL set + a non-Ollama provider
+    // exists. Wired HERE (the live server.ts boot path) — the equivalent call in
+    // startup/04-providers.ts only runs under the decomposed runStartup()
+    // orchestrator, which this entrypoint does NOT use.
+    try {
+      loggers.services.info('▶️ Invoking seedSecondaryOllamaProvider (server.ts boot) — second chat model under "Both"');
+      await seedSecondaryOllamaProvider();
+      loggers.services.info('✅ seedSecondaryOllamaProvider boot step returned');
+    } catch (secondaryErr) {
+      loggers.services.warn({ err: secondaryErr }, 'seedSecondaryOllamaProvider failed — second chat model absent; admin can add via UI');
+    }
 
     // Load embedding config from DB into the global cache so all UniversalEmbeddingService instances use it.
     //
