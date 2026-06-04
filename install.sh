@@ -7,7 +7,13 @@
 #   ./install.sh
 #
 # Modes:
-#   (default)      Five-minute zero-config quick path:
+#   (default)      Launch the interactive Ink TUI wizard. Lets you pick Docker
+#                  (compose) or Helm (kubernetes), then walks provider choice,
+#                  per-MCP creds, review, and the live install — all on screen.
+#                  This is what `curl -sSL install.openagentics.io | bash` runs.
+#                  The wizard writes the same .env shape that --env consumes.
+#
+#   --quick        Five-minute zero-config Docker path:
 #                    - probes Ollama at localhost:11434
 #                    - auto-pulls the embed + chat model if missing
 #                    - generates random admin / postgres / JWT creds
@@ -15,11 +21,7 @@
 #                    - opens your browser auto-logged-in via a one-shot
 #                      magic link, pre-pointed at your local Azure / AWS /
 #                      GCP / k8s creds (mounted read-only into mcp-proxy).
-#
-#   --wizard       Launch the Ink TUI wizard for careful configuration
-#                  (provider choice, per-MCP creds, Helm, etc.). Power-user
-#                  path; the Ink wizard writes the same .env shape that
-#                  --env consumes, so you can wizard once then commit it.
+#   --wizard       Explicitly launch the wizard (same as the default).
 #   --helm         One-line Kubernetes install. Clones the repo, then
 #                  `helm upgrade --install` the chart into the `openagentic`
 #                  namespace and waits for rollout. Needs helm + kubectl + a
@@ -56,13 +58,17 @@ fatal() { printf '  %s✗%s %s\n' "$C_RED"    "$C_RESET" "$*"; exit 1; }
 step()  { printf '\n  %s▸%s %s\n' "$C_PURPLE" "$C_RESET" "$*"; }
 
 # ─── Args ───────────────────────────────────────────────────────────────────
-MODE=quick
+# Default is the interactive Ink-TUI wizard: it lets the user pick Docker (compose)
+# or Helm (kubernetes) and walks the whole install. `curl -sSL install.openagentics.io
+# | bash` lands here. Use --quick for the zero-config 5-minute Docker path.
+MODE=wizard
 OPEN_BROWSER=1
 OLLAMA_HOST_OVERRIDE=""
 ENV_FILE_OVERRIDE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --wizard)  MODE=wizard;     shift ;;
+    --quick)   MODE=quick;      shift ;;
     --helm)    MODE=helm;       shift ;;
     --env)     MODE=env-file; ENV_FILE_OVERRIDE="$2"; shift 2 ;;
     --no-open) OPEN_BROWSER=0;  shift ;;
@@ -211,7 +217,14 @@ if [[ "$MODE" == "wizard" ]]; then
   fi
   info 'Launching the setup wizard…'
   printf '\n'
-  exec ./node_modules/.bin/tsx src/index.tsx
+  # When invoked via `curl … | bash`, the shell's stdin is the download pipe, not
+  # the keyboard — the Ink TUI needs a real TTY for raw-mode input. Re-attach stdin
+  # to the controlling terminal so the wizard is interactive in the one-line install.
+  if [[ -e /dev/tty ]]; then
+    exec ./node_modules/.bin/tsx src/index.tsx < /dev/tty
+  else
+    exec ./node_modules/.bin/tsx src/index.tsx
+  fi
 fi
 
 # ─── Quick path ─────────────────────────────────────────────────────────────
