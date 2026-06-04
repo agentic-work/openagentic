@@ -2,7 +2,7 @@ apiVersion: v2
 name: openagentic
 description: Barebones Helm chart for a self-contained OpenAgentic stack (chat, flows, MCPs)
 type: application
-version: 2.0.0
+version: 1.0.0
 appVersion: "1.0.0"
 keywords:
   - openagentic

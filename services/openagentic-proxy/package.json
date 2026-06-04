@@ -1,6 +1,6 @@
 {
   "name": "openagentic-proxy",
-  "version": "0.6.3",
+  "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",

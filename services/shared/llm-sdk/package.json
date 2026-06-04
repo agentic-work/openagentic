@@ -1,6 +1,6 @@
 {
   "name": "@agentic-work/llm-sdk",
-  "version": "0.7.1",
+  "version": "1.0.0",
   "description": "OpenAgentic LLM SDK — Messages API client with zero telemetry",
   "author": "OpenAgentic",
   "types": "dist/index.d.ts",

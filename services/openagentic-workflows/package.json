@@ -1,6 +1,6 @@
 {
   "name": "openagentic-workflows",
-  "version": "0.6.3",
+  "version": "1.0.0",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
