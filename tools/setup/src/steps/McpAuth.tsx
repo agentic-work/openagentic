@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import SelectInput from 'ink-select-input';
@@ -30,11 +30,11 @@ export const McpAuthStep: React.FC<Props> = ({ enabledIds, initialAuth, step, to
   const [idx, setIdx] = useState(0);
   const [auth, setAuth] = useState<Record<string, string>>({ ...initialAuth });
 
-  // If nothing needs auth, skip straight through.
-  if (needAuth.length === 0) {
-    onDone(auth);
-    return null;
-  }
+  // If nothing needs auth, skip straight through. Defer onDone to an effect —
+  // calling a parent setState during render warns (and is a real React bug).
+  const skip = needAuth.length === 0;
+  useEffect(() => { if (skip) onDone(auth); }, [skip]);
+  if (skip) return null;
 
   const current = needAuth[idx];
   const finishCurrent = (partial: Record<string, string>) => {
@@ -76,6 +76,12 @@ const McpAuthPrompt: React.FC<PromptProps> = ({ mcp, auth, onDone }) => {
   const [values, setValues] = useState<Record<string, string>>(
     mcp.envVars ? Object.fromEntries(mcp.envVars.map((f) => [f.env, auth[f.env] ?? ''])) : {}
   );
+
+  // Auto-advance when there are no (more) fields to collect — deferred to an
+  // effect so we don't setState the parent during render.
+  const field = mcp.envVars?.[fieldIdx];
+  const fieldsComplete = phase === 'fields' && !field;
+  useEffect(() => { if (fieldsComplete) onDone(values); }, [fieldsComplete]);
 
   // Env-file source picker.
   // For MCPs that can use the user's mounted host CLI creds (~/.aws, ~/.azure,
@@ -121,11 +127,7 @@ const McpAuthPrompt: React.FC<PromptProps> = ({ mcp, auth, onDone }) => {
   }
 
   // Inline field entry
-  const field = mcp.envVars?.[fieldIdx];
-  if (!field) {
-    onDone(values);
-    return null;
-  }
+  if (!field) return null;
   return (
     <Box flexDirection="column">
       <Text color={COLORS.muted}>{mcp.blurb}</Text>

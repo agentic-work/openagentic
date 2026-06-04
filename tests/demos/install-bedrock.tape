@@ -17,6 +17,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 Output tests/demos/install-bedrock.gif
+Output tests/demos/install-bedrock.mp4
 
 Set Shell "bash"
 Set FontFamily "JetBrainsMono Nerd Font"
@@ -25,8 +26,9 @@ Set Width 1480
 Set Height 880
 Set Padding 22
 Set TypingSpeed 45ms
-Set Foreground "#00FF66"
-Set Background "#000000"
+# vhs v0.10 has no Set Foreground/Background — use a Set Theme JSON for true
+# green-on-black (#00FF66 on #000000). Edit the colors here to taste.
+Set Theme { "name": "phosphor", "background": "#000000", "foreground": "#00FF66", "cursor": "#00FF66", "selection": "#00351A", "black": "#000000", "red": "#FF5555", "green": "#00FF66", "yellow": "#D7FF55", "blue": "#5599FF", "magenta": "#FF55FF", "cyan": "#55FFFF", "white": "#CFE8CF", "brightBlack": "#1F5F3F", "brightRed": "#FF6E67", "brightGreen": "#5AF78E", "brightYellow": "#F4F99D", "brightBlue": "#6699FF", "brightMagenta": "#FF92D0", "brightCyan": "#9AEDFE", "brightWhite": "#EAFFEA" }
 Set CursorBlink true
 
 # ── intro ──
@@ -88,21 +90,18 @@ Enter
 
 # ── 9/9 Launch ── docker compose --profile milvus build (cached) + up + health poll.
 # This is the long step. With images pre-built it's ~90-150s (Milvus + api boot +
-# tool indexing). If you did NOT pre-build, bump this to 300s+.
-Sleep 150s
+# tool indexing). The wizard BLOCKS here until /api/health is green, then exits
+# to the shell. With a pre-warmed stack (images built + volumes present) the
+# wizard's up is a near-noop and health is immediate, so 60s is plenty. On a
+# truly-cold first install bump this to 240s+ (the wizard polls health up to 5m).
+Sleep 110s
 
-# ── prove it: log in + one chat that names the model (Bedrock answers) ──
-Sleep 3s
-Type "PW=$(grep '^ADMIN_SEED_PASSWORD=' .env | cut -d= -f2-)"
-Enter
-Sleep 400ms
-Type "JWT=$(curl -s localhost:8080/api/auth/local/login -H 'content-type: application/json' -d \"{\\\"username\\\":\\\"admin@openagentic.local\\\",\\\"password\\\":\\\"$PW\\\"}\" | jq -r .token)"
+# ── wizard done → show the running stack (Enter first dismisses any final screen) ──
 Enter
 Sleep 1500ms
-Type "SID=$(curl -s localhost:8080/api/chat/sessions -H \"authorization: Bearer $JWT\" -H 'content-type: application/json' -d '{\"title\":\"demo\"}' | jq -r .session.id)"
+Type "docker compose --profile milvus ps --format '{{.Service}}  {{.State}}  {{.Status}}'"
 Enter
-Sleep 1500ms
-Type "curl -sN localhost:8080/api/chat/stream -H \"authorization: Bearer $JWT\" -H 'content-type: application/json' -d \"{\\\"sessionId\\\":\\\"$SID\\\",\\\"message\\\":\\\"In one sentence, which model and provider is answering?\\\"}\" | grep -oE '\"model\":\"[^\"]+\"' | head -1"
+Sleep 6s
+Type "curl -s localhost:8080/api/health | jq '{status, milvus: .milvus, providers}'"
 Enter
-Sleep 12s                # stream the answer; the printed line shows anthropic.claude-sonnet-4-6
-Sleep 2s
+Sleep 5s
