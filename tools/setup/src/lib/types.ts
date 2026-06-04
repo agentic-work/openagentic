@@ -56,7 +56,11 @@ export const DEFAULT_CONFIG: WizardConfig = {
     name: 'Admin',
   },
   ollama: {
-    host: 'http://host.docker.internal:11434',
+    // The bundled compose `ollama` service (ollama-init pre-pulls the embed
+    // model into it). This is the turnkey default and works on every platform.
+    // Point at http://host.docker.internal:11434 instead only if you run Ollama
+    // on the host (e.g. macOS Metal GPU) rather than the bundled container.
+    host: 'http://ollama:11434',
     embedModel: 'nomic-embed-text',
   },
   providers: {},

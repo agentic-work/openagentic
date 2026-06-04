@@ -360,6 +360,13 @@ services:
       # the proxy validate. Defaults here mirror the api service above.
       JWT_SECRET: ${JWT_SECRET:-openagentic-dev-jwt-secret-change-me}
       SIGNING_SECRET: ${SIGNING_SECRET:-openagentic-dev-signing-secret-change-me}
+      # REQUIRED for System-Root tool calls: the workflows engine authenticates
+      # to /call with `Bearer ${API_INTERNAL_KEY||INTERNAL_API_KEY}`, which the
+      # proxy plain-matches against API_INTERNAL_KEY (main.py:716 — note the proxy
+      # reads API_INTERNAL_KEY, the api/workflows set INTERNAL_API_KEY). Bind both
+      # to the same value or every flow MCP-tool node 401s.
+      API_INTERNAL_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
       # Cloud MCPs default to ENABLED — they'll auto-detect creds from the
       # mounted host CLI configs above. If you don't have e.g. `az login`,
       # the MCP just returns an "auth missing" error and the agent moves on.

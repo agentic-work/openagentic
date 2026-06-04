@@ -28,11 +28,12 @@ export const OllamaStep: React.FC<Props> = ({ initial, step, total, onDone }) =>
         </Box>
         <Box marginTop={1}>
           <Hint>
-            Examples: http://localhost:11434, http://host.docker.internal:11434
+            Default http://ollama:11434 = the bundled container (recommended).
+            Use http://host.docker.internal:11434 to reach Ollama on your host.
           </Hint>
         </Box>
         <Box>
-          <Hint>Ollama is required for embeddings (semantic tool routing). Models are not pulled now.</Hint>
+          <Hint>Ollama provides embeddings (semantic tool routing). The bundled container pre-pulls the embed model on first boot.</Hint>
         </Box>
       </Box>
     </Screen>
