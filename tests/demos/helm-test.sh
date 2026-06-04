@@ -6,7 +6,8 @@ G='\033[0;32m'; C='\033[1;36m'; D='\033[0;90m'; N='\033[0m'
 PATH=/home/trent/go/bin:/usr/local/bin:$PATH
 
 printf "${C}── 1. kubectl: every pod Running on the k3s cluster ────${N}\n"
-kubectl get pods -n $NS -o wide --no-headers | awk '{printf "  %-30s %-10s %s\n",$1,$3,$7}' | grep -v ollama-init
+kubectl get pods -n $NS -o custom-columns='NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName' --no-headers \
+  | grep -v ollama-init | awk '{printf "  %-30s %-9s %s\n",$1,$2,$3}'
 
 printf "\n${C}── 2. helm release ─────────────────────────────────────${N}\n"
 helm status openagentic -n $NS 2>/dev/null | grep -E 'STATUS|REVISION|CHART' | sed 's/^/  /'
