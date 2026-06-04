@@ -1,0 +1,35 @@
+# Prometheus scrape config for the OpenAgentic docker-compose stack.
+#
+# Targets are addressed by their compose service name on the `oap` network.
+# The api exposes its metrics under /api/metrics (NOT /metrics); mcp-proxy and
+# workflows expose the standard /metrics path. Only services that actually
+# serve a Prometheus exposition endpoint are listed here — no dead targets.
+#
+# The admin-console dashboard reads these series back through the api's
+# Prometheus proxy (/api/admin/prom/*) and the v3-extras analytics endpoints,
+# so the api job below is the one that powers the dashboard charts.
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+  - job_name: openagentic-api
+    metrics_path: /api/metrics
+    static_configs:
+      - targets: ['api:8000']
+        labels:
+          service: api
+
+  - job_name: openagentic-mcp-proxy
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['mcp-proxy:8080']
+        labels:
+          service: mcp-proxy
+
+  - job_name: openagentic-workflows
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['workflows:3400']
+        labels:
+          service: workflows

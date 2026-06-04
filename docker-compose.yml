@@ -263,6 +263,18 @@ services:
       # One-shot autologin token consumed by install.sh's browser-open.
       # Empty in normal startups → /api/auth/magic always 401s.
       MAGIC_BOOT_TOKEN: ${MAGIC_BOOT_TOKEN:-}
+      # Prometheus wiring for the admin-console dashboard analytics. The
+      # in-stack `prometheus` service scrapes the api's /api/metrics and the
+      # dashboard reads the series back through two paths:
+      #   - the prom proxy (/api/admin/prom/*) → routes/admin/prom-proxy.ts
+      #     reads PROMETHEUS_HOST + PROMETHEUS_PORT
+      #   - the v3-extras analytics endpoints (/api/admin/api-requests/*)
+      #     → routes/admin/v3-extras.ts reads PROM_URL || PROMETHEUS_URL ||
+      #       PROMETHEUS_HOST+PORT
+      # Set all three so every dashboard pane resolves Prometheus.
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-http://prometheus:9090}
+      PROMETHEUS_HOST: ${PROMETHEUS_HOST:-prometheus}
+      PROMETHEUS_PORT: ${PROMETHEUS_PORT:-9090}
     volumes:
       # AWS Bedrock host-creds / named-profile auth: mount the user's host
       # ~/.aws read-only so the AWSBedrockProvider default credential chain
@@ -424,6 +436,31 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
 
+  # ─── Observability ────────────────────────────────────────────────────────
+  # Prometheus scrapes the api (and mcp-proxy / workflows) so the admin-console
+  # dashboard analytics show real data. In the DEFAULT profile so a normal
+  # `docker compose up -d` lights up the dashboard — it is NOT gated behind the
+  # `milvus` profile. Config: ./scripts/prometheus/prometheus.yml.
+  prometheus:
+    <<: *defaults
+    image: prom/prometheus:v2.54.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./scripts/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    depends_on: [api]
+
 networks:
   oap:
     driver: bridge
@@ -435,3 +472,4 @@ volumes:
   minio-data:
   milvus-data:
   ollama-data:
+  prometheus-data:
