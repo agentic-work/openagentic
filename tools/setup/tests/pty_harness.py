@@ -464,9 +464,10 @@ def assert_cloud_only(env: dict[str, str]) -> list[str]:
 
 
 def script_bedrock_both(child: pexpect.spawn) -> None:
-    """LLM strategy = Both (Ollama embeddings + AWS Bedrock chat), inline IAM.
-    Asserts the router gotcha: OLLAMA_CHAT_MODEL must NOT be written (so Ollama
-    seeds no role='chat' row and Bedrock wins the default-chat lookup)."""
+    """LLM strategy = Both (gpt-oss:20b local + AWS Bedrock chat default,
+    Ollama embeddings), inline IAM. Asserts OLLAMA_CHAT_MODEL=gpt-oss:20b is
+    written (so the secondary-Ollama seeder lands a SECOND, selectable chat
+    model at lower precedence) while Bedrock stays the bootstrap chat default."""
     expect_screen(child, "Where do you want to run openagentic?")
     send(child, ENTER)
     expect_screen(child, "Create your admin account")
@@ -505,9 +506,11 @@ def assert_bedrock_both(env: dict[str, str]) -> list[str]:
         fails.append(f"OLLAMA_ENABLED expected 'true' (embeddings), got {env.get('OLLAMA_ENABLED')!r}")
     if env.get("OLLAMA_EMBED_MODEL") != "nomic-embed-text":
         fails.append(f"OLLAMA_EMBED_MODEL expected 'nomic-embed-text', got {env.get('OLLAMA_EMBED_MODEL')!r}")
-    # ROUTER GOTCHA: no Ollama chat model → no role='chat' Ollama row → Bedrock wins.
-    if env.get("OLLAMA_CHAT_MODEL"):
-        fails.append(f"OLLAMA_CHAT_MODEL must be EMPTY under 'both' (router gotcha), got {env.get('OLLAMA_CHAT_MODEL')!r}")
+    # SECOND chat model: gpt-oss:20b is seeded as a selectable Ollama chat
+    # provider at LOWER precedence (priority 50 > Bedrock's 10), so Bedrock
+    # stays the default while gpt-oss:20b is also pickable.
+    if env.get("OLLAMA_CHAT_MODEL") != "gpt-oss:20b":
+        fails.append(f"OLLAMA_CHAT_MODEL expected 'gpt-oss:20b' under 'both', got {env.get('OLLAMA_CHAT_MODEL')!r}")
     # Bedrock is the sole chat bootstrap provider.
     if env.get("BOOTSTRAP_PROVIDER_TYPE") != "aws-bedrock":
         fails.append(f"BOOTSTRAP_PROVIDER_TYPE expected 'aws-bedrock', got {env.get('BOOTSTRAP_PROVIDER_TYPE')!r}")
@@ -563,7 +566,7 @@ VARIATIONS: list[Variation] = [
     ),
     Variation(
         name="bedrock-both",
-        description="Both: Ollama embeddings + Bedrock chat; OLLAMA_CHAT_MODEL empty (router gotcha)",
+        description="Both: gpt-oss:20b (2nd chat) + Bedrock default chat + Ollama embeddings; OLLAMA_CHAT_MODEL=gpt-oss:20b",
         script=script_bedrock_both,
         assertions=assert_bedrock_both,
     ),

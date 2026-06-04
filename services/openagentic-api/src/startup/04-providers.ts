@@ -204,6 +204,19 @@ export const INIT_PROVIDERS: BootstrapStep = {
         loggers.services.warn({ error: err?.message }, 'RegistryBootstrapSeeder failed — Registry will show only admin-added rows; admin UI can seed manually');
       }
 
+      // Secondary Ollama chat provider (wizard "Both" strategy). Additive +
+      // idempotent: lands an Ollama provider row + role='chat' assignment at a
+      // LOWER precedence than the Bedrock bootstrap (priority 10) so Claude
+      // Sonnet 4.6 stays the default while gpt-oss:20b becomes a selectable
+      // second chat model. No-op unless OLLAMA_ENABLED=true + OLLAMA_CHAT_MODEL
+      // set + a non-Ollama bootstrap provider exists.
+      try {
+        const { seedSecondaryOllamaProvider } = await import('../services/LLMProviderSeeder.js');
+        await seedSecondaryOllamaProvider();
+      } catch (err: any) {
+        loggers.services.warn({ error: err?.message }, 'seedSecondaryOllamaProvider failed — second chat model absent; admin can add via UI');
+      }
+
       // Task #360 — ensure at least one role=code row exists. Runs even when
       // BOOTSTRAP_PROVIDER is disabled (no helm-seeded provider) so an admin
       // who manually added a chat model via the UI still gets a populated

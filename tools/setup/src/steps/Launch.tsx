@@ -32,6 +32,13 @@ const BEDROCK_CHAT_MODEL = 'anthropic.claude-sonnet-4-6';
 // embedding path that boots healthy regardless of when AWS creds resolve.
 const BOOTSTRAP_EMBED_MODEL = 'nomic-embed-text';
 const BOOTSTRAP_EMBED_DIM = 768;
+// The local Ollama chat model seeded under the "Both" strategy as a SECOND,
+// selectable chat model alongside Bedrock. It is NOT the default — the
+// secondary-Ollama seeder lands it at a higher priority NUMBER (lower
+// precedence) than the Bedrock bootstrap chat row (priority 10), so
+// getDefaultChatModel() still resolves Claude Sonnet 4.6. Setting this also
+// makes ollama-init pre-pull the tag on first boot.
+const OLLAMA_CHAT_MODEL = 'gpt-oss:20b';
 // Gates RegistryBootstrapSeeder, which only (re)seeds when this value is greater
 // than the registry_seeder_version persisted in the DB (default 0 on a fresh
 // install) — so any value >0 writes the Bedrock chat role-assignment row on boot.
@@ -149,6 +156,16 @@ function toEnv(c: WizardConfig): Record<string, string> {
     env.OLLAMA_HOST = c.ollama.host;
     env.OLLAMA_EMBED_MODEL = c.ollama.embedModel;
     env.OLLAMA_ENABLED = 'true';
+    // Under "Both", seed gpt-oss:20b as a SECOND, selectable chat model.
+    // OLLAMA_CHAT_MODEL drives ollama-init's pre-pull AND the secondary-Ollama
+    // provider seed (LLMProviderSeeder.seedSecondaryOllamaProvider), which
+    // lands the ollama chat row at a HIGHER priority number than the Bedrock
+    // bootstrap (priority 10) — so Bedrock Claude Sonnet 4.6 stays the default
+    // chat model. Ollama-only mode leaves chat to env-fallback (no bootstrap
+    // provider), so we don't set it there.
+    if (c.llmStrategy === 'both') {
+      env.OLLAMA_CHAT_MODEL = OLLAMA_CHAT_MODEL;
+    }
   } else {
     env.OLLAMA_ENABLED = 'false';
   }

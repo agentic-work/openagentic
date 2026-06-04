@@ -193,6 +193,12 @@ services:
       OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      # Local chat model tag (wizard "Both" strategy sets gpt-oss:20b). When
+      # set alongside a non-Ollama BOOTSTRAP_PROVIDER (Bedrock), the api seeds
+      # a SECOND, selectable Ollama chat provider at lower precedence than the
+      # bootstrap default — see LLMProviderSeeder.seedSecondaryOllamaProvider.
+      # Empty by default so a bare Ollama-only install is unaffected.
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-}
       EMBEDDING_PROVIDER: ollama
       # Bootstrap an Ollama LLM provider on first boot so a bare install can
       # chat with zero API keys. Seeds ONE provider row only when the provider

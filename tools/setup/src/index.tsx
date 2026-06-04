@@ -13,7 +13,7 @@ import { McpAuthStep } from './steps/McpAuth.tsx';
 import { ReviewStep } from './steps/Review.tsx';
 import { LaunchStep } from './steps/Launch.tsx';
 import { DEFAULT_CONFIG, type WizardConfig, type DeployTarget } from './lib/types.ts';
-import { defaultEnabledMcps } from './lib/mcps.ts';
+import { defaultEnabledMcps, allMcpIds } from './lib/mcps.ts';
 import { readCurrent } from './lib/env.ts';
 
 type Screen = 'target' | 'helm-preflight' | 'admin' | 'llm-strategy' | 'ollama' | 'providers' | 'mcps' | 'mcp-auth' | 'review' | 'launch' | 'done';
@@ -130,7 +130,16 @@ const App: React.FC = () => {
         step={stepNum.llmStrategy}
         total={total}
         onPick={(s) => {
-          setLlmStrategy(s);
+          // "Both" is the richest-demo path: pre-select ALL MCPs so the
+          // selection step lands fully enabled (the user can still toggle any
+          // off). Other strategies keep the conservative default-on set.
+          // Only override when the user hasn't already curated a custom list
+          // from a prior .env (existing MCPS_ENABLED hydrated config.mcps).
+          if (s === 'both') {
+            setConfig((c) => ({ ...c, llmStrategy: s, mcps: allMcpIds() }));
+          } else {
+            setLlmStrategy(s);
+          }
           setScreen(afterLlmStrategy(s));
         }}
       />

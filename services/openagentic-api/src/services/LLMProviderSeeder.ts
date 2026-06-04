@@ -299,3 +299,161 @@ export async function seedLLMProviders(): Promise<void> {
     }, '[Bootstrap] provider seed failed — API will boot without a bootstrap row. Admin must create one via UI.');
   }
 }
+
+/**
+ * Priority assigned to the secondary Ollama provider + its chat role row.
+ * Strictly GREATER than the Bedrock bootstrap chat row (priority 10) so that
+ * ModelConfigurationService.getDefaultChatModel() — which orders role='chat'
+ * rows by priority ASC — keeps Claude Sonnet 4.6 as the platform default.
+ * The Ollama row is still a fully-enabled, selectable chat model in the /model
+ * picker; it is simply lower-precedence.
+ */
+const SECONDARY_OLLAMA_PRIORITY = 50;
+
+/**
+ * seedSecondaryOllamaProvider — additive, env-driven seed for a SECOND chat
+ * provider alongside the single helm/wizard bootstrap provider.
+ *
+ * Registry SoT v1 ships EXACTLY ONE bootstrap provider (the Bedrock row under
+ * the wizard's "Both" path). The seeder architecture has no plural-bootstrap
+ * mechanism, and ProviderConfigService loads providers from the DB only — so
+ * OLLAMA_ENABLED/OLLAMA_CHAT_MODEL alone never land an Ollama provider row.
+ * This function is the narrow, idempotent path that does, WITHOUT disturbing
+ * the bootstrap default: it lands the Ollama provider + a role='chat'
+ * assignment at SECONDARY_OLLAMA_PRIORITY (> bootstrap's 10), so Bedrock stays
+ * the default while gpt-oss:20b becomes a second selectable chat model.
+ *
+ * Trigger conditions (ALL must hold; otherwise no-op):
+ *   - OLLAMA_ENABLED === 'true'
+ *   - OLLAMA_CHAT_MODEL is set (the local chat tag, e.g. gpt-oss:20b)
+ *   - a DIFFERENT-type bootstrap provider exists (i.e. the "Both" scenario —
+ *     Bedrock is the chat default and Ollama is the secondary). When Ollama is
+ *     the ONLY provider (ollama-only strategy) we do NOT run here: that path
+ *     has no bootstrap provider and relies on the env-fallback config in
+ *     ModelConfigurationService.loadFromEnvironment().
+ *
+ * Idempotent: re-creates neither the provider row nor the chat assignment when
+ * they already exist. Admin-managed rows are never touched.
+ */
+export async function seedSecondaryOllamaProvider(): Promise<void> {
+  const log = logger.child({ service: 'LLMProviderSeeder', seed: 'secondary-ollama' });
+
+  if (process.env.OLLAMA_ENABLED !== 'true') return;
+  const chatModel = (process.env.OLLAMA_CHAT_MODEL ?? '').trim();
+  if (!chatModel) return;
+
+  // Only run in the "Both" scenario: a bootstrap provider of a DIFFERENT type
+  // must own the chat default. Without a bootstrap provider this is the
+  // ollama-only path (env-fallback config handles chat) — leave it alone.
+  let bootstrap: BootstrapProviderSeed | null = null;
+  try {
+    bootstrap = parseBootstrapProviderEnv();
+  } catch {
+    bootstrap = null;
+  }
+  if (!bootstrap || bootstrap.providerType === 'ollama') {
+    log.info('[SecondaryOllama] no non-Ollama bootstrap provider — skipping (ollama-only or unconfigured)');
+    return;
+  }
+
+  const baseUrl =
+    (process.env.OLLAMA_BASE_URL ?? '').trim() ||
+    (process.env.OLLAMA_HOST ?? '').trim() ||
+    'http://ollama:11434';
+  const providerName = 'ollama';
+
+  try {
+    // ── 1. Provider row ────────────────────────────────────────────────
+    // Create the Ollama provider row when absent. If an admin already added
+    // an Ollama provider, leave it untouched (admin wins).
+    let providerRow = await prisma.lLMProvider.findFirst({
+      where: { name: providerName },
+      select: { id: true },
+    });
+
+    if (!providerRow) {
+      const embeddingModel =
+        (process.env.OLLAMA_EMBED_MODEL ?? '').trim() ||
+        (process.env.OLLAMA_EMBEDDING_MODEL ?? '').trim() ||
+        null;
+
+      const created = await prisma.lLMProvider.create({
+        data: {
+          name: providerName,
+          display_name: 'Ollama (local)',
+          provider_type: 'ollama',
+          enabled: true,
+          // Lower precedence than the bootstrap provider (priority 1).
+          priority: SECONDARY_OLLAMA_PRIORITY,
+          auth_config: encryptAuthConfig({ baseUrl }),
+          provider_config: {
+            baseUrl,
+            modelId: chatModel,
+            seeder_managed: true,
+            seeder_version: SEEDER_VERSION,
+            models: [],
+          },
+          model_config: {
+            defaultModel: chatModel,
+            chatModel,
+            ...(embeddingModel ? { embeddingModel } : {}),
+            maxTokens: 4096,
+            temperature: 0.7,
+          },
+          capabilities: { chat: true, tools: true, streaming: true, embeddings: !!embeddingModel },
+          description: 'Secondary local chat provider (seeded from OLLAMA_* env under the "Both" strategy)',
+          tags: ['secondary', 'local'],
+        } as any,
+      });
+      providerRow = { id: created.id };
+      log.info({ baseUrl, chatModel }, '[SecondaryOllama] seeded Ollama provider row (secondary, lower precedence than bootstrap)');
+    } else {
+      log.info('[SecondaryOllama] Ollama provider row already present — leaving untouched');
+    }
+
+    // ── 2. Resolve admin user for the created_by FK ────────────────────
+    const adminEmail = (process.env.ADMIN_USER_EMAIL ?? '').trim();
+    let adminUserId: string | null = null;
+    if (adminEmail) {
+      const adminRow = await (prisma as any).user?.findUnique?.({ where: { email: adminEmail } });
+      if (adminRow?.id) adminUserId = adminRow.id as string;
+    }
+    if (!adminUserId) {
+      log.warn({ adminEmail: adminEmail || '<unset>' },
+        '[SecondaryOllama] admin user not resolvable — deferring chat-role insert; retries on next boot');
+      return;
+    }
+
+    // ── 3. Chat role assignment (lower precedence than Bedrock) ────────
+    const existing = await prisma.modelRoleAssignment.findFirst({
+      where: { role: 'chat', model: chatModel, provider: providerName },
+      select: { id: true, managed_by: true },
+    });
+    if (existing) {
+      log.info({ chatModel, existingId: existing.id },
+        '[SecondaryOllama] chat-role row already present — no-op (Bedrock remains default)');
+      return;
+    }
+
+    const created = await prisma.modelRoleAssignment.create({
+      data: {
+        role: 'chat',
+        model: chatModel,
+        provider: providerName,
+        priority: SECONDARY_OLLAMA_PRIORITY,
+        enabled: true,
+        temperature: 0.7,
+        managed_by: 'bootstrap',
+        capabilities: { chat: true, tools: true, streaming: true, embeddings: false },
+        options: { auto: true, secondary: true, seededAt: new Date().toISOString() },
+        description: chatModel,
+        created_by: adminUserId,
+      },
+    });
+    log.info({ chatModel, rowId: created?.id, priority: SECONDARY_OLLAMA_PRIORITY },
+      '[SecondaryOllama] chat-role row seeded — selectable second chat model; Bedrock (priority 10) stays default');
+  } catch (err) {
+    log.warn({ error: err instanceof Error ? err.message : err },
+      '[SecondaryOllama] secondary Ollama seed failed (non-fatal) — admin can add it via the UI');
+  }
+}
