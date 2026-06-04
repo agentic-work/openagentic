@@ -27,8 +27,11 @@ export async function launchDocker(cfg: WizardConfig, hooks: BackendHooks): Prom
   const url = `http://localhost:${cfg.uiPort}`;
   hooks.onHealth?.(`waiting for ${url}/api/health`);
   const started = Date.now();
-  // Poll up to 5 minutes for the API to be healthy.
-  while (Date.now() - started < 5 * 60_000) {
+  // Poll up to 10 minutes for the API to be healthy. This matches the api
+  // container's HEALTHCHECK start-period (600s): a first "Both" install pulls
+  // every MCP server + runs full tool indexing + the secondary-provider seed,
+  // so first boot is ~4-7 min. A shorter poll would falsely error out mid-boot.
+  while (Date.now() - started < 10 * 60_000) {
     try {
       const res = await fetch(`${url}/api/health`);
       if (res.ok) {
@@ -38,5 +41,5 @@ export async function launchDocker(cfg: WizardConfig, hooks: BackendHooks): Prom
     } catch { /* not ready yet */ }
     await new Promise((r) => setTimeout(r, 3_000));
   }
-  throw new Error(`API did not become healthy within 5 minutes. Run 'docker compose logs api' to investigate.`);
+  throw new Error(`API did not become healthy within 10 minutes. Run 'docker compose logs api' to investigate.`);
 }
