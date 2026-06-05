@@ -118,6 +118,11 @@ export const IdentityDirectoriesPage: React.FC = () => {
   const isLoading = query.isLoading
   const isError = query.isError
 
+  // Enterprise license state (from the API). Default to licensed while loading so
+  // we never flash a scary banner; the banner only shows once we have a verdict.
+  const enterprise = query.data?.enterprise
+  const licensed = enterprise ? enterprise.licensed : true
+
   React.useEffect(() => {
     if (detail) setDetailTab('overview')
   }, [detail?.id])
@@ -248,14 +253,32 @@ export const IdentityDirectoriesPage: React.FC = () => {
         }
         actions={
           <>
+            <Pill tone={licensed ? 'info' : 'warn'}>
+              {licensed
+                ? `Enterprise${enterprise?.licensee ? ` · ${enterprise.licensee}` : ' · licensed'}`
+                : 'Enterprise · unlicensed'}
+            </Pill>
             <Btn variant="ghost" onClick={onRefresh}>refresh</Btn>
-            <Btn variant="primary" onClick={onAdd}>+ add directory</Btn>
+            <Btn variant="primary" onClick={onAdd} disabled={!licensed}>+ add directory</Btn>
           </>
         }
       />
 
       <ToastStack api={toast} />
       <ConfirmBanner api={confirm} />
+
+      {enterprise && !licensed && (
+        <Banner level="warn" label="enterprise feature — license required">
+          {enterprise.message}
+        </Banner>
+      )}
+      {enterprise && licensed && (
+        <Banner level="info" label="enterprise">
+          OpenAgentic Enterprise feature
+          {enterprise.licensee ? <> · licensed to <span className="accent">{enterprise.licensee}</span></> : ' · licensed'}
+          {' — commercial terms in '}<span className="accent">/ee/LICENSE</span>.
+        </Banner>
+      )}
 
       {isError && (
         <Banner level="err" label="error">

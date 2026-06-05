@@ -61,9 +61,17 @@ export interface DirectoryRow {
   updated_by?: string | null
 }
 
+export interface EnterpriseStatus {
+  feature: string
+  licensed: boolean
+  licensee?: string
+  message: string
+}
+
 export interface DirectoryListResponse {
   directories: DirectoryRow[]
   total: number
+  enterprise?: EnterpriseStatus
 }
 
 // ------------------------------------------------------------

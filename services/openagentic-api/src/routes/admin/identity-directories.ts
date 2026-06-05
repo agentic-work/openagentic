@@ -29,7 +29,7 @@
 
 import { FastifyPluginAsync } from 'fastify';
 import type { Logger } from 'pino';
-import { isEnterpriseFeatureLicensed, FEATURE_RUNTIME_IDP } from '../../ee/license.js';
+import { isEnterpriseFeatureLicensed, FEATURE_RUNTIME_IDP, getLicenseInfo } from '../../ee/license.js';
 import {
   encryptAuthConfig,
   decryptAuthConfig,
@@ -161,9 +161,21 @@ const identityDirectoryRoutes: FastifyPluginAsync = async (fastify) => {
         where: { deleted_at: null },
         orderBy: [{ priority: 'asc' }, { created_at: 'desc' }],
       });
+      const lic = getLicenseInfo();
+      const licensed = isEnterpriseFeatureLicensed(FEATURE_RUNTIME_IDP);
       return reply.send({
         directories: rows.map(toRedactedView),
         total: rows.length,
+        enterprise: {
+          feature: FEATURE_RUNTIME_IDP,
+          licensed,
+          licensee: licensed ? lic.sub : undefined,
+          message: licensed
+            ? 'OpenAgentic Enterprise — runtime Identity Directory registry.'
+            : 'The runtime Identity Directory registry is an OpenAgentic Enterprise feature. ' +
+              'Set OPENAGENTIC_LICENSE_KEY to enable it (see /ee/LICENSE). Without a license, ' +
+              'directories are not loaded and changes are rejected. Contact licensing@agenticwork.io.',
+        },
       });
     } catch (error) {
       logger.error({ error }, 'Failed to list identity directories');
