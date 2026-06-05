@@ -186,8 +186,8 @@ function buildCapabilities(mcpCount: number, agentCount: number, nodeCount: numb
   {
     title: 'Multi-Model Routing',
     description: 'Route requests across providers with per-user × per-model budget caps.',
-    badge: '5 providers',
-    hoverDetail: 'OpenAI, Anthropic, Google, Azure, and local models.',
+    badge: '7 providers',
+    hoverDetail: 'Anthropic, AWS Bedrock, Azure AI Foundry, Azure OpenAI, Google Vertex, OpenAI, and local Ollama models.',
     iconSvg: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
         <defs><linearGradient id="capRoute" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#3B82F6" /></linearGradient></defs>
@@ -257,7 +257,7 @@ function buildCapabilities(mcpCount: number, agentCount: number, nodeCount: numb
     title: 'Full Observability',
     description: 'Request tracing, token tracking, cost attribution, and health monitoring.',
     badge: 'Prometheus',
-    hoverDetail: 'Prometheus metrics, Grafana dashboards, per-user cost attribution.',
+    hoverDetail: 'Built-in Prometheus metrics and per-user cost attribution, plus optional external dashboard and log backends.',
     iconSvg: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
         <defs><linearGradient id="capObs" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#3B82F6" /><stop offset="100%" stopColor="#60A5FA" /></linearGradient></defs>
@@ -278,6 +278,13 @@ const exampleQuestions = [
   'What MCP servers are available and what can they do?',
   'Walk me through building a flow with human approval gates.',
 ];
+
+// Render a small integer (1–10) as an English word so the "N Ways to Work"
+// heading reads naturally while still being DERIVED from the real modes list.
+const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+function numberWord(n: number): string {
+  return NUMBER_WORDS[n] ?? String(n);
+}
 
 // ============================================================================
 // FRAMER MOTION VARIANTS
@@ -515,7 +522,7 @@ const WelcomePage: React.FC = () => {
       </section>
 
       {/* ================================================================
-          THREE WAYS TO WORK
+          WAYS TO WORK (count + cards derived from buildModes())
           ================================================================ */}
       <motion.section
         style={{ marginBottom: '80px' }}
@@ -545,7 +552,7 @@ const WelcomePage: React.FC = () => {
             lineHeight: 1.2,
           }}
         >
-          Three Ways to Work
+          {numberWord(modes.length)} Ways to Work
         </h2>
         <p
           style={{
@@ -556,12 +563,12 @@ const WelcomePage: React.FC = () => {
             marginBottom: '32px',
           }}
         >
-          OpenAgentic adapts to how you think. Choose a conversational interface,
-          a full development environment, or a visual workflow canvas.
+          OpenAgentic adapts to how you think. Choose a conversational interface
+          or a visual workflow canvas.
         </p>
 
         <motion.div
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}
+          style={{ display: 'grid', gridTemplateColumns: `repeat(${modes.length}, 1fr)`, gap: '20px' }}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: '-40px' }}

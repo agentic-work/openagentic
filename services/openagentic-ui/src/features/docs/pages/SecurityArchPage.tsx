@@ -15,7 +15,7 @@ const securityFlowDiagram: DiagramDefinition = {
   nodes: [
     { id: 'user', label: 'User Request', shape: 'rounded', color: 'primary' },
     { id: 'tls', label: 'TLS 1.3', description: 'External encryption', shape: 'rounded', color: 'green' },
-    { id: 'envoy', label: 'Envoy Gateway', description: 'Rate limiting + mTLS', shape: 'server', color: 'orange' },
+    { id: 'ingress', label: 'Ingress', description: 'nginx ingress + rate limiting', shape: 'server', color: 'orange' },
     { id: 'auth', label: 'Authentication', description: 'Azure AD / Google / API Key', shape: 'rounded', color: 'azure' },
     { id: 'rbac', label: 'RBAC Check', description: '5 role levels', shape: 'diamond', color: 'purple' },
     { id: 'dlp', label: 'DLP Scanner', description: '55 rules, 5 categories', shape: 'rounded', color: 'red' },
@@ -27,8 +27,8 @@ const securityFlowDiagram: DiagramDefinition = {
   ],
   edges: [
     { source: 'user', target: 'tls', animated: true },
-    { source: 'tls', target: 'envoy' },
-    { source: 'envoy', target: 'auth' },
+    { source: 'tls', target: 'ingress' },
+    { source: 'ingress', target: 'auth' },
     { source: 'auth', target: 'rbac' },
     { source: 'rbac', target: 'dlp' },
     { source: 'dlp', target: 'hitl', label: 'if sensitive' },
@@ -99,8 +99,8 @@ const dlpScanPoints = [
 const networkLayers = [
   { title: 'Kubernetes NetworkPolicy', desc: 'Per-service network policies restrict pod-to-pod communication. Services can only reach their declared dependencies.' },
   { title: 'mTLS (Internal)', desc: 'Mutual TLS between all internal services. Each pod has a unique certificate issued by the cluster CA.' },
-  { title: 'TLS 1.3 (External)', desc: 'All external traffic terminates TLS 1.3 at the Envoy Gateway. Certificate management via cert-manager with Let\'s Encrypt.' },
-  { title: 'Envoy Gateway', desc: 'L7 proxy replacing nginx ingress. Provides rate limiting, request routing, header manipulation, and observability hooks.' },
+  { title: 'TLS 1.3 (External)', desc: 'All external traffic terminates TLS 1.3 at the ingress. Certificate management via cert-manager with Let\'s Encrypt.' },
+  { title: 'nginx Ingress', desc: 'The Helm chart ships an nginx Ingress (kind: Ingress with nginx.ingress.kubernetes.io annotations) that handles routing, large request bodies, long-lived streaming connections, and rate limiting.' },
 ];
 
 const mcpSecurity = [

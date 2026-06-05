@@ -70,7 +70,7 @@ const visionPillars = [
   {
     title: 'Complete Observability',
     description:
-      'Every request traced from frontend to LLM response. Token usage, latency, cost, error rates, and DLP events all visible through Grafana dashboards with Prometheus metrics and Loki logs.',
+      'Every request traced from frontend to LLM response. Token usage, latency, cost, error rates, and DLP events are surfaced through the built-in admin monitoring view and shipped Prometheus metrics, with optional external Grafana and Loki backends.',
   },
   {
     title: 'Governance First',

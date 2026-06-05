@@ -10,23 +10,20 @@ import { DocsInfraIcon, DocsToolIcon, DocsBrainIcon } from '../components/DocsIc
 const observabilityDiagram: DiagramDefinition = {
   type: 'architecture',
   title: 'Observability Stack',
-  description: 'Metrics, logs, and dashboards',
+  description: 'Built-in Prometheus metrics + optional external backends',
   layout: 'vertical',
   nodes: [
     { id: 'services', label: 'Platform Services', description: 'API, MCP, Agents', shape: 'server', color: 'blue' },
-    { id: 'prometheus', label: 'Prometheus', description: 'Metrics scraping', shape: 'rounded', color: 'orange' },
-    { id: 'loki', label: 'Loki', description: 'Log aggregation', shape: 'rounded', color: 'yellow' },
-    { id: 'grafana', label: 'Grafana', description: '12 dashboards', shape: 'rounded', color: 'green' },
+    { id: 'prometheus', label: 'Prometheus', description: 'Metrics scraping (shipped)', shape: 'rounded', color: 'orange' },
     { id: 'admin-ui', label: 'Admin UI', description: 'Built-in monitoring', shape: 'rounded', color: 'primary' },
-    { id: 'alerts', label: 'Alerting', description: 'Slack, email, PD', shape: 'rounded', color: 'red' },
+    { id: 'grafana', label: 'Grafana', description: 'Optional external', shape: 'rounded', color: 'gray' },
+    { id: 'loki', label: 'Loki', description: 'Optional external logs', shape: 'rounded', color: 'gray' },
   ],
   edges: [
     { source: 'services', target: 'prometheus', label: '/metrics', animated: true },
-    { source: 'services', target: 'loki', label: 'logs', style: 'dashed' },
-    { source: 'prometheus', target: 'grafana' },
-    { source: 'loki', target: 'grafana' },
     { source: 'prometheus', target: 'admin-ui' },
-    { source: 'grafana', target: 'alerts', style: 'dashed', color: 'red' },
+    { source: 'prometheus', target: 'grafana', label: 'optional', style: 'dashed', color: 'gray' },
+    { source: 'services', target: 'loki', label: 'optional', style: 'dashed', color: 'gray' },
   ],
 };
 
@@ -120,8 +117,8 @@ const AdminMonitoringPage: React.FC = () => {
         <p style={{ ...bodyTextStyle, fontSize: '15px' }}>
           Comprehensive monitoring across the entire platform stack. Track MCP tool
           performance, LLM usage and costs, infrastructure health, and debug issues
-          with built-in diagnostic tools. Backed by Prometheus metrics and 12 pre-built
-          Grafana dashboards.
+          with built-in diagnostic tools. Backed by shipped Prometheus metrics and the
+          built-in admin monitoring view, with optional external Grafana and Loki backends.
         </p>
       </motion.div>
 
@@ -139,9 +136,10 @@ const AdminMonitoringPage: React.FC = () => {
         <p style={sectionHeadingStyle}>Architecture</p>
         <h2 style={sectionTitleStyle}>Observability Stack</h2>
         <p style={{ ...bodyTextStyle, marginBottom: '24px' }}>
-          The monitoring system combines Prometheus for metrics, Loki for logs, and Grafana
-          for visualization. The admin UI also provides a built-in monitoring view for
-          quick access without switching to Grafana.
+          The platform ships Prometheus for metrics scraping and exposes a built-in
+          monitoring view in the admin UI for quick access. External Grafana (for richer
+          dashboards) and Loki (for log aggregation) are optional integrations you can
+          point the platform at — they are not deployed by the stack itself.
         </p>
         <ReactFlowDiagram
           diagram={observabilityDiagram}
@@ -254,12 +252,13 @@ const AdminMonitoringPage: React.FC = () => {
 
       {/* GRAFANA DASHBOARDS */}
       <motion.section style={sectionStyle} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.55, duration: 0.5 }}>
-        <p style={sectionHeadingStyle}>Grafana</p>
-        <h2 style={sectionTitleStyle}>12 Pre-Built Dashboards</h2>
+        <p style={sectionHeadingStyle}>Grafana (optional)</p>
+        <h2 style={sectionTitleStyle}>Suggested Dashboards</h2>
         <p style={{ ...bodyTextStyle, marginBottom: '24px' }}>
-          The platform ships with 12 Grafana dashboards covering every aspect of operations.
-          Dashboards are provisioned automatically during deployment and can be accessed
-          via the Grafana link in the admin sidebar.
+          If you connect an external Grafana instance, these are the dashboards we
+          recommend building on top of the shipped Prometheus metrics. Grafana itself is
+          not deployed by the stack — the admin UI link points at whatever Grafana you
+          configure.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
           {grafanaDashboards.map((d, i) => (

@@ -133,7 +133,7 @@ export const DocsViewer: React.FC<DocsViewerProps> = ({
       className="fixed inset-0 z-[1100] flex flex-col"
       style={{ backgroundColor: 'var(--color-background)' }}
     >
-      {/* Minimal header — wordmark + version pill + Ask AI / close. The atlas
+      {/* Minimal header — wordmark + version pill + Ask AI / close. The atlas.png
           hero lives INSIDE the landing block (DocsContent.tsx) per design. */}
       <div
         className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b"

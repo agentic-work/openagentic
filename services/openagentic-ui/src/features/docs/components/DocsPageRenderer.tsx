@@ -13,7 +13,6 @@ const WelcomePage = React.lazy(() => import('../pages/WelcomePage'));
 const QuickStartPage = React.lazy(() => import('../pages/QuickStartPage'));
 const KeyConceptsPage = React.lazy(() => import('../pages/KeyConceptsPage'));
 const ChatModePage = React.lazy(() => import('../pages/ChatModePage'));
-// 2026-04-19 — IntelligenceSliderPage deleted (task #144, slider rip).
 const AgentDelegationPage = React.lazy(() => import('../pages/AgentDelegationPage'));
 const ArtifactsPage = React.lazy(() => import('../pages/ArtifactsPage'));
 const FlowBuilderPage = React.lazy(() => import('../pages/FlowBuilderPage'));
@@ -62,7 +61,6 @@ const PAGE_COMPONENTS: Record<string, React.LazyExoticComponent<React.FC<any>>> 
   'key-concepts': KeyConceptsPage,
   // Chat Mode
   'chat-mode': ChatModePage,
-  // 2026-04-19 — intelligence-slider route removed (task #144).
   'agents-delegation': AgentDelegationPage,
   'artifacts': ArtifactsPage,
   // Flows
@@ -134,7 +132,6 @@ export const docsNavigation: DocsNavCategory[] = [
     icon: 'brain',
     pages: [
       { id: 'chat-mode', title: 'How Chat Works', description: 'The AI conversation pipeline' },
-      // 2026-04-19 — intelligence-slider nav entry removed (task #144).
       { id: 'agents-delegation', title: 'Agent Delegation', description: 'Multi-agent orchestration' },
       { id: 'artifacts', title: 'Artifacts', description: 'HTML visualizations and dashboards' },
     ],

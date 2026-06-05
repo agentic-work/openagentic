@@ -4,7 +4,7 @@
   "description": "Release history, source-derived from version.json — the single source of truth for platform versions.",
   "icon": "brain",
   "category": "core",
-  "generatedAt": "2026-06-05T12:34:36.327Z",
+  "generatedAt": "2026-06-05T13:33:18.451Z",
   "sourceFiles": [
     "version.json"
   ],
@@ -1423,8 +1423,8 @@
     },
     {
       "id": "v0-3-0",
-      "title": "v0.3.0 — Atlas",
-      "description": "“Atlas” 2026-01-18",
+      "title": "v0.3.0 — Cartographer",
+      "description": "“Cartographer” 2026-01-18",
       "adminOnly": false,
       "items": [
         {
@@ -1514,8 +1514,8 @@
       "items": [
         {
           "id": "v0-2-0--highlight-0",
-          "name": "Intelligence Slider for model selection",
-          "description": "Intelligence Slider for model selection",
+          "name": "Smart model routing for automatic model selection",
+          "description": "Smart model routing for automatic model selection",
           "type": "changelog-highlight",
           "properties": {
             "kind": "highlight",

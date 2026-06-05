@@ -70,13 +70,12 @@ const SchedulingTriggersPage: React.FC = () => {
   ];
 
   const eventTypes = [
-    { event: 'alert.firing', description: 'An alert transitions to firing state in Alertmanager', source: 'Prometheus / Alertmanager' },
-    { event: 'alert.resolved', description: 'A previously firing alert is now resolved', source: 'Prometheus / Alertmanager' },
-    { event: 'incident.created', description: 'A new incident is created in the incident tracker', source: 'Incident MCP' },
-    { event: 'incident.updated', description: 'An incident status or severity changes', source: 'Incident MCP' },
+    { event: 'metric.threshold', description: 'A Prometheus query result crosses a configured threshold', source: 'Prometheus MCP' },
+    { event: 'log.match', description: 'A log query matches a configured pattern', source: 'Loki MCP' },
     { event: 'deployment.completed', description: 'A Kubernetes deployment rollout completes', source: 'Kubernetes MCP' },
+    { event: 'github.push', description: 'Commits are pushed to a watched repository', source: 'GitHub MCP' },
     { event: 'approval.pending', description: 'A HITL approval gate is waiting for a decision', source: 'Platform' },
-    { event: 'cost.threshold', description: 'Cloud spending exceeds a configured threshold', source: 'Cost MCP' },
+    { event: 'cost.threshold', description: 'Cloud spending exceeds a configured threshold', source: 'AWS / Azure / GCP MCP' },
   ];
 
   return (

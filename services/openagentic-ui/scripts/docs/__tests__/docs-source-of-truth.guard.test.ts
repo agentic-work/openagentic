@@ -7,11 +7,17 @@
  *
  *   (1) the generated `mcp-servers` manifest section count === the real number
  *       of services/mcps/oap-*-mcp dirs;
+ *   (1b) the generated `agent-types` item count === the real built-in agent
+ *       *.md count, and `node-types` still carries the expected 50+;
  *   (2) the `platform-summary` mcp-server-count === that same real count;
  *   (3) the `platform-summary` version === version.json's version, and the
  *       `changelog` current release === version.json's version (no drift);
- *   (4) NO removed-feature string (Code Mode, sandbox-exec, /api/code, …)
- *       appears anywhere in ANY generated manifest.
+ *   (3b) the docs' stated mode count === the canonical modes list (buildModes())
+ *       length — exactly 2 (Chat + Flows); the heading is derived, not hardcoded;
+ *   (4) NO removed-feature string (Code Mode, sandbox-exec, /api/code, the
+ *       "Intelligence Slider" / "Atlas" Code-Mode-era names, "three ways" /
+ *       "3 modes" mode-count drift, …) appears anywhere in ANY generated
+ *       manifest.
  *
  * If a new MCP lands, or version.json bumps, and the docs don't follow, THIS
  * fails — so the docs cannot silently go stale.
@@ -40,6 +46,18 @@ const FORBIDDEN: Array<{ name: string; re: RegExp }> = [
   { name: 'sandbox-exec', re: /sandbox[- ]?exec/i },
   { name: 'k8s-sandbox', re: /k8s[_ -]?sandbox/i },
   { name: 'openagentic_execute', re: /openagentic_execute/i },
+  // Code-Mode-era marketing names that leaked through version.json → changelog.
+  { name: 'intelligence-slider', re: /intelligence[- ]?slider/i },
+  // "Atlas" feature/codename. The atlas.png hero IMAGE asset is never present in
+  // the GENERATED manifests (only in the docs prose/JSX), so a bare-word match
+  // is safe here — no image-asset exemption needed on the manifest surface.
+  { name: 'atlas-feature', re: /\batlas\b/i },
+  // Mode-count drift: the platform has TWO ways to work (Chat + Flows); the
+  // removed Code-Mode third mode must never reappear as a "three ways" claim.
+  { name: 'three-ways', re: /three\s+ways/i },
+  { name: '3-ways', re: /\b3\s+ways\b/i },
+  { name: 'three-modes', re: /three\s+modes/i },
+  { name: '3-modes', re: /\b3\s+modes\b/i },
 ];
 
 async function readJson<T = any>(path: string): Promise<T> {
@@ -61,7 +79,42 @@ async function countMcpDirs(): Promise<number> {
   return n;
 }
 
+const AGENT_DIR = resolve(
+  REPO_ROOT,
+  'services',
+  'openagentic-api',
+  'src',
+  'agents',
+  'built-in',
+);
+const WELCOME_PAGE = resolve(
+  UI_ROOT,
+  'src',
+  'features',
+  'docs',
+  'pages',
+  'WelcomePage.tsx',
+);
+
+async function countAgentMd(): Promise<number> {
+  let entries: string[] = [];
+  try {
+    entries = await readdir(AGENT_DIR);
+  } catch {
+    return 0;
+  }
+  return entries.filter((e) => e.endsWith('.md')).length;
+}
+
+/** Count the canonical platform modes from WelcomePage's buildModes() source. */
+function canonicalModeCount(src: string): number {
+  const m = src.match(/function buildModes\([^)]*\)\s*:\s*ModeData\[\]\s*\{([\s\S]*?)\n\}/);
+  if (!m) return -1;
+  return [...m[1].matchAll(/^\s{4}title:\s*/gm)].length;
+}
+
 let realMcpCount = 0;
+let realAgentCount = 0;
 let versionJson: { version?: string } = {};
 
 describe('docs source-of-truth guard', () => {
@@ -73,6 +126,7 @@ describe('docs source-of-truth guard', () => {
       stdio: 'ignore',
     });
     realMcpCount = await countMcpDirs();
+    realAgentCount = await countAgentMd();
     versionJson = await readJson(VERSION_JSON);
   }, 120_000);
 
@@ -83,6 +137,26 @@ describe('docs source-of-truth guard', () => {
   it('mcp-servers manifest section count === real oap-*-mcp dir count', async () => {
     const manifest = await readJson(resolve(GENERATED, 'mcp-servers.json'));
     expect(manifest.sections.length).toBe(realMcpCount);
+  });
+
+  it('agent-types manifest item count === real built-in agent *.md count', async () => {
+    expect(realAgentCount).toBeGreaterThanOrEqual(8);
+    const manifest = await readJson(resolve(GENERATED, 'agent-types.json'));
+    const items = manifest.sections.flatMap((s: any) => s.items);
+    expect(items.length).toBe(realAgentCount);
+  });
+
+  it('node-types manifest item count is the expected 50+ (registry minus deny)', async () => {
+    const manifest = await readJson(resolve(GENERATED, 'node-types.json'));
+    const items = manifest.sections.flatMap((s: any) => s.items);
+    expect(items.length).toBeGreaterThanOrEqual(50);
+  });
+
+  it('docs stated mode count === canonical modes list length (exactly 2)', async () => {
+    const src = await readFile(WELCOME_PAGE, 'utf-8');
+    expect(canonicalModeCount(src)).toBe(2);
+    // the heading must be derived from modes.length, not a hardcoded number-word
+    expect(src).toMatch(/\{numberWord\(modes\.length\)\}\s*Ways to Work/);
   });
 
   it('platform-summary mcp-server-count === real oap-*-mcp dir count', async () => {

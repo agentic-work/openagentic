@@ -202,7 +202,7 @@
     {
       "version": "0.3.0",
       "date": "2026-01-18",
-      "codename": "Atlas",
+      "codename": "Cartographer",
       "highlights": [
         "Live artifact streaming - artifacts render as they stream, not after completion",
         "Flowise Google auth fix - workspace lookup via WorkspaceUser entity",
@@ -223,7 +223,7 @@
       "date": "2026-01-10",
       "codename": "Pioneer",
       "highlights": [
-        "Intelligence Slider for model selection",
+        "Smart model routing for automatic model selection",
         "MCP Tools integration"
       ],
       "breaking": [],

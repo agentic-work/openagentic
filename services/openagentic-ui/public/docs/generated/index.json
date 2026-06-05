@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-05T12:34:36.331Z",
+  "generatedAt": "2026-06-05T13:33:18.455Z",
   "version": "1.0.0",
   "codename": "Open Field",
   "categories": [
@@ -107,7 +107,7 @@
       "category": "core",
       "file": "api-routes.json",
       "sectionCount": 14,
-      "itemCount": 570,
+      "itemCount": 576,
       "adminOnly": false
     },
     {

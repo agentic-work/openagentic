@@ -42,8 +42,8 @@ function buildFullArchitectureDiagram(mcpCount: number, nodeCount: number): Diag
     { id: 'openagentic-proxy', label: 'Agent Proxy', description: 'Sub-agents', shape: 'server', color: 'purple' },
     // Workflow Engine
     { id: 'workflow', label: 'Workflow Engine', description: `${nodeCount} node types`, shape: 'server', color: 'teal' },
-    // OAT Executor
-    { id: 'oat', label: 'OAT Executor', description: 'Autonomous tasks', shape: 'server', color: 'cyan' },
+    // Search backend (powers the web MCP)
+    { id: 'searxng', label: 'SearXNG', description: 'Web search backend', shape: 'server', color: 'cyan' },
     // Databases
     { id: 'pg', label: 'PostgreSQL', description: 'pgvector + RLS', shape: 'database', color: 'blue' },
     { id: 'redis', label: 'Redis', description: 'Cache + sessions', shape: 'database', color: 'red' },
@@ -55,8 +55,6 @@ function buildFullArchitectureDiagram(mcpCount: number, nodeCount: number): Diag
     { id: 'api-keys', label: 'API Keys', description: 'oa_ prefix', shape: 'rounded', color: 'gray' },
     // Observability
     { id: 'prometheus', label: 'Prometheus', description: 'Metrics', shape: 'rounded', color: 'red' },
-    { id: 'grafana', label: 'Grafana', description: '12 dashboards', shape: 'rounded', color: 'orange' },
-    { id: 'loki', label: 'Loki', description: 'Logs', shape: 'rounded', color: 'yellow' },
   ],
   edges: [
     { source: 'frontend', target: 'api', label: 'HTTPS / WSS', animated: true },
@@ -71,7 +69,7 @@ function buildFullArchitectureDiagram(mcpCount: number, nodeCount: number): Diag
     { source: 'api', target: 'mcp-proxy', label: 'tools', style: 'dashed', color: 'orange' },
     { source: 'api', target: 'openagentic-proxy', label: 'delegate', style: 'dashed', color: 'purple' },
     { source: 'api', target: 'workflow', style: 'dashed', color: 'teal' },
-    { source: 'api', target: 'oat', style: 'dashed', color: 'cyan' },
+    { source: 'mcp-proxy', target: 'searxng', label: 'search', style: 'dashed', color: 'cyan' },
     { source: 'pipeline', target: 'pg', style: 'dashed', color: 'blue' },
     { source: 'pipeline', target: 'redis', style: 'dashed', color: 'red' },
     { source: 'pipeline', target: 'milvus', style: 'dashed', color: 'cyan' },
@@ -80,8 +78,6 @@ function buildFullArchitectureDiagram(mcpCount: number, nodeCount: number): Diag
     { source: 'api', target: 'google-oauth', style: 'dashed', color: 'gcp' },
     { source: 'api', target: 'api-keys', style: 'dashed', color: 'gray' },
     { source: 'api', target: 'prometheus', style: 'dashed', color: 'red' },
-    { source: 'prometheus', target: 'grafana', color: 'orange' },
-    { source: 'api', target: 'loki', style: 'dashed', color: 'yellow' },
   ],
   };
 }
@@ -123,24 +119,24 @@ function buildIndustryComparisons(agentCount: number) {
 
 const secretsSteps = [
   {
-    title: 'HashiCorp Vault',
+    title: 'Wizard-written .env',
     description:
-      'Primary secrets backend. All sensitive configuration (API keys, database credentials, OAuth secrets) is stored in Vault with path-based access policies and automatic rotation.',
+      'The install wizard collects platform secrets (admin credentials, internal JWT/signing secrets, provider API keys) and writes them to a local .env that the compose stack reads. Nothing is committed to Git.',
   },
   {
-    title: 'External Secrets Operator (ESO)',
+    title: 'Cloud-secret env mounts',
     description:
-      'ESO watches Vault paths and syncs secrets into Kubernetes Secrets objects. This bridges Vault with the Kubernetes-native deployment model, keeping secrets out of Helm values and Git.',
+      'Per-cloud credentials live in ~/.openagentic/cloud-secrets/*.env (one file per cloud) and are mounted into the MCP proxy. The AWS / Azure / GCP MCP servers only spawn once their credential file is present.',
   },
   {
-    title: 'Ephemeral Fallback',
+    title: 'On-Behalf-Of (OBO) tokens',
     description:
-      'If Vault is unreachable at startup, the runtime generates ephemeral secrets and logs a CRITICAL warning. This prevents hard failures during development but should never occur in production.',
+      'When a user signs in via SSO, tool calls can run with the user\'s own OBO token rather than a static service credential, so the audit trail reflects who actually performed each action.',
   },
   {
     title: 'Per-Tool Credential Scoping',
     description:
-      'Each MCP tool only receives the credentials it needs. The Azure DevOps tool gets Azure PATs; the GitHub tool gets GitHub tokens. No tool has access to credentials outside its scope.',
+      'Each MCP tool only receives the credentials it needs. The GitHub tool gets a GitHub token; the cloud tools get their cloud credentials. No tool has access to credentials outside its scope.',
   },
 ];
 
@@ -283,9 +279,9 @@ const ArchitecturePage: React.FC = () => {
         <p style={{ ...sectionDescStyle, marginBottom: '32px' }}>
           The diagram below shows the complete service graph. The frontend connects to the
           API over HTTPS and WebSocket. The API orchestrates the chat pipeline, delegates
-          to MCP servers for tool execution, routes to LLM providers via the ProviderManager,
-          and coordinates sub-agents through the Agent Proxy. All data persists across
-          PostgreSQL, Redis, Milvus, and MinIO.
+          to MCP servers for tool execution (the web MCP searches via SearXNG), routes to
+          LLM providers via the ProviderManager, and coordinates sub-agents through the
+          Agent Proxy. All data persists across PostgreSQL, Redis, Milvus, and MinIO.
         </p>
 
         <ReactFlowDiagram
@@ -360,9 +356,10 @@ const ArchitecturePage: React.FC = () => {
         <p style={sectionHeadingStyle}>Credential Lifecycle</p>
         <h2 style={sectionTitleStyle}>Secrets Management</h2>
         <p style={{ ...sectionDescStyle, marginBottom: '32px' }}>
-          Secrets flow from HashiCorp Vault through the External Secrets Operator
-          into Kubernetes, with a runtime fallback for development environments.
-          Each tool only receives the credentials it needs.
+          Platform secrets are written to a local .env by the install wizard, and
+          per-cloud credentials are mounted from ~/.openagentic/cloud-secrets. SSO
+          users can run tools under their own OBO token, and each tool only
+          receives the credentials it needs.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

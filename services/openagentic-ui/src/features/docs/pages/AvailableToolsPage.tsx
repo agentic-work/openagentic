@@ -47,14 +47,24 @@ const SERVER_META: Record<string, ServerMeta> = {
   'oap-github-mcp': { displayName: 'GitHub', category: 'Development', color: '#6b7280' },
   'oap-prometheus-mcp': { displayName: 'Prometheus', category: 'Observability', color: '#E6522C' },
   'oap-loki-mcp': { displayName: 'Loki', category: 'Observability', color: '#F0A500' },
-  'oap-alertmanager-mcp': { displayName: 'Alertmanager', category: 'Observability', color: '#E6522C' },
-  'oap-incident-mcp': { displayName: 'Incident', category: 'Operations', color: '#ef4444' },
-  'oap-runbook-mcp': { displayName: 'Runbook', category: 'Operations', color: '#22c55e' },
   'oap-web-mcp': { displayName: 'Web', category: 'Data', color: '#3b82f6' },
-  'oap-knowledge-mcp': { displayName: 'Knowledge', category: 'Data', color: '#8b5cf6' },
   'oap-admin-mcp': { displayName: 'Admin', category: 'Platform', color: '#64748b' },
-  'oap-agent-architect-mcp': { displayName: 'Agent Architect', category: 'Platform', color: '#a855f7' },
 };
+
+/**
+ * MCP dirs that still exist under services/mcps/ but are REMOVED upstream and
+ * never wired in the proxy (mcp_manager.py logs each as "REMOVED — out of scope
+ * / redundant"). The generated manifest directory-scans services/mcps/oap-*-mcp
+ * so these leftover dirs still appear in it; filter them so the catalog shows
+ * the real built-in fleet (the servers the proxy actually spawns).
+ */
+const REMOVED_MCP_IDS = new Set<string>([
+  'oap-alertmanager-mcp',
+  'oap-incident-mcp',
+  'oap-runbook-mcp',
+  'oap-knowledge-mcp',
+  'oap-agent-architect-mcp',
+]);
 
 const DEFAULT_META: ServerMeta = {
   displayName: '',
@@ -99,16 +109,18 @@ const AvailableToolsPage: React.FC = () => {
   // section per oap-*-mcp dir). Friendly metadata is merged in by id.
   const servers = useMemo<RenderServer[]>(() => {
     if (!manifest) return [];
-    return manifest.sections.map((s) => {
-      const meta = SERVER_META[s.id] ?? DEFAULT_META;
-      return {
-        id: s.id,
-        displayName: meta.displayName || fallbackName(s.id),
-        category: meta.category,
-        color: meta.color,
-        toolCount: s.items.length,
-      };
-    });
+    return manifest.sections
+      .filter((s) => !REMOVED_MCP_IDS.has(s.id))
+      .map((s) => {
+        const meta = SERVER_META[s.id] ?? DEFAULT_META;
+        return {
+          id: s.id,
+          displayName: meta.displayName || fallbackName(s.id),
+          category: meta.category,
+          color: meta.color,
+          toolCount: s.items.length,
+        };
+      });
   }, [manifest]);
 
   const serverCount = servers.length;
@@ -255,7 +267,7 @@ const AvailableToolsPage: React.FC = () => {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
-              { label: 'Dynamic synthesis', detail: 'OAT generates the tool implementation and runs it in the isolated synth-executor service' },
+              { label: 'Dynamic synthesis', detail: 'OAT generates the tool implementation and runs it in an isolated sandbox' },
               { label: 'Schema validation', detail: 'Generated tools have typed inputs and outputs' },
               { label: 'Security review', detail: 'OAT tools pass DLP scanning before execution' },
               { label: 'Session-scoped', detail: 'Synthesized tools exist only for the current session' },

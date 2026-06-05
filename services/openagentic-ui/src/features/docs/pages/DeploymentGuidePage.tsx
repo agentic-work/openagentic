@@ -15,22 +15,18 @@ const services = [
 ];
 
 const helmStructure = [
-  { name: 'values.yaml', desc: '1300+ lines of service configuration covering all deployments, resource limits, feature flags, and environment variables' },
-  { name: 'templates/', desc: 'Kubernetes manifests for Deployment, Service, NetworkPolicy, Ingress, ConfigMap, and Secret resources' },
-  { name: 'dashboards/', desc: '12 Grafana dashboard JSON files for monitoring all services, databases, and infrastructure health' },
+  { name: 'Chart.yaml', desc: 'Chart metadata and version, pinned to the platform release' },
+  { name: 'values.yaml', desc: 'Service configuration covering all deployments, resource limits, feature flags, and environment variables (env-specific overrides live in downstream value files)' },
+  { name: 'templates/', desc: 'Kubernetes manifests for api, ui, workflows, mcp-proxy (+ RBAC), proxy, postgres, redis, milvus, ollama, prometheus, searxng, plus ingress and the platform Secret' },
 ];
 
 const infraComponents = [
-  { name: 'PostgreSQL', desc: 'Bitnami chart with pgvector extension for metadata storage and vector similarity search' },
-  { name: 'Redis', desc: 'Master + replica topology for caching, session storage, and pub/sub messaging' },
+  { name: 'PostgreSQL', desc: 'Primary datastore with the pgvector extension for metadata storage and vector similarity search' },
+  { name: 'Redis', desc: 'Caching, session storage, and pub/sub messaging' },
   { name: 'Milvus', desc: 'Standalone or cluster mode with GPU acceleration for high-throughput vector search' },
-  { name: 'MinIO', desc: 'S3-compatible object storage for workspace snapshots, file uploads, and artifact persistence' },
   { name: 'Ollama', desc: 'Local LLM inference server for on-premises model execution without external API calls' },
-  { name: 'Grafana', desc: 'Monitoring dashboards with 12 pre-built views for services, databases, and cluster health' },
-  { name: 'Prometheus', desc: 'Metrics collection and alerting with service discovery across all Kubernetes pods' },
-  { name: 'Loki + Promtail', desc: 'Log aggregation pipeline collecting structured logs from all services and infrastructure' },
-  { name: 'HashiCorp Vault', desc: 'Secrets management backend with ESO integration for Kubernetes-native secret delivery' },
-  { name: 'Envoy Gateway', desc: 'L7 proxy replacing nginx ingress with advanced routing, rate limiting, and mTLS termination' },
+  { name: 'SearXNG', desc: 'Self-hosted metasearch backend that powers the web MCP server\'s search tools' },
+  { name: 'Prometheus', desc: 'Metrics collection with service discovery across the platform deployments' },
 ];
 
 const clusterNodes = [
@@ -40,10 +36,10 @@ const clusterNodes = [
 ];
 
 const secretsPipeline = [
-  { stage: 'Vault', desc: 'All secrets stored in HashiCorp Vault with path-based ACLs and automatic rotation policies' },
-  { stage: 'ESO Sync', desc: 'External Secrets Operator watches Vault paths and creates corresponding Kubernetes Secret objects' },
-  { stage: 'Helm Values', desc: 'Environment variables reference K8s Secrets; no plaintext credentials in values files or Git' },
-  { stage: 'Runtime Fallback', desc: 'secrets.config.ts generates ephemeral secrets if Vault is unreachable (CRITICAL warning logged)' },
+  { stage: 'Install wizard', desc: 'The setup wizard collects platform secrets (admin credentials, internal JWT/signing secrets, provider keys) and writes them to a local .env — nothing is committed to Git' },
+  { stage: 'Cloud-secret mounts', desc: 'Per-cloud credentials live in ~/.openagentic/cloud-secrets/*.env and are mounted into the MCP proxy; the cloud MCP servers only spawn once their file is present' },
+  { stage: 'Helm Secret', desc: 'On Kubernetes, those values populate the chart\'s Secret template and are referenced as env vars; no plaintext credentials in values files or Git' },
+  { stage: 'OBO at runtime', desc: 'SSO users can run tools under their own On-Behalf-Of token instead of a static service credential, so the audit trail reflects the real actor' },
 ];
 
 // ============================================================================
@@ -278,8 +274,9 @@ const DeploymentGuidePage: React.FC = () => {
         <p style={sectionHeadingStyle}>Configuration</p>
         <h2 style={sectionTitleStyle}>Helm Chart Structure</h2>
         <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
-          The Helm chart centralizes all Kubernetes resource definitions, service
-          configuration, and monitoring dashboards in a single package.
+          The Helm chart centralizes all Kubernetes resource definitions and service
+          configuration in a single package. Environment-specific values live in
+          downstream deployment repos, not in the chart itself.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -422,8 +419,10 @@ const DeploymentGuidePage: React.FC = () => {
         <p style={sectionHeadingStyle}>Secrets</p>
         <h2 style={sectionTitleStyle}>Secrets Pipeline</h2>
         <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
-          Secrets flow from Vault through ESO into Kubernetes, with Helm values
-          referencing K8s Secrets and a runtime fallback for development.
+          Platform secrets are written to a local .env by the install wizard, and
+          per-cloud credentials are mounted from ~/.openagentic/cloud-secrets. On
+          Kubernetes those values populate the chart Secret, and SSO users can run
+          tools under their own OBO token.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

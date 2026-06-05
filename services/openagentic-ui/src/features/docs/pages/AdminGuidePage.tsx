@@ -14,7 +14,7 @@ const AdminGuidePage: React.FC = () => (
         { title: 'Provider Management', desc: 'Configure Azure OpenAI, AWS Bedrock, Google Vertex, Anthropic, OpenAI, and Ollama providers. Set up model routing, failover chains, and cost budgets.' },
         { title: 'Agent Configuration', desc: 'Create and tune agents in the Agent Management panel. Configure model selection, temperature, token limits, thinking behavior, tool whitelists, and delegation rules.' },
         { title: 'MCP Server Management', desc: 'Enable/disable MCP servers, configure access policies per Azure AD group, review tool call logs, and set execution modes (read-only vs full access).' },
-        { title: 'Monitoring & Observability', desc: 'Access Prometheus metrics, Grafana dashboards (12 pre-built), Loki log queries, and the built-in pipeline log viewer. Monitor LLM performance, agent execution, and cost attribution.' },
+        { title: 'Monitoring & Observability', desc: 'Access shipped Prometheus metrics, the built-in admin monitoring view, and the pipeline log viewer. Monitor LLM performance, agent execution, and cost attribution, with optional external Grafana and Loki backends.' },
         { title: 'Security Configuration', desc: 'Configure DLP rules (enable/disable categories), set rate limits per user, manage API keys, and review the immutable audit trail.' },
         { title: 'User Management', desc: 'View user activity, manage permissions, configure authentication providers (Azure AD, Google, local), and handle user lockouts.' },
       ].map((section) => (
