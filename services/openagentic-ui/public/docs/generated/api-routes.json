@@ -4,7 +4,7 @@
   "description": "HTTP routes registered across the API",
   "icon": "route",
   "category": "core",
-  "generatedAt": "2026-06-05T14:46:51.816Z",
+  "generatedAt": "2026-06-05T17:02:13.296Z",
   "sourceFiles": [
     "services/openagentic-api/src/routes/account-linking.ts",
     "services/openagentic-api/src/routes/admin-agents.ts",
@@ -40,7 +40,6 @@
     "services/openagentic-api/src/routes/admin.ts",
     "services/openagentic-api/src/routes/agents.ts",
     "services/openagentic-api/src/routes/artifacts.ts",
-    "services/openagentic-api/src/routes/auth-sso.ts",
     "services/openagentic-api/src/routes/auth.ts",
     "services/openagentic-api/src/routes/background-jobs.ts",
     "services/openagentic-api/src/routes/capabilities.ts",
@@ -108,7 +107,6 @@
     "services/openagentic-api/src/routes/admin/enriched-tools.ts",
     "services/openagentic-api/src/routes/admin/grafana-proxy.ts",
     "services/openagentic-api/src/routes/admin/health.ts",
-    "services/openagentic-api/src/routes/admin/identity-directories.ts",
     "services/openagentic-api/src/routes/admin/llm-providers.ts",
     "services/openagentic-api/src/routes/admin/mcp-management.ts",
     "services/openagentic-api/src/routes/admin/multi-model.ts",
@@ -1827,17 +1825,6 @@
             "path": "/api/artifacts/health"
           },
           "sourceFile": "services/openagentic-api/src/routes/artifacts.ts"
-        },
-        {
-          "id": "GET-_api_auth_directories",
-          "name": "GET /api/auth/directories",
-          "description": "GET /api/auth/directories",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/auth/directories"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/auth-sso.ts"
         },
         {
           "id": "POST-_api_auth_verify",
@@ -5572,17 +5559,6 @@
             "path": "/system"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin/health.ts"
-        },
-        {
-          "id": "GET-_identity-directories",
-          "name": "GET /identity-directories",
-          "description": "GET /identity-directories",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/identity-directories"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/admin/identity-directories.ts"
         },
         {
           "id": "GET-_llm-providers",

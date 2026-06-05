@@ -75,8 +75,6 @@ model User {
   AzureValidationLogs    AzureValidationLog[]
   created_llm_providers  LLMProvider[]          @relation("LLMProviderCreator")
   updated_llm_providers  LLMProvider[]          @relation("LLMProviderUpdater")
-  created_identity_directories IdentityDirectory[] @relation("IdentityDirectoryCreator")
-  updated_identity_directories IdentityDirectory[] @relation("IdentityDirectoryUpdater")
   user_roles             UserRole[]
   llm_requests           LLMRequestLog[]
   model_role_assignments ModelRoleAssignment[]
@@ -2268,59 +2266,6 @@ model LLMProvider {
   @@index([enabled])
   @@index([priority])
   @@map("llm_providers")
-  @@schema("admin")
-}
-
-// ============================================================================
-// IDENTITY DIRECTORIES - Runtime, DB-driven SSO identity providers.
-// 1:1 analogue of LLMProvider: env seeds the first row on boot, then the DB is
-// the SINGLE SOURCE OF TRUTH (hot-reloaded via atomic-swap, no API restart).
-// clientSecret lives inside auth_config and is encrypted for free by
-// CredentialEncryptionService ('clientSecret' is in SENSITIVE_FIELDS).
-// ============================================================================
-model IdentityDirectory {
-  id           String  @id @default(uuid())
-  name         String  @unique // stable slug, e.g. "corp-entra"
-  display_name String // shown on the login button
-  type         String // 'azure-ad' | 'google-oidc' | 'generic-oidc'
-  enabled      Boolean @default(true)
-  priority     Int     @default(1) // login-button order (lower = first)
-
-  // Encrypted secret bag — clientSecret encrypted by CredentialEncryptionService
-  // (clientSecret is already in SENSITIVE_FIELDS). Also holds clientId.
-  auth_config Json @default("{}") // { clientId, clientSecret(enc), ... }
-
-  // OIDC endpoint identity
-  tenant_id    String? // Azure tenant (single-tenant assertion is now per-row)
-  authority    String? // e.g. https://login.microsoftonline.com/<tenant>
-  issuer       String? // generic-oidc issuer base
-  redirect_uri String? // override; else derived from PUBLIC_BASE_URL
-  scopes       String[] @default([]) // [] → type default
-  discovery    Json? // cached .well-known/openid-configuration
-
-  // Group → role mapping (replaces every AZURE_*_GROUPS / SKIP_GROUP_VALIDATION env)
-  group_claim             String?  @default("groups")
-  authorized_groups       String[] @default([]) // gate login (GUIDs or names)
-  admin_groups            String[] @default([]) // grant isAdmin
-  group_role_mappings     Json     @default("{}") // { "<groupIdOrName>": "role" }
-  external_admin_emails   String[] @default([]) // EXTERNAL_ADMIN_EMAILS, per-row
-  allowed_domains         String[] @default([]) // Google hd / email-domain gate
-  allow_all_authenticated Boolean  @default(false) // per-dir replacement for SKIP_GROUP_VALIDATION
-
-  status     String    @default("active") // 'active' | 'disabled' | 'error'
-  created_by String?
-  updated_by String?
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-  deleted_at DateTime?
-
-  creator User? @relation("IdentityDirectoryCreator", fields: [created_by], references: [id])
-  updater User? @relation("IdentityDirectoryUpdater", fields: [updated_by], references: [id])
-
-  @@index([type])
-  @@index([enabled])
-  @@index([priority])
-  @@map("identity_directories")
   @@schema("admin")
 }
 

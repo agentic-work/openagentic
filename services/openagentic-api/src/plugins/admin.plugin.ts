@@ -41,7 +41,6 @@ import adminV3ExtrasMutationsRoutes from '../routes/admin/v3-extras-mutations.js
 import adminV3ExtrasMiscRoutes from '../routes/admin/v3-extras-misc.js';
 import adminPermissionsRoutes from '../routes/admin/permissions.js';
 import { sloRoutes } from '../routes/admin/slo.js';
-import identityDirectoryRoutes from '../routes/admin/identity-directories.js';
 
 interface AdminPluginOptions {
   ollamaEnabled?: boolean;
@@ -352,29 +351,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
     successCount++;
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register admin SLO routes');
-    failCount++;
-  }
-
-  // Register Admin Identity Directories — runtime SSO directory registry CRUD
-  // (the 1:1 clone of llm-providers, applied to identity_directories):
-  //   GET    /api/admin/identity-directories            list (clientSecret redacted)
-  //   GET    /api/admin/identity-directories/:id         single (redacted)
-  //   POST   /api/admin/identity-directories             create (validate→encrypt→reload→audit)
-  //   PUT    /api/admin/identity-directories/:id         update (re-encrypt only if secret supplied)
-  //   PATCH  /api/admin/identity-directories/:id         partial update
-  //   DELETE /api/admin/identity-directories/:id         soft delete → reload
-  //   POST   /api/admin/identity-directories/:id/test    discovery + token-endpoint probe
-  //   GET    /api/admin/identity-directories/:id/callback-url  the exact redirect_uri to register
-  // Gated by adminMiddleware at the plugin level (matching llm-providers).
-  try {
-    await fastify.register(async (instance) => {
-      instance.addHook('preHandler', adminMiddleware);
-      await instance.register(identityDirectoryRoutes);
-    }, { prefix: '/api/admin' });
-    loggers.routes.info('Admin Identity Directories routes registered at /api/admin/identity-directories/* with admin middleware');
-    successCount++;
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register admin identity-directories routes');
     failCount++;
   }
 

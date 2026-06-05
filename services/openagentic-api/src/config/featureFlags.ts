@@ -63,17 +63,7 @@ export const featureFlags = {
   /** Ollama local-model provider enabled (OLLAMA_ENABLED=true). */
   ollamaEnabled: bool('OLLAMA_ENABLED', false),
 
-  /**
-   * Auth provider type ('azure-ad' | 'google' | 'local' | 'hybrid' | ...).
-   *
-   * BOOTSTRAP-ONLY. Runtime SSO state is now DB-driven: it comes from the
-   * `identity_directories` table (one enabled row → SSO active, one login button
-   * per row). This env is consulted ONLY as the first-boot default —
-   * (a) the IdentityDirectorySeeder's "which directory to seed from env" hint,
-   * and (b) the auth.plugin `ssoActive` local-login-suppression fallback when
-   * ZERO directory rows exist. Once a directory row exists, the DB wins and this
-   * value no longer governs which IdP is used or whether local login is offered.
-   */
+  /** Auth provider type ('azure-ad' | 'local'). */
   authProvider: process.env.AUTH_PROVIDER || 'azure-ad',
 
   /** MCP proxy sidecar enabled (MCP_PROXY_ENABLED=true, default on). */

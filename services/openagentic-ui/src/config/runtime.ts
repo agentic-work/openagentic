@@ -37,12 +37,25 @@ export function getApiUrl(): string {
   return getRuntimeConfig('VITE_API_URL', '');
 }
 
-// NOTE: Login-path IdP config (VITE_AAD_CLIENT_ID / VITE_AAD_AUTHORITY /
-// VITE_AAD_REDIRECT_URI / VITE_AZURE_TENANT_ID / VITE_AZURE_AD_AUTHORIZED_GROUPS
-// and the *_LOGIN_ENABLED / VITE_AUTH_PROVIDER toggles) has been removed.
-// Identity providers are now a runtime, DB-driven registry: the login page
-// fetches GET /api/auth/directories and the OAuth handshake is server-initiated,
-// so no client-id / tenant / IdP secret is ever shipped to the browser bundle.
+export function getAADClientId(): string {
+  return getRuntimeConfig('VITE_AAD_CLIENT_ID', '');
+}
+
+export function getAzureTenantId(): string {
+  return getRuntimeConfig('VITE_AZURE_TENANT_ID', '');
+}
+
+export function getAADAuthority(): string {
+  return getRuntimeConfig('VITE_AAD_AUTHORITY', '');
+}
+
+export function getAADRedirectUri(): string {
+  return getRuntimeConfig('VITE_AAD_REDIRECT_URI', '/auth/callback');
+}
+
+export function getAzureADAuthorizedGroups(): string {
+  return getRuntimeConfig('VITE_AZURE_AD_AUTHORIZED_GROUPS', '');
+}
 
 /**
  * @deprecated SECURITY WARNING: API keys and secrets should NEVER be exposed in client-side code.
@@ -97,10 +110,55 @@ export function getWorkflowsApiUrl(): string {
 }
 
 // ===== AUTH PROVIDER CONFIGURATION =====
-// Removed. Which login buttons appear is now decided at runtime by
-// GET /api/auth/directories (DB-driven identity-directory registry) plus the
-// `localEnabled` meta flag it returns — not by VITE_AUTH_PROVIDER or the
-// per-provider *_LOGIN_ENABLED toggles. See Login.tsx.
+// Controls which login buttons are shown on the login page
+
+/**
+ * Get the primary auth provider (google, azure-ad, all)
+ * When set to a specific provider, only that login button is shown
+ * When set to 'all', all enabled login buttons are shown
+ */
+export function getAuthProvider(): string {
+  return getRuntimeConfig('VITE_AUTH_PROVIDER', 'all');
+}
+
+/**
+ * Check if Microsoft/Azure AD login is enabled
+ */
+export function isMicrosoftLoginEnabled(): boolean {
+  const provider = getAuthProvider();
+  if (provider === 'google') return false;  // Google-only mode
+  const value = getRuntimeConfig('VITE_MICROSOFT_LOGIN_ENABLED', 'true');
+  return value !== 'false';
+}
+
+/**
+ * Check if Google login is enabled
+ */
+export function isGoogleLoginEnabled(): boolean {
+  const provider = getAuthProvider();
+  // Azure-only mode - accept both 'azure' and 'azure-ad' values
+  if (provider === 'azure-ad' || provider === 'azure') return false;
+  const value = getRuntimeConfig('VITE_GOOGLE_LOGIN_ENABLED', 'true');
+  return value !== 'false';
+}
+
+/**
+ * Check if local admin login is enabled
+ * This can be enabled alongside SSO for admin testing purposes
+ * Set VITE_LOCAL_LOGIN_ENABLED=true to enable even with SSO providers
+ */
+export function isLocalLoginEnabled(): boolean {
+  // Explicit override - if VITE_LOCAL_LOGIN_ENABLED is set, respect it
+  const value = getRuntimeConfig('VITE_LOCAL_LOGIN_ENABLED', '');
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+
+  // Default: disable local login for SSO-only providers
+  const provider = getAuthProvider();
+  if (provider === 'google' || provider === 'azure-ad' || provider === 'azure') return false;
+
+  return true; // Default to enabled for local/development
+}
 
 /**
  * Export runtime config object for debugging

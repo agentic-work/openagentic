@@ -6,7 +6,6 @@ import { ClientSecretCredential, DefaultAzureCredential } from '@azure/identity'
 import crypto from 'crypto';
 import type { Logger } from 'pino';
 import { createRedisService, RedisService } from '../services/redis.js';
-import { mapGroupsToRoles } from '../services/identity/mapGroupsToRoles.js';
 
 export interface AzureADConfig {
   tenantId: string;
@@ -15,19 +14,6 @@ export interface AzureADConfig {
   authority: string;
   redirectUri: string;
   scopes: string[];
-
-  // Per-directory group→role config. When this instance is constructed by the
-  // runtime IdentityDirectoryService from a DB row, these are populated from the
-  // `identity_directories` columns so validateToken NEVER reads process.env for
-  // group/admin resolution — the row wins. When constructed bare (env-fallback
-  // singleton), these are left undefined and validateToken falls back to the
-  // legacy AZURE_*_GROUPS / SKIP_GROUP_VALIDATION / EXTERNAL_ADMIN_EMAILS env.
-  directoryId?: string;
-  authorizedGroups?: string[];
-  adminGroups?: string[];
-  groupRoleMappings?: Record<string, string>;
-  externalAdminEmails?: string[];
-  allowAllAuthenticated?: boolean;
 }
 
 export interface UserContext {
@@ -76,22 +62,13 @@ export class AzureADAuthService {
   private redis: RedisService;
   private logger: Logger;
 
-  /**
-   * True when this instance was constructed from a DB IdentityDirectory row
-   * (group/admin config supplied explicitly). When true, validateToken resolves
-   * groups→roles from THIS instance's per-row config and never falls back to
-   * process.env. Detected by the presence of a directoryId on the config.
-   */
-  private readonly dbDriven: boolean;
-
   constructor(config: Partial<AzureADConfig>, logger?: Logger) {
     this.logger = logger || console as any;
-    this.dbDriven = Boolean(config.directoryId);
     this.config = {
       tenantId: config.tenantId || process.env.AZURE_AD_TENANT_ID || '',
       clientId: config.clientId || process.env.AZURE_AD_CLIENT_ID || '',
       clientSecret: config.clientSecret || process.env.AZURE_AD_CLIENT_SECRET,
-      authority: config.authority || process.env.AZURE_AD_AUTHORITY ||
+      authority: config.authority || process.env.AZURE_AD_AUTHORITY || 
         `https://login.microsoftonline.com/${config.tenantId || process.env.AZURE_AD_TENANT_ID}`,
       redirectUri: config.redirectUri || process.env.AZURE_AD_REDIRECT_URI || `${process.env.FRONTEND_URL || 'https://chat.example.com'}/api/auth/microsoft/callback`,
       // Request Azure ARM access directly - this gives a token usable against Azure Management APIs
@@ -102,16 +79,7 @@ export class AzureADAuthService {
         'profile',
         'email',
         'offline_access'  // For refresh tokens
-      ],
-      // Per-row group→role config (DB-driven directories only). Left as-is when
-      // absent so the env-fallback path in validateToken stays the default for
-      // the bare env-constructed singleton.
-      directoryId: config.directoryId,
-      authorizedGroups: config.authorizedGroups,
-      adminGroups: config.adminGroups,
-      groupRoleMappings: config.groupRoleMappings,
-      externalAdminEmails: config.externalAdminEmails,
-      allowAllAuthenticated: config.allowAllAuthenticated,
+      ]
     };
 
     // Initialize Redis for shared PKCE verifier storage
@@ -258,13 +226,8 @@ export class AzureADAuthService {
         throw lastError;
       }
 
-      // Validate tenant — PER-INSTANCE (multi-tenant safe). Each directory row
-      // carries its own tenantId, so this assertion is now scoped to THIS
-      // directory's tenant rather than a single global env tenant; multiple
-      // Azure tenants coexist, one directory per tenant. A directory configured
-      // with NO tenantId (e.g. a multi-tenant/common app registration) skips the
-      // assertion — the issuer/audience checks above already bound the token.
-      if (this.config.tenantId && decoded.tid !== this.config.tenantId) {
+      // Validate tenant
+      if (decoded.tid !== this.config.tenantId) {
         return {
           isValid: false,
           error: 'Token is not from the configured tenant'
@@ -281,53 +244,6 @@ export class AzureADAuthService {
         groups: decoded.groups || []
       };
 
-      const userGroupsForMapping: string[] = decoded.groups || [];
-
-      // ── DB-DRIVEN DIRECTORY PATH ──────────────────────────────────────────
-      // When this instance was built from an `identity_directories` row, the
-      // group→role/admin decision comes from THIS directory's per-row config via
-      // the shared pure `mapGroupsToRoles` (identical to the generic-OIDC path) —
-      // NO process.env reads. The env block below is the legacy bare-singleton
-      // fallback and is intentionally skipped for DB-driven directories.
-      if (this.dbDriven) {
-        const decision = mapGroupsToRoles(userGroupsForMapping, {
-          authorizedGroups: this.config.authorizedGroups || [],
-          adminGroups: this.config.adminGroups || [],
-          groupRoleMappings: this.config.groupRoleMappings || {},
-          allowAllAuthenticated: this.config.allowAllAuthenticated === true,
-          externalAdminEmails: this.config.externalAdminEmails || [],
-          email: user.email,
-        });
-
-        if (!decision.authorized) {
-          this.logger.warn?.(
-            { email: user.email, directoryId: this.config.directoryId },
-            '[AUTH-BACKEND] Access denied — user not in any authorized group for this directory',
-          );
-          return {
-            isValid: false,
-            error: `Access denied. User ${user.email} is not a member of any authorized group for this directory. Please contact your administrator.`,
-          };
-        }
-
-        user.isAdmin = decision.isAdmin;
-        user.roles = decision.roles;
-
-        // Cache the token
-        this.tokenCache.set(token, {
-          user,
-          exp: decoded.exp,
-          validatedAt: Date.now(),
-        });
-
-        return {
-          isValid: true,
-          user,
-          claims: decoded,
-        };
-      }
-
-      // ── LEGACY ENV-FALLBACK PATH (bare env-constructed singleton) ─────────
       // CRITICAL: Check if user is in ANY authorized group to allow login
       // Users MUST be in at least one of these groups to access the application
       // Use group IDs from environment variables - NO HARDCODED FALLBACKS

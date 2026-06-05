@@ -4,7 +4,7 @@
   "description": "Canonical agentic primitives — the Layer-2 chatmode catalog. Every chat turn ships these 16 meta-tools.",
   "icon": "brain",
   "category": "core",
-  "generatedAt": "2026-06-05T14:46:51.826Z",
+  "generatedAt": "2026-06-05T17:02:13.306Z",
   "sourceFiles": [
     "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
   ],

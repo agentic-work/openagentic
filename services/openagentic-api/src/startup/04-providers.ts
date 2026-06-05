@@ -359,20 +359,6 @@ export const INIT_PROVIDERS: BootstrapStep = {
       loggers.services.warn({ err }, '⚠️ LLM provider seeding failed - continuing with existing DB config');
     }
 
-    // Identity directory seeding (env→DB migration for runtime SSO registry).
-    // Idempotent + gated: no-op unless AUTH_PROVIDER is SSO-eligible AND
-    // admin.identity_directories is empty AND the relevant AZURE_AD_*/GOOGLE_*
-    // env is present. Seeds EXACTLY ONE directory from env, encrypting the
-    // clientSecret on write; after that the DB is SoT and the admin UI owns
-    // directory CRUD (RUNTIME-IDP-PLAN §6).
-    try {
-      const { seedIdentityDirectories } = await import('../services/identity/IdentityDirectorySeeder.js');
-      await seedIdentityDirectories();
-      loggers.services.info('✅ Identity directory seeding complete');
-    } catch (idpErr: any) {
-      loggers.services.warn({ error: idpErr?.message }, '⚠️ Identity directory seeding failed — SSO directory absent; admin can add one via UI');
-    }
-
     // Pipeline Hook System
     try {
       loggers.services.info('🔄 Initializing Pipeline Hook System...');

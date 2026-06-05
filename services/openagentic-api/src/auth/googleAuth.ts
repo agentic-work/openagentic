@@ -10,24 +10,12 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import type { Logger } from 'pino';
 import { createRedisService, RedisService } from '../services/redis.js';
-import { mapGroupsToRoles } from '../services/identity/mapGroupsToRoles.js';
 
 export interface GoogleAuthConfig {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
   allowedDomains?: string[]; // Optional: restrict to specific domains (e.g., ['openagentic.io'])
-
-  // Per-directory group→role config. Populated when this instance is constructed
-  // from a DB `identity_directories` row by IdentityDirectoryService, so admin
-  // determination flows from the SAME shared mapGroupsToRoles as Azure/generic —
-  // NO process.env (GOOGLE_ADMIN_EMAILS / GOOGLE_ADMIN_DOMAINS) reads. Absent for
-  // the bare env-constructed singleton, which keeps the legacy env admin path.
-  directoryId?: string;
-  adminGroups?: string[];
-  groupRoleMappings?: Record<string, string>;
-  externalAdminEmails?: string[];
-  allowAllAuthenticated?: boolean;
 }
 
 export interface GoogleUserContext {
@@ -68,17 +56,8 @@ export class GoogleAuthService {
   private adminEmails: Set<string>;
   private adminDomains: Set<string>;
 
-  /**
-   * True when this instance was constructed from a DB IdentityDirectory row
-   * (per-row admin config supplied). When true, isAdmin() resolves via the
-   * shared mapGroupsToRoles using THIS instance's config and never reads
-   * process.env. Detected by the presence of a directoryId on the config.
-   */
-  private readonly dbDriven: boolean;
-
   constructor(config?: Partial<GoogleAuthConfig>, logger?: Logger) {
     this.logger = logger || (console as any);
-    this.dbDriven = Boolean(config?.directoryId);
 
     this.config = {
       clientId: config?.clientId || process.env.GOOGLE_CLIENT_ID || '',
@@ -86,13 +65,7 @@ export class GoogleAuthService {
       redirectUri: config?.redirectUri || process.env.GOOGLE_REDIRECT_URI ||
         `${process.env.FRONTEND_URL || 'https://ai.openagentic.io'}/api/auth/google/callback`,
       allowedDomains: config?.allowedDomains ||
-        (process.env.GOOGLE_ALLOWED_DOMAINS?.split(',').map(d => d.trim()).filter(Boolean) || []),
-      // Per-row group→role config (DB-driven directories only).
-      directoryId: config?.directoryId,
-      adminGroups: config?.adminGroups,
-      groupRoleMappings: config?.groupRoleMappings,
-      externalAdminEmails: config?.externalAdminEmails,
-      allowAllAuthenticated: config?.allowAllAuthenticated,
+        (process.env.GOOGLE_ALLOWED_DOMAINS?.split(',').map(d => d.trim()).filter(Boolean) || [])
     };
 
     this.client = new OAuth2Client({
@@ -270,34 +243,10 @@ export class GoogleAuthService {
   }
 
   /**
-   * Check if user is an admin based on email or domain.
-   *
-   * DB-driven directories resolve admin via the SHARED pure mapGroupsToRoles
-   * (same path as Azure/generic-OIDC) using this instance's per-row config — no
-   * process.env. Google ID tokens carry no group claims, so the hosted domain is
-   * passed as a pseudo-group (matching the auth-sso callback), letting an admin
-   * be granted via `adminGroups` (domain), `externalAdminEmails`, or
-   * `allowAllAuthenticated`. The env path below is the legacy bare-singleton
-   * fallback only.
+   * Check if user is an admin based on email or domain
    */
   private isAdmin(email: string, hostedDomain?: string): boolean {
     const emailLower = email.toLowerCase();
-
-    if (this.dbDriven) {
-      const pseudoGroups: string[] = [];
-      if (hostedDomain) pseudoGroups.push(hostedDomain);
-      const emailDomain = emailLower.split('@')[1];
-      if (emailDomain && emailDomain !== hostedDomain) pseudoGroups.push(emailDomain);
-      const decision = mapGroupsToRoles(pseudoGroups, {
-        authorizedGroups: [],
-        adminGroups: this.config.adminGroups || [],
-        groupRoleMappings: this.config.groupRoleMappings || {},
-        allowAllAuthenticated: this.config.allowAllAuthenticated === true,
-        externalAdminEmails: this.config.externalAdminEmails || [],
-        email,
-      });
-      return decision.isAdmin;
-    }
 
     // Check admin emails list
     if (this.adminEmails.has(emailLower)) {
