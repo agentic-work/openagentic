@@ -1,6 +1,6 @@
 export type DeployTarget = 'docker' | 'helm';
 /** See steps/LlmStrategy.tsx for the user-facing copy. */
-export type LlmStrategy = 'ollama' | 'cloud' | 'both' | 'skip';
+export type LlmStrategy = 'ollama' | 'cloud' | 'vertex' | 'both' | 'skip';
 
 export interface WizardConfig {
   target: DeployTarget;
@@ -36,6 +36,22 @@ export interface WizardConfig {
       secretAccessKey?: string;
       profile?: string;
       useHostCreds?: boolean;
+    };
+    /**
+     * Google Vertex AI — the GCP-native cloud option, chosen via LlmStrategy
+     * 'vertex'. Authenticates with a service-account key (workload identity /
+     * ADC) — no API keys. Seeds a `vertex-ai` bootstrap provider with
+     * gemini-2.5-pro as the default chat model AND routes embeddings + image
+     * through Vertex (text-embedding-005 / Imagen). The SA key is mounted into
+     * the api read-only; GOOGLE_APPLICATION_CREDENTIALS points at it.
+     */
+    vertex?: {
+      project: string;        // GCP project id (required)
+      region: string;         // Vertex region, default us-central1
+      chatModel: string;      // default gemini-2.5-pro
+      embedModel: string;     // default text-embedding-005 (768-dim)
+      imageModel: string;     // default imagen-4.0-generate-001
+      saKeyPath: string;      // host path to a GCP service-account key JSON
     };
   };
   /** MCPs the user chose to enable. Used as compose profiles + MCPS_ENABLED. */

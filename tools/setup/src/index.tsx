@@ -8,6 +8,7 @@ import { LlmStrategyStep } from './steps/LlmStrategy.tsx';
 import type { LlmStrategy } from './lib/types.ts';
 import { OllamaStep } from './steps/Ollama.tsx';
 import { ProvidersStep } from './steps/Providers.tsx';
+import { VertexStep } from './steps/Vertex.tsx';
 import { McpSelectionStep } from './steps/McpSelection.tsx';
 import { McpAuthStep } from './steps/McpAuth.tsx';
 import { ReviewStep } from './steps/Review.tsx';
@@ -16,7 +17,7 @@ import { DEFAULT_CONFIG, type WizardConfig, type DeployTarget } from './lib/type
 import { defaultEnabledMcps, allMcpIds } from './lib/mcps.ts';
 import { readCurrent } from './lib/env.ts';
 
-type Screen = 'target' | 'helm-preflight' | 'admin' | 'llm-strategy' | 'ollama' | 'providers' | 'mcps' | 'mcp-auth' | 'review' | 'launch' | 'done';
+type Screen = 'target' | 'helm-preflight' | 'admin' | 'llm-strategy' | 'ollama' | 'providers' | 'vertex' | 'mcps' | 'mcp-auth' | 'review' | 'launch' | 'done';
 
 const App: React.FC = () => {
   // Seed from any existing .env so re-running the wizard is non-destructive.
@@ -38,6 +39,9 @@ const App: React.FC = () => {
     // a region (or any AWS_* cred / profile) on disk implies a prior Bedrock
     // selection. Inline keys → inline mode; AWS_PROFILE → profile mode;
     // region-only → host-creds mode.
+    // Hydrate the chosen cloud provider from a prior .env so a re-run is sticky.
+    // AWS_* on disk → Bedrock; else VERTEX_PROJECT/GOOGLE_CLOUD_PROJECT → Vertex.
+    // (Bedrock and Vertex are mutually exclusive top-level cloud strategies.)
     providers: (existing.AWS_REGION || existing.AWS_ACCESS_KEY_ID || existing.AWS_PROFILE)
       ? {
           awsBedrock: {
@@ -48,7 +52,18 @@ const App: React.FC = () => {
             useHostCreds: !existing.AWS_ACCESS_KEY_ID && !existing.AWS_PROFILE ? true : undefined,
           },
         }
-      : {},
+      : (existing.VERTEX_PROJECT || existing.GOOGLE_CLOUD_PROJECT)
+        ? {
+            vertex: {
+              project: existing.VERTEX_PROJECT || existing.GOOGLE_CLOUD_PROJECT || '',
+              region: existing.VERTEX_LOCATION || existing.GOOGLE_CLOUD_LOCATION || 'us-central1',
+              chatModel: existing.VERTEX_CHAT_MODEL || 'gemini-2.5-pro',
+              embedModel: existing.GCP_EMBEDDING_MODEL || 'text-embedding-005',
+              imageModel: existing.DEFAULT_IMAGE_MODEL || 'imagen-4.0-generate-001',
+              saKeyPath: existing.GCP_SA_KEY_FILE || '',
+            },
+          }
+        : {},
     mcps: existing.MCPS_ENABLED ? existing.MCPS_ENABLED.split(',').map((s: string) => s.trim()).filter(Boolean) : defaultEnabledMcps(),
     mcpAuth: {},
     uiPort: existing.UI_HOST_PORT ? Number(existing.UI_HOST_PORT) : DEFAULT_CONFIG.uiPort,
@@ -63,8 +78,9 @@ const App: React.FC = () => {
   const helmBump = config.target === 'helm' ? 1 : 0;
   const ollamaCount    = (llmStrategy === 'ollama' || llmStrategy === 'both') ? 1 : 0;
   const providersCount = (llmStrategy === 'cloud'  || llmStrategy === 'both') ? 1 : 0;
+  const vertexCount    = (llmStrategy === 'vertex') ? 1 : 0;
   // base (Docker, both): target + admin + llm-strategy + ollama + providers + mcps + mcp-auth + review + launch = 9
-  const total = 1 + helmBump + 1 /*admin*/ + 1 /*llm-strategy*/ + ollamaCount + providersCount + 1 /*mcps*/ + 1 /*mcp-auth*/ + 1 /*review*/ + 1 /*launch*/;
+  const total = 1 + helmBump + 1 /*admin*/ + 1 /*llm-strategy*/ + ollamaCount + providersCount + vertexCount + 1 /*mcps*/ + 1 /*mcp-auth*/ + 1 /*review*/ + 1 /*launch*/;
   let cursor = 1;
   const stepNum = {
     target: cursor++,
@@ -73,6 +89,7 @@ const App: React.FC = () => {
     llmStrategy: cursor++,
     ollama: ollamaCount ? cursor++ : 0,
     providers: providersCount ? cursor++ : 0,
+    vertex: vertexCount ? cursor++ : 0,
     mcps: cursor++,
     mcpAuth: cursor++,
     review: cursor++,
@@ -82,6 +99,7 @@ const App: React.FC = () => {
   const afterLlmStrategy = (s: LlmStrategy): Screen => {
     if (s === 'ollama' || s === 'both') return 'ollama';
     if (s === 'cloud')                  return 'providers';
+    if (s === 'vertex')                 return 'vertex';
     return 'mcps';  // 'skip'
   };
   const afterOllama = (s: LlmStrategy): Screen =>
@@ -163,6 +181,19 @@ const App: React.FC = () => {
       <ProvidersStep
         initial={config.providers}
         step={stepNum.providers}
+        total={total}
+        onDone={(providers) => {
+          setConfig({ ...config, providers });
+          setScreen('mcps');
+        }}
+      />
+    );
+  }
+  if (screen === 'vertex') {
+    return (
+      <VertexStep
+        initial={config.providers}
+        step={stepNum.vertex}
         total={total}
         onDone={(providers) => {
           setConfig({ ...config, providers });
