@@ -88,7 +88,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
           color: 'var(--color-textSecondary)',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)';
+          e.currentTarget.style.backgroundColor = 'var(--color-surface-2)';
           e.currentTarget.style.color = 'var(--color-text)';
         }}
         onMouseLeave={(e) => {
@@ -162,7 +162,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                   className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left"
                   style={{ color: 'var(--color-text)' }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)';
+                    e.currentTarget.style.backgroundColor = 'var(--color-surface-2)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = 'transparent';
@@ -182,7 +182,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                 className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left"
                 style={{ color: 'var(--color-text)' }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)';
+                  e.currentTarget.style.backgroundColor = 'var(--color-surface-2)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
@@ -201,7 +201,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                 className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left"
                 style={{ color: 'var(--color-text)' }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)';
+                  e.currentTarget.style.backgroundColor = 'var(--color-surface-2)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
@@ -221,7 +221,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                 }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left"
                 style={{ color: 'var(--color-text)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-surface-2)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
                 <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -236,7 +236,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                 className="w-full flex items-center justify-between px-4 py-2.5 transition-colors text-left"
                 style={{ color: 'var(--color-text)' }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)';
+                  e.currentTarget.style.backgroundColor = 'var(--color-surface-2)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
@@ -266,7 +266,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                           setShowThemeSubmenu(false);
                           setIsOpen(false);
                         }}
-                        onMouseEnter={(e) => { if (theme !== 'light') e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)'; }}
+                        onMouseEnter={(e) => { if (theme !== 'light') e.currentTarget.style.backgroundColor = 'var(--color-surface-2)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = theme === 'light' ? 'color-mix(in srgb, var(--color-accent) 14%, transparent)' : 'transparent'; }}
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors border"
                         style={{
@@ -285,7 +285,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                           setShowThemeSubmenu(false);
                           setIsOpen(false);
                         }}
-                        onMouseEnter={(e) => { if (theme !== 'dark') e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)'; }}
+                        onMouseEnter={(e) => { if (theme !== 'dark') e.currentTarget.style.backgroundColor = 'var(--color-surface-2)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = theme === 'dark' ? 'color-mix(in srgb, var(--color-accent) 14%, transparent)' : 'transparent'; }}
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors border"
                         style={{
@@ -310,7 +310,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                 className="w-full flex items-center justify-between px-4 py-2.5 transition-colors text-left"
                 style={{ color: 'var(--color-text)' }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)';
+                  e.currentTarget.style.backgroundColor = 'var(--color-surface-2)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
@@ -385,7 +385,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                 className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left"
                 style={{ color: 'var(--color-text)' }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)';
+                  e.currentTarget.style.backgroundColor = 'var(--color-surface-2)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
