@@ -266,6 +266,8 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                           setShowThemeSubmenu(false);
                           setIsOpen(false);
                         }}
+                        onMouseEnter={(e) => { if (theme !== 'light') e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = theme === 'light' ? 'color-mix(in srgb, var(--color-accent) 14%, transparent)' : 'transparent'; }}
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors border"
                         style={{
                           backgroundColor: theme === 'light' ? 'color-mix(in srgb, var(--color-accent) 14%, transparent)' : 'transparent',
@@ -283,6 +285,8 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                           setShowThemeSubmenu(false);
                           setIsOpen(false);
                         }}
+                        onMouseEnter={(e) => { if (theme !== 'dark') e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = theme === 'dark' ? 'color-mix(in srgb, var(--color-accent) 14%, transparent)' : 'transparent'; }}
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors border"
                         style={{
                           backgroundColor: theme === 'dark' ? 'color-mix(in srgb, var(--color-accent) 14%, transparent)' : 'transparent',
