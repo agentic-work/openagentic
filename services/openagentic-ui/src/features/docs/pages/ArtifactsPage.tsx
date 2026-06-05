@@ -154,7 +154,7 @@ const ArtifactsPage: React.FC = () => (
         and open them in a new tab.
       </p>
       <p style={proseStyle}>
-        Since v0.3.0, artifacts render progressively as the AI streams its response.
+        Artifacts render progressively as the AI streams its response.
         You see the HTML or React code appear and the preview update in real-time,
         providing immediate visual feedback even for complex generated applications.
       </p>
@@ -258,7 +258,7 @@ const ArtifactsPage: React.FC = () => (
       <p style={sectionHeadingStyle}>Streaming</p>
       <h2 style={sectionTitleStyle}>Live Streaming Render</h2>
       <p style={{ ...proseStyle, marginBottom: '24px' }}>
-        Since v0.3.0, artifacts stream to the browser as the AI generates them.
+        Artifacts stream to the browser as the AI generates them.
         The frontend maintains a live preview that updates with each token, so
         users see the artifact take shape in real-time. This provides immediate
         feedback and makes the generation process transparent.

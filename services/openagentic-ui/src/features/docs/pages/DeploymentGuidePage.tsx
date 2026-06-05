@@ -244,9 +244,9 @@ const DeploymentGuidePage: React.FC = () => {
           }}
         >
           {[
-            { label: 'Kubernetes', value: 'k3s (dev), AKS (staging/prod)' },
-            { label: 'Namespace', value: 'agentic-dev' },
-            { label: 'Registry', value: '10.2.10.131:30500 (local dev)' },
+            { label: 'Kubernetes', value: 'k3s (dev), managed K8s (staging/prod)' },
+            { label: 'Namespace', value: '<your-namespace>' },
+            { label: 'Registry', value: '<your-registry-host>' },
             { label: 'URL', value: 'https://<your-deploy-host>' },
           ].map((item) => (
             <div key={item.label} style={cardStyle}>

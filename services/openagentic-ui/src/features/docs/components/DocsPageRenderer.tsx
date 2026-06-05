@@ -145,7 +145,7 @@ export const docsNavigation: DocsNavCategory[] = [
     icon: 'flow',
     pages: [
       { id: 'flows-builder', title: 'Workflow Builder', description: 'Visual automation canvas' },
-      { id: 'node-types', title: 'Node Types', description: '30+ workflow node types' },
+      { id: 'node-types', title: 'Node Types', description: 'Workflow canvas node types' },
       { id: 'scheduling-triggers', title: 'Scheduling & Triggers', description: 'Cron, webhooks, API' },
     ],
   },
@@ -155,7 +155,7 @@ export const docsNavigation: DocsNavCategory[] = [
     icon: 'tool',
     pages: [
       { id: 'mcp-overview', title: 'What is MCP?', description: 'Model Context Protocol' },
-      { id: 'available-tools', title: 'Available Tools', description: '14 MCP servers' },
+      { id: 'available-tools', title: 'Available Tools', description: 'Built-in MCP servers' },
       { id: 'tool-execution', title: 'Tool Execution', description: 'How tools run securely' },
     ],
   },

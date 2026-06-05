@@ -1,8 +1,16 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { DocsBookIcon } from '../components/DocsIcons';
+import { useDocsStore } from '@/stores/useDocsStore';
 
-const steps = [
+/**
+ * QuickStartPage — narrative onboarding steps. The only embedded FACTS (the MCP
+ * server + agent-type counts in step 5) are SOURCE-READ from the generated
+ * manifests so they track the real source.
+ */
+
+function buildSteps(mcpCount: number, agentCount: number) {
+  return [
   {
     number: '1',
     title: 'Sign In',
@@ -11,26 +19,42 @@ const steps = [
   {
     number: '2',
     title: 'Choose Your Mode',
-    body: 'Select Chat for conversational AI, Code for a browser-based IDE with AI pair programming, or Flows for visual workflow automation. You can switch between modes at any time from the navigation bar.',
+    body: 'Select Chat for conversational AI or Flows for visual workflow automation. You can switch between modes at any time from the navigation bar.',
   },
   {
     number: '3',
-    title: 'Set Your Intelligence Level',
-    body: 'Use the intelligence slider to control the cost/quality tradeoff. Start in the middle for balanced performance. Slide left for fast, inexpensive responses; slide right for maximum reasoning quality.',
+    title: 'Start a Conversation',
+    body: 'Type a message in the chat input. The system automatically selects the best model, retrieves relevant context, and delegates to specialist agents when needed. Tools like web search, cloud APIs, and Kubernetes inspection are available automatically.',
   },
   {
     number: '4',
-    title: 'Start a Conversation',
-    body: 'Type a message in the chat input. The system automatically selects the best model, retrieves relevant context, and delegates to specialist agents when needed. Tools like web search, code execution, and cloud APIs are available automatically.',
+    title: 'Approve Sensitive Actions',
+    body: 'When the agent needs to run a mutating tool call, the human-in-the-loop gate pauses and asks you to approve or deny it. Every tool call is written to the immutable audit trail.',
   },
   {
     number: '5',
     title: 'Explore Tools and Agents',
-    body: 'Ask the AI to use specific tools ("search the web for...", "check our Kubernetes pods", "analyze this CSV"). The platform has 14 MCP tool servers and 11 agent types available. Mention what you need and the system matches the right tool.',
+    body: `Ask the AI to use specific tools ("search the web for...", "check our Kubernetes pods", "analyze this CSV"). The platform ships ${mcpCount} MCP tool servers and ${agentCount} built-in agent types. Mention what you need and the system matches the right tool.`,
   },
-];
+  ];
+}
 
-const QuickStartPage: React.FC = () => (
+const QuickStartPage: React.FC = () => {
+  const { loadManifest, loadedManifests } = useDocsStore();
+
+  useEffect(() => {
+    for (const d of ['mcp-servers', 'agent-types']) {
+      if (!loadedManifests.has(d)) loadManifest(d).catch(() => {});
+    }
+  }, [loadManifest, loadedManifests]);
+
+  const mcpCount = loadedManifests.get('mcp-servers')?.sections.length ?? 14;
+  const agentCount =
+    loadedManifests.get('agent-types')?.sections.reduce((n, s) => n + s.items.length, 0) ?? 8;
+
+  const steps = useMemo(() => buildSteps(mcpCount, agentCount), [mcpCount, agentCount]);
+
+  return (
   <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 32px 96px' }}>
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -93,6 +117,7 @@ const QuickStartPage: React.FC = () => (
       ))}
     </div>
   </div>
-);
+  );
+};
 
 export default QuickStartPage;

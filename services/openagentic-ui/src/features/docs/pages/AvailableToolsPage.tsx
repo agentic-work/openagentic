@@ -2,6 +2,16 @@ import React, { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useDocsStore } from '@/stores/useDocsStore';
 
+/**
+ * AvailableToolsPage — the MCP server catalog, SOURCE-READ from the generated
+ * mcp-servers manifest (public/docs/generated/mcp-servers.json), which the docs
+ * generator derives by scanning services/mcps/oap-*-mcp. The server list, the
+ * per-server tool count, and the headline count all come from real source — no
+ * hand-maintained server array (which had drifted to list MCPs that no longer
+ * ship). The optional METADATA map below (category + identity color) is friendly
+ * decoration matched by id; it never adds or removes a server.
+ */
+
 // ============================================================================
 // ANIMATION VARIANTS
 // ============================================================================
@@ -16,164 +26,100 @@ const sectionVariants = {
 };
 
 // ============================================================================
-// DATA
+// FRIENDLY METADATA (decoration only — keyed by the oap-*-mcp dir id)
 // ============================================================================
-
-interface MCPServer {
-  name: string;
-  id: string;
-  description: string;
+// theme-allow: per-MCP identity color scale (vendor brand hues — Azure #0078D4,
+// AWS #FF9900, GCP #4285F4, k8s #326CE5, Prometheus #E6522C, …). Same carve-out
+// as the vendor brand-colors + node-TYPE identity palettes; categorical identity
+// values, not themeable surfaces. Any server NOT in this map renders with a
+// neutral category + default color, so a newly-added MCP still appears.
+interface ServerMeta {
+  displayName: string;
   category: string;
-  capabilities: string[];
   color: string;
 }
 
-// theme-allow: per-MCP identity color scale (vendor brand hues — Azure #0078D4,
-// AWS #FF9900, GCP #4285F4, k8s #326CE5, Prometheus #E6522C, … — plus per-server
-// identity colors). Same carve-out as the vendor brand-colors + node-TYPE identity
-// palettes; these are categorical identity values, not themeable surfaces.
-const mcpServers: MCPServer[] = [
-  {
-    name: 'Azure',
-    id: 'oap-azure-mcp',
-    description: 'Azure resource management including VMs, App Services, networking, storage, and resource groups. Supports read and write operations with OBO token authentication.',
-    category: 'Cloud',
-    capabilities: ['Resource enumeration', 'VM management', 'App Service control', 'Network inspection', 'Storage management'],
-    color: '#0078D4',
-  },
-  {
-    name: 'AWS',
-    id: 'oap-aws-mcp',
-    description: 'AWS services including EC2 instance management, S3 bucket operations, cost analysis via Cost Explorer, and IAM identity inspection.',
-    category: 'Cloud',
-    capabilities: ['EC2 instances', 'S3 operations', 'Cost analysis', 'IAM identity', 'CloudWatch metrics'],
-    color: '#FF9900',
-  },
-  {
-    name: 'GCP',
-    id: 'oap-gcp-mcp',
-    description: 'Google Cloud Platform resource management including Compute Engine, Cloud Storage, BigQuery, and project-level operations.',
-    category: 'Cloud',
-    capabilities: ['Compute Engine', 'Cloud Storage', 'BigQuery', 'Project management', 'IAM policies'],
-    color: '#4285F4',
-  },
-  {
-    name: 'Kubernetes',
-    id: 'oap-kubernetes-mcp',
-    description: 'Kubernetes cluster management covering pods, deployments, services, configmaps, secrets, and namespace operations.',
-    category: 'Infrastructure',
-    capabilities: ['Pod management', 'Deployment control', 'Service inspection', 'Log streaming', 'Resource scaling'],
-    color: '#326CE5',
-  },
-  {
-    name: 'GitHub',
-    id: 'oap-github-mcp',
-    description: 'GitHub integration for repositories, pull requests, issues, actions, and code search across configured organizations.',
-    category: 'Development',
-    capabilities: ['Repository listing', 'PR management', 'Issue tracking', 'Actions status', 'Code search'],
-    color: '#6b7280',
-  },
-  {
-    name: 'Prometheus',
-    id: 'oap-prometheus-mcp',
-    description: 'Prometheus metrics querying with PromQL support, instant queries, range queries, and metric metadata discovery.',
-    category: 'Observability',
-    capabilities: ['PromQL queries', 'Range queries', 'Metric metadata', 'Alert rules', 'Target status'],
-    color: '#E6522C',
-  },
-  {
-    name: 'Loki',
-    id: 'oap-loki-mcp',
-    description: 'Loki log querying with LogQL support for filtering, aggregating, and exploring application logs across services.',
-    category: 'Observability',
-    capabilities: ['LogQL queries', 'Log streaming', 'Label discovery', 'Log aggregation', 'Context lookup'],
-    color: '#F0A500',
-  },
-  {
-    name: 'Alertmanager',
-    id: 'oap-alertmanager-mcp',
-    description: 'Alertmanager integration for viewing, silencing, and managing active alerts and alert groups.',
-    category: 'Observability',
-    capabilities: ['Active alerts', 'Silence management', 'Alert groups', 'Receiver status', 'Inhibition rules'],
-    color: '#E6522C',
-  },
-  {
-    name: 'Incident',
-    id: 'oap-incident-mcp',
-    description: 'Incident lifecycle management including creation, status updates, timeline entries, and post-mortem generation.',
-    category: 'Operations',
-    capabilities: ['Create incidents', 'Update status', 'Timeline entries', 'Severity tracking', 'Post-mortem'],
-    color: '#ef4444',
-  },
-  {
-    name: 'Runbook',
-    id: 'oap-runbook-mcp',
-    description: 'Runbook discovery and execution for standardized operational procedures. Supports parameterized execution with audit logging.',
-    category: 'Operations',
-    capabilities: ['Runbook listing', 'Parameterized execution', 'Step tracking', 'Output capture', 'Audit logs'],
-    color: '#22c55e',
-  },
-  {
-    name: 'Web',
-    id: 'oap-web-mcp',
-    description: 'Web search and page scraping capabilities. Performs searches via configured providers and extracts structured content from web pages.',
-    category: 'Data',
-    capabilities: ['Web search', 'Page scraping', 'Content extraction', 'Screenshot capture', 'Link following'],
-    color: '#3b82f6',
-  },
-  {
-    name: 'Knowledge',
-    id: 'oap-knowledge-mcp',
-    description: 'Knowledge base retrieval using vector similarity search. Query the RAG system for relevant documents and context.',
-    category: 'Data',
-    capabilities: ['Semantic search', 'Document retrieval', 'Metadata filtering', 'Chunk navigation', 'Source citation'],
-    color: '#8b5cf6',
-  },
-  {
-    name: 'Admin',
-    id: 'oap-admin-mcp',
-    description: 'Platform administration tools for managing users, providers, system configuration, and operational health checks.',
-    category: 'Platform',
-    capabilities: ['User management', 'Provider config', 'System health', 'Feature flags', 'Cache management'],
-    color: '#64748b',
-  },
-  {
-    name: 'Agent Architect',
-    id: 'oap-agent-architect-mcp',
-    description: 'Meta-agent for designing and building new agents. Generates agent configurations, prompt templates, and tool selections based on requirements.',
-    category: 'Platform',
-    capabilities: ['Agent design', 'Prompt generation', 'Tool selection', 'Config generation', 'Testing'],
-    color: '#a855f7',
-  },
-];
+const SERVER_META: Record<string, ServerMeta> = {
+  'oap-azure-mcp': { displayName: 'Azure', category: 'Cloud', color: '#0078D4' },
+  'oap-aws-mcp': { displayName: 'AWS', category: 'Cloud', color: '#FF9900' },
+  'oap-gcp-mcp': { displayName: 'GCP', category: 'Cloud', color: '#4285F4' },
+  'oap-kubernetes-mcp': { displayName: 'Kubernetes', category: 'Infrastructure', color: '#326CE5' },
+  'oap-github-mcp': { displayName: 'GitHub', category: 'Development', color: '#6b7280' },
+  'oap-prometheus-mcp': { displayName: 'Prometheus', category: 'Observability', color: '#E6522C' },
+  'oap-loki-mcp': { displayName: 'Loki', category: 'Observability', color: '#F0A500' },
+  'oap-alertmanager-mcp': { displayName: 'Alertmanager', category: 'Observability', color: '#E6522C' },
+  'oap-incident-mcp': { displayName: 'Incident', category: 'Operations', color: '#ef4444' },
+  'oap-runbook-mcp': { displayName: 'Runbook', category: 'Operations', color: '#22c55e' },
+  'oap-web-mcp': { displayName: 'Web', category: 'Data', color: '#3b82f6' },
+  'oap-knowledge-mcp': { displayName: 'Knowledge', category: 'Data', color: '#8b5cf6' },
+  'oap-admin-mcp': { displayName: 'Admin', category: 'Platform', color: '#64748b' },
+  'oap-agent-architect-mcp': { displayName: 'Agent Architect', category: 'Platform', color: '#a855f7' },
+};
+
+const DEFAULT_META: ServerMeta = {
+  displayName: '',
+  category: 'Other',
+  color: 'var(--color-accent)',
+};
+
+/** Turn `oap-foo-bar-mcp` into a friendly `Foo Bar` fallback display name. */
+function fallbackName(id: string): string {
+  return id
+    .replace(/^oap-/, '')
+    .replace(/-mcp$/, '')
+    .split('-')
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(' ');
+}
+
+interface RenderServer {
+  id: string;
+  displayName: string;
+  category: string;
+  color: string;
+  toolCount: number;
+}
 
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
 const AvailableToolsPage: React.FC = () => {
-  // Source-derived facts: prefer the build-time-generated mcp-servers manifest
-  // (scanned from services/mcps/oap-*-mcp) so the count + server list ALWAYS
-  // match the current release. The hardcoded `mcpServers` array above is only a
-  // friendly-metadata fallback (categories/colors) for offline rendering.
   const { loadManifest, loadedManifests } = useDocsStore();
+
   useEffect(() => {
     if (!loadedManifests.has('mcp-servers')) {
       loadManifest('mcp-servers').catch(() => {});
     }
   }, [loadManifest, loadedManifests]);
 
-  // Authoritative server count from the generated manifest (one section per MCP).
-  const serverCount = useMemo(() => {
-    const m = loadedManifests.get('mcp-servers');
-    return m?.sections.length ?? mcpServers.length;
-  }, [loadedManifests]);
+  const manifest = loadedManifests.get('mcp-servers');
 
-  // Group by category (fallback metadata).
-  const categories = useMemo(
-    () => Array.from(new Set(mcpServers.map((s) => s.category))),
-    [],
-  );
+  // Server list + tool counts SOURCE-READ from the generated manifest (one
+  // section per oap-*-mcp dir). Friendly metadata is merged in by id.
+  const servers = useMemo<RenderServer[]>(() => {
+    if (!manifest) return [];
+    return manifest.sections.map((s) => {
+      const meta = SERVER_META[s.id] ?? DEFAULT_META;
+      return {
+        id: s.id,
+        displayName: meta.displayName || fallbackName(s.id),
+        category: meta.category,
+        color: meta.color,
+        toolCount: s.items.length,
+      };
+    });
+  }, [manifest]);
+
+  const serverCount = servers.length;
+  const totalTools = useMemo(() => servers.reduce((n, s) => n + s.toolCount, 0), [servers]);
+
+  // Categories in stable first-seen order, source-derived from the server list.
+  const categories = useMemo(() => {
+    const seen: string[] = [];
+    for (const s of servers) if (!seen.includes(s.category)) seen.push(s.category);
+    return seen;
+  }, [servers]);
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
@@ -182,38 +128,47 @@ const AvailableToolsPage: React.FC = () => {
           Available Tools
         </h1>
         <p className="text-lg leading-relaxed mb-6" style={{ color: 'var(--color-textSecondary)' }}>
-          OpenAgentic connects to {serverCount} MCP servers spanning cloud providers,
-          observability tools, development platforms, and internal services. Each server exposes
-          multiple tools that the AI can use to answer questions and perform actions.
+          {serverCount > 0 ? (
+            <>
+              OpenAgentic ships {serverCount} built-in MCP servers exposing {totalTools} tools,
+              spanning cloud providers, observability, development platforms, and internal
+              services. Each server exposes tools the AI can use to answer questions and perform
+              actions.
+            </>
+          ) : (
+            <>Loading the MCP server catalog…</>
+          )}
         </p>
       </motion.div>
 
       {/* Category Quick Nav */}
-      <motion.div
-        custom={1}
-        variants={sectionVariants}
-        initial="hidden"
-        animate="visible"
-        className="flex flex-wrap gap-2 mb-10"
-      >
-        {categories.map((cat) => {
-          const count = mcpServers.filter((s) => s.category === cat).length;
-          return (
-            <a
-              key={cat}
-              href={`#cat-${cat.toLowerCase()}`}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium"
-              style={{
-                backgroundColor: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-text)',
-              }}
-            >
-              {cat} ({count})
-            </a>
-          );
-        })}
-      </motion.div>
+      {categories.length > 0 && (
+        <motion.div
+          custom={1}
+          variants={sectionVariants}
+          initial="hidden"
+          animate="visible"
+          className="flex flex-wrap gap-2 mb-10"
+        >
+          {categories.map((cat) => {
+            const count = servers.filter((s) => s.category === cat).length;
+            return (
+              <a
+                key={cat}
+                href={`#cat-${cat.toLowerCase()}`}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium"
+                style={{
+                  backgroundColor: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text)',
+                }}
+              >
+                {cat} ({count})
+              </a>
+            );
+          })}
+        </motion.div>
+      )}
 
       {/* Servers by Category */}
       {categories.map((category, catIdx) => (
@@ -230,7 +185,7 @@ const AvailableToolsPage: React.FC = () => {
             {category}
           </h2>
           <div className="space-y-4">
-            {mcpServers
+            {servers
               .filter((s) => s.category === category)
               .map((server) => (
                 <div
@@ -247,7 +202,7 @@ const AvailableToolsPage: React.FC = () => {
                       style={{ backgroundColor: server.color }}
                     />
                     <h3 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>
-                      {server.name}
+                      {server.displayName}
                     </h3>
                     <span
                       className="text-xs font-mono px-2 py-0.5 rounded"
@@ -259,25 +214,21 @@ const AvailableToolsPage: React.FC = () => {
                     >
                       {server.id}
                     </span>
+                    <span
+                      className="text-xs font-medium px-2 py-0.5 rounded-full ml-auto"
+                      style={{
+                        backgroundColor: `color-mix(in srgb, ${server.color} 12%, transparent)`,
+                        color: server.color,
+                      }}
+                    >
+                      {server.toolCount} tool{server.toolCount === 1 ? '' : 's'}
+                    </span>
                   </div>
-                  <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--color-textSecondary)' }}>
-                    {server.description}
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--color-textSecondary)' }}>
+                    The <span className="font-mono">{server.id}</span> MCP server exposes{' '}
+                    {server.toolCount} tool{server.toolCount === 1 ? '' : 's'} to the agent. Open the
+                    MCP Servers reference for the full per-tool schema.
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    {server.capabilities.map((cap) => (
-                      <span
-                        key={cap}
-                        className="text-xs px-2 py-1 rounded-md"
-                        style={{
-                          backgroundColor: `${server.color}12`,
-                          color: server.color,
-                          border: `1px solid ${server.color}25`,
-                        }}
-                      >
-                        {cap}
-                      </span>
-                    ))}
-                  </div>
                 </div>
               ))}
           </div>
@@ -285,7 +236,7 @@ const AvailableToolsPage: React.FC = () => {
       ))}
 
       {/* OAT Section */}
-      <motion.section custom={10} variants={sectionVariants} initial="hidden" animate="visible">
+      <motion.section custom={categories.length + 2} variants={sectionVariants} initial="hidden" animate="visible">
         <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
           On-demand Agent Tooling (OAT)
         </h2>

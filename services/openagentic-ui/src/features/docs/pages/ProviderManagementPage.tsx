@@ -19,8 +19,9 @@ const ProviderManagementPage: React.FC = () => (
       </h1>
       <p style={{ fontSize: '15px', color: 'var(--color-textSecondary)', lineHeight: 1.7, maxWidth: '680px' }}>
         Administrators configure which LLM providers are available, set API keys, define
-        rate limits, and control which models map to each intelligence slider position.
-        Multiple providers can be active simultaneously for redundancy and cost optimization.
+        rate limits, and control which models the SmartModelRouter can route to for each
+        capability tier. Multiple providers can be active simultaneously for redundancy and
+        cost optimization.
       </p>
     </motion.div>
 
@@ -54,7 +55,7 @@ const ProviderManagementPage: React.FC = () => (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {[
           { title: 'API Key Management', body: 'API keys are stored encrypted at rest using AES-256. Keys can be rotated without downtime. The system supports multiple keys per provider for load distribution.' },
-          { title: 'Model Routing Rules', body: 'Define which models are available at each intelligence slider position. Set fallback chains so if a primary model is unavailable, requests automatically route to the next provider.' },
+          { title: 'Model Routing Rules', body: 'Define which models the SmartModelRouter can route to for each capability tier. Set fallback chains so if a primary model is unavailable, requests automatically route to the next provider.' },
           { title: 'Rate Limits & Budgets', body: 'Set per-provider rate limits (requests/min, tokens/day) and cost budgets (monthly spend caps). The system alerts admins when approaching limits and can auto-disable providers.' },
         ].map((item) => (
           <div key={item.title} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '20px 24px' }}>

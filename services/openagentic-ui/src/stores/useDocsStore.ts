@@ -19,6 +19,7 @@ export interface DocsIndexDomain {
 
 export interface DocsIndex {
   version: string;
+  codename?: string;
   generatedAt: string;
   domains: DocsIndexDomain[];
   categories: string[];
@@ -134,6 +135,7 @@ export const useDocsStore = create<DocsStore>()(
 
           const index: DocsIndex = {
             version: raw.version || '0.0.0',
+            codename: raw.codename || '',
             generatedAt: raw.generatedAt || new Date().toISOString(),
             domains,
             categories: categoryIds,

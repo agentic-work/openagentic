@@ -19,6 +19,7 @@
 import type { DomainConfig } from './types';
 
 import { mcpTools } from './extractors/mcpTools';
+import { agentTypes } from './extractors/agentTypes';
 import { flowTemplates } from './extractors/flowTemplates';
 import { workflowNodes } from './extractors/workflowNodes';
 import { composeServices } from './extractors/composeServices';
@@ -26,6 +27,8 @@ import { routeDecorators } from './extractors/routeDecorators';
 import { t1Registry } from './extractors/t1Registry';
 import { tsConstExport } from './extractors/tsConstExport';
 import { helmChart } from './extractors/helmChart';
+import { changelog } from './extractors/changelog';
+import { platformSummary } from './extractors/platformSummary';
 
 import {
   requireMinCount,
@@ -75,6 +78,31 @@ export const DOMAINS: DomainConfig[] = [
     invariants: [
       requireAllDirsMatching('services/mcps/oap-*-mcp', { idFrom: 'dirname' }),
       requireMinCount(14),
+      requireFieldNonEmpty('description'),
+      requireNoneMatching(REMOVED_FEATURE_PATTERNS),
+    ],
+  },
+
+  // ── Built-in agent types (api built-in agent *.md) ───────────────────────
+  // Source-derives the built-in sub-agent personas the supervisor delegates to,
+  // so the docs' agent-type count + list track the on-disk agent set (which the
+  // API's BUILT_IN_AGENT_SLUGS test pins to this same directory) instead of the
+  // hand-typed "11 agent types" the pages had drifted to.
+  {
+    domain: 'agent-types',
+    title: 'Agent Types',
+    description:
+      'Built-in sub-agent personas the supervisor can delegate to, source-derived from the API built-in agent directory.',
+    icon: 'agent',
+    category: 'agents',
+    extractor: agentTypes({
+      dir: 'services/openagentic-api/src/agents/built-in',
+    }),
+    invariants: [
+      requireFileSetMatches(
+        'services/openagentic-api/src/agents/built-in/*.md',
+      ),
+      requireMinCount(8),
       requireFieldNonEmpty('description'),
       requireNoneMatching(REMOVED_FEATURE_PATTERNS),
     ],
@@ -215,6 +243,51 @@ export const DOMAINS: DomainConfig[] = [
     }),
     invariants: [
       requireMinCount(3),
+      requireFieldNonEmpty('description'),
+      requireNoneMatching(REMOVED_FEATURE_PATTERNS),
+    ],
+  },
+
+  // ── Changelog (version.json release history) ──────────────────────────────
+  // Source-derives the release notes the ChangelogPage used to hand-maintain
+  // (and which had drifted from version.json). Emitting it makes the changelog
+  // a generated FACT; the sync-guard pins the current version to version.json.
+  {
+    domain: 'changelog',
+    title: 'Changelog',
+    description:
+      'Release history, source-derived from version.json (the version SoT).',
+    icon: 'brain',
+    category: 'core',
+    extractor: changelog({ path: 'version.json' }),
+    invariants: [
+      requireMinCount(5),
+      requireFieldNonEmpty('description'),
+      // changelog text could re-introduce removed-feature prose; the item IDs
+      // are synthetic, so the full-text scan in no-removed-features.test.ts is
+      // the real guard — this catches a removed id sneaking into a version slug.
+      requireNoneMatching(REMOVED_FEATURE_PATTERNS),
+    ],
+  },
+
+  // ── Platform summary (headline counts + version) ──────────────────────────
+  // The canonical numbers docs pages quote ("14 MCP servers", the version
+  // string). Generated from the real source so they cannot be hand-typed stale.
+  {
+    domain: 'platform-summary',
+    title: 'Platform Summary',
+    description:
+      'Canonical headline counts + version, source-derived on every build.',
+    icon: 'brain',
+    category: 'core',
+    extractor: platformSummary({
+      versionPath: 'version.json',
+      mcpDir: 'services/mcps',
+      flowTemplatesDir: 'services/openagentic-workflows/seed/templates',
+      composePath: 'docker-compose.yml',
+    }),
+    invariants: [
+      requireMinCount(4),
       requireFieldNonEmpty('description'),
       requireNoneMatching(REMOVED_FEATURE_PATTERNS),
     ],

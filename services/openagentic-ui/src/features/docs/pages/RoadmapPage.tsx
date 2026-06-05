@@ -1,71 +1,23 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';
 import { DocsFlowIcon } from '../components/DocsIcons';
+import { useDocsStore } from '@/stores/useDocsStore';
 
-// ============================================================================
-// TIMELINE DIAGRAM
-// ============================================================================
-
-const timelineDiagram: DiagramDefinition = {
-  type: 'timeline',
-  title: 'OpenAgentic Roadmap Timeline',
-  description: 'Milestones from v0.7 through v1.0',
-  layout: 'horizontal',
-  nodes: [
-    { id: 'v10', label: `v${import.meta.env.VITE_APP_VERSION || '1.0.0'}`, description: `Current: ${import.meta.env.VITE_CODENAME || 'Open Field'}`, shape: 'rounded', color: 'green' },
-    { id: 'v08', label: 'v0.8.0', description: 'A2A + Marketplace', shape: 'rounded', color: 'primary' },
-    { id: 'v09', label: 'v0.9.0', description: 'FedRAMP + SOC 2', shape: 'rounded', color: 'purple' },
-    { id: 'v10', label: 'v1.0.0', description: 'General Availability', shape: 'rounded', color: 'cyan' },
-  ],
-  edges: [
-    { source: 'v071', target: 'v08', animated: true },
-    { source: 'v08', target: 'v09' },
-    { source: 'v09', target: 'v10' },
-  ],
-};
+/**
+ * RoadmapPage — forward-looking vision + the just-shipped release, with all
+ * version-bearing + "just shipped" content SOURCE-READ from generated FACTS:
+ *   - the current version/codename comes from the docs index (version.json).
+ *   - the "Latest Release" highlights come from the generated changelog manifest
+ *     (changelog.json → derived from version.json), NOT a hand-typed array that
+ *     drifts.
+ * The planned-features + vision pillars below are genuine forward-looking
+ * narrative (not facts derivable from source), so they stay hand-written.
+ */
 
 // ============================================================================
 // DATA
 // ============================================================================
-
-const currentReleaseHighlights: ReadonlyArray<{ title: string; description: string }> = [
-  {
-    title: 'Enterprise chatmode (Claude-Code-grade)',
-    description:
-      'Single chatmode pipeline, 12 T1 primitives (tool_search, agent_search, Task, agent_send/list/stop, read_large_result, web_search, web_fetch, synth, pattern_save, pattern_recall), per-T1 description builders, full SDK canonical events.',
-  },
-  {
-    title: 'Glob-based permissions UI',
-    description:
-      "Claude-Code allow/deny/ask rules replace the legacy regex-tier ToolApprovalGate. Admin editor at /admin#tool-permissions. 48/48 TDD'd.",
-  },
-  {
-    title: 'Inline tool-result summary',
-    description:
-      'Completed tool cards now show "· N items" / "· N subscriptions" inline in the header (mock 01 §863 contract). Drillable INPUT/RESULT body preserved.',
-  },
-  {
-    title: 'Learned patterns memory',
-    description:
-      'learned_patterns Milvus collection (model-write-only via pattern_save, RBAC-filtered recall via pattern_recall). Exemplars, not prescriptions. DLP-redacted at write.',
-  },
-  {
-    title: 'LargeResultStorage end-to-end',
-    description:
-      'Redis-backed offload at 30KB threshold with auto-tokens ({{count}}/{{sample_names}}) in 9 cloud-list seed templates. Handle survives multi-pod restarts via Redis (48h TTL).',
-  },
-  {
-    title: 'OBO end-to-end',
-    description:
-      'AD User → Azure access_token → MCP user-identity 1-1. 6-case real TDD harness pins the wire-in (commit 6df31d57).',
-  },
-  {
-    title: 'Admin-configurable max_turns',
-    description:
-      'chat_loop.max_turns knob in SystemConfiguration. Default 24, range [4, 100]. No more silent 12-turn cap on capstone work.',
-  },
-];
 
 const v08PlannedFeatures = [
   {
@@ -91,23 +43,6 @@ const v08PlannedFeatures = [
     description:
       'A curated library of pre-built workflow templates for common enterprise tasks. Import, customize, and share workflows across teams and organizations.',
     status: 'Planned',
-  },
-];
-
-const pastReleases: ReadonlyArray<{ version: string; codename: string; date: string; summary: string }> = [
-  {
-    version: '0.7.0',
-    codename: 'Atlas Donzo',
-    date: 'April 2026',
-    summary:
-      'Universal admin chrome, theme audit + sweep (0 leaks/contrast/undefined), AIF non-stream Responses API for gpt-5-pro / gpt-5-codex / o-pro, animated [openagentic] wordmark.',
-  },
-  {
-    version: '0.6.6',
-    codename: 'No Backdoor',
-    date: 'April 2026',
-    summary:
-      'HITL backdoor deleted, DLP pre-LLM redaction, synth_execute, tenant isolation (RLS + MilvusAuditGuard + DataAccessAuditService), AWS MCP 8→31, GCP MCP 28→46.',
   },
 ];
 
@@ -200,7 +135,92 @@ const cardDescStyle: React.CSSProperties = {
 // COMPONENT
 // ============================================================================
 
+interface ReleaseHighlight {
+  title: string;
+  description: string;
+}
+
 const RoadmapPage: React.FC = () => {
+  const { loadManifest, loadedManifests, index } = useDocsStore();
+
+  useEffect(() => {
+    if (!loadedManifests.has('changelog')) {
+      loadManifest('changelog').catch(() => {});
+    }
+  }, [loadManifest, loadedManifests]);
+
+  // Current version + codename SOURCE-READ from the docs index (version.json).
+  const version = index?.version ?? '1.0.0';
+  const codename = index?.codename ?? '';
+
+  // Latest-release highlights SOURCE-READ from the generated changelog manifest
+  // (its first section is the current release). No hand-typed "just shipped" copy.
+  const changelogManifest = loadedManifests.get('changelog');
+  const latest = useMemo(() => {
+    const sec = changelogManifest?.sections?.[0];
+    if (!sec) return null;
+    const codenameFromTitle = sec.title.includes('—')
+      ? sec.title.split('—')[1].trim()
+      : '';
+    const highlights: ReleaseHighlight[] = sec.items
+      .filter((it) => (it.properties?.kind ?? 'highlight') === 'highlight')
+      .map((it) => ({
+        title: it.name,
+        description: it.description ?? it.name,
+      }));
+    return {
+      versionLabel: sec.title.replace(/^v/, '').split('—')[0].trim(),
+      codename: codenameFromTitle,
+      highlights,
+    };
+  }, [changelogManifest]);
+
+  // Past releases SOURCE-READ from the changelog manifest (every section after
+  // the current one). The summary is the first few highlights joined — no
+  // hand-typed per-release prose.
+  const pastReleases = useMemo(() => {
+    const secs = changelogManifest?.sections ?? [];
+    return secs.slice(1, 5).map((sec) => {
+      const desc = sec.description ?? '';
+      const codenameMatch = desc.match(/[“"]([^”"]+)[”"]/);
+      const dateMatch = desc.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+      const highlights = sec.items
+        .filter((it) => (it.properties?.kind ?? 'highlight') === 'highlight')
+        .slice(0, 3)
+        .map((it) => it.name);
+      return {
+        id: sec.id,
+        version: sec.title.replace(/^v/, '').split('—')[0].trim(),
+        codename: codenameMatch?.[1] ?? '',
+        date: dateMatch?.[1] ?? '',
+        summary: highlights.join(' · ') || (sec.items[0]?.description ?? ''),
+      };
+    });
+  }, [changelogManifest]);
+
+  // Timeline derived from the current version forward — current is a generated
+  // FACT; the GA/compliance milestones are the forward-looking plan.
+  const timelineDiagram = useMemo<DiagramDefinition>(
+    () => ({
+      type: 'timeline',
+      title: 'OpenAgentic Roadmap Timeline',
+      description: `Milestones from v${version} forward`,
+      layout: 'horizontal',
+      nodes: [
+        { id: 'current', label: `v${version}`, description: `Current: ${codename || 'latest'}`, shape: 'rounded', color: 'green' },
+        { id: 'a2a', label: 'A2A + Marketplace', description: 'Inter-agent + ecosystem', shape: 'rounded', color: 'primary' },
+        { id: 'compliance', label: 'FedRAMP + SOC 2', description: 'Compliance coverage', shape: 'rounded', color: 'purple' },
+        { id: 'ga', label: 'General Availability', description: 'GA milestone', shape: 'rounded', color: 'cyan' },
+      ],
+      edges: [
+        { source: 'current', target: 'a2a', animated: true },
+        { source: 'a2a', target: 'compliance' },
+        { source: 'compliance', target: 'ga' },
+      ],
+    }),
+    [version, codename],
+  );
+
   const fadeUp = useMemo(
     () => ({
       initial: { opacity: 0, y: 20 },
@@ -256,7 +276,7 @@ const RoadmapPage: React.FC = () => {
             letterSpacing: '0.04em',
           }}
         >
-          Current: v{import.meta.env.VITE_APP_VERSION || '1.0.0'} {import.meta.env.VITE_CODENAME || 'Open Field'}
+          Current: v{version}{codename ? ` ${codename}` : ''}
         </span>
       </motion.section>
 
@@ -272,8 +292,8 @@ const RoadmapPage: React.FC = () => {
         <p style={sectionHeadingStyle}>Timeline</p>
         <h2 style={sectionTitleStyle}>Release Milestones</h2>
         <p style={{ ...sectionDescStyle, marginBottom: '32px' }}>
-          The path from the current v{import.meta.env.VITE_APP_VERSION || '1.0.0'} {import.meta.env.VITE_CODENAME || 'Open Field'} release through general availability.
-          Each release builds on the previous, expanding protocol support,
+          The path from the current v{version}{codename ? ` ${codename}` : ''} release through general
+          availability. Each release builds on the previous, expanding protocol support,
           compliance coverage, and ecosystem depth.
         </p>
 
@@ -287,70 +307,60 @@ const RoadmapPage: React.FC = () => {
       </motion.section>
 
       {/* ================================================================
-          JUST SHIPPED — v0.7.1 AGENTICHAT
+          LATEST RELEASE — source-read from the generated changelog manifest
           ================================================================ */}
-      <motion.section
-        style={sectionStyle}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-      >
-        <p style={sectionHeadingStyle}>Just Shipped</p>
-        <h2 style={sectionTitleStyle}>v0.7.1 AGENTICHAT — shipped today</h2>
-        <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
-          The chatmode-rip enterprise upgrade — single Claude-Code-grade
-          pipeline, 12 T1 primitives, glob permissions, learned patterns,
-          Redis-backed large-result offload, OBO end-to-end, and admin-configurable max_turns.
-        </p>
+      {latest && latest.highlights.length > 0 && (
+        <motion.section
+          style={sectionStyle}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+        >
+          <p style={sectionHeadingStyle}>Latest Release</p>
+          <h2 style={sectionTitleStyle}>
+            v{latest.versionLabel}{latest.codename ? ` — ${latest.codename}` : ''}
+          </h2>
+          <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
+            The highlights of the current release, source-derived from{' '}
+            <code>version.json</code>. See the full Changelog for every prior release.
+          </p>
 
-        <img
-          src="/agentichat.png"
-          alt="AGENTICHAT — v0.7.1"
-          style={{
-            width: '100%',
-            maxHeight: 320,
-            objectFit: 'cover',
-            borderRadius: 12,
-            border: '1px solid var(--color-border)',
-            marginBottom: 24,
-          }}
-        />
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-          {currentReleaseHighlights.map((feature, i) => (
-            <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 + i * 0.05, duration: 0.35 }}
-              style={cardStyle}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                <h4 style={{ ...cardTitleStyle, marginBottom: 0 }}>{feature.title}</h4>
-                <span
-                  style={{
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    color: 'var(--color-success)',
-                    background: 'color-mix(in srgb, var(--color-success) 12%, transparent)',
-                    border: '1px solid color-mix(in srgb, var(--color-success) 25%, transparent)',
-                    borderRadius: '4px',
-                    padding: '2px 8px',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                  }}
-                >
-                  Shipped
-                </span>
-              </div>
-              <p style={cardDescStyle}>{feature.description}</p>
-            </motion.div>
-          ))}
-        </div>
-      </motion.section>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+            {latest.highlights.map((feature, i) => (
+              <motion.div
+                key={`${feature.title}-${i}`}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 + i * 0.05, duration: 0.35 }}
+                style={cardStyle}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <h4 style={{ ...cardTitleStyle, marginBottom: 0 }}>{feature.title}</h4>
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      color: 'var(--color-success)',
+                      background: 'color-mix(in srgb, var(--color-success) 12%, transparent)',
+                      border: '1px solid color-mix(in srgb, var(--color-success) 25%, transparent)',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    Shipped
+                  </span>
+                </div>
+                <p style={cardDescStyle}>{feature.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
+      )}
 
       {/* ================================================================
-          v0.8.0 PLANNED FEATURES
+          PLANNED FEATURES
           ================================================================ */}
       <motion.section
         style={sectionStyle}
@@ -358,8 +368,8 @@ const RoadmapPage: React.FC = () => {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3, duration: 0.5 }}
       >
-        <p style={sectionHeadingStyle}>Next Release</p>
-        <h2 style={sectionTitleStyle}>v0.8.0 Planned Features</h2>
+        <p style={sectionHeadingStyle}>Next Up</p>
+        <h2 style={sectionTitleStyle}>Planned Features</h2>
         <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
           The next major release focuses on inter-agent communication,
           multi-tenant isolation, and ecosystem depth.
@@ -399,46 +409,50 @@ const RoadmapPage: React.FC = () => {
       </motion.section>
 
       {/* ================================================================
-          PAST RELEASES
+          PAST RELEASES — source-read from the generated changelog manifest
           ================================================================ */}
-      <motion.section
-        style={sectionStyle}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.35, duration: 0.5 }}
-      >
-        <p style={sectionHeadingStyle}>History</p>
-        <h2 style={sectionTitleStyle}>Past Releases</h2>
-        <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
-          Prior shipped releases. See the full Changelog for every version
-          since v0.1.0 Genesis.
-        </p>
+      {pastReleases.length > 0 && (
+        <motion.section
+          style={sectionStyle}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35, duration: 0.5 }}
+        >
+          <p style={sectionHeadingStyle}>History</p>
+          <h2 style={sectionTitleStyle}>Past Releases</h2>
+          <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
+            Prior shipped releases, source-derived from <code>version.json</code>. See the full
+            Changelog for every recorded version.
+          </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-          {pastReleases.map((rel, i) => (
-            <motion.div
-              key={rel.version}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 + i * 0.06, duration: 0.35 }}
-              style={cardStyle}
-            >
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
-                <h4 style={{ ...cardTitleStyle, marginBottom: 0 }}>
-                  v{rel.version}
-                </h4>
-                <span style={{ fontSize: '12px', color: 'var(--color-textMuted)' }}>
-                  {rel.codename}
-                </span>
-                <span style={{ fontSize: '11px', color: 'var(--color-textMuted)', marginLeft: 'auto' }}>
-                  {rel.date}
-                </span>
-              </div>
-              <p style={cardDescStyle}>{rel.summary}</p>
-            </motion.div>
-          ))}
-        </div>
-      </motion.section>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+            {pastReleases.map((rel, i) => (
+              <motion.div
+                key={rel.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 + i * 0.06, duration: 0.35 }}
+                style={cardStyle}
+              >
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
+                  <h4 style={{ ...cardTitleStyle, marginBottom: 0 }}>v{rel.version}</h4>
+                  {rel.codename && (
+                    <span style={{ fontSize: '12px', color: 'var(--color-textMuted)' }}>
+                      {rel.codename}
+                    </span>
+                  )}
+                  {rel.date && (
+                    <span style={{ fontSize: '11px', color: 'var(--color-textMuted)', marginLeft: 'auto' }}>
+                      {rel.date}
+                    </span>
+                  )}
+                </div>
+                <p style={cardDescStyle}>{rel.summary}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
+      )}
 
       {/* ================================================================
           PLATFORM VISION

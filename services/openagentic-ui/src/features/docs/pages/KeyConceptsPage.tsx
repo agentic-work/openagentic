@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useDocsStore } from '@/stores/useDocsStore';
 import {
@@ -11,8 +11,16 @@ import {
   DocsCodeIcon,
 } from '../components/DocsIcons';
 
+/**
+ * KeyConceptsPage — conceptual narrative stays hand-written, but every embedded
+ * COUNT (agent types, MCP servers, node types) is SOURCE-READ from the generated
+ * manifests (agent-types.json / mcp-servers.json / node-types.json), and the
+ * agent-types reference table is rendered straight from agent-types.json so it
+ * always reflects the real built-in agent set on disk.
+ */
+
 // ============================================================================
-// CONCEPTS DATA
+// CONCEPTS DATA — `detail` is a builder so embedded counts come from source
 // ============================================================================
 
 interface Concept {
@@ -24,14 +32,15 @@ interface Concept {
   linkPage: string;
 }
 
-const concepts: Concept[] = [
+function buildConcepts(agentCount: number, mcpCount: number, nodeCount: number): Concept[] {
+  return [
   {
     title: 'Agents',
     slug: 'agents',
     icon: DocsAgentIcon,
     summary: 'Specialized AI personas that handle different types of tasks.',
     detail:
-      'OpenAgentic has 11 agent types, each with its own system prompt and tool access. All agents use the SmartRouter for dynamic model selection based on configured providers. The orchestrator analyzes incoming requests and delegates to the right specialist — a reasoning agent for complex tasks, a code_execution agent for programming, a data_query agent for analysis, and so on. Agents can invoke MCP tools and return structured results.',
+      `OpenAgentic ships ${agentCount} built-in agent types, each with its own system prompt and tool access. All agents use the SmartRouter for dynamic model selection based on configured providers. The orchestrator analyzes incoming requests and delegates to the right specialist — a reasoning agent for complex tasks, a code-execution agent for programming, a data-query agent for analysis, and so on. Agents can invoke MCP tools and return structured results.`,
     linkPage: 'agent-delegation',
   },
   {
@@ -40,7 +49,7 @@ const concepts: Concept[] = [
     icon: DocsToolIcon,
     summary: 'A standardized protocol for connecting AI models to external tools and data sources.',
     detail:
-      'MCP is an open protocol that defines how language models discover, invoke, and receive results from external tools. OpenAgentic runs 14 MCP servers that provide access to Azure, AWS, Kubernetes, GitHub, databases, web search, knowledge bases, and more. Tools are selected automatically via vector similarity matching.',
+      `MCP is an open protocol that defines how language models discover, invoke, and receive results from external tools. OpenAgentic ships ${mcpCount} MCP servers that provide access to Azure, AWS, GCP, Kubernetes, GitHub, Prometheus, Loki, web search, and more. Tools are selected automatically via vector similarity matching.`,
     linkPage: 'what-is-mcp',
   },
   {
@@ -49,14 +58,14 @@ const concepts: Concept[] = [
     icon: DocsBrainIcon,
     summary: 'The multi-stage request processing chain that every message traverses.',
     detail:
-      'Every chat message passes through 10 discrete stages: Auth, Validation, RAG, Memory, Prompt, MCP, Agents, MessagePreparation, Completion, and Response. Each stage can enrich context, short-circuit with an error, or transform the request.',
+      'Every chat message passes through discrete pipeline stages: Auth, Validation, RAG, Memory, Prompt, MCP, Agents, MessagePreparation, Completion, and Response. Each stage can enrich context, short-circuit with an error, or transform the request.',
     linkPage: 'how-chat-works',
   },
   {
     title: 'Workflows / Flows',
     slug: 'flows',
     icon: DocsFlowIcon,
-    summary: 'Visual drag-and-drop automation pipelines with 34 node types.',
+    summary: `Visual drag-and-drop automation pipelines with ${nodeCount} node types.`,
     detail:
       'Flows let you build multi-step automation without code. Connect AI tasks, data transformations, API calls, conditional branches, loops, and human approval gates in a visual canvas. Flows can be triggered on a schedule (cron), via webhooks, or through the API. The engine supports parallel execution and error handling.',
     linkPage: 'flow-builder',
@@ -88,25 +97,8 @@ const concepts: Concept[] = [
       'The DLP scanner runs on both inbound and outbound messages, checking for PII (names, emails, phone numbers, SSNs), credentials (API keys, passwords, tokens), and custom patterns defined by administrators. When a match is found, the system can redact the data, warn the user, or block the message entirely.',
     linkPage: 'dlp-scanner',
   },
-];
-
-// ============================================================================
-// AGENT TYPES (static fallback; enriched by manifest when loaded)
-// ============================================================================
-
-const agentTypes = [
-  { name: 'data_query', purpose: 'Queries stored datasets (fast, simple)', model: 'Auto (SmartRouter)' },
-  { name: 'data_extraction', purpose: 'Extracts/filters data from large responses', model: 'Auto (SmartRouter)' },
-  { name: 'tool_orchestration', purpose: 'Decides which tools to call', model: 'Auto (SmartRouter)' },
-  { name: 'reasoning', purpose: 'Complex multi-step reasoning', model: 'Auto (SmartRouter)' },
-  { name: 'summarization', purpose: 'Summarizes large content', model: 'Auto (SmartRouter)' },
-  { name: 'code_execution', purpose: 'Code generation/execution', model: 'Auto (SmartRouter)' },
-  { name: 'planning', purpose: 'Plans multi-step tasks', model: 'Auto (SmartRouter)' },
-  { name: 'validation', purpose: 'Validates tool outputs', model: 'Auto (SmartRouter)' },
-  { name: 'synthesis', purpose: 'Synthesizes final response', model: 'Auto (SmartRouter)' },
-  { name: 'artifact_creation', purpose: 'Visual artifact generation (dashboards, reports, diagrams)', model: 'Auto (SmartRouter)' },
-  { name: 'custom', purpose: 'Custom agent type', model: 'Auto (SmartRouter)' },
-];
+  ];
+}
 
 // ============================================================================
 // STYLES
@@ -140,17 +132,46 @@ const proseStyle: React.CSSProperties = {
 // COMPONENT
 // ============================================================================
 
+interface AgentRow {
+  name: string;
+  purpose: string;
+  model: string;
+}
+
 const KeyConceptsPage: React.FC = () => {
   const { loadManifest, loadedManifests } = useDocsStore();
 
-  // Attempt to load agent manifest for enriched data
+  // Load the source-derived manifests that back the counts + the agent table.
   useEffect(() => {
-    if (!loadedManifests.has('agents')) {
-      loadManifest('agents').catch(() => {
-        /* manifest may not exist yet */
-      });
+    for (const d of ['agent-types', 'mcp-servers', 'node-types']) {
+      if (!loadedManifests.has(d)) loadManifest(d).catch(() => {});
     }
   }, [loadManifest, loadedManifests]);
+
+  const agentManifest = loadedManifests.get('agent-types');
+  const mcpManifest = loadedManifests.get('mcp-servers');
+  const nodeManifest = loadedManifests.get('node-types');
+
+  const agentCount =
+    agentManifest?.sections.reduce((n, s) => n + s.items.length, 0) ?? 8;
+  const mcpCount = mcpManifest?.sections.length ?? 14;
+  const nodeCount =
+    nodeManifest?.sections.reduce((n, s) => n + s.items.length, 0) ?? 71;
+
+  const concepts = useMemo(
+    () => buildConcepts(agentCount, mcpCount, nodeCount),
+    [agentCount, mcpCount, nodeCount],
+  );
+
+  // Agent-types table rendered straight from the generated manifest.
+  const agentTypes = useMemo<AgentRow[]>(() => {
+    const items = agentManifest?.sections.flatMap((s) => s.items) ?? [];
+    return items.map((it) => ({
+      name: it.name,
+      purpose: (it.description ?? '').replace(/^USE WHEN\s*/i, '').split('.')[0].slice(0, 120),
+      model: 'Auto (SmartRouter)',
+    }));
+  }, [agentManifest]);
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 32px 96px' }}>
@@ -255,7 +276,7 @@ const KeyConceptsPage: React.FC = () => {
         <p style={sectionHeadingStyle}>Reference</p>
         <h2 style={sectionTitleStyle}>Agent Types</h2>
         <p style={{ ...proseStyle, marginBottom: '24px' }}>
-          The platform includes 11 agent types. Each has a tuned system prompt
+          The platform includes {agentCount} built-in agent types. Each has a tuned system prompt
           and curated tool access. All agents use the SmartRouter for model selection.
         </p>
 

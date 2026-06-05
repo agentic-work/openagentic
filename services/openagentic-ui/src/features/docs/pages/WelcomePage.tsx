@@ -1,8 +1,16 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';
 import { useDocsStore } from '@/stores/useDocsStore';
 import { OpenAgenticWordmark } from '@/shared/components/OpenAgenticWordmark';
+
+/**
+ * WelcomePage — the docs landing page. Genuine narrative prose stays
+ * hand-written, but every embedded FACT (MCP server count, agent-type count,
+ * node-type count, the version/codename pill) is SOURCE-READ from the generated
+ * manifests (platform-summary.json / node-types.json / agent-types.json), so it
+ * tracks the real source instead of drifting hand-typed numbers.
+ */
 
 // ============================================================================
 // CSS KEYFRAMES (injected once)
@@ -45,13 +53,14 @@ const keyframesCSS = `
 // ARCHITECTURE DIAGRAM
 // ============================================================================
 
-const architectureDiagram: DiagramDefinition = {
+function buildArchitectureDiagram(mcpCount: number, agentCount: number): DiagramDefinition {
+  return {
   type: 'architecture',
   title: 'OpenAgentic System Architecture',
   description: 'Request flow from user input to response generation',
   layout: 'vertical',
   nodes: [
-    { id: 'user', label: 'User', description: 'Chat / Code / Flows', shape: 'rounded', color: 'primary' },
+    { id: 'user', label: 'User', description: 'Chat / Flows', shape: 'rounded', color: 'primary' },
     { id: 'frontend', label: 'Frontend', description: 'React SPA', shape: 'rounded', color: 'blue' },
     { id: 'auth', label: 'Auth', description: 'SSO / API Key', shape: 'rounded', color: 'gray' },
     { id: 'validation', label: 'Validation', description: 'Input guards', shape: 'rounded', color: 'gray' },
@@ -60,8 +69,8 @@ const architectureDiagram: DiagramDefinition = {
     { id: 'memory', label: 'Memory', description: 'Conversation context', shape: 'rounded', color: 'purple' },
     { id: 'prompt', label: 'Prompt Builder', description: 'System prompt assembly', shape: 'rounded', color: 'indigo' },
     { id: 'router', label: 'Model Router', description: 'Capability + budget caps', shape: 'diamond', color: 'orange' },
-    { id: 'mcp-proxy', label: 'MCP Proxy', description: '14 MCP servers', shape: 'server', color: 'orange' },
-    { id: 'openagentic-proxy', label: 'Agent Proxy', description: '11 agent types', shape: 'server', color: 'purple' },
+    { id: 'mcp-proxy', label: 'MCP Proxy', description: `${mcpCount} MCP servers`, shape: 'server', color: 'orange' },
+    { id: 'openagentic-proxy', label: 'Agent Proxy', description: `${agentCount} agent types`, shape: 'server', color: 'purple' },
     { id: 'completion', label: 'LLM Completion', description: 'Multi-provider', shape: 'rounded', color: 'green' },
     { id: 'response', label: 'Response', description: 'Streaming to client', shape: 'rounded', color: 'primary' },
     { id: 'db', label: 'PostgreSQL', description: 'pgvector + metadata', shape: 'database', color: 'blue' },
@@ -85,7 +94,8 @@ const architectureDiagram: DiagramDefinition = {
     { source: 'rag', target: 'milvus', style: 'dashed', color: 'cyan' },
     { source: 'memory', target: 'redis', style: 'dashed', color: 'red' },
   ],
-};
+  };
+}
 
 // ============================================================================
 // MODE CARDS DATA
@@ -102,7 +112,8 @@ interface ModeData {
 
 // theme-allow: per-feature illustration identity gradients + glow hues + gradient SVG
 // icons below (decorative feature-card art, same carve-out as the illustration palettes).
-const modes: ModeData[] = [
+function buildModes(nodeCount: number): ModeData[] {
+  return [
   {
     title: 'Chat',
     tagline: 'Conversational AI that selects the right model and tools for every message.',
@@ -131,7 +142,7 @@ const modes: ModeData[] = [
   },
   {
     title: 'Flows',
-    tagline: 'Visual workflow canvas with 34 node types and scheduled execution.',
+    tagline: `Visual workflow canvas with ${nodeCount} node types and scheduled execution.`,
     bullets: [
       'Drag-and-drop orchestration of AI pipelines',
       'Conditional branching, loops, human approvals',
@@ -155,7 +166,8 @@ const modes: ModeData[] = [
       </svg>
     ),
   },
-];
+  ];
+}
 
 // ============================================================================
 // CAPABILITIES DATA
@@ -169,7 +181,8 @@ interface CapabilityData {
   iconSvg: React.ReactNode;
 }
 
-const capabilities: CapabilityData[] = [
+function buildCapabilities(mcpCount: number, agentCount: number, nodeCount: number): CapabilityData[] {
+  return [
   {
     title: 'Multi-Model Routing',
     description: 'Route requests across providers with per-user × per-model budget caps.',
@@ -189,8 +202,8 @@ const capabilities: CapabilityData[] = [
   {
     title: 'MCP Tools',
     description: 'Access external services through the Model Context Protocol standard.',
-    badge: '16 servers',
-    hoverDetail: 'Azure, AWS, Kubernetes, GitHub, Jira, databases, web search, and more.',
+    badge: `${mcpCount} servers`,
+    hoverDetail: 'Azure, AWS, Kubernetes, GitHub, Prometheus, Loki, web search, and more.',
     iconSvg: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
         <defs><linearGradient id="capTool" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#F59E0B" /><stop offset="100%" stopColor="#FBBF24" /></linearGradient></defs>
@@ -201,8 +214,8 @@ const capabilities: CapabilityData[] = [
   {
     title: 'Agent Delegation',
     description: 'Specialist agents handle research, code, analysis, and creative tasks.',
-    badge: '11 types',
-    hoverDetail: 'Research, code generation, data analysis, creative writing, and more.',
+    badge: `${agentCount} types`,
+    hoverDetail: 'Reasoning, code execution, data query, planning, synthesis, and more.',
     iconSvg: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
         <defs><linearGradient id="capAgent" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#A78BFA" /><stop offset="100%" stopColor="#7C3AED" /></linearGradient></defs>
@@ -215,7 +228,7 @@ const capabilities: CapabilityData[] = [
   {
     title: 'Visual Workflows',
     description: 'Build automated pipelines with branching, loops, and human gates.',
-    badge: '34 nodes',
+    badge: `${nodeCount} nodes`,
     hoverDetail: 'Conditional logic, parallel execution, LLM calls, API calls, transforms.',
     iconSvg: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -253,7 +266,8 @@ const capabilities: CapabilityData[] = [
       </svg>
     ),
   },
-];
+  ];
+}
 
 // ============================================================================
 // EXAMPLE QUESTIONS
@@ -293,6 +307,53 @@ const sectionReveal = {
 
 const WelcomePage: React.FC = () => {
   const toggleChat = useDocsStore((s) => s.toggleChat);
+  const { loadManifest, loadedManifests, index } = useDocsStore();
+
+  // Load the source-derived manifests that back the embedded facts.
+  useEffect(() => {
+    for (const d of ['platform-summary', 'node-types', 'agent-types']) {
+      if (!loadedManifests.has(d)) loadManifest(d).catch(() => {});
+    }
+  }, [loadManifest, loadedManifests]);
+
+  // Headline counts SOURCE-READ from the generated manifests.
+  const counts = useMemo(() => {
+    const summary = loadedManifests.get('platform-summary');
+    const summaryItems = summary?.sections?.[0]?.items ?? [];
+    const findCount = (id: string) =>
+      Number((summaryItems.find((i) => i.id === id)?.properties as { value?: number } | undefined)?.value ?? 0);
+
+    const mcpFromSummary = findCount('mcp-server-count');
+    const mcp = mcpFromSummary || (loadedManifests.get('mcp-servers')?.sections.length ?? 14);
+
+    const nodeTypes = loadedManifests.get('node-types');
+    const nodeCount =
+      nodeTypes?.sections.reduce((n, s) => n + s.items.length, 0) ?? 0;
+
+    const agentTypes = loadedManifests.get('agent-types');
+    const agentCount =
+      agentTypes?.sections.reduce((n, s) => n + s.items.length, 0) ?? 0;
+
+    return {
+      mcp: mcp || 14,
+      nodes: nodeCount || 71,
+      agents: agentCount || 8,
+    };
+  }, [loadedManifests]);
+
+  // Version + codename SOURCE-READ from the docs index (version.json).
+  const version = index?.version ?? '1.0.0';
+  const codename = index?.codename ?? '';
+
+  const architectureDiagram = useMemo(
+    () => buildArchitectureDiagram(counts.mcp, counts.agents),
+    [counts.mcp, counts.agents],
+  );
+  const modes = useMemo(() => buildModes(counts.nodes), [counts.nodes]);
+  const capabilities = useMemo(
+    () => buildCapabilities(counts.mcp, counts.agents, counts.nodes),
+    [counts.mcp, counts.agents, counts.nodes],
+  );
 
   const handleOpenAssistant = useCallback(() => {
     toggleChat();
@@ -402,9 +463,9 @@ const WelcomePage: React.FC = () => {
             Documentation
           </p>
 
-          {/* 3. AGENTICHAT hero artwork — release v0.7.1.
-              Static PNG (atlas mp4 ripped 2026-05-11 alongside the codename
-              rename Atlas Donzo → AGENTICHAT). */}
+          {/* 3. Atlas hero artwork — the shared docs hero image (same asset the
+              docs landing card uses). The release label comes from the version
+              pill below, source-read from version.json. */}
           <div
             style={{
               display: 'flex',
@@ -414,8 +475,8 @@ const WelcomePage: React.FC = () => {
             }}
           >
             <img
-              src="/agentichat.png"
-              alt="AGENTICHAT — v0.7.1 release artwork"
+              src="/atlas.png"
+              alt={`OpenAgentic v${version}${codename ? ` ${codename}` : ''} hero artwork`}
               style={{
                 maxWidth: '100%',
                 maxHeight: 360,
@@ -448,8 +509,7 @@ const WelcomePage: React.FC = () => {
               animation: 'hereFadeIn 0.6s ease-out 0.7s both',
             }}
           >
-            v{import.meta.env.VITE_APP_VERSION || import.meta.env.VITE_VERSION || '1.0.0'}
-            {import.meta.env.VITE_CODENAME ? ` · ${import.meta.env.VITE_CODENAME}` : ''}
+            v{version}{codename ? ` · ${codename}` : ''}
           </span>
         </div>
       </section>

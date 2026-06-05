@@ -224,7 +224,7 @@ function getDomainProse(domain: string, manifest: DocManifest | null): string | 
       return `OpenAgentic uses a multi-agent architecture where incoming tasks are classified and routed to specialised agent types. Each agent type has its own model configuration -- including temperature, token limits, thinking budgets, and cost caps -- tuned for the kind of work it performs. Fast, deterministic tasks like data queries are routed to lightweight configurations, while complex reasoning or planning tasks get higher budgets and thinking enabled. This page covers all ${totalItems} registered agent-related items.`;
 
     case 'mcp-servers':
-      return `Model Context Protocol (MCP) servers are the bridge between the AI layer and external systems. OpenAgentic connects to ${manifest?.sections?.[0]?.items?.length ?? 23} MCP servers that expose ${totalItems} tools spanning cloud providers (AWS, Azure, GCP), observability (Prometheus, Loki, Alertmanager), code execution, knowledge retrieval, and platform administration. Tools are dynamically selected per request using vector-similarity search with a pgvector-to-Milvus-to-Redis fallback chain.`;
+      return `Model Context Protocol (MCP) servers are the bridge between the AI layer and external systems. OpenAgentic ships ${manifest?.sections?.length ?? 0} MCP servers that expose ${totalItems} tools spanning cloud providers (AWS, Azure, GCP), infrastructure (Kubernetes), observability (Prometheus, Loki), development (GitHub), web search, and platform administration. Tools are dynamically selected per request using vector-similarity search with a pgvector-to-Milvus-to-Redis fallback chain.`;
 
     case 'dlp-scanner':
       return `The Data Loss Prevention (DLP) scanner is a security layer that inspects all data flowing through the platform -- tool inputs, tool results, LLM outputs, user messages, and workflow node data. It applies ${totalItems} detection rules across five categories (credentials, PII, infrastructure secrets, compliance data, and prompt injection attempts). Each rule carries a severity level that maps to an enforcement action: low-severity matches are flagged and allowed through, medium matches trigger automatic redaction, and high or critical matches block the request entirely.`;
@@ -976,8 +976,8 @@ export const DocsContent: React.FC = () => {
                 whiteSpace: 'nowrap',
               }}
             >
-              v{import.meta.env.VITE_APP_VERSION || import.meta.env.VITE_VERSION || '1.0.0'}
-              {import.meta.env.VITE_CODENAME ? ` · ${import.meta.env.VITE_CODENAME}` : ''}
+              v{index?.version || '1.0.0'}
+              {index?.codename ? ` · ${index.codename}` : ''}
             </span>
           </div>
           {/* Body of the landing card */}

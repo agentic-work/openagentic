@@ -4,7 +4,7 @@ import { DocsAgentIcon } from '../components/DocsIcons';
 
 const configFields = [
   { field: 'System Prompt', desc: 'The foundational instructions that define the agent personality, capabilities, and constraints. Supports template variables for dynamic context injection.' },
-  { field: 'Model Preference', desc: 'The default LLM model for this agent type. Can be overridden by the intelligence slider. Specify primary and fallback models for resilience.' },
+  { field: 'Model Preference', desc: 'The default LLM model for this agent type. Can be overridden by the SmartModelRouter at request time. Specify primary and fallback models for resilience.' },
   { field: 'Tool Access', desc: 'A curated list of MCP tools available to this agent. Restricting tools improves accuracy by preventing the model from being overwhelmed with irrelevant function definitions.' },
   { field: 'Temperature', desc: 'Controls output randomness. Lower values (0.0-0.3) for factual/code tasks, higher values (0.7-1.0) for creative writing. Default varies by agent type.' },
   { field: 'Max Tokens', desc: 'Maximum output length for this agent. Research agents may need larger limits for comprehensive reports; utility agents can use shorter limits.' },

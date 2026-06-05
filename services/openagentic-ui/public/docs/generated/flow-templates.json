@@ -4,7 +4,7 @@
   "description": "Pre-built Flow templates seeded into the workflow engine, source-derived from the seed directory.",
   "icon": "flow",
   "category": "workflows",
-  "generatedAt": "2026-06-05T01:51:25.461Z",
+  "generatedAt": "2026-06-05T12:34:36.248Z",
   "sourceFiles": [
     "services/openagentic-workflows/seed/templates/cost-anomaly.json",
     "services/openagentic-workflows/seed/templates/failed-deploy-rca.json",

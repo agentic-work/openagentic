@@ -120,7 +120,7 @@ const pipelineStages = [
   },
   {
     name: 'Completion',
-    desc: 'The assembled prompt is sent to the selected LLM provider. The intelligence slider (0-100) determines which model is used via the SmartModelRouter — from Economical (0-40) to Premium (61-100). Responses stream via SSE.',
+    desc: 'The assembled prompt is sent to the selected LLM provider. The SmartModelRouter scores each request and picks the model — balancing capability against per-user and per-model budget caps. Responses stream via SSE.',
   },
   {
     name: 'Response',
@@ -275,7 +275,7 @@ const ChatModePage: React.FC = () => {
         </div>
       </motion.section>
 
-      {/* INTELLIGENCE SLIDER */}
+      {/* SMART MODEL ROUTING */}
       <motion.section
         style={{ marginBottom: '64px' }}
         initial={{ opacity: 0 }}
@@ -283,65 +283,20 @@ const ChatModePage: React.FC = () => {
         transition={{ delay: 0.3, duration: 0.5 }}
       >
         <p style={sectionHeadingStyle}>Model Routing</p>
-        <h2 style={sectionTitleStyle}>The Intelligence Slider</h2>
+        <h2 style={sectionTitleStyle}>Smart Model Routing</h2>
         <p style={{ ...proseStyle, marginBottom: '28px' }}>
-          Users control the cost/quality tradeoff per message using the intelligence slider.
-          Sliding left favors speed and cost efficiency; sliding right favors reasoning depth
-          and output quality. The model router maps slider positions to specific providers
-          and models.
+          Every message is routed automatically. The SmartModelRouter scores each request by
+          capability requirements and routes it to the best-fit model across the configured
+          providers — balancing reasoning depth against per-user and per-model budget caps.
+          There are no hardcoded model IDs in the routing path; the model registry is the source
+          of truth.
         </p>
 
-        {/* Visual slider representation */}
-        <div
-          style={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: '14px',
-            padding: '32px',
-            marginBottom: '24px',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-success)' }}>
-              Economical (0-40)
-            </span>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-primary)' }}>
-              Balanced (41-60)
-            </span>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-accent)' }}>
-              Premium (61-100)
-            </span>
-          </div>
-          {/* theme-allow: intelligence-spectrum illustrative gradient bar (fast→premium) */}
-          <div
-            style={{
-              height: '8px',
-              borderRadius: '4px',
-              background: 'linear-gradient(90deg, #22c55e, var(--color-primary), #a855f7)',
-              marginBottom: '16px',
-            }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            {[0, 20, 40, 60, 80, 100].map((v) => (
-              <span
-                key={v}
-                style={{
-                  fontSize: '11px',
-                  color: 'var(--color-textMuted)',
-                  fontWeight: 500,
-                }}
-              >
-                {v}
-              </span>
-            ))}
-          </div>
-        </div>
-
         <p style={{ fontSize: '13px', color: 'var(--color-textSecondary)', lineHeight: 1.6 }}>
-          The router also considers message complexity, conversation history length, and
-          whether tools or agents will be needed. A simple factual question may be routed
-          to a fast model even at higher slider positions if the router determines that
-          a larger model would not produce meaningfully better output.
+          The router considers message complexity, conversation history length, and whether
+          tools or agents will be needed. A simple factual question may be routed to a fast
+          model even when a larger one is available if the router determines that the larger
+          model would not produce meaningfully better output.
         </p>
       </motion.section>
 
@@ -407,8 +362,8 @@ const ChatModePage: React.FC = () => {
               body: 'The orchestrator makes better delegation decisions when the intent is clear. "Analyze the Q3 revenue data and create a chart" triggers the data agent; "help me with data" may not.',
             },
             {
-              title: 'Use the intelligence slider intentionally',
-              body: 'Quick questions (definitions, simple lookups) work great at lower settings. Complex reasoning, code review, and long-form writing benefit from higher settings.',
+              title: 'Let the router pick the model',
+              body: 'Quick questions (definitions, simple lookups) are routed to fast, inexpensive models automatically. Complex reasoning, code review, and long-form writing are routed to stronger models by the SmartModelRouter.',
             },
             {
               title: 'Leverage tool context',

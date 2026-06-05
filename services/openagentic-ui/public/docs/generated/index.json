@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-05T01:51:25.535Z",
+  "generatedAt": "2026-06-05T12:34:36.331Z",
   "version": "1.0.0",
   "codename": "Open Field",
   "categories": [
@@ -48,6 +48,16 @@
       "file": "mcp-servers.json",
       "sectionCount": 14,
       "itemCount": 223,
+      "adminOnly": false
+    },
+    {
+      "domain": "agent-types",
+      "title": "Agent Types",
+      "description": "Built-in sub-agent personas the supervisor can delegate to, source-derived from the API built-in agent directory.",
+      "category": "agents",
+      "file": "agent-types.json",
+      "sectionCount": 1,
+      "itemCount": 8,
       "adminOnly": false
     },
     {
@@ -118,6 +128,26 @@
       "file": "feature-flags.json",
       "sectionCount": 1,
       "itemCount": 3,
+      "adminOnly": false
+    },
+    {
+      "domain": "changelog",
+      "title": "Changelog",
+      "description": "Release history, source-derived from version.json — the single source of truth for platform versions.",
+      "category": "core",
+      "file": "changelog.json",
+      "sectionCount": 9,
+      "itemCount": 141,
+      "adminOnly": false
+    },
+    {
+      "domain": "platform-summary",
+      "title": "Platform Summary",
+      "description": "Canonical headline counts and version, source-derived from the repo on every build.",
+      "category": "core",
+      "file": "platform-summary.json",
+      "sectionCount": 1,
+      "itemCount": 5,
       "adminOnly": false
     }
   ]

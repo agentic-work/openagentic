@@ -1,9 +1,10 @@
 // theme-allow: this docs page is decorative gradient SVG illustration icons plus the
 // workflow node-CATEGORY identity color scale (the same node-TYPE palette carve-out
 // as the workflow canvas) — categorical/illustration values, not themeable surfaces.
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';
+import { useDocsStore } from '@/stores/useDocsStore';
 
 // ============================================================================
 // INLINE SVG ICONS
@@ -93,6 +94,17 @@ const sectionVariants = {
 // ============================================================================
 
 const FlowBuilderPage: React.FC = () => {
+  // Headline node-type count + category count SOURCE-READ from the generated
+  // node-types manifest (the full per-node list lives on the Node Types page).
+  const { loadManifest, loadedManifests } = useDocsStore();
+  useEffect(() => {
+    if (!loadedManifests.has('node-types')) loadManifest('node-types').catch(() => {});
+  }, [loadManifest, loadedManifests]);
+  const nodeManifest = loadedManifests.get('node-types');
+  const nodeTypeCount =
+    nodeManifest?.sections.reduce((n, s) => n + s.items.length, 0) ?? 71;
+  const nodeCategoryCount = nodeManifest?.sections.length ?? 7;
+
   const nodeCategories = [
     {
       name: 'Trigger',
@@ -178,7 +190,7 @@ const FlowBuilderPage: React.FC = () => {
         </h1>
         <p className="text-lg leading-relaxed mb-10" style={{ color: 'var(--color-textSecondary)' }}>
           Build complex automation without code. The Flows mode provides a drag-and-drop canvas
-          with 34 node types across 7 categories where you connect nodes to create powerful workflows
+          with {nodeTypeCount} node types across {nodeCategoryCount} categories where you connect nodes to create powerful workflows
           that integrate AI, external services, and business logic.
         </p>
       </motion.div>

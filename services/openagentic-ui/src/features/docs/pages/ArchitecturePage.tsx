@@ -1,13 +1,22 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';
 import { DocsInfraIcon } from '../components/DocsIcons';
+import { useDocsStore } from '@/stores/useDocsStore';
+
+/**
+ * ArchitecturePage — the topology narrative stays hand-written, but the MCP
+ * server count + node-type count embedded in the architecture diagram and the
+ * agent-type count in the standards-alignment prose are SOURCE-READ from the
+ * generated manifests so they track real source.
+ */
 
 // ============================================================================
-// FULL ARCHITECTURE DIAGRAM
+// FULL ARCHITECTURE DIAGRAM (counts SOURCE-READ from generated manifests)
 // ============================================================================
 
-const fullArchitectureDiagram: DiagramDefinition = {
+function buildFullArchitectureDiagram(mcpCount: number, nodeCount: number): DiagramDefinition {
+  return {
   type: 'architecture',
   title: 'OpenAgentic System Architecture',
   description: 'End-to-end request flow across all services',
@@ -28,11 +37,11 @@ const fullArchitectureDiagram: DiagramDefinition = {
     { id: 'openai', label: 'OpenAI', shape: 'cloud', color: 'green' },
     { id: 'ollama', label: 'Ollama', shape: 'cloud', color: 'gray' },
     // MCP Proxy
-    { id: 'mcp-proxy', label: 'MCP Proxy', description: '14 MCP servers', shape: 'server', color: 'orange' },
+    { id: 'mcp-proxy', label: 'MCP Proxy', description: `${mcpCount} MCP servers`, shape: 'server', color: 'orange' },
     // Agent Proxy
     { id: 'openagentic-proxy', label: 'Agent Proxy', description: 'Sub-agents', shape: 'server', color: 'purple' },
     // Workflow Engine
-    { id: 'workflow', label: 'Workflow Engine', description: '30+ node types', shape: 'server', color: 'teal' },
+    { id: 'workflow', label: 'Workflow Engine', description: `${nodeCount} node types`, shape: 'server', color: 'teal' },
     // OAT Executor
     { id: 'oat', label: 'OAT Executor', description: 'Autonomous tasks', shape: 'server', color: 'cyan' },
     // Databases
@@ -74,13 +83,15 @@ const fullArchitectureDiagram: DiagramDefinition = {
     { source: 'prometheus', target: 'grafana', color: 'orange' },
     { source: 'api', target: 'loki', style: 'dashed', color: 'yellow' },
   ],
-};
+  };
+}
 
 // ============================================================================
-// INDUSTRY COMPARISON DATA
+// INDUSTRY COMPARISON DATA (agent count SOURCE-READ from generated manifest)
 // ============================================================================
 
-const industryComparisons = [
+function buildIndustryComparisons(agentCount: number) {
+  return [
   {
     title: 'Model Context Protocol (MCP)',
     description:
@@ -91,7 +102,7 @@ const industryComparisons = [
   {
     title: 'Multi-Agent Patterns',
     description:
-      'Agent orchestration follows proven multi-agent patterns: parallel execution, sequential chaining, supervisor delegation, and hierarchical task decomposition. The Agent Proxy manages lifecycle and coordination across 11 specialist agent types.',
+      `Agent orchestration follows proven multi-agent patterns: parallel execution, sequential chaining, supervisor delegation, and hierarchical task decomposition. The Agent Proxy manages lifecycle and coordination across ${agentCount} built-in agent types.`,
   },
   {
     title: 'Dual Vector Store RAG',
@@ -103,7 +114,8 @@ const industryComparisons = [
     description:
       'Every tool invocation runs as the authenticated user, not a service account. OBO tokens propagate through the MCP Proxy to downstream services, ensuring audit trails accurately reflect who performed each action and enforcing per-user access control.',
   },
-];
+  ];
+}
 
 // ============================================================================
 // SECRETS MANAGEMENT DATA
@@ -189,6 +201,29 @@ const cardDescStyle: React.CSSProperties = {
 // ============================================================================
 
 const ArchitecturePage: React.FC = () => {
+  const { loadManifest, loadedManifests } = useDocsStore();
+
+  useEffect(() => {
+    for (const d of ['mcp-servers', 'node-types', 'agent-types']) {
+      if (!loadedManifests.has(d)) loadManifest(d).catch(() => {});
+    }
+  }, [loadManifest, loadedManifests]);
+
+  const mcpCount = loadedManifests.get('mcp-servers')?.sections.length ?? 14;
+  const nodeCount =
+    loadedManifests.get('node-types')?.sections.reduce((n, s) => n + s.items.length, 0) ?? 71;
+  const agentCount =
+    loadedManifests.get('agent-types')?.sections.reduce((n, s) => n + s.items.length, 0) ?? 8;
+
+  const fullArchitectureDiagram = useMemo(
+    () => buildFullArchitectureDiagram(mcpCount, nodeCount),
+    [mcpCount, nodeCount],
+  );
+  const industryComparisons = useMemo(
+    () => buildIndustryComparisons(agentCount),
+    [agentCount],
+  );
+
   const fadeUp = useMemo(
     () => ({
       initial: { opacity: 0, y: 20 },

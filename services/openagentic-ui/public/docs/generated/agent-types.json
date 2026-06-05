@@ -1,0 +1,116 @@
+{
+  "domain": "agent-types",
+  "title": "Agent Types",
+  "description": "Built-in sub-agent personas the supervisor can delegate to, source-derived from the API built-in agent directory.",
+  "icon": "agent",
+  "category": "agents",
+  "generatedAt": "2026-06-05T12:34:36.245Z",
+  "sourceFiles": [
+    "services/openagentic-api/src/agents/built-in/artifact-creation.md",
+    "services/openagentic-api/src/agents/built-in/cloud-operations.md",
+    "services/openagentic-api/src/agents/built-in/code-execution.md",
+    "services/openagentic-api/src/agents/built-in/data-query.md",
+    "services/openagentic-api/src/agents/built-in/planning.md",
+    "services/openagentic-api/src/agents/built-in/reasoning.md",
+    "services/openagentic-api/src/agents/built-in/synthesis.md",
+    "services/openagentic-api/src/agents/built-in/validation.md"
+  ],
+  "sections": [
+    {
+      "id": "built-in",
+      "title": "Built-in Agents",
+      "description": "8 built-in agent types shipped with the release",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "artifact-creation",
+          "name": "Artifact Creation",
+          "description": "The user explicitly asks for a chart, diagram, dashboard, sankey, architecture diagram, html report, kpi grid, table, or any other visual artifact",
+          "type": "agent-type",
+          "properties": {
+            "slug": "artifact-creation",
+            "tools": ""
+          },
+          "sourceFile": "services/openagentic-api/src/agents/built-in/artifact-creation.md"
+        },
+        {
+          "id": "cloud-operations",
+          "name": "Cloud Operations",
+          "description": "Multi-step cloud audits, cross-cloud comparisons, troubleshooting workflows, and reasoning over enumeration results that need chained reads (e.g",
+          "type": "agent-type",
+          "properties": {
+            "slug": "cloud-operations",
+            "tools": ""
+          },
+          "sourceFile": "services/openagentic-api/src/agents/built-in/cloud-operations.md"
+        },
+        {
+          "id": "code-execution",
+          "name": "Code Execution",
+          "description": "The user asks you to write, run, or debug a script, transform data with code, run a quick numerical computation",
+          "type": "agent-type",
+          "properties": {
+            "slug": "code-execution",
+            "tools": ""
+          },
+          "sourceFile": "services/openagentic-api/src/agents/built-in/code-execution.md"
+        },
+        {
+          "id": "data-query",
+          "name": "Data Query",
+          "description": "The user asks to query, retrieve, or aggregate structured data from a known datastore the platform manages — Postgres, Milvus (vector retrieval), Athena/Redshift, BigQuery — and…",
+          "type": "agent-type",
+          "properties": {
+            "slug": "data-query",
+            "tools": ""
+          },
+          "sourceFile": "services/openagentic-api/src/agents/built-in/data-query.md"
+        },
+        {
+          "id": "planning",
+          "name": "Planning",
+          "description": "The user asks for a multi-step plan — a runbook, a migration sequence, an incident-response playbook, a project breakdown, or any ordered set of actions where the order, owners,…",
+          "type": "agent-type",
+          "properties": {
+            "slug": "planning",
+            "tools": "[]"
+          },
+          "sourceFile": "services/openagentic-api/src/agents/built-in/planning.md"
+        },
+        {
+          "id": "reasoning",
+          "name": "Reasoning",
+          "description": "The user's question requires deep, multi-step thinking that the supervisor's primary-loop turn cannot solve in one shot — long-horizon planning, novel problem decomposition, mat…",
+          "type": "agent-type",
+          "properties": {
+            "slug": "reasoning",
+            "tools": "[]"
+          },
+          "sourceFile": "services/openagentic-api/src/agents/built-in/reasoning.md"
+        },
+        {
+          "id": "synthesis",
+          "name": "Synthesis",
+          "description": "The supervisor has gathered evidence from several tool calls or sub-agents and needs a focused, well-organised final answer composed for the user — turning raw findings into pro…",
+          "type": "agent-type",
+          "properties": {
+            "slug": "synthesis",
+            "tools": "[]"
+          },
+          "sourceFile": "services/openagentic-api/src/agents/built-in/synthesis.md"
+        },
+        {
+          "id": "validation",
+          "name": "Validation",
+          "description": "The supervisor needs an independent second look at a tool result, a draft answer, or a completed sub-task to confirm it's correct, complete, and free of hallucination before the…",
+          "type": "agent-type",
+          "properties": {
+            "slug": "validation",
+            "tools": ""
+          },
+          "sourceFile": "services/openagentic-api/src/agents/built-in/validation.md"
+        }
+      ]
+    }
+  ]
+}

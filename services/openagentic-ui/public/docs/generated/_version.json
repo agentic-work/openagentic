@@ -1,56 +1,74 @@
 {
-  "version": "v1.0.0-e24f78c90",
-  "generatedAt": "2026-06-05T01:51:25.535Z",
-  "manifestHash": "sha256:30d33452247db7ee4a97cc53018d21e489f4f309fe7b0d3baaee7aff2a06b4c8",
-  "manifestCount": 8,
+  "version": "v1.0.0-8d6fae1d6",
+  "generatedAt": "2026-06-05T12:34:36.331Z",
+  "manifestHash": "sha256:91da227b45d30df8047ae0ff69f23f90124d8b0e035b00b9a6ee64776ac9c30c",
+  "manifestCount": 11,
   "manifests": [
+    {
+      "name": "agent-types",
+      "hash": "sha256:799121fa11a220111da67c063052c38149037c4297c1f1d83360c90c677e6140",
+      "bytes": 5031,
+      "generatedAt": "2026-06-05T12:34:36.245Z"
+    },
     {
       "name": "api-routes",
       "hash": "sha256:38b1896043bd7a2ccab8bd2744e1f9561be7e6481fb845a7df091e84cb3c1e29",
       "bytes": 221479,
-      "generatedAt": "2026-06-05T01:51:25.523Z"
+      "generatedAt": "2026-06-05T12:34:36.315Z"
+    },
+    {
+      "name": "changelog",
+      "hash": "sha256:7271533e5823a598f5b3f59207011dd3e75c1c9fa29b5ee5d94c4f6386e3e5d1",
+      "bytes": 59686,
+      "generatedAt": "2026-06-05T12:34:36.327Z"
     },
     {
       "name": "deployed-services",
       "hash": "sha256:e1451416a8b1cca63dfa0d29dfff0d1613ab8b48998c9946ef93857b233f8b37",
       "bytes": 6629,
-      "generatedAt": "2026-06-05T01:51:25.480Z"
+      "generatedAt": "2026-06-05T12:34:36.267Z"
     },
     {
       "name": "feature-flags",
       "hash": "sha256:a1adb8baa965a9816c9fd3f965d55cdabad1ffe30c12c8515a07ed3077e627f1",
       "bytes": 1306,
-      "generatedAt": "2026-06-05T01:51:25.534Z"
+      "generatedAt": "2026-06-05T12:34:36.326Z"
     },
     {
       "name": "flow-templates",
       "hash": "sha256:622beb3094a9906a2b44bdae16b82dbfc9a3b12108859f05612f4aa33733f4a0",
       "bytes": 7159,
-      "generatedAt": "2026-06-05T01:51:25.461Z"
+      "generatedAt": "2026-06-05T12:34:36.248Z"
     },
     {
       "name": "helm-templates",
       "hash": "sha256:8e85f05e462741e39356db00fdf330fbc6a8967a82bb087a8788a15d74850a28",
       "bytes": 4348,
-      "generatedAt": "2026-06-05T01:51:25.481Z"
+      "generatedAt": "2026-06-05T12:34:36.268Z"
     },
     {
       "name": "mcp-servers",
       "hash": "sha256:b018e17b7ea43ec681a373719c02656c65a5978dc47c0bc18ca6fac92f0b4e06",
       "bytes": 108521,
-      "generatedAt": "2026-06-05T01:51:25.455Z"
+      "generatedAt": "2026-06-05T12:34:36.238Z"
     },
     {
       "name": "node-types",
       "hash": "sha256:7523d44d19514ae6cda39548f8ff828764ac677c17c0967b7cee5a428b50c896",
       "bytes": 45513,
-      "generatedAt": "2026-06-05T01:51:25.478Z"
+      "generatedAt": "2026-06-05T12:34:36.265Z"
+    },
+    {
+      "name": "platform-summary",
+      "hash": "sha256:599e61bb38eb0b2398b92d3531b0f06c55f9cb5f7a3f5e808793c4ef5d31822f",
+      "bytes": 2265,
+      "generatedAt": "2026-06-05T12:34:36.329Z"
     },
     {
       "name": "t1-tools",
       "hash": "sha256:df7752b36332600b52e1eefcdf34e7cd252abff4439e5f95c057d00ec7a7cc4d",
       "bytes": 8677,
-      "generatedAt": "2026-06-05T01:51:25.532Z"
+      "generatedAt": "2026-06-05T12:34:36.325Z"
     }
   ]
 }
