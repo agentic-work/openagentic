@@ -6,7 +6,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, User, Palette, ChevronRight, LogOut, Shield, Sun, Moon, Waves, Info, Monitor, Terminal } from '@/shared/icons';
+import { Settings, User, Palette, ChevronRight, LogOut, Shield, Sun, Moon, Waves, Info, Monitor, Terminal, Check } from '@/shared/icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import AboutModal from '@/features/about/AboutModal';
 // DocsBookIcon removed — using inline folder SVG instead
@@ -213,6 +213,23 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                 <span className="text-sm">Documentation</span>
               </button>
 
+              {/* GitHub — open-source repo: issues, PRs, support */}
+              <button
+                onClick={() => {
+                  window.open('https://github.com/agentic-work/openagentic/issues', '_blank', 'noopener,noreferrer');
+                  setIsOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left"
+                style={{ color: 'var(--color-text)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+              >
+                <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.5v-1.8c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 016 0C17 4.6 18 4.9 18 4.9c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/>
+                </svg>
+                <span className="text-sm">GitHub · Issues &amp; PRs</span>
+              </button>
+
               {/* Theme Selector */}
               <button
                 onClick={() => setShowThemeSubmenu(!showThemeSubmenu)}
@@ -249,14 +266,16 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                           setShowThemeSubmenu(false);
                           setIsOpen(false);
                         }}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors border"
                         style={{
-                          backgroundColor: theme === 'light' ? 'var(--color-surfaceHover)' : 'transparent',
+                          backgroundColor: theme === 'light' ? 'color-mix(in srgb, var(--color-accent) 14%, transparent)' : 'transparent',
+                          borderColor: theme === 'light' ? 'var(--color-accent)' : 'transparent',
                           color: 'var(--color-text)'
                         }}
                       >
-                        <Sun size={16} />
+                        <Sun size={16} style={theme === 'light' ? { color: 'var(--color-accent)' } : undefined} />
                         <span className="text-sm">Light</span>
+                        {theme === 'light' && <Check size={16} className="ml-auto" style={{ color: 'var(--color-accent)' }} />}
                       </button>
                       <button
                         onClick={() => {
@@ -264,14 +283,16 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                           setShowThemeSubmenu(false);
                           setIsOpen(false);
                         }}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors border"
                         style={{
-                          backgroundColor: theme === 'dark' ? 'var(--color-surfaceHover)' : 'transparent',
+                          backgroundColor: theme === 'dark' ? 'color-mix(in srgb, var(--color-accent) 14%, transparent)' : 'transparent',
+                          borderColor: theme === 'dark' ? 'var(--color-accent)' : 'transparent',
                           color: 'var(--color-text)'
                         }}
                       >
-                        <Moon size={16} />
+                        <Moon size={16} style={theme === 'dark' ? { color: 'var(--color-accent)' } : undefined} />
                         <span className="text-sm">Dark</span>
+                        {theme === 'dark' && <Check size={16} className="ml-auto" style={{ color: 'var(--color-accent)' }} />}
                       </button>
                       {/* Catppuccin, Tokyo Night, Dracula, Terminal themes are code-mode only */}
                     </div>

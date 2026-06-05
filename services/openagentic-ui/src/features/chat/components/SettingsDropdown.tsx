@@ -249,7 +249,7 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
                     className={clsx(
                       'flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all border-2',
                       currentTheme === value
-                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10'
+                        ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10'
                         : 'border-[var(--color-border)] hover:border-[var(--color-borderHover)]'
                     )}
                     style={{ color: 'var(--color-text)' }}
