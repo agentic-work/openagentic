@@ -36,18 +36,28 @@ set -euo pipefail
 # ─── Pretty output ──────────────────────────────────────────────────────────
 readonly C_RESET=$'\033[0m'
 readonly C_BOLD=$'\033[1m'
-readonly C_PURPLE=$'\033[38;5;135m'
-readonly C_BLUE=$'\033[38;5;39m'
-readonly C_GREEN=$'\033[38;5;46m'
-readonly C_YELLOW=$'\033[38;5;220m'
-readonly C_RED=$'\033[38;5;196m'
-readonly C_GRAY=$'\033[38;5;244m'
+# brand palette (openagentics.io / Boards-of-Canada world) — was Claude-purple.
+readonly C_PURPLE=$'\033[38;2;95;168;119m'    # repointed: dusty brand green (steps/▸)
+readonly C_BLUE=$'\033[38;2;111;179;168m'     # beepboop teal (info ·)
+readonly C_GREEN=$'\033[38;2;136;204;160m'    # accent green (ok ✓)
+readonly C_YELLOW=$'\033[38;2;217;174;82m'    # amber (warn !)
+readonly C_RED=$'\033[38;2;224;102;58m'       # burnt-orange (fatal ✗)
+readonly C_GRAY=$'\033[38;2;169;188;169m'     # muted cream
+# beepboop's own inks
+readonly C_TEAL=$'\033[38;2;111;179;168m'     # body
+readonly C_PHOS=$'\033[38;2;159;216;196m'     # phosphor screen (eyes/mouth)
+readonly C_ORANGE=$'\033[38;2;219;130;64m'    # antenna LED / signal
+readonly C_AMBER=$'\033[38;2;217;174;82m'     # amber cheeks
+readonly C_CREAM=$'\033[38;2;227;235;224m'    # warm cream text
 
+# beepboop says hi from the masthead (his retro-teal CRT head + the wordmark).
 banner() {
   printf '\n'
-  printf '  %s╭─────────────────────────────────────────────────╮%s\n' "$C_PURPLE" "$C_RESET"
-  printf '  %s│%s   %sopenagentic%s   %sthe agentic platform for IT%s   %s│%s\n' "$C_PURPLE" "$C_RESET" "$C_BOLD" "$C_RESET" "$C_GRAY" "$C_RESET" "$C_PURPLE" "$C_RESET"
-  printf '  %s╰─────────────────────────────────────────────────╯%s\n' "$C_PURPLE" "$C_RESET"
+  printf '       %s◉%s\n' "$C_ORANGE" "$C_RESET"
+  printf '   %s╭━━━━━━━╮%s   %s%s⌥ openagentic%s\n' "$C_TEAL" "$C_RESET" "$C_BOLD" "$C_GREEN" "$C_RESET"
+  printf '   %s┃ %s●   ●%s ┃%s   %sthe open agentic platform for IT operations%s\n' "$C_TEAL" "$C_PHOS" "$C_TEAL" "$C_RESET" "$C_CREAM" "$C_RESET"
+  printf '   %s┃  %s‿‿‿%s  ┃%s   %sbeep boop%s%s — let'"'"'s get you set up.%s\n' "$C_TEAL" "$C_PHOS" "$C_TEAL" "$C_RESET" "$C_PHOS" "$C_RESET" "$C_GRAY" "$C_RESET"
+  printf '   %s╰%s◍%s━━━━━%s◍%s╯%s\n' "$C_TEAL" "$C_AMBER" "$C_TEAL" "$C_AMBER" "$C_TEAL" "$C_RESET"
   printf '\n'
 }
 
