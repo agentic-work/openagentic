@@ -4,7 +4,7 @@
   "description": "HTTP routes registered across the API",
   "icon": "route",
   "category": "core",
-  "generatedAt": "2026-06-05T13:33:18.438Z",
+  "generatedAt": "2026-06-05T14:46:51.816Z",
   "sourceFiles": [
     "services/openagentic-api/src/routes/account-linking.ts",
     "services/openagentic-api/src/routes/admin-agents.ts",
@@ -1836,50 +1836,6 @@
           "properties": {
             "method": "GET",
             "path": "/api/auth/directories"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/auth-sso.ts"
-        },
-        {
-          "id": "GET-_api_auth_microsoft_login",
-          "name": "GET /api/auth/microsoft/login",
-          "description": "GET /api/auth/microsoft/login",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/auth/microsoft/login"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/auth-sso.ts"
-        },
-        {
-          "id": "GET-_api_auth_microsoft_callback",
-          "name": "GET /api/auth/microsoft/callback",
-          "description": "GET /api/auth/microsoft/callback",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/auth/microsoft/callback"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/auth-sso.ts"
-        },
-        {
-          "id": "GET-_api_auth_google_login",
-          "name": "GET /api/auth/google/login",
-          "description": "GET /api/auth/google/login",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/auth/google/login"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/auth-sso.ts"
-        },
-        {
-          "id": "GET-_api_auth_google_callback",
-          "name": "GET /api/auth/google/callback",
-          "description": "GET /api/auth/google/callback",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/auth/google/callback"
           },
           "sourceFile": "services/openagentic-api/src/routes/auth-sso.ts"
         },

@@ -32,49 +32,23 @@ if [ -f "$CONFIG_FILE" ]; then
     # Use VITE_API_URL if set, otherwise use relative /api path (nginx will proxy to backend)
     API_URL_VALUE="${VITE_API_URL:-/api}"
 
-    # Azure AD configuration - use AZURE_CLIENT_ID, fallback to VITE_AZURE_CLIENT_ID
-    AAD_CLIENT_ID="${VITE_AAD_CLIENT_ID:-${AZURE_CLIENT_ID:-${VITE_AZURE_CLIENT_ID:-}}}"
-    AZURE_TENANT="${VITE_AZURE_TENANT_ID:-${AZURE_TENANT_ID:-}}"
-
-    # Construct AAD authority URL if tenant is provided
-    if [ -n "$AZURE_TENANT" ] && [ "$AZURE_TENANT" != "disabled-not-using-azure-ad" ]; then
-        AAD_AUTHORITY="https://login.microsoftonline.com/${AZURE_TENANT}"
-    else
-        AAD_AUTHORITY="${VITE_AAD_AUTHORITY:-}"
-    fi
-
+    # NOTE: The login-path IdP placeholders (VITE_AAD_* / VITE_AZURE_* /
+    # VITE_AUTH_PROVIDER / *_LOGIN_ENABLED) are intentionally NOT substituted
+    # here anymore. Identity providers are a runtime, DB-driven registry served
+    # by GET /api/auth/directories — no client-id / tenant / authority is ever
+    # baked into config.js or shipped to the browser.
     sed -i "s|VITE_API_URL_PLACEHOLDER|${API_URL_VALUE}|g" "$CONFIG_FILE"
-    sed -i "s|VITE_AAD_CLIENT_ID_PLACEHOLDER|${AAD_CLIENT_ID}|g" "$CONFIG_FILE"
-    sed -i "s|VITE_AAD_AUTHORITY_PLACEHOLDER|${AAD_AUTHORITY}|g" "$CONFIG_FILE"
-    sed -i "s|VITE_AAD_REDIRECT_URI_PLACEHOLDER|${VITE_AAD_REDIRECT_URI:-${AZURE_REDIRECT_URI:-/auth/callback}}|g" "$CONFIG_FILE"
-    sed -i "s|VITE_AZURE_CLIENT_ID_PLACEHOLDER|${AAD_CLIENT_ID}|g" "$CONFIG_FILE"
-    sed -i "s|VITE_AZURE_TENANT_ID_PLACEHOLDER|${AZURE_TENANT}|g" "$CONFIG_FILE"
-    sed -i "s|VITE_AZURE_AD_ADMIN_GROUP_PLACEHOLDER|${VITE_AZURE_AD_ADMIN_GROUP:-${AZURE_AD_ADMIN_GROUP:-}}|g" "$CONFIG_FILE"
-    sed -i "s|VITE_AZURE_AD_API_SCOPE_PLACEHOLDER|${VITE_AZURE_AD_API_SCOPE:-${AZURE_AD_API_SCOPE:-}}|g" "$CONFIG_FILE"
-    sed -i "s|VITE_AZURE_AD_AUTHORIZED_GROUPS_PLACEHOLDER|${VITE_AZURE_AD_AUTHORIZED_GROUPS:-${AZURE_AD_AUTHORIZED_GROUPS:-}}|g" "$CONFIG_FILE"
     sed -i "s|VITE_API_KEY_PLACEHOLDER|${VITE_API_KEY:-${API_KEY:-}}|g" "$CONFIG_FILE"
     sed -i "s|VITE_FRONTEND_SECRET_PLACEHOLDER|${VITE_FRONTEND_SECRET:-${FRONTEND_SECRET:-}}|g" "$CONFIG_FILE"
     sed -i "s|VITE_SIGNING_SECRET_PLACEHOLDER|${VITE_SIGNING_SECRET:-${SIGNING_SECRET:-}}|g" "$CONFIG_FILE"
     sed -i "s|VITE_AUTH_MODE_PLACEHOLDER|${VITE_AUTH_MODE:-${AUTH_MODE:-production}}|g" "$CONFIG_FILE"
     sed -i "s|VITE_MAINTENANCE_MODE_PLACEHOLDER|${VITE_MAINTENANCE_MODE:-${MAINTENANCE_MODE:-false}}|g" "$CONFIG_FILE"
     sed -i "s|VITE_DEV_LOGIN_PAGE_PLACEHOLDER|${VITE_DEV_LOGIN_PAGE:-${DEV_LOGIN_PAGE:-false}}|g" "$CONFIG_FILE"
-    # Auth provider configuration - controls which login buttons are shown
-    # VITE_AUTH_PROVIDER: 'google' = Google only, 'azure-ad' = Microsoft only, 'all' = show all enabled
-    # Individual toggles: 'true' = show button, 'false' = hide button
-    sed -i "s|VITE_AUTH_PROVIDER_PLACEHOLDER|${VITE_AUTH_PROVIDER:-${AUTH_PROVIDER:-local}}|g" "$CONFIG_FILE"
-    sed -i "s|VITE_MICROSOFT_LOGIN_ENABLED_PLACEHOLDER|${VITE_MICROSOFT_LOGIN_ENABLED:-${MICROSOFT_LOGIN_ENABLED:-false}}|g" "$CONFIG_FILE"
-    sed -i "s|VITE_GOOGLE_LOGIN_ENABLED_PLACEHOLDER|${VITE_GOOGLE_LOGIN_ENABLED:-${GOOGLE_LOGIN_ENABLED:-false}}|g" "$CONFIG_FILE"
-    sed -i "s|VITE_LOCAL_LOGIN_ENABLED_PLACEHOLDER|${VITE_LOCAL_LOGIN_ENABLED:-${LOCAL_LOGIN_ENABLED:-true}}|g" "$CONFIG_FILE"
 
     echo "Runtime configuration updated"
     echo "  API_URL: ${API_URL_VALUE}"
-    echo "  AAD_CLIENT_ID: ${AAD_CLIENT_ID}"
-    echo "  AAD_AUTHORITY: ${AAD_AUTHORITY}"
     echo "  DEV_LOGIN_PAGE: ${VITE_DEV_LOGIN_PAGE:-${DEV_LOGIN_PAGE:-false}}"
-    echo "  AUTH_PROVIDER: ${VITE_AUTH_PROVIDER:-${AUTH_PROVIDER:-local}}"
-    echo "  MICROSOFT_LOGIN_ENABLED: ${VITE_MICROSOFT_LOGIN_ENABLED:-${MICROSOFT_LOGIN_ENABLED:-false}}"
-    echo "  GOOGLE_LOGIN_ENABLED: ${VITE_GOOGLE_LOGIN_ENABLED:-${GOOGLE_LOGIN_ENABLED:-false}}"
-    echo "  LOCAL_LOGIN_ENABLED: ${VITE_LOCAL_LOGIN_ENABLED:-${LOCAL_LOGIN_ENABLED:-true}}"
+    echo "  Identity providers: runtime via /api/auth/directories (DB-driven)"
 fi
 
 # Set default values if not provided

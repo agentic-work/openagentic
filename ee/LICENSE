@@ -1,0 +1,105 @@
+OpenAgentic Enterprise License
+Copyright © Agenticwork™ LLC. All rights reserved.
+
+================================================================================
+THIS IS A COMMERCIAL, PROPRIETARY LICENSE. IT IS NOT AN OPEN-SOURCE LICENSE.
+The rest of the OpenAgentic repository is licensed under the Apache License,
+Version 2.0 (see /LICENSE). The files identified in /ee/README.md (the
+"Enterprise Software") are NOT licensed under Apache 2.0. They are licensed
+ONLY under the terms below.
+================================================================================
+
+1. DEFINITIONS
+
+   "Agenticwork" means Agenticwork LLC, the copyright holder.
+
+   "Enterprise Software" means the source files and any compiled or derivative
+   forms thereof that are listed or described in /ee/README.md, including (without
+   limitation) the runtime Identity Directory / SSO directory registry and its
+   admin, route, service, seeder, strategy, and wizard components, together with
+   any file bearing the OpenAgentic Enterprise notice.
+
+   "Subscription" means a current, paid OpenAgentic Enterprise subscription or
+   commercial license agreement granted in writing by Agenticwork.
+
+   "You" means the individual or entity exercising rights under this License.
+
+2. OWNERSHIP
+
+   The Enterprise Software is the exclusive property of Agenticwork and is
+   protected by copyright, trade secret, and other laws. Agenticwork retains all
+   right, title, and interest in and to the Enterprise Software. No title or
+   ownership is transferred. The presence of the Enterprise Software's source in a
+   public or shared repository does NOT place it in the public domain and does NOT
+   grant you any license to it. Being able to read the source grants you nothing.
+
+3. GRANT (ONLY WITH A SUBSCRIPTION)
+
+   Subject to your full and ongoing compliance with this License AND a current
+   Subscription, Agenticwork grants you a limited, non-exclusive, non-transferable,
+   non-sublicensable, revocable license to use, deploy, and operate the Enterprise
+   Software solely for your internal business purposes, only for the seats,
+   environments, and term stated in your Subscription.
+
+   WITHOUT a current Subscription you have NO right to use, deploy, run in
+   production, copy, modify, or distribute the Enterprise Software. The only
+   activities permitted without a Subscription are: (a) reading the source, and
+   (b) building and running it in a strictly non-production environment for the
+   sole purpose of evaluation for up to thirty (30) days.
+
+4. RESTRICTIONS
+
+   Except as expressly permitted by a current Subscription, You MUST NOT, and must
+   not permit any third party to:
+
+     (a) use, deploy, or operate the Enterprise Software in production, or for any
+         commercial, revenue-generating, or customer-facing purpose;
+     (b) copy, reproduce, modify, adapt, translate, or create derivative works of
+         the Enterprise Software;
+     (c) distribute, publish, sublicense, sell, rent, lease, lend, or otherwise
+         transfer the Enterprise Software or any derivative, in source or compiled
+         form, to any third party;
+     (d) host, provide, or offer the Enterprise Software, or its functionality, as
+         a hosted, managed, SaaS, or service-bureau offering to any third party;
+     (e) remove, disable, bypass, circumvent, or alter any license check, gate,
+         notice, copyright legend, or attribution in or around the Enterprise
+         Software; or
+     (f) use the Enterprise Software to build or assist a competing product.
+
+   If you do any of the foregoing without a current Subscription, your acts are
+   unlicensed and constitute copyright infringement and breach of this License,
+   and Agenticwork may pursue all available legal and equitable remedies,
+   including injunctive relief and damages, and recovery of costs and attorneys'
+   fees.
+
+5. TERMINATION
+
+   This License and any Subscription rights terminate automatically, immediately,
+   and without notice if you breach any term, or if your Subscription lapses,
+   expires, or is terminated. On termination you must cease all use of the
+   Enterprise Software and destroy all copies in your possession or control.
+   Sections 2, 4, 6, 7, and 8 survive termination.
+
+6. NO WARRANTY
+
+   THE ENTERPRISE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT
+   WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION THE
+   WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND
+   NON-INFRINGEMENT.
+
+7. LIMITATION OF LIABILITY
+
+   TO THE MAXIMUM EXTENT PERMITTED BY LAW, AGENTICWORK WILL NOT BE LIABLE FOR ANY
+   INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR EXEMPLARY DAMAGES, OR FOR LOST
+   PROFITS, REVENUE, OR DATA, ARISING OUT OF OR RELATED TO THE ENTERPRISE SOFTWARE,
+   EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+8. GENERAL
+
+   This License is governed by the laws of the State of Delaware, USA, without
+   regard to its conflict-of-laws rules. This License is the entire agreement
+   regarding the Enterprise Software and supersedes all prior understandings,
+   except an executed Subscription or commercial license agreement, which controls
+   in the event of a conflict.
+
+   To obtain a Subscription or commercial license, contact: licensing@agenticwork.io

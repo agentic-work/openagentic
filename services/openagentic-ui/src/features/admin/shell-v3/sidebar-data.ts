@@ -21,6 +21,7 @@ export const ADMIN_NAV: AdminGroup[] = [
     leaves: [
       { id: 'users',             key: 'su', name: 'User Management' },
       { id: 'auth-access',       key: 'sa', name: 'Auth Access Control' },
+      { id: 'identity-directories', key: 'si', name: 'Identity / Directories' },
       { id: 'permissions',       key: 'sp', name: 'User Permissions' },
       { id: 'user-lockouts',     key: 'sl', name: 'User Lockouts' },
       { id: 'tokens',            key: 'st', name: 'API Tokens' },

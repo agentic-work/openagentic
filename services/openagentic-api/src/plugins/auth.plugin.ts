@@ -18,6 +18,8 @@ import { loggers } from '../utils/logger.js';
 import { featureFlags } from '../config/featureFlags.js';
 import { authRoutes } from '../routes/auth.js';
 import { oboRoutes } from '../routes/obo.js';
+import { authSsoRoutes } from '../routes/auth-sso.js';
+import { prisma } from '../utils/prisma.js';
 
 interface AuthPluginOptions {
   authProvider?: string;
@@ -39,20 +41,53 @@ const authPlugin: FastifyPluginAsync<AuthPluginOptions> = async (
     loggers.routes.error({ err: error }, 'Failed to register auth routes');
   }
 
-  // Register Local Authentication System — SKIPPED when SSO-only.
+  // Register the runtime SSO directory routes — public /api/auth/directories +
+  // per-directory /api/auth/sso/:id/login|callback + legacy /microsoft|/google
+  // aliases. These are DB-driven (one button per enabled identity_directories
+  // row) and are registered UNCONDITIONALLY: with zero rows the directory list
+  // is simply empty, so there is no attack surface and no need to gate.
+  try {
+    await fastify.register(authSsoRoutes);
+    loggers.routes.info('SSO directory routes registered at /api/auth/directories + /api/auth/sso/*');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register SSO directory routes');
+  }
+
+  // Register Local Authentication System — SKIPPED when SSO is active.
   //
-  // When AUTH_MODE / AUTH_PROVIDER is any non-local SSO (azure-ad,
-  // google, hybrid, both, all), the username/password login routes at
-  // /api/auth/local/* are intentionally NOT registered. No password-based
-  // login surface exists for an attacker to probe — even if someone had
-  // leaked the seeded admin password, there's no endpoint accepting it.
-  // To re-enable for a pure local dev setup, set AUTH_MODE=local.
-  const ssoActive = ['azure-ad', 'azuread', 'google', 'hybrid', 'both', 'all'].includes(
-    (process.env.AUTH_MODE || featureFlags.authProvider).toLowerCase(),
-  );
+  // SSO is now DB-driven: `ssoActive` is true when ANY enabled, non-deleted
+  // `identity_directories` row exists. Adding a directory live therefore
+  // suppresses the /api/auth/local/* password-login surface WITHOUT an API
+  // restart (the env AUTH_MODE/AUTH_PROVIDER is consulted ONLY as the first-boot
+  // fallback when zero rows exist). When SSO is active, the username/password
+  // login routes are intentionally NOT registered — no password-based login
+  // surface exists for an attacker to probe. To force local login for a pure
+  // local dev setup, set AUTH_MODE=local AND keep zero enabled directories.
+  let directoryCount = 0;
+  try {
+    directoryCount = await prisma.identityDirectory.count({
+      where: { enabled: true, deleted_at: null },
+    });
+  } catch (error) {
+    // DB unreachable at registration time → fall back to env (first-boot safe).
+    loggers.routes.warn(
+      { err: error },
+      'identityDirectory.count failed — falling back to AUTH_MODE/AUTH_PROVIDER env for ssoActive',
+    );
+  }
+  const ssoActive =
+    directoryCount > 0 ||
+    ['azure-ad', 'azuread', 'google', 'hybrid', 'both', 'all'].includes(
+      (process.env.AUTH_MODE || featureFlags.authProvider).toLowerCase(),
+    );
   if (ssoActive) {
     loggers.routes.info(
-      { authMode: process.env.AUTH_MODE, authProvider: process.env.AUTH_PROVIDER },
+      {
+        directoryCount,
+        source: directoryCount > 0 ? 'database' : 'env-fallback',
+        authMode: process.env.AUTH_MODE,
+        authProvider: process.env.AUTH_PROVIDER,
+      },
       'SSO active — SKIPPING local /api/auth/local/* route registration (password-login attack surface removed)',
     );
   } else {

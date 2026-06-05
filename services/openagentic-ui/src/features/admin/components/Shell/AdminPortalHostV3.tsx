@@ -10,6 +10,7 @@ import { UserPermissionsPage } from '../../pages-v3/UserPermissionsPage'
 import { PermissionsPage } from '../../pages-v3/PermissionsPage'
 import { MCPFleetV3 } from '../../pages-v3/MCPFleetV3'
 import { LLMProvidersPage } from '../../pages-v3/LLMProvidersPage'
+import { IdentityDirectoriesPage } from '../../pages-v3/identity-directories/IdentityDirectoriesPage'
 import { DefaultModelsPage } from '../../pages-v3/DefaultModelsPage'
 import { ModelRegistryPage } from '../../pages-v3/ModelRegistryPage'
 import { WorkflowsPage } from '../../pages-v3/WorkflowsPage'
@@ -399,6 +400,18 @@ function renderPage(leaf: AdminLeaf) {
     return (
       <LeafErrorBoundary leafName={leaf.name}>
         <LLMProvidersPage />
+      </LeafErrorBoundary>
+    )
+  }
+
+  // Identity / Directories — runtime SSO identity-directory registry
+  // (Azure AD / Google / generic OIDC). DB-driven, admin-editable; each
+  // enabled directory renders one login button. CRUD via
+  // /api/admin/identity-directories with clientSecret write-only + redacted.
+  if (leaf.id === 'identity-directories') {
+    return (
+      <LeafErrorBoundary leafName={leaf.name}>
+        <IdentityDirectoriesPage />
       </LeafErrorBoundary>
     )
   }

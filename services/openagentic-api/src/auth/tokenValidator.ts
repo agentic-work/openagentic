@@ -15,16 +15,119 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { AzureADAuthService, UserContext } from './azureADAuth.js';
 import { GoogleAuthService, getGoogleAuthService } from './googleAuth.js';
+import { getIdentityDirectoryService } from '../services/identity/IdentityDirectoryService.js';
 import { prisma } from '../utils/prisma.js';
 
-// Auth provider configuration - determines which external IdP to use
+// AUTH_PROVIDER is now ONLY a bootstrap default (which directory the seeder
+// creates on first boot + the auth.plugin local-login fallback when zero rows
+// exist). Once an `identity_directories` row exists, the DB is the source of
+// truth — IdP tokens are validated against the per-directory instance resolved
+// at REQUEST time (by iss/aud/directory_id), NOT against a module-load singleton
+// keyed on this env. Kept here only so `getAuthProvider()` still reports the
+// bootstrap default and the env→DB fallback paths below can reference it.
 const AUTH_PROVIDER = process.env.AUTH_PROVIDER || 'azure-ad';
 
-// Initialize auth services based on provider
-// Azure AD is enabled for: azure-ad, azure, hybrid, both, all
-const azureADAuthService = ['azure-ad', 'azure', 'hybrid', 'both', 'all'].includes(AUTH_PROVIDER) ? new AzureADAuthService({}) : null;
-// Google is enabled for: google, hybrid, both, all
-const googleAuthService = ['google', 'hybrid', 'both', 'all'].includes(AUTH_PROVIDER) ? getGoogleAuthService() : null;
+// Whether the bootstrap default would have Azure/Google enabled. Used ONLY as a
+// last-resort env fallback when the runtime directory registry is empty (first
+// boot, before the seeder has run / no DB directory yet) so an env-configured
+// deployment still validates IdP tokens with zero DB rows. DB-driven directories
+// always win when present.
+const azureEnabledByEnv = ['azure-ad', 'azure', 'hybrid', 'both', 'all'].includes(AUTH_PROVIDER);
+const googleEnabledByEnv = ['google', 'hybrid', 'both', 'all'].includes(AUTH_PROVIDER);
+
+// Lazily-constructed env-fallback singletons (only built if the directory
+// registry is empty AND the matching env provider is enabled). They read the
+// AZURE_AD_* / GOOGLE_* env fallbacks inside their own constructors.
+let envAzureFallback: AzureADAuthService | null | undefined;
+let envGoogleFallback: GoogleAuthService | null | undefined;
+
+function getEnvAzureFallback(): AzureADAuthService | null {
+  if (envAzureFallback === undefined) {
+    envAzureFallback = azureEnabledByEnv ? new AzureADAuthService({}) : null;
+  }
+  return envAzureFallback;
+}
+
+function getEnvGoogleFallback(): GoogleAuthService | null {
+  if (envGoogleFallback === undefined) {
+    envGoogleFallback = googleEnabledByEnv ? getGoogleAuthService() : null;
+  }
+  return envGoogleFallback;
+}
+
+/**
+ * Resolve the Azure-AD strategy instance for an incoming token at REQUEST time.
+ *
+ * Runtime lookup (DB is source of truth): decode the token, then find the
+ * matching enabled `azure-ad` directory by its tenant (`tid`/`directory_id`
+ * claim) and return that directory's live AzureADAuthService. Falls back to the
+ * env-configured singleton ONLY when the directory registry has no matching
+ * row (first boot / pure-env deployment).
+ */
+function resolveAzureInstance(decodedPayload: any): AzureADAuthService | null {
+  const svc = getIdentityDirectoryService();
+  if (svc) {
+    const directoryIdClaim: string | undefined = decodedPayload?.directory_id;
+    const tid: string | undefined = decodedPayload?.tid;
+    // 1) Explicit directory_id claim wins (our own minted/relayed tokens).
+    if (directoryIdClaim) {
+      const entry = svc.getDirectory(directoryIdClaim);
+      if (entry && entry.type === 'azure-ad') {
+        return entry.instance as unknown as AzureADAuthService;
+      }
+    }
+    // 2) Otherwise match an enabled azure-ad directory by tenant id.
+    if (tid) {
+      for (const redacted of svc.listEnabled()) {
+        if (redacted.type !== 'azure-ad') continue;
+        const entry = svc.getDirectory(redacted.id);
+        if (entry && (entry.config.tenantId === tid)) {
+          return entry.instance as unknown as AzureADAuthService;
+        }
+      }
+    }
+    // 3) Single enabled azure-ad directory → use it even without a tenant match
+    //    (the instance's own per-tenant assertion still gates the token).
+    const azureDirs = svc.listEnabled().filter((d) => d.type === 'azure-ad');
+    if (azureDirs.length === 1) {
+      const entry = svc.getDirectory(azureDirs[0].id);
+      if (entry) return entry.instance as unknown as AzureADAuthService;
+    }
+    if (azureDirs.length > 0) {
+      // Multiple azure dirs but no tenant match → cannot disambiguate; fall
+      // through to env fallback (which will also likely reject — correct).
+    }
+  }
+  // Env fallback (registry empty / no matching directory).
+  return getEnvAzureFallback();
+}
+
+/**
+ * Resolve the Google strategy instance for an incoming token at REQUEST time.
+ * Google ID tokens carry no tenant/directory_id, so resolution is by
+ * `directory_id` claim if present, else the single enabled google directory,
+ * else the env-configured fallback.
+ */
+function resolveGoogleInstance(decodedPayload: any): GoogleAuthService | null {
+  const svc = getIdentityDirectoryService();
+  if (svc) {
+    const directoryIdClaim: string | undefined = decodedPayload?.directory_id;
+    if (directoryIdClaim) {
+      const entry = svc.getDirectory(directoryIdClaim);
+      if (entry && (entry.type === 'google-oidc' || entry.type === 'google')) {
+        return entry.instance as unknown as GoogleAuthService;
+      }
+    }
+    const googleDirs = svc
+      .listEnabled()
+      .filter((d) => d.type === 'google-oidc' || d.type === 'google');
+    if (googleDirs.length >= 1) {
+      const entry = svc.getDirectory(googleDirs[0].id);
+      if (entry) return entry.instance as unknown as GoogleAuthService;
+    }
+  }
+  return getEnvGoogleFallback();
+}
 
 import crypto from 'crypto';
 
@@ -137,10 +240,14 @@ export async function validateAnyToken(
 
     // 3a: Google tokens
     if (isGoogleToken) {
+      // Runtime lookup: resolve the Google strategy from the DB-driven directory
+      // registry (by directory_id claim / single enabled google directory),
+      // falling back to the env-configured singleton only when no row matches.
+      const googleAuthService = resolveGoogleInstance(decoded.payload);
       if (!googleAuthService) {
         return {
           isValid: false,
-          error: 'Google authentication is not enabled (AUTH_PROVIDER != google)',
+          error: 'Google authentication is not configured (no enabled google identity directory)',
           tokenType: 'google'
         };
       }
@@ -248,11 +355,15 @@ export async function validateAnyToken(
         };
       }
     } else {
-      // AZURE AD TOKEN - validate with Azure AD service
+      // AZURE AD TOKEN - validate with the per-directory Azure AD service.
+      // Runtime lookup: resolve the directory instance by directory_id/tid from
+      // the DB-driven registry (multi-tenant: one directory per tenant), falling
+      // back to the env-configured singleton only when no row matches.
+      const azureADAuthService = resolveAzureInstance(decoded.payload);
       if (!azureADAuthService) {
         return {
           isValid: false,
-          error: 'Azure AD authentication is not enabled (AUTH_PROVIDER != azure-ad)',
+          error: 'Azure AD authentication is not configured (no enabled azure-ad identity directory)',
           tokenType: 'azure-ad'
         };
       }
