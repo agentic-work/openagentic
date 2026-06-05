@@ -100,8 +100,9 @@ const inlineInputStyle: React.CSSProperties = {
   padding: '0 6px',
   fontFamily: 'var(--font-mono)',
   fontSize: 12,
-  background: 'var(--bg-0)',
+  background: 'var(--ctl-surf)',
   border: '1px solid var(--accent-line)',
+  borderRadius: 'var(--ctl-radius-sm)',
   color: 'var(--fg-0)',
   outline: 'none',
 }
@@ -359,8 +360,8 @@ const JsonTuningEditor = ({
       data-testid={`router-tuning-json-editor-${field}`}
       style={{
         padding: '12px 18px',
-        borderBottom: '1px solid var(--line-1)',
-        background: isDirty ? 'color-mix(in srgb, var(--warn) 8%, var(--bg-1))' : 'var(--bg-1)',
+        borderBottom: '1px solid var(--glass-border)',
+        background: isDirty ? 'color-mix(in srgb, var(--warn) 8%, transparent)' : 'var(--ctl-surf)',
       }}
     >
       <div
@@ -384,8 +385,9 @@ const JsonTuningEditor = ({
         style={{
           width: '100%',
           minHeight: 120,
-          background: 'var(--bg-0)',
-          border: `1px solid ${draftError ? 'var(--err)' : isDirty ? 'var(--warn)' : 'var(--line-1)'}`,
+          background: 'var(--ctl-surf)',
+          border: `1px solid ${draftError ? 'var(--err)' : isDirty ? 'var(--warn)' : 'var(--glass-border)'}`,
+          borderRadius: 'var(--ctl-radius-sm)',
           color: 'var(--fg-0)',
           fontFamily: 'var(--font-mono)',
           fontSize: 12,
@@ -612,7 +614,7 @@ export const RouterTuningPage: React.FC = () => {
           gap: 16,
           padding: '8px 18px',
           borderBottom: '1px solid var(--line-1)',
-          background: 'var(--bg-1)',
+          background: 'var(--ctl-surf)',
           fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta)',
           color: 'var(--fg-3)',
@@ -640,7 +642,7 @@ export const RouterTuningPage: React.FC = () => {
           fontSize: 14,
           color: 'var(--fg-1)',
           lineHeight: 2.4,
-          background: 'var(--bg-1)',
+          background: 'var(--ctl-surf)',
           borderBottom: '1px solid var(--line-1)',
         }}
       >
@@ -972,7 +974,7 @@ export const RouterTuningPage: React.FC = () => {
             alignItems: 'center',
             flexWrap: 'wrap',
             borderBottom: '1px solid var(--line-1)',
-            background: 'var(--bg-1)',
+            background: 'var(--ctl-surf)',
           }}
         >
           <Chip
@@ -1013,7 +1015,7 @@ export const RouterTuningPage: React.FC = () => {
               padding: '0 10px',
               fontFamily: 'var(--font-mono)',
               fontSize: 12,
-              background: 'var(--bg-0)',
+              background: 'var(--ctl-surf)',
               border: '1px solid var(--line-1)',
               color: 'var(--fg-0)',
               outline: 'none',

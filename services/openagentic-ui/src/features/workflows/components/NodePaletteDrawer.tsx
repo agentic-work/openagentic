@@ -148,8 +148,8 @@ export const NodePaletteDrawer: React.FC<NodePaletteDrawerProps> = ({
                   placeholder={mode === 'nodes' ? 'Search nodes...' : 'Search agents...'}
                   className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-1"
                   style={{
-                    backgroundColor: 'var(--color-surface)',
-                    borderColor: 'var(--color-border)',
+                    backgroundColor: 'var(--ctl-surf)',
+                    borderColor: 'var(--glass-border)',
                     color: 'var(--color-text)',
                   }}
                   autoFocus
@@ -261,7 +261,7 @@ const AgentGroup: React.FC<{ label: string; agents: any[] }> = ({ label, agents 
         >
           <div
             className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm"
-            style={{ backgroundColor: 'var(--user-accent-primary, #FF5722)' }}
+            style={{ backgroundColor: 'var(--color-accent)' }}
           >
             {agent.icon || '\uD83E\uDD16'}
           </div>

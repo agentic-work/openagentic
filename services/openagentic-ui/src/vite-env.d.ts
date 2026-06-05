@@ -12,6 +12,10 @@ interface ImportMetaEnv {
 
   // Onboarding control
   readonly VITE_DISABLE_ONBOARDING?: string
+
+  // Kubernetes namespace the platform is deployed into — scopes the
+  // admin MCP Kubernetes view's kube_* PromQL. Default "openagentic".
+  readonly VITE_K8S_NAMESPACE?: string
 }
 
 interface ImportMeta {

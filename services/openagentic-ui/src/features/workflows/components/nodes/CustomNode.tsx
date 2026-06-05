@@ -22,7 +22,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   trigger: '#ff9800',
   ai: '#7c4dff',
   action: '#00bcd4',
-  logic: '#2196f3',
+  logic: 'var(--color-accent)',
   data: '#2dd4bf',
   approval: '#e91e63',
   agents: '#7c3aed',

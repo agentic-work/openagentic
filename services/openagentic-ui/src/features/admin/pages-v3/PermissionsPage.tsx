@@ -76,8 +76,9 @@ const textareaStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 12,
   lineHeight: 1.5,
-  background: 'var(--bg-0)',
-  border: '1px solid var(--line-1)',
+  background: 'var(--ctl-surf)',
+  border: '1px solid var(--glass-border)',
+  borderRadius: 'var(--ctl-radius-sm)',
   color: 'var(--fg-0)',
   outline: 'none',
   resize: 'vertical',
@@ -124,7 +125,7 @@ const RuleListEditor: React.FC<{
         }
         right={<span style={{ color: 'var(--fg-3)', fontSize: 'var(--v3-t-meta)' }}>{hint}</span>}
       />
-      <div style={{ padding: '12px 18px', background: 'var(--bg-1)' }}>
+      <div style={{ padding: '12px 18px', background: 'var(--ctl-surf)' }}>
         <textarea
           value={blob}
           onChange={(e) => onChange(e.target.value)}
@@ -161,7 +162,7 @@ const PendingTable: React.FC<{ pending: PendingApproval[] }> = ({ pending }) => 
       }}
     >
       <thead>
-        <tr style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--line-1)' }}>
+        <tr style={{ background: 'var(--ctl-surf)', borderBottom: '1px solid var(--glass-border)' }}>
           <th style={{ textAlign: 'left', padding: '6px 12px', fontWeight: 600 }}>tool</th>
           <th style={{ textAlign: 'left', padding: '6px 12px', fontWeight: 600 }}>user</th>
           <th style={{ textAlign: 'left', padding: '6px 12px', fontWeight: 600 }}>age</th>

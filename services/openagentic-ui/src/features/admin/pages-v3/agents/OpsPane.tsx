@@ -28,6 +28,7 @@ import {
   type FleetMetricsAgent,
   type DashboardTimeSeries,
 } from '../../hooks/useDashboardMetrics'
+import { usePromRange } from '../../hooks/useProm'
 
 export interface OpsPaneProps {
   stats?: AdminAgentExecutionStats
@@ -74,18 +75,29 @@ export const OpsPane: React.FC<OpsPaneProps> = ({
   const liveRows = live ?? []
   const successPct = stats?.successRate ?? null
 
-  // Build the area-chart series from the dashboard payload.
+  // "executions over time" is driven from Prometheus
+  // gen_ai_agent_invocations_total (incremented by GenAITracer.withAgentSpan
+  // on each sub-agent/Task dispatch), NOT timeSeries.agentExecutions —
+  // useDashboardMetrics hard-codes that array to [] now that
+  // /api/admin/dashboard/metrics is deleted, so it always read empty. This
+  // metric only populates once a sub-agent dispatch runs; until then we keep
+  // an honest zero-state. 2026-06-04.
+  const execRange = usePromRange(
+    'sum(rate(gen_ai_agent_invocations_total[5m]))',
+    { minutes: 1440, step: 120 },
+  )
   const chartSeries = React.useMemo(() => {
-    const points = timeSeries?.agentExecutions ?? []
-    if (points.length === 0) return null
-    const data = points.map((p) => p.value)
-    const xLabels = points.map((p) => {
-      const d = new Date(p.timestamp)
-      const z = (n: number) => String(n).padStart(2, '0')
-      return `${z(d.getHours())}:${z(d.getMinutes())}`
+    const values = execRange.data?.[0]?.values ?? []
+    if (values.length === 0) return null
+    const data = values.map(([, v]) => Number(v) || 0)
+    if (!data.some((v) => v !== 0)) return null
+    const z = (n: number) => String(n).padStart(2, '0')
+    const xLabels = values.map(([t]) => {
+      const d = new Date(t * 1000)
+      return `${z(d.getUTCHours())}:${z(d.getUTCMinutes())}`
     })
     return { data, xLabels }
-  }, [timeSeries])
+  }, [execRange.data])
 
   const fleetCols: DtCol<FleetMetricsAgent>[] = [
     {
@@ -186,19 +198,23 @@ export const OpsPane: React.FC<OpsPaneProps> = ({
             count="24h"
             right={
               <span style={{ color: 'var(--fg-3)', fontSize: 'var(--v3-t-meta)' }}>
-                /api/admin/dashboard/metrics
+                gen_ai_agent_invocations_total
               </span>
             }
           />
-          {chartSeries == null ? (
-            <EmptyInline pad>no execution time-series available.</EmptyInline>
+          {execRange.isLoading ? (
+            <EmptyInline pad>loading…</EmptyInline>
+          ) : execRange.isError ? (
+            <EmptyInline pad>prom query failed</EmptyInline>
+          ) : chartSeries == null ? (
+            <EmptyInline pad>awaiting data — populates as sub-agents dispatch.</EmptyInline>
           ) : (
             <div style={{ padding: '8px 12px 12px' }}>
               <MetricChart
                 variant="area"
-                series={[{ name: 'executions', data: chartSeries.data, color: 'accent' }]}
+                series={[{ name: 'invocations/sec', data: chartSeries.data, color: 'accent' }]}
                 xLabels={chartSeries.xLabels}
-                yFormat="tok"
+                yFormat={(v) => v.toFixed(2)}
                 height={200}
               />
             </div>

@@ -1794,3 +1794,72 @@ html[data-theme="light"] .aw-tier--t2 {
 html[data-theme="light"] .aw-tier--t3 {
   background: color-mix(in srgb, var(--warn) 16%, var(--bg-2));
 }
+
+/* ============================================================
+   TERMINAL GLASS — admin v3 primitives frosted re-skin.
+
+   The panels / tiles / cards / tables / feed rows / status banners
+   join the app-wide Terminal Glass system: the dominant card fills
+   (var(--bg-1)) become the frosted glass surface (var(--glass-bg) +
+   var(--glass-blur)) over the aurora, and the sunken chrome rows
+   (heads / sub-tabs / filter rows / KPI strips / table headers /
+   hover rows) read the frosted control surface (var(--ctl-surf)).
+   Accent/tone tints keep their semantic colors. Token-driven only
+   (no literals) so the guard stays green and the surfaces flip
+   dark/light from the ONE SOT. Appended LAST so it wins the cascade
+   over the earlier flat --bg-N rules of equal specificity.
+   ============================================================ */
+
+/* Result CARDS / panels = frosted glass surface + blur. */
+.aw-grid > .aw-panel,
+.aw-panel--card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+/* The 1px grid gutters between panels — soften to the glass hairline. */
+.aw-grid { background: var(--glass-border); }
+
+/* Sunken chrome rows / heads / strips → frosted control surface. */
+.aw-page-head,
+.aw-subtabs,
+.aw-filter-row,
+.aw-panel-head,
+.aw-kpi-grid,
+.aw-mini-grid,
+.aw-pct-head,
+.aw-inline-table thead,
+.aw-inline-table thead th {
+  background: var(--ctl-surf);
+}
+
+/* Hairline dividers → the glass border tone. */
+.aw-page-head,
+.aw-subtabs,
+.aw-panel-head,
+.aw-kpi-grid,
+.aw-mini-grid {
+  border-color: var(--glass-border);
+}
+
+/* Sunken wells / inset rows → translucent control surface. */
+.aw-pct-cell,
+.aw-barlist,
+.aw-feed {
+  background: var(--ctl-surf);
+}
+
+/* Hover rows → the frosted hover surface (was flat --bg-2). */
+.aw-feed-row:hover,
+.aw-inline-table tbody tr:hover,
+.aw-inline-table tbody tr:hover td {
+  background: var(--ctl-surf-hover);
+}
+
+/* Empty-state + banner panels = frosted glass card. */
+.aw-empty-state {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+}

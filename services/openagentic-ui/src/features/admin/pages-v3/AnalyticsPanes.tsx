@@ -244,7 +244,8 @@ export const LLMRouterPane: React.FC<{ window: TimeWindow }> = ({ window }) => (
       <RangeChart title="time-per-output-token p95 (ms)" window={window} variant="line" yFormat="ms" scale={1000}
         query={Q.tpotQuantile(window, 0.95)} nameOf={labelName('model')} />
       <RangeChart title="finish reasons / sec" window={window} variant="stacked-area"
-        query={Q.finishReasonRate(window)} nameOf={labelName('finish_reason')} />
+        query={Q.finishReasonRate(window)} nameOf={labelName('finish_reason')}
+        zeroMetric="completions" />
       <RangeChart title="errors / sec by class" window={window} variant="area"
         query={Q.errorRateByClass(window)} nameOf={labelName('error_class')} colors={['err', 'warn']}
         zeroMetric="errors" />

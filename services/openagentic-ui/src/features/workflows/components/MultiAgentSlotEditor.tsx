@@ -43,9 +43,9 @@ const cellStyle: React.CSSProperties = {
   width: '100%',
   padding: 6,
   fontSize: 12,
-  background: 'var(--color-bg-secondary, #1a1a1a)',
+  background: 'var(--ctl-surf)',
   color: 'var(--color-text)',
-  border: '1px solid var(--color-border, #2a2a2a)',
+  border: '1px solid var(--glass-border)',
   borderRadius: 4,
 };
 
@@ -64,11 +64,11 @@ export const MultiAgentSlotEditor: React.FC<MultiAgentSlotEditorProps> = ({
 
   return (
     <div
+      className="glass-surface-subtle"
       style={{
         padding: 8,
-        border: '1px solid var(--color-border, #2a2a2a)',
+        border: '1px solid var(--glass-border)',
         borderRadius: 6,
-        background: 'rgba(255,255,255,0.02)',
       }}
     >
       <div className="flex items-center justify-between mb-1">
@@ -115,7 +115,7 @@ export const MultiAgentSlotEditor: React.FC<MultiAgentSlotEditorProps> = ({
       <label
         htmlFor={modelSelectId}
         className="block text-xs"
-        style={{ color: 'var(--color-text-tertiary, #6e7681)', marginBottom: 2 }}
+        style={{ color: 'var(--color-text-tertiary)', marginBottom: 2 }}
       >
         Model
       </label>

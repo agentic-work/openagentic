@@ -173,15 +173,15 @@ export const AgentPlayground: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="rounded-xl border p-4 mb-4"
                 style={{
-                  borderColor: '#00ff00',
-                  backgroundColor: 'rgba(0, 255, 0, 0.05)',
+                  borderColor: 'var(--color-ok)',
+                  backgroundColor: 'color-mix(in srgb, var(--color-ok) 5%, transparent)',
                 }}
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: '#00ff00' }}>
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--color-ok)' }}>
                     <Play className="w-3 h-3 text-white" />
                   </div>
-                  <span className="text-sm font-semibold" style={{ color: '#00ff00' }}>Result</span>
+                  <span className="text-sm font-semibold" style={{ color: 'var(--color-ok)' }}>Result</span>
                 </div>
                 <div
                   className="text-sm leading-relaxed whitespace-pre-wrap"
@@ -198,14 +198,14 @@ export const AgentPlayground: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="rounded-xl border p-4 mb-4"
                 style={{
-                  borderColor: '#f44336',
-                  backgroundColor: 'rgba(244, 67, 54, 0.05)',
+                  borderColor: 'var(--color-err)',
+                  backgroundColor: 'color-mix(in srgb, var(--color-err) 5%, transparent)',
                 }}
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-semibold" style={{ color: '#f44336' }}>Error</span>
+                  <span className="text-sm font-semibold" style={{ color: 'var(--color-err)' }}>Error</span>
                 </div>
-                <div className="text-sm" style={{ color: '#f44336' }}>{error}</div>
+                <div className="text-sm" style={{ color: 'var(--color-err)' }}>{error}</div>
               </motion.div>
             )}
 

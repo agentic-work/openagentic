@@ -84,21 +84,20 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 400, opacity: 0 }}
       transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-      className="absolute right-0 top-0 bottom-0 w-[380px] flex flex-col z-30 border-l"
+      className="glass absolute right-0 top-0 bottom-0 w-[380px] flex flex-col z-30 border-l"
       style={{
-        background: 'var(--wf-node-bg)',
-        borderColor: 'var(--wf-node-border)',
-        boxShadow: '-4px 0 24px rgba(0,0,0,0.1)',
+        borderRadius: 0,
+        borderColor: 'var(--glass-border)',
       }}
     >
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0"
-        style={{ borderColor: 'var(--wf-node-border)' }}
+        style={{ borderColor: 'var(--glass-border)' }}
       >
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4" style={{ color: 'var(--color-accent)' }} />
-          <span className="text-sm font-semibold" style={{ color: 'var(--color-text, #333)' }}>
+          <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
             AI Flow Builder
           </span>
         </div>
@@ -106,17 +105,17 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
           {messages.length > 0 && (
             <button
               onClick={clearMessages}
-              className="p-1.5 rounded transition-colors hover:bg-[rgba(0,0,0,0.05)]"
+              className="p-1.5 rounded transition-colors hover:bg-[var(--ctl-surf-hover)]"
               title="Clear conversation"
-              style={{ color: 'var(--color-text-tertiary, #999)' }}
+              style={{ color: 'var(--color-text-tertiary)' }}
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
           <button
             onClick={onClose}
-            className="p-1.5 rounded transition-colors hover:bg-[rgba(0,0,0,0.05)]"
-            style={{ color: 'var(--color-text-tertiary, #999)' }}
+            className="p-1.5 rounded transition-colors hover:bg-[var(--ctl-surf-hover)]"
+            style={{ color: 'var(--color-text-tertiary)' }}
           >
             <X className="w-4 h-4" />
           </button>
@@ -125,12 +124,12 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
 
       {/* Quick Actions */}
       {hasCanvas && (
-        <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b" style={{ borderColor: 'var(--wf-node-border)' }}>
+        <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b" style={{ borderColor: 'var(--glass-border)' }}>
           <button
             onClick={() => handleSend('What does this workflow do? Explain each node and how data flows between them.')}
             disabled={isGenerating}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium border transition-colors hover:border-[#7c4dff]"
-            style={{ borderColor: 'var(--wf-node-border)', color: 'var(--color-text-secondary)', background: 'var(--color-surface)' }}
+            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium border transition-colors hover:border-[color-mix(in_srgb,var(--color-accent)_60%,transparent)]"
+            style={{ borderColor: 'var(--glass-border)', color: 'var(--color-text-secondary)', background: 'var(--ctl-surf)' }}
           >
             <Eye className="w-3 h-3" /> Explain
           </button>
@@ -139,7 +138,7 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
               <button
                 onClick={() => handleSend('The last execution failed. For EACH failed node:\n1. Identify the root cause from the error message\n2. Apply the fix using a ```patch block\n3. If the node type is fundamentally wrong (e.g. mcp_tool referencing unavailable tool), replace it with an openagentic_llm node that achieves the same goal.\nFix ALL errors, not just the first one.')}
                 disabled={isGenerating}
-                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium border transition-colors hover:border-[#f44336]"
+                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium border transition-colors hover:border-[color-mix(in_srgb,var(--color-error)_60%,transparent)]"
                 style={{ borderColor: 'color-mix(in srgb, var(--color-error) 30%, transparent)', color: 'var(--color-error)', background: 'color-mix(in srgb, var(--color-error) 5%, transparent)' }}
               >
                 <AlertCircle className="w-3 h-3" /> Fix Errors
@@ -147,7 +146,7 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
               <button
                 onClick={() => handleSend('The last execution failed. Diagnose every failed node, output a ```patch block that fixes ALL errors, then I will re-execute. Be surgical — only change what is broken. Common fixes: remove invalid modelOverride, fix mcp_tool arguments to match tool schema, fix condition expressions to use `input.field` instead of template syntax, replace unavailable MCP tools with openagentic_llm equivalents.')}
                 disabled={isGenerating}
-                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium border transition-colors hover:border-[#ff9800]"
+                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium border transition-colors hover:border-[color-mix(in_srgb,var(--color-warning)_60%,transparent)]"
                 style={{ borderColor: 'color-mix(in srgb, var(--color-warning) 30%, transparent)', color: 'var(--color-warning)', background: 'color-mix(in srgb, var(--color-warning) 5%, transparent)' }}
               >
                 <Zap className="w-3 h-3" /> Fix & Run
@@ -157,16 +156,16 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
           <button
             onClick={() => handleSend('Analyze this workflow and suggest optimizations: reduce redundant nodes, improve data flow, add error handling, and suggest better MCP tools where applicable.')}
             disabled={isGenerating}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium border transition-colors hover:border-[#7c4dff]"
-            style={{ borderColor: 'var(--wf-node-border)', color: 'var(--color-text-secondary)', background: 'var(--color-surface)' }}
+            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium border transition-colors hover:border-[color-mix(in_srgb,var(--color-accent)_60%,transparent)]"
+            style={{ borderColor: 'var(--glass-border)', color: 'var(--color-text-secondary)', background: 'var(--ctl-surf)' }}
           >
             <Zap className="w-3 h-3" /> Optimize
           </button>
           <button
             onClick={() => handleSend('Generate test cases for this workflow. For each node, suggest sample inputs and expected outputs that would validate correct behavior.')}
             disabled={isGenerating}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium border transition-colors hover:border-[#7c4dff]"
-            style={{ borderColor: 'var(--wf-node-border)', color: 'var(--color-text-secondary)', background: 'var(--color-surface)' }}
+            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium border transition-colors hover:border-[color-mix(in_srgb,var(--color-accent)_60%,transparent)]"
+            style={{ borderColor: 'var(--glass-border)', color: 'var(--color-text-secondary)', background: 'var(--ctl-surf)' }}
           >
             <Beaker className="w-3 h-3" /> Gen Tests
           </button>
@@ -177,11 +176,11 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 wf-scrollbar">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <Workflow className="w-10 h-10 mb-3" style={{ color: 'var(--color-text-tertiary, #999)', opacity: 0.4 }} />
-            <p className="text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary, #666)' }}>
+            <Workflow className="w-10 h-10 mb-3" style={{ color: 'var(--color-text-tertiary)', opacity: 0.4 }} />
+            <p className="text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
               Describe your workflow
             </p>
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-tertiary)' }}>
               Tell me what you want to automate and I'll generate a multi-agent workflow for you.
             </p>
             <div className="mt-4 space-y-2 w-full">
@@ -194,11 +193,11 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
                 <button
                   key={i}
                   onClick={() => setInput(suggestion)}
-                  className="w-full text-left text-[11px] px-3 py-2 rounded-lg border transition-colors hover:border-[#7c4dff]"
+                  className="w-full text-left text-[11px] px-3 py-2 rounded-lg border transition-colors hover:border-[color-mix(in_srgb,var(--color-accent)_60%,transparent)]"
                   style={{
-                    borderColor: 'var(--wf-node-border)',
-                    color: 'var(--color-text-secondary, #666)',
-                    background: 'var(--color-surface)',
+                    borderColor: 'var(--glass-border)',
+                    color: 'var(--color-text-secondary)',
+                    background: 'var(--ctl-surf)',
                   }}
                 >
                   {suggestion}
@@ -215,7 +214,7 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
         {isGenerating && messages.length > 0 && messages[messages.length - 1].role !== 'assistant' && (
           <div className="flex items-center gap-2 px-3 py-2">
             <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--color-accent)' }} />
-            <span className="text-xs" style={{ color: 'var(--color-text-tertiary, #999)' }}>Generating workflow...</span>
+            <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Generating workflow...</span>
           </div>
         )}
 
@@ -223,10 +222,10 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
       </div>
 
       {/* Input */}
-      <div className="border-t px-3 py-3 flex-shrink-0" style={{ borderColor: 'var(--wf-node-border)' }}>
+      <div className="border-t px-3 py-3 flex-shrink-0" style={{ borderColor: 'var(--glass-border)' }}>
         <div
           className="flex items-end gap-2 rounded-lg border px-3 py-2"
-          style={{ borderColor: 'var(--wf-node-border)', background: 'var(--color-surface)' }}
+          style={{ borderColor: 'var(--glass-border)', background: 'var(--ctl-surf)' }}
         >
           <textarea
             ref={inputRef}
@@ -237,7 +236,7 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
             rows={1}
             className="flex-1 resize-none bg-transparent text-sm outline-none"
             style={{
-              color: 'var(--color-text, #333)',
+              color: 'var(--color-text)',
               maxHeight: 120,
               minHeight: 20,
             }}
@@ -258,7 +257,7 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
               className="p-1.5 rounded-md transition-colors flex-shrink-0"
               style={{
                 backgroundColor: input.trim() ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' : 'transparent',
-                color: input.trim() ? 'var(--color-accent)' : 'var(--color-text-tertiary, #999)',
+                color: input.trim() ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
                 opacity: input.trim() ? 1 : 0.5,
               }}
               title="Send"
@@ -285,9 +284,9 @@ const MessageBubble: React.FC<{
       <div
         className={`max-w-[90%] rounded-lg px-3 py-2 text-xs leading-relaxed ${isUser ? 'rounded-br-sm' : 'rounded-bl-sm'}`}
         style={{
-          background: isUser ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' : 'var(--color-surface)',
-          color: 'var(--color-text, #333)',
-          border: isUser ? 'none' : '1px solid var(--wf-node-border)',
+          background: isUser ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' : 'var(--ctl-surf)',
+          color: 'var(--color-text)',
+          border: isUser ? 'none' : '1px solid var(--glass-border)',
         }}
       >
         {/* Render message content, hiding raw workflow/patch JSON for cleaner display */}

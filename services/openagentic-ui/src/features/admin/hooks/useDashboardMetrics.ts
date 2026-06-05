@@ -240,6 +240,44 @@ export function useMcpHealth() {
   )
 }
 
+// ============================================================
+// /api/admin/mcp-logs/stats — aggregate MCP-call stats from the
+// mcp_usage table (admin-mcp-logs.ts, registered via admin.plugin.ts).
+// Groups by server_name + tool_name so the V3 Fleet donut can render
+// real "calls by server" / "calls by tool" slices WITHOUT Prometheus
+// (the old /api/admin/dashboard/metrics.mcpToolUsage feed was deleted
+// in OSS and useDashboardMetrics now hard-codes mcpToolUsage:[]).
+// ============================================================
+export interface McpStatsTopTool {
+  toolId: string
+  toolName: string
+  serverId: string
+  count: number
+}
+export interface McpStatsTopServer {
+  serverId: string
+  count: number
+}
+export interface McpStatsResponse {
+  success?: boolean
+  totalCalls?: number
+  recentCalls24h?: number
+  successfulCalls?: number
+  failedCalls?: number
+  successRate?: string
+  avgExecutionTime?: number
+  topTools?: McpStatsTopTool[]
+  topServers?: McpStatsTopServer[]
+}
+
+export function useMcpStats() {
+  return useAdminQuery<McpStatsResponse>(
+    ['mcp-stats'],
+    '/api/admin/mcp-logs/stats',
+    { staleTime: 30_000, refetchInterval: 30_000 },
+  )
+}
+
 export interface ProviderHealthEntry {
   provider?: string
   status?: string

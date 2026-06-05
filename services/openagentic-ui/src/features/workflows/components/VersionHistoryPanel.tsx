@@ -61,12 +61,13 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
   return (
     <div
       data-testid="version-history-panel"
+      className="glass"
       style={{
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        background: 'var(--bg-primary, #0a0a0f)',
-        color: 'var(--text-primary, #e4e4e7)',
+        borderRadius: 0,
+        color: 'var(--color-fg)',
       }}
     >
       {/* Header */}
@@ -76,7 +77,7 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
           alignItems: 'center',
           gap: 10,
           padding: '12px 16px',
-          borderBottom: '1px solid var(--border-primary, #27272a)',
+          borderBottom: '1px solid var(--glass-border)',
           flexShrink: 0,
         }}
       >
@@ -88,7 +89,7 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
             cursor: 'pointer',
             padding: '4px',
             borderRadius: 6,
-            color: 'var(--text-secondary, #71717a)',
+            color: 'var(--color-fg-muted)',
             display: 'flex',
             alignItems: 'center',
           }}
@@ -96,7 +97,7 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
         >
           <ChevronLeft size={16} />
         </button>
-        <GitBranch size={16} style={{ color: 'var(--accent-primary, #818cf8)' }} />
+        <GitBranch size={16} style={{ color: 'var(--color-accent)' }} />
         <span style={{ fontSize: 13, fontWeight: 600 }}>Version History</span>
         <div style={{ flex: 1 }} />
         <button
@@ -107,7 +108,7 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
             cursor: 'pointer',
             padding: '4px',
             borderRadius: 6,
-            color: 'var(--text-secondary, #71717a)',
+            color: 'var(--color-fg-muted)',
             display: 'flex',
             alignItems: 'center',
           }}
@@ -119,7 +120,7 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
       {/* Version list */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 0' }}>
         {sorted.length === 0 && (
-          <div style={{ textAlign: 'center', color: 'var(--text-secondary, #71717a)', fontSize: 12, padding: 24 }}>
+          <div style={{ textAlign: 'center', color: 'var(--color-fg-muted)', fontSize: 12, padding: 24 }}>
             No saved versions yet
           </div>
         )}
@@ -132,8 +133,8 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
               data-testid={`version-row-${version.version}`}
               style={{
                 padding: '10px 16px',
-                borderBottom: '1px solid var(--border-primary, #27272a)',
-                background: isCurrent ? 'color-mix(in srgb, var(--color-accent) 5%, transparent)' : 'transparent',
+                borderBottom: '1px solid var(--glass-border)',
+                background: isCurrent ? 'var(--color-accent-soft)' : 'transparent',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -142,7 +143,7 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
                   style={{
                     fontSize: 12,
                     fontWeight: 700,
-                    color: isCurrent ? 'var(--accent-primary, #818cf8)' : 'var(--text-primary, #e4e4e7)',
+                    color: isCurrent ? 'var(--color-accent)' : 'var(--color-fg)',
                     fontFamily: 'var(--font-mono)',
                   }}
                 >
@@ -151,7 +152,7 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
                 {isCurrent && (
                   <span style={{
                     fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
-                    color: 'var(--accent-primary, #818cf8)',
+                    color: 'var(--color-accent)',
                     background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
                     padding: '1px 5px', borderRadius: 3,
                     letterSpacing: '0.04em',
@@ -159,19 +160,19 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
                     current
                   </span>
                 )}
-                <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-secondary, #71717a)' }}>
+                <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--color-fg-muted)' }}>
                   {formatDate(version.createdAt)}
                 </span>
               </div>
 
               {version.changelog && (
-                <div style={{ fontSize: 11, color: 'var(--text-primary, #e4e4e7)', marginBottom: 4, lineHeight: 1.4 }}>
+                <div style={{ fontSize: 11, color: 'var(--color-fg)', marginBottom: 4, lineHeight: 1.4 }}>
                   {version.changelog}
                 </div>
               )}
 
               {version.createdBy && (
-                <div style={{ fontSize: 10, color: 'var(--text-secondary, #71717a)', marginBottom: 8 }}>
+                <div style={{ fontSize: 10, color: 'var(--color-fg-muted)', marginBottom: 8 }}>
                   {version.createdBy}
                 </div>
               )}
@@ -183,9 +184,9 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
                     onClick={() => onCompare(version)}
                     style={{
                       fontSize: 11, padding: '3px 10px', borderRadius: 5,
-                      border: '1px solid var(--border-primary, #27272a)',
+                      border: '1px solid var(--glass-border)',
                       background: 'transparent',
-                      color: 'var(--text-secondary, #71717a)',
+                      color: 'var(--color-fg-muted)',
                       cursor: 'pointer',
                     }}
                   >
@@ -225,26 +226,24 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'rgba(0,0,0,0.75)',
+              background: 'color-mix(in srgb, var(--color-bg) 75%, transparent)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               zIndex: 50,
             }}
           >
-            <div style={{
-              background: 'var(--bg-secondary, #18181b)',
-              border: '1px solid var(--border-primary, #27272a)',
+            <div className="glass-surface" style={{
               borderRadius: 10,
               padding: 20,
               maxWidth: 320,
               width: '100%',
               margin: '0 16px',
             }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--text-primary, #e4e4e7)' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--color-fg)' }}>
                 Restore v{pendingRestore.version}?
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary, #71717a)', marginBottom: 16, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 11, color: 'var(--color-fg-muted)', marginBottom: 16, lineHeight: 1.5 }}>
                 This will overwrite the current workflow with version {pendingRestore.version}.
                 {pendingRestore.changelog && ` (${pendingRestore.changelog})`}
               </div>
@@ -254,9 +253,9 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
                   data-testid="restore-cancel-button"
                   style={{
                     padding: '6px 14px', borderRadius: 6, fontSize: 12,
-                    border: '1px solid var(--border-primary, #27272a)',
+                    border: '1px solid var(--glass-border)',
                     background: 'transparent',
-                    color: 'var(--text-secondary, #71717a)',
+                    color: 'var(--color-fg-muted)',
                     cursor: 'pointer',
                   }}
                 >

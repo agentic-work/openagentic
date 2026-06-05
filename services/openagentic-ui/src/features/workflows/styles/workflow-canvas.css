@@ -33,7 +33,7 @@
   --wf-cat-trigger: #ff9800;
   --wf-cat-llm: #7c4dff;
   --wf-cat-tool: #00bcd4;
-  --wf-cat-logic: #2196f3;
+  --wf-cat-logic: var(--color-accent);
   --wf-cat-data: #2dd4bf;
   --wf-cat-http: #ff5722;
   --wf-cat-code: #607d8b;
@@ -162,7 +162,7 @@
 
 /* Validation sweep states */
 .wf-node-card.wf-status-validating {
-  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.6), var(--wf-node-shadow);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-info) 60%, transparent), var(--wf-node-shadow);
   border-color: var(--color-info);
   animation: wf-validation-scan 0.6s ease-in-out infinite;
 }
@@ -180,8 +180,8 @@
 }
 
 @keyframes wf-validation-scan {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.3), var(--wf-node-shadow); }
-  50% { box-shadow: 0 0 8px 3px rgba(33, 150, 243, 0.5), var(--wf-node-shadow); }
+  0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-info) 30%, transparent), var(--wf-node-shadow); }
+  50% { box-shadow: 0 0 8px 3px color-mix(in srgb, var(--color-info) 50%, transparent), var(--wf-node-shadow); }
 }
 
 @keyframes wf-pulse-running {
@@ -401,8 +401,8 @@
 
 /* ==================== Handles ==================== */
 @keyframes wf-handle-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 var(--handle-glow-color, rgba(33,150,243,0)); }
-  50% { box-shadow: 0 0 0 4px var(--handle-glow-color, rgba(33,150,243,0.18)); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--handle-glow-color, color-mix(in srgb, var(--color-accent) 0%, transparent)); }
+  50% { box-shadow: 0 0 0 4px var(--handle-glow-color, color-mix(in srgb, var(--color-accent) 18%, transparent)); }
 }
 
 @keyframes wf-handle-ping {
@@ -612,8 +612,8 @@
 
 /* ==================== Selection Box ==================== */
 .react-flow__selection {
-  background: rgba(33, 150, 243, 0.08);
-  border: 1px solid rgba(33, 150, 243, 0.4);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
 }
 
 /* ==================== Attribution ==================== */
@@ -801,14 +801,14 @@
   background: var(--wf-node-bg);
   border: 1px solid var(--wf-node-border);
   box-shadow: var(--wf-node-shadow);
-  color: var(--color-text-tertiary, #999);
+  color: var(--color-text-tertiary);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .wf-hover-btn:hover {
   color: var(--color-info);
-  border-color: rgba(33, 150, 243, 0.4);
+  border-color: color-mix(in srgb, var(--color-info) 40%, transparent);
   transform: scale(1.1);
 }
 

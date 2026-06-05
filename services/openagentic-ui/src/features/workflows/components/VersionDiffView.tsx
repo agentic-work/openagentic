@@ -205,13 +205,13 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      className="flex flex-col h-full"
-      style={{ background: 'var(--bg-primary, #0a0a0f)', color: 'var(--text-primary, #e4e4e7)' }}
+      className="glass flex flex-col h-full"
+      style={{ borderRadius: 0, color: 'var(--color-fg)' }}
     >
       {/* Header */}
       <div
         className="flex items-center gap-3 px-4 py-3 border-b"
-        style={{ borderColor: 'var(--border-primary, #27272a)' }}
+        style={{ borderColor: 'var(--glass-border)' }}
       >
         <button
           onClick={onClose}
@@ -220,7 +220,7 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
         >
           <ArrowLeft size={16} />
         </button>
-        <GitBranch size={16} style={{ color: 'var(--accent-primary, #818cf8)' }} />
+        <GitBranch size={16} style={{ color: 'var(--color-accent)' }} />
         <span className="text-sm font-medium">
           Version {compareVersion.version} &rarr; Version {currentVersion.version}
         </span>
@@ -229,7 +229,7 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
       {/* Summary stats */}
       <div
         className="grid grid-cols-5 gap-2 px-4 py-3 border-b text-xs"
-        style={{ borderColor: 'var(--border-primary, #27272a)' }}
+        style={{ borderColor: 'var(--glass-border)' }}
       >
         <StatBadge label="Added" count={summary.nodesAdded} color="var(--color-success)" />
         <StatBadge label="Removed" count={summary.nodesRemoved} color="var(--color-error)" />
@@ -241,7 +241,7 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
       {/* Change list */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {totalChanges === 0 && (
-          <div className="text-center text-sm py-8" style={{ color: 'var(--text-secondary, #71717a)' }}>
+          <div className="text-center text-sm py-8" style={{ color: 'var(--color-fg-muted)' }}>
             No differences found between these versions.
           </div>
         )}
@@ -259,7 +259,7 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
         {/* Edge changes */}
         {edgeChanges.length > 0 && (
           <div className="pt-2">
-            <div className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary, #71717a)' }}>
+            <div className="text-xs font-medium mb-2" style={{ color: 'var(--color-fg-muted)' }}>
               Edge Changes
             </div>
             {edgeChanges.map((change) => (
@@ -287,7 +287,7 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
 const StatBadge: React.FC<{ label: string; count: number; color: string }> = ({ label, count, color }) => (
   <div className="flex flex-col items-center gap-0.5">
     <span className="font-mono font-semibold text-base" style={{ color }}>{count}</span>
-    <span style={{ color: 'var(--text-secondary, #71717a)' }}>{label}</span>
+    <span style={{ color: 'var(--color-fg-muted)' }}>{label}</span>
   </div>
 );
 
@@ -334,7 +334,7 @@ const NodeChangeRow: React.FC<{
               {change.changedFields.map((f) => (
                 <div key={f.field} className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <div className="font-medium mb-0.5" style={{ color: 'var(--text-secondary, #71717a)' }}>
+                    <div className="font-medium mb-0.5" style={{ color: 'var(--color-fg-muted)' }}>
                       {f.field} <span style={{ color: 'var(--color-error)' }}>(old)</span>
                     </div>
                     <pre
@@ -345,7 +345,7 @@ const NodeChangeRow: React.FC<{
                     </pre>
                   </div>
                   <div>
-                    <div className="font-medium mb-0.5" style={{ color: 'var(--text-secondary, #71717a)' }}>
+                    <div className="font-medium mb-0.5" style={{ color: 'var(--color-fg-muted)' }}>
                       {f.field} <span style={{ color: 'var(--color-success)' }}>(new)</span>
                     </div>
                     <pre

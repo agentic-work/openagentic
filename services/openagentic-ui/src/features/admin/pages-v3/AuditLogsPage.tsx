@@ -822,7 +822,8 @@ const EventDetail: React.FC<{ entry: AuditLogEntry }> = ({ entry }) => {
           fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta)',
           color: 'var(--fg-1)',
-          background: 'var(--bg-0)',
+          background: 'var(--ctl-surf)',
+          borderRadius: 'var(--ctl-radius-sm)',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
         }}

@@ -167,8 +167,8 @@ export const TopBar = ({
             style={{
               fontFamily: 'var(--font-mono)',
               fontSize: 9,
-              background: 'var(--bg-3)',
-              border: '1px solid var(--line-2)',
+              background: 'var(--ctl-surf)',
+              border: '1px solid var(--glass-border)',
               padding: '1px 4px',
               color: 'var(--fg-2)',
             }}

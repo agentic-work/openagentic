@@ -121,12 +121,15 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, fo
   )
 }
 
-// Standardized monospace input style used across all v3 modals.
+// Standardized monospace input style used across all v3 modals — frosted
+// glass field surface (var(--ctl-surf) + glass border) per the Terminal Glass
+// control language.
 export const v3InputStyle: React.CSSProperties = {
   width: '100%',
-  background: 'var(--bg-2)',
+  background: 'var(--ctl-surf)',
   color: 'var(--fg-0)',
-  border: '1px solid var(--line-1)',
+  border: '1px solid var(--glass-border)',
+  borderRadius: 'var(--ctl-radius-sm)',
   padding: '5px 9px',
   fontFamily: 'var(--font-mono)',
   fontSize: 'var(--v3-t-meta, 11px)',

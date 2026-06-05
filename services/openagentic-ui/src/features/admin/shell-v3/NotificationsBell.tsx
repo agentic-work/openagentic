@@ -93,7 +93,7 @@ export const NotificationsBell: React.FC = () => {
               height: 6,
               borderRadius: '50%',
               background: dotColor,
-              boxShadow: '0 0 0 1px var(--bg-1)',
+              boxShadow: '0 0 0 1px var(--glass-page-bg)',
             }}
           />
         )}
@@ -194,7 +194,7 @@ export const NotificationsBell: React.FC = () => {
                       padding: '8px 14px',
                       borderBottom: '1px solid var(--line-1)',
                       borderLeft: `2px solid ${isUnseen ? tone : 'transparent'}`,
-                      background: isUnseen ? 'var(--bg-2)' : 'transparent',
+                      background: isUnseen ? 'var(--glass-accent-fill-2)' : 'transparent',
                       fontSize: 12,
                       fontFamily: 'var(--font-v3-body)',
                     }}

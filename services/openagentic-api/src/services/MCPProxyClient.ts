@@ -15,6 +15,7 @@ import http from 'http';
 import https from 'https';
 import type { Logger } from 'pino';
 import { prisma } from '../utils/prisma.js';
+import { trackMcpToolCall } from '../metrics/index.js';
 
 // Structural interface the legacy sub-agent orchestrator originally
 // declared. Inlined here Phase E.8.a (2026-05-11) so MCPProxyClient.ts
@@ -37,6 +38,10 @@ async function recordMcpUsage(
   args: Record<string, any>,
   result: { success: boolean; error?: string; executionTimeMs: number; userId?: string },
 ): Promise<void> {
+  // Prom mirror — this legacy sub-agent path knows the server explicitly, so
+  // pass it through for a clean `server` label. Mirrors the chat-v2 seam in
+  // buildChatV2Deps.recordChatMcpUsage. Self-guarding; never throws.
+  trackMcpToolCall(tool, result.success, server);
   try {
     await prisma.mCPUsage.create({
       data: {

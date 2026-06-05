@@ -259,7 +259,7 @@ const NodeOutputRenderer: React.FC<{ output: any; nodeType: string; error?: stri
         )}
         {stdout && (
           <pre className="text-[11px] font-mono p-2 rounded overflow-x-auto whitespace-pre-wrap"
-            style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text)' }}>
+            style={{ background: 'color-mix(in srgb, var(--glass-page-bg) 55%, transparent)', color: 'var(--color-text)' }}>
             {stdout}
           </pre>
         )}
@@ -303,7 +303,7 @@ const NodeOutputRenderer: React.FC<{ output: any; nodeType: string; error?: stri
             <div className="text-[10px] mb-1" style={{ color: 'var(--color-text-tertiary)' }}>Body</div>
             {typeof body === 'string' ? (
               <pre className="text-[11px] font-mono p-2 rounded overflow-x-auto whitespace-pre-wrap"
-                style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text)' }}>
+                style={{ background: 'color-mix(in srgb, var(--glass-page-bg) 55%, transparent)', color: 'var(--color-text)' }}>
                 {body.substring(0, 2000)}{body.length > 2000 ? `\n...${body.length - 2000} more chars` : ''}
               </pre>
             ) : (
@@ -622,8 +622,8 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
         onClick={onToggle}
         className="w-full flex items-center justify-between px-4 py-1.5 border-t transition-colors cursor-pointer"
         style={{
-          background: 'var(--color-surface, #1C1C1E)',
-          borderColor: 'var(--color-border, rgba(255,255,255,0.08))',
+          background: 'var(--ctl-surf)',
+          borderColor: 'var(--glass-border)',
         }}
       >
         <div className="flex items-center gap-3">
@@ -689,8 +689,8 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
             transition={{ duration: 0.2 }}
             className="overflow-hidden border-t"
             style={{
-              background: 'var(--color-bg-primary, #000000)',
-              borderColor: 'var(--color-border, rgba(255,255,255,0.08))',
+              background: 'color-mix(in srgb, var(--glass-page-bg) 70%, transparent)',
+              borderColor: 'var(--glass-border)',
             }}
           >
             {/* Resize Handle */}
@@ -703,8 +703,8 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
             <div
               className="flex items-center gap-1 px-3 py-1.5 border-b"
               style={{
-                background: 'var(--color-surface, #1C1C1E)',
-                borderColor: 'var(--color-border, rgba(255,255,255,0.08))',
+                background: 'var(--ctl-surf)',
+                borderColor: 'var(--glass-border)',
               }}
             >
               {(['current', 'history', 'streaming-logs', 'validation'] as PanelTab[]).map(tab => (
@@ -714,7 +714,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                   className={`px-3 py-1 text-[11px] font-medium rounded transition-colors ${
                     panelTab === tab ? 'bg-accent-primary/20 text-accent-primary' : ''
                   }`}
-                  style={panelTab !== tab ? { color: 'var(--color-text-tertiary, #636366)' } : undefined}
+                  style={panelTab !== tab ? { color: 'var(--color-text-tertiary)' } : undefined}
                 >
                   {tab === 'current' ? 'Current Run'
                     : tab === 'history' ? 'History'
@@ -736,7 +736,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                   <button
                     onClick={fetchHistory}
                     className="p-1 rounded hover:bg-surface-2 transition-colors"
-                    style={{ color: 'var(--color-text-tertiary, #636366)' }}
+                    style={{ color: 'var(--color-text-tertiary)' }}
                     title="Refresh history"
                   >
                     <RefreshCw className="w-3 h-3" />
@@ -745,7 +745,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                 <button
                   onClick={() => setIsMaximized(!isMaximized)}
                   className="p-1 rounded hover:bg-surface-2 transition-colors"
-                  style={{ color: 'var(--color-text-tertiary, #636366)' }}
+                  style={{ color: 'var(--color-text-tertiary)' }}
                   title={isMaximized ? 'Restore' : 'Maximize'}
                 >
                   {isMaximized ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
@@ -758,7 +758,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
               <div className="flex flex-col" style={{ height: actualHeight - 40 }}>
                 {/* Log filter */}
                 <div className="px-3 py-1.5 border-b flex items-center gap-2"
-                  style={{ borderColor: 'var(--color-border, rgba(255,255,255,0.08))' }}>
+                  style={{ borderColor: 'var(--glass-border)' }}>
                   <Search className="w-3 h-3" style={{ color: 'var(--color-text-tertiary)' }} />
                   <input
                     type="text"
@@ -935,7 +935,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                         <h4 className="text-[11px] font-semibold text-text-muted mb-1.5 uppercase tracking-wide">Warnings</h4>
                         {validationResult.compilation.warnings.map((w: any, i: number) => (
                           <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1"
-                            style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--color-text-tertiary)' }}
+                            style={{ background: 'var(--ctl-surf)', color: 'var(--color-text-tertiary)' }}
                           >
                             <AlertCircle className="w-3 h-3 text-text-muted flex-shrink-0 mt-0.5" />
                             <span>{w.message}</span>

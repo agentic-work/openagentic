@@ -16,33 +16,37 @@
 .aw-shell .text-gray-500,
 .aw-shell .text-gray-600 { color: var(--fg-3) !important; }
 
-.aw-shell .bg-white { background: var(--bg-1) !important; }
-.aw-shell .bg-black { background: var(--bg-0) !important; }
-.aw-shell .bg-gray-50 { background: var(--bg-1) !important; }
+/* White/gray cards coerced to the frosted glass surface so they read as
+   glass (translucent --glass-bg / --ctl-surf) instead of flat --bg-N. */
+.aw-shell .bg-white { background: var(--glass-bg) !important; }
+.aw-shell .bg-black { background: var(--glass-page-bg) !important; }
+.aw-shell .bg-gray-50 { background: var(--glass-bg) !important; }
 .aw-shell .bg-gray-100,
-.aw-shell .bg-gray-200 { background: var(--bg-2) !important; }
+.aw-shell .bg-gray-200 { background: var(--ctl-surf) !important; }
 .aw-shell .bg-gray-700,
 .aw-shell .bg-gray-800,
-.aw-shell .bg-gray-900 { background: var(--bg-1) !important; }
+.aw-shell .bg-gray-900 { background: var(--glass-bg) !important; }
 
 /* WHY: P0/P1 — audit catalogues 233 hardcoded color literals. Map
    each to the active theme's token so light-mode parity works. */
 
 /* ============================================================
-   .glass-card → flat industrial Panel
+   .glass-card → Terminal-Glass panel
    (160 occurrences — the dominant v2 Panel surface)
    ============================================================ */
 .aw-shell .glass-card {
-  background: var(--bg-1) !important;
-  border: 1px solid var(--line-1) !important;
-  border-radius: 0 !important;
-  backdrop-filter: none !important;
-  box-shadow: none !important;
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-chip) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  box-shadow: var(--glass-card-shadow) !important;
 }
-.aw-shell .glass-card:hover { border-color: var(--line-2) !important; }
+.aw-shell .glass-card:hover { border-color: var(--ctl-focus-border) !important; }
 
-/* WHY: v3 industrial aesthetic = flat hairline borders, no glass /
-   blur / pill radii. The audit's #1 most-cited mismatch. */
+/* WHY: Terminal Glass — the admin console joins the app-wide frosted-glass
+   surface system (translucent --glass-bg over the living aurora). Replaces
+   the earlier flat-industrial treatment per the glass-everywhere campaign. */
 
 /* ============================================================
    .admin-table-excel → v3 Dt-style table
@@ -55,24 +59,24 @@
   width: 100%;
 }
 .aw-shell .admin-table-excel thead th {
-  background: var(--bg-2) !important;
+  background: var(--ctl-surf) !important;
   color: var(--fg-3) !important;
   text-transform: uppercase !important;
   letter-spacing: 0.06em;
   font-weight: 500 !important;
   font-size: 11px !important;
-  border-bottom: 1px solid var(--line-2) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
   padding: 6px 10px !important;
   text-align: left !important;
 }
 .aw-shell .admin-table-excel tbody td {
-  border-bottom: 1px solid var(--line-1) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
   padding: 6px 10px !important;
   color: var(--fg-1) !important;
   background: transparent !important;
 }
 .aw-shell .admin-table-excel tbody tr:hover td {
-  background: var(--bg-2) !important;
+  background: var(--ctl-surf-hover) !important;
 }
 
 /* WHY: P0 — User Management page audit calls out raw blue-header
@@ -92,8 +96,8 @@
   font-size: 11px !important;
   font-weight: 400 !important;
   letter-spacing: 0.04em !important;
-  background: var(--bg-2) !important;
-  border: 1px solid var(--line-1) !important;
+  background: var(--ctl-surf) !important;
+  border: 1px solid var(--glass-border) !important;
   color: var(--fg-1) !important;
   text-transform: lowercase !important;
 }
@@ -134,7 +138,7 @@
 .aw-shell .ap-bg-success { background: color-mix(in srgb, var(--ok)   12%, transparent) !important; }
 .aw-shell .ap-bg-warning { background: color-mix(in srgb, var(--warn) 12%, transparent) !important; }
 .aw-shell .ap-bg-info    { background: color-mix(in srgb, var(--info) 12%, transparent) !important; }
-.aw-shell .ap-bg-tertiary { background: var(--bg-2) !important; }
+.aw-shell .ap-bg-tertiary { background: var(--ctl-surf) !important; }
 
 /* ============================================================
    Buttons — .ap-btn-primary, .ap-icon-btn → flat v3 Btn
@@ -167,14 +171,14 @@
   width: 26px !important;
   height: 26px !important;
   padding: 0 !important;
-  border-radius: 0 !important;
-  background: var(--bg-2) !important;
-  border: 1px solid var(--line-1) !important;
+  border-radius: var(--ctl-radius-sm) !important;
+  background: var(--ctl-surf) !important;
+  border: 1px solid var(--glass-border) !important;
   color: var(--fg-2) !important;
 }
 .aw-shell .ap-icon-btn:hover {
-  border-color: var(--line-2) !important;
-  background: var(--bg-3) !important;
+  border-color: var(--ctl-focus-border) !important;
+  background: var(--ctl-surf-hover) !important;
   color: var(--fg-0) !important;
 }
 .aw-shell .ap-icon-btn-primary { color: var(--accent) !important; border-color: var(--accent) !important; }
@@ -277,9 +281,9 @@
 .aw-shell input[type="password"],
 .aw-shell select,
 .aw-shell textarea {
-  background: var(--bg-2) !important;
-  border: 1px solid var(--line-1) !important;
-  border-radius: 0 !important;
+  background: var(--ctl-surf) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--ctl-radius-sm) !important;
   color: var(--fg-0) !important;
   font-family: var(--font-v3-mono) !important;
   font-size: var(--v3-t-meta, 12px) !important;
@@ -291,8 +295,9 @@
 .aw-shell select:focus,
 .aw-shell textarea:focus {
   outline: none !important;
-  border-color: var(--accent) !important;
-  background: var(--bg-3) !important;
+  border-color: var(--ctl-focus-border) !important;
+  box-shadow: var(--ctl-focus-ring) !important;
+  background: var(--ctl-surf-hover) !important;
 }
 
 /* ============================================================
@@ -305,17 +310,19 @@
 }
 
 /* ============================================================
-   Misc — round corners, drop shadows, pill radii
+   Misc — soft glass corners + frosted drop shadows
    ============================================================ */
 .aw-shell .rounded-lg,
 .aw-shell .rounded-xl,
 .aw-shell .rounded-md,
-.aw-shell .rounded { border-radius: 0 !important; }
+.aw-shell .rounded { border-radius: var(--radius-chip) !important; }
 
+/* Glass surfaces keep a soft frosted shadow (was flattened to none in the
+   earlier industrial treatment). */
 .aw-shell .shadow,
 .aw-shell .shadow-sm,
 .aw-shell .shadow-md,
-.aw-shell .shadow-lg { box-shadow: none !important; }
+.aw-shell .shadow-lg { box-shadow: var(--glass-card-shadow) !important; }
 
 /* WHY: P1 — round corners + drop shadows are the strongest 'web app'
    tells. Industrial telemetry = sharp edges + flat surfaces. */

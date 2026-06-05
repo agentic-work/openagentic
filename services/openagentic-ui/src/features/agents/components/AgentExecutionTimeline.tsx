@@ -56,10 +56,10 @@ function pickToolIcon(toolName?: string): React.FC<any> {
 /** Tone color for provisioning state badges. */
 function stateColor(state: string): { fg: string; bg: string } {
   const s = state.toLowerCase();
-  if (s === 'succeeded' || s === 'success' || s === 'available' || s === 'running') return { fg: '#3fb950', bg: 'rgba(63, 185, 80, 0.18)' };
-  if (s === 'failed' || s === 'error' || s === 'rejected') return { fg: '#f85149', bg: 'rgba(248, 81, 73, 0.18)' };
-  if (s === 'creating' || s === 'updating' || s === 'pending' || s === 'in_progress' || s === 'running') return { fg: '#d29922', bg: 'rgba(210, 153, 34, 0.18)' };
-  return { fg: 'var(--color-text-secondary)', bg: 'rgba(139, 148, 158, 0.18)' };
+  if (s === 'succeeded' || s === 'success' || s === 'available' || s === 'running') return { fg: 'var(--color-ok)', bg: 'color-mix(in srgb, var(--color-ok) 18%, transparent)' };
+  if (s === 'failed' || s === 'error' || s === 'rejected') return { fg: 'var(--color-err)', bg: 'color-mix(in srgb, var(--color-err) 18%, transparent)' };
+  if (s === 'creating' || s === 'updating' || s === 'pending' || s === 'in_progress' || s === 'running') return { fg: 'var(--color-warn)', bg: 'color-mix(in srgb, var(--color-warn) 18%, transparent)' };
+  return { fg: 'var(--color-text-secondary)', bg: 'color-mix(in srgb, var(--color-fg-subtle) 18%, transparent)' };
 }
 
 /** Best-effort extract of the resource name from a tool's args. */
@@ -77,12 +77,12 @@ interface AgentExecutionTimelineProps {
 }
 
 const stepConfig: Record<string, { icon: React.ComponentType<any>; color: string; bgColor: string; label: string }> = {
-  agent_start: { icon: Brain, color: '#2196f3', bgColor: 'rgba(33, 150, 243, 0.1)', label: 'Agent Started' },
-  tool_call: { icon: Wrench, color: '#ff9800', bgColor: 'rgba(255, 152, 0, 0.1)', label: 'Tool Call' },
-  tool_result: { icon: CheckCircle, color: '#00ff00', bgColor: 'rgba(0, 255, 0, 0.1)', label: 'Tool Result' },
-  llm_chunk: { icon: Brain, color: '#7c4dff', bgColor: 'rgba(124, 77, 255, 0.1)', label: 'Thinking' },
-  agent_complete: { icon: CheckCircle, color: '#00ff00', bgColor: 'rgba(0, 255, 0, 0.1)', label: 'Completed' },
-  agent_error: { icon: XCircle, color: '#f44336', bgColor: 'rgba(244, 67, 54, 0.1)', label: 'Error' },
+  agent_start: { icon: Brain, color: 'var(--color-nfo)', bgColor: 'color-mix(in srgb, var(--color-nfo) 12%, transparent)', label: 'Agent Started' },
+  tool_call: { icon: Wrench, color: 'var(--color-warn)', bgColor: 'color-mix(in srgb, var(--color-warn) 12%, transparent)', label: 'Tool Call' },
+  tool_result: { icon: CheckCircle, color: 'var(--color-ok)', bgColor: 'color-mix(in srgb, var(--color-ok) 12%, transparent)', label: 'Tool Result' },
+  llm_chunk: { icon: Brain, color: 'var(--color-accent)', bgColor: 'color-mix(in srgb, var(--color-accent) 12%, transparent)', label: 'Thinking' },
+  agent_complete: { icon: CheckCircle, color: 'var(--color-ok)', bgColor: 'color-mix(in srgb, var(--color-ok) 12%, transparent)', label: 'Completed' },
+  agent_error: { icon: XCircle, color: 'var(--color-err)', bgColor: 'color-mix(in srgb, var(--color-err) 12%, transparent)', label: 'Error' },
 };
 
 export const AgentExecutionTimeline: React.FC<AgentExecutionTimelineProps> = ({ steps, executing }) => {
@@ -281,14 +281,14 @@ export const AgentExecutionTimeline: React.FC<AgentExecutionTimelineProps> = ({ 
             <div
               className="relative z-10 w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
               style={{
-                backgroundColor: 'rgba(255, 152, 0, 0.1)',
-                border: '2px solid #ff9800',
+                backgroundColor: 'color-mix(in srgb, var(--color-warn) 12%, transparent)',
+                border: '2px solid var(--color-warn)',
                 animation: 'pulse 1.5s ease-in-out infinite',
               }}
             >
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ff9800', animation: 'pulse 1s ease-in-out infinite' }} />
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--color-warn)', animation: 'pulse 1s ease-in-out infinite' }} />
             </div>
-            <span className="text-[12px]" style={{ color: '#ff9800' }}>Processing...</span>
+            <span className="text-[12px]" style={{ color: 'var(--color-warn)' }}>Processing...</span>
           </motion.div>
         )}
       </div>

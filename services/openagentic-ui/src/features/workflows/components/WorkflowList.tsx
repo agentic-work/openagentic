@@ -88,14 +88,14 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
   return (
     <div
       className="w-full h-full flex flex-col"
-      style={{ backgroundColor: 'var(--color-bg-primary)' }}
+      style={{ backgroundColor: 'var(--color-bg)' }}
     >
       {/* Header */}
       <div
-        className="p-6 border-b"
+        className="glass-surface p-6 border-b"
         style={{
-          backgroundColor: 'var(--color-surface)',
-          borderColor: 'var(--color-border)',
+          borderRadius: 0,
+          borderColor: 'var(--glass-border)',
         }}
       >
         <div className="flex items-center justify-between mb-4">
@@ -128,24 +128,14 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
               placeholder="Search workflows..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-accent)_50%,transparent)]"
-              style={{
-                backgroundColor: 'var(--color-bg-secondary)',
-                color: 'var(--color-text)',
-                borderColor: 'var(--color-border)',
-              }}
+              className="glass-field w-full pl-10 pr-4 py-2 rounded-lg text-sm"
             />
           </div>
 
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as WorkflowStatus | 'all')}
-            className="px-4 py-2 rounded-lg text-sm font-medium border focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-accent)_50%,transparent)]"
-            style={{
-              backgroundColor: 'var(--color-bg-secondary)',
-              color: 'var(--color-text)',
-              borderColor: 'var(--color-border)',
-            }}
+            className="glass-field px-4 py-2 rounded-lg text-sm font-medium"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -173,11 +163,7 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="p-5 rounded-lg border cursor-pointer transition-all duration-150 hover:shadow-lg"
-                  style={{
-                    backgroundColor: 'var(--color-surface)',
-                    borderColor: 'var(--color-border)',
-                  }}
+                  className="glass-card glass-surface-hover p-5 cursor-pointer"
                   onClick={() => onEdit?.(workflow.id)}
                 >
                   {/* Header */}
@@ -207,11 +193,7 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
                     {/* Dropdown Menu */}
                     {showMenu === workflow.id && (
                       <div
-                        className="absolute right-0 mt-8 w-48 rounded-lg border shadow-xl z-10"
-                        style={{
-                          backgroundColor: 'var(--color-surface)',
-                          borderColor: 'var(--color-border)',
-                        }}
+                        className="glass absolute right-0 mt-8 w-48 z-10"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button
@@ -274,7 +256,7 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
                         Team
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ color: 'var(--color-fg-subtle)', background: 'var(--ctl-surf)', border: '1px solid var(--glass-border)' }}>
                         <Lock className="w-3 h-3" />
                         Private
                       </span>

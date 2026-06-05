@@ -345,7 +345,7 @@ export const nodeTypeConfigs: Record<string, NodeTypeConfig> = {
     label: 'Data Source Query',
     description: 'Query a connected data source (SQL, REST, or natural language)',
     icon: 'Database',
-    color: '#2196f3',
+    color: 'var(--color-accent)',
     category: 'data',
     defaultData: {
       dataSourceId: '',

@@ -238,8 +238,8 @@ const Avatar: React.FC<{ initials: string; size?: number }> = ({ initials, size 
       width: size,
       height: size,
       borderRadius: '50%',
-      background: 'var(--bg-2)',
-      border: '1px solid var(--line-1)',
+      background: 'var(--ctl-surf)',
+      border: '1px solid var(--glass-border)',
       color: 'var(--fg-1)',
       fontFamily: 'var(--font-mono)',
       fontSize: Math.max(9, Math.round(size * 0.42)),
@@ -265,9 +265,9 @@ const RolePill: React.FC<{ role: UserRole }> = ({ role }) => {
         fontSize: 'var(--v3-t-meta, 10px)',
         textTransform: 'uppercase',
         letterSpacing: '0.06em',
-        border: '1px solid var(--line-1)',
+        border: isAdmin ? '1px solid var(--glass-accent-line)' : '1px solid var(--glass-border)',
         color: isAdmin ? 'var(--accent)' : 'var(--fg-2)',
-        background: isAdmin ? 'var(--bg-2)' : 'transparent',
+        background: isAdmin ? 'var(--glass-accent-fill)' : 'transparent',
       }}
     >
       {role}

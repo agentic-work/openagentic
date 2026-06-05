@@ -137,26 +137,23 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.6)',
+            background: 'color-mix(in srgb, var(--color-bg) 60%, transparent)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 9999,
           }}
         >
-          <div style={{
-            background: 'var(--wf-node-bg, #161b22)',
-            border: '1px solid var(--wf-node-border, #30363d)',
+          <div className="glass-surface" style={{
             borderRadius: 10,
             padding: 20,
             minWidth: 320,
             maxWidth: 400,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
           }}>
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--color-text, #e4e4e7)' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--color-text)' }}>
               Cancel Execution?
             </div>
-            <div style={{ fontSize: 11, color: 'var(--color-text-secondary, #71717a)', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
               This will stop the running workflow and mark it as cancelled. This action cannot be undone.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -165,9 +162,9 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
                 onClick={handleCancelDismiss}
                 style={{
                   padding: '6px 14px', borderRadius: 6, fontSize: 12,
-                  border: '1px solid var(--wf-node-border, #30363d)',
+                  border: '1px solid var(--glass-border)',
                   background: 'transparent',
-                  color: 'var(--color-text-secondary, #71717a)',
+                  color: 'var(--color-text-secondary)',
                   cursor: 'pointer',
                 }}
               >
@@ -204,26 +201,23 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.6)',
+            background: 'color-mix(in srgb, var(--color-bg) 60%, transparent)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 9999,
           }}
         >
-          <div style={{
-            background: 'var(--wf-node-bg, #161b22)',
-            border: '1px solid var(--wf-node-border, #30363d)',
+          <div className="glass-surface" style={{
             borderRadius: 10,
             padding: 20,
             minWidth: 340,
             maxWidth: 420,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
           }}>
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--color-text, #e4e4e7)' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--color-text)' }}>
               Save Version
             </div>
-            <div style={{ fontSize: 11, color: 'var(--color-text-secondary, #71717a)', marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
               Optional: describe what changed in this version
             </div>
             <input
@@ -237,9 +231,9 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
                 width: '100%',
                 padding: '8px 12px',
                 borderRadius: 6,
-                border: '1px solid var(--wf-node-border, #30363d)',
-                background: 'var(--color-bg-secondary, #0d1117)',
-                color: 'var(--color-text, #e4e4e7)',
+                border: '1px solid var(--glass-border)',
+                background: 'var(--ctl-surf)',
+                color: 'var(--color-text)',
                 fontSize: 12,
                 marginBottom: 16,
                 boxSizing: 'border-box',
@@ -254,9 +248,9 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
                 onClick={handleChangelogCancel}
                 style={{
                   padding: '6px 14px', borderRadius: 6, fontSize: 12,
-                  border: '1px solid var(--wf-node-border, #30363d)',
+                  border: '1px solid var(--glass-border)',
                   background: 'transparent',
-                  color: 'var(--color-text-secondary, #71717a)',
+                  color: 'var(--color-text-secondary)',
                   cursor: 'pointer',
                 }}
               >
@@ -284,8 +278,10 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
     <div
       className="h-14 flex items-center justify-between px-5 border-b z-10 flex-shrink-0"
       style={{
-        background: 'var(--wf-node-bg)',
-        borderColor: 'var(--wf-node-border)',
+        background: 'var(--glass-bg)',
+        backdropFilter: 'var(--glass-blur)',
+        WebkitBackdropFilter: 'var(--glass-blur)',
+        borderColor: 'var(--glass-border)',
       }}
     >
       {/* Left: back + name */}
@@ -294,7 +290,7 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
           <button
             onClick={onBack}
             className="p-2 rounded-lg transition-colors hover:opacity-80"
-            style={{ color: 'var(--color-text-secondary, #666)' }}
+            style={{ color: 'var(--color-text-secondary)' }}
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -305,10 +301,10 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
             value={workflowName}
             onChange={(e) => onNameChange(e.target.value)}
             className="text-base font-semibold bg-transparent border-none outline-none px-2 py-0.5 rounded"
-            style={{ color: 'var(--color-text, #333)' }}
+            style={{ color: 'var(--color-text)' }}
             placeholder="Workflow Name"
           />
-          <div className="text-[11px] px-2" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+          <div className="text-[11px] px-2" style={{ color: 'var(--color-text-tertiary)' }}>
             {nodeCount} nodes &middot; {edgeCount} connections
             {executionProgress && isExecuting && (
               <span style={{ marginLeft: 8, color: 'var(--color-warning)', fontWeight: 600 }}>
@@ -333,7 +329,7 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
             style={{
               background: showAIBuilder ? 'color-mix(in srgb, var(--color-accent) 8%, transparent)' : 'transparent',
               borderColor: showAIBuilder ? 'color-mix(in srgb, var(--color-accent) 30%, transparent)' : 'var(--wf-node-border)',
-              color: showAIBuilder ? 'var(--color-accent)' : 'var(--color-text-secondary, #666)',
+              color: showAIBuilder ? 'var(--color-accent)' : 'var(--color-text-secondary)',
             }}
           >
             <Sparkles className="w-4 h-4" />
@@ -350,7 +346,7 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium text-sm border"
             style={{
               borderColor: 'var(--wf-node-border)',
-              color: 'var(--color-text-secondary, #666)',
+              color: 'var(--color-text-secondary)',
             }}
             title="Auto-arrange nodes"
           >
@@ -368,7 +364,7 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium text-sm border"
             style={{
               borderColor: 'var(--wf-node-border)',
-              color: 'var(--color-text-secondary, #666)',
+              color: 'var(--color-text-secondary)',
             }}
           >
             <Share2 className="w-4 h-4" />
@@ -398,7 +394,7 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
               color: isValidating ? 'var(--color-info)'
                 : validationResult?.valid === true ? 'var(--color-success)'
                 : validationResult?.valid === false ? 'var(--color-warning)'
-                : 'var(--color-text-secondary, #666)',
+                : 'var(--color-text-secondary)',
             }}
             title="Validate all nodes have required configuration"
           >
@@ -434,7 +430,7 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium text-sm border"
             style={{
               borderColor: 'var(--wf-node-border)',
-              color: 'var(--color-text-secondary, #666)',
+              color: 'var(--color-text-secondary)',
             }}
             title="Version history"
           >
@@ -517,7 +513,7 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
           }`}
           style={{
             background: isExecuting || isValidating || !canExecute ? 'var(--wf-node-border)' : 'var(--color-success)',
-            color: isExecuting || isValidating || !canExecute ? 'var(--color-text-tertiary, #999)' : '#fff',
+            color: isExecuting || isValidating || !canExecute ? 'var(--color-text-tertiary)' : '#fff',
           }}
         >
           {isExecuting ? (

@@ -129,7 +129,10 @@ export const ExtendedThinkingSection: React.FC<ExtendedThinkingSectionProps> = (
             {/* Requested vs Delivered line chart + by-model bar chart */}
             <Grid cols={2}>
               <Panel>
-                <PanelHead title="Requested vs Delivered" count={`${timeRange} · by day`} />
+                <PanelHead
+                  title="Requested vs Delivered"
+                  count={byDay.length === 1 ? `${timeRange} · 1 day of data` : `${timeRange} · by day`}
+                />
                 {byDay.length === 0 && <EmptyInline pad>no thinking usage in window</EmptyInline>}
                 {byDay.length > 0 && (
                   <div style={{ padding: 8 }}>

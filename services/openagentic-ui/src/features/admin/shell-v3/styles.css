@@ -522,3 +522,74 @@
   position: relative;
   color: var(--fg-1);
 }
+
+/* ============================================================
+   TERMINAL GLASS — admin-shell frosted re-skin.
+
+   The admin console joins the app-wide Terminal Glass system: the
+   structural chrome (shell page / topbar / sidebar) becomes a
+   translucent frosted surface (var(--glass-bg) + var(--glass-blur))
+   over the living aurora the App shell mounts behind everything, and
+   the small chrome chips/buttons read the frosted control surface
+   (var(--ctl-surf)) instead of the flat var(--bg-2/3). The
+   active-rail accent (var(--accent)) is preserved — it now sits on a
+   translucent surface, not a solid one. Token-driven only (no
+   literals), so the no-hardcoding guard stays green and the surfaces
+   flip dark/light from the ONE SOT.
+   ============================================================ */
+
+/* Shell page = transparent so the aurora behind the App shell shows. */
+.aw-shell { background: transparent; }
+.aw-main  { background: transparent; }
+
+/* Topbar / sidebar = frosted glass panes (translucent + blur). */
+.aw-topbar {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
+}
+.aw-sidebar {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--glass-border);
+}
+.aw-ribbon {
+  background: var(--glass-bg);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* Small chrome chips / pills / buttons → frosted control surface. */
+.aw-topbar__chip,
+.aw-topbar__search,
+.aw-topbar__user,
+.aw-topbar__agent,
+.aw-topbar__close,
+.aw-topbar__density {
+  background: var(--ctl-surf);
+  border-color: var(--glass-border);
+}
+.aw-topbar__chip:hover,
+.aw-topbar__icon-btn:hover,
+.aw-sidebar__leaf:hover {
+  background: var(--ctl-surf-hover);
+}
+.aw-topbar__density button[aria-selected="true"] {
+  background: var(--glass-accent-fill);
+}
+.aw-topbar__search kbd,
+.aw-sidebar__leaf-key {
+  background: var(--ctl-surf);
+  border-color: var(--glass-border);
+}
+
+/* Active sidebar leaf — accent tint on a translucent surface (keeps the
+   left accent rail from the base rules above). */
+.aw-sidebar__leaf[aria-current="page"] {
+  background: linear-gradient(
+    90deg,
+    var(--glass-accent-fill) 0%,
+    var(--glass-accent-fill-2) 60%
+  );
+}

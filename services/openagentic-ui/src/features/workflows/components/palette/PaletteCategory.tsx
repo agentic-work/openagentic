@@ -29,20 +29,20 @@ export const PaletteCategory: React.FC<PaletteCategoryProps> = ({
       >
         <span
           className="text-[10px] font-bold uppercase tracking-wider flex-1"
-          style={{ color: 'var(--color-text-tertiary, #999)' }}
+          style={{ color: 'var(--color-text-tertiary)' }}
         >
           {label}
         </span>
         <span
           className="text-[9px] px-1 py-0.5 rounded"
-          style={{ background: 'rgba(0,0,0,0.04)', color: 'var(--color-text-tertiary, #999)' }}
+          style={{ background: 'var(--ctl-surf)', color: 'var(--color-text-tertiary)' }}
         >
           {count}
         </span>
         <motion.span
           animate={{ rotate: isCollapsed ? -90 : 0 }}
           className="text-[10px]"
-          style={{ color: 'var(--color-text-tertiary, #999)' }}
+          style={{ color: 'var(--color-text-tertiary)' }}
         >
           &#9660;
         </motion.span>

@@ -1,9 +1,10 @@
 /**
  * MCPKubernetesView — Archetype C metrics dashboard.
  *
- * Cluster Health for the agentic-dev namespace, scoped to MCP-related
- * infrastructure. Sources data from kube-state-metrics via the admin
- * prom proxy (POST /api/admin/prom/query).
+ * Cluster Health for the deployment namespace (VITE_K8S_NAMESPACE,
+ * default "openagentic"), scoped to MCP-related infrastructure. Sources
+ * data from kube-state-metrics via the admin prom proxy
+ * (POST /api/admin/prom/query).
  *
  * Layout:
  *   PageHeader · KPI strip · Pod table (with EmptyState fallback)
@@ -143,18 +144,27 @@ function buildPodRows(
 // Queries — keep the panel focused (per the spec, do NOT add more)
 // ---------------------------------------------------------------------------
 
+// Namespace is deployment-specific. It was hardcoded to "agentic-dev" — the
+// wrong namespace for OSS installs (the platform deploys into "openagentic"
+// by default), so every kube_* tile read "—". Drive it from build-time env
+// (VITE_K8S_NAMESPACE) so each deployment scopes these to its own namespace.
+// 2026-06-04.
+const K8S_NAMESPACE =
+  (import.meta.env.VITE_K8S_NAMESPACE as string | undefined) || 'openagentic';
+const NS = `namespace="${K8S_NAMESPACE}"`;
+
 const Q_PODS_RUNNING =
-  'sum(kube_pod_status_phase{namespace="agentic-dev",phase="Running"})';
+  `sum(kube_pod_status_phase{${NS},phase="Running"})`;
 const Q_PODS_NOT_RUNNING =
-  'sum(kube_pod_status_phase{namespace="agentic-dev",phase!="Running"})';
+  `sum(kube_pod_status_phase{${NS},phase!="Running"})`;
 const Q_NODES_READY =
   'sum(kube_node_status_condition{condition="Ready",status="true"})';
 const Q_RESTARTS_1H =
-  'sum(increase(kube_pod_container_status_restarts_total{namespace="agentic-dev"}[1h]))';
+  `sum(increase(kube_pod_container_status_restarts_total{${NS}}[1h]))`;
 
-const Q_POD_INFO = 'kube_pod_info{namespace="agentic-dev"}';
-const Q_POD_PHASE = 'kube_pod_status_phase{namespace="agentic-dev"}';
-const Q_POD_RESTARTS = 'kube_pod_container_status_restarts_total{namespace="agentic-dev"}';
+const Q_POD_INFO = `kube_pod_info{${NS}}`;
+const Q_POD_PHASE = `kube_pod_status_phase{${NS}}`;
+const Q_POD_RESTARTS = `kube_pod_container_status_restarts_total{${NS}}`;
 
 // ---------------------------------------------------------------------------
 // Component
@@ -215,7 +225,7 @@ const MCPKubernetesView: React.FC = () => {
     crumbs: ['Admin', 'Tools', 'Kubernetes'],
     title: 'Kubernetes',
     explainer:
-      'Live pod and node health for the agentic-dev namespace, sourced from kube-state-metrics via the admin prom proxy.',
+      `Live pod and node health for the ${K8S_NAMESPACE} namespace, sourced from kube-state-metrics via the admin prom proxy.`,
     actions: [{ label: 'Refresh', onClick: refetchAll }],
   };
 
@@ -370,7 +380,7 @@ const MCPKubernetesView: React.FC = () => {
         emptyState={
           <EmptyState
             title="No pods reported"
-            hint="kube-state-metrics may not be deployed or may not be scraping the agentic-dev namespace yet."
+            hint={`kube-state-metrics may not be deployed or may not be scraping the ${K8S_NAMESPACE} namespace yet.`}
           />
         }
       />

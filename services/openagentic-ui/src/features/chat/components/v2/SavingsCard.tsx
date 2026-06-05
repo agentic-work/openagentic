@@ -19,10 +19,10 @@ import React from 'react';
  * cherry-pick from the same SoT.
  */
 
-/** Tone tokens — green (savings), red (over-budget), neutral default. */
-const TONE_COLOR_G = '#22c55e';
-const TONE_COLOR_R = '#ef4444';
-const TONE_COLOR_N = 'var(--fg-0, #f8fafc)';
+/** Tone tokens — sourced from the SOT semantic palette (ok/err/fg). */
+const TONE_COLOR_G = 'var(--color-ok)';
+const TONE_COLOR_R = 'var(--color-err)';
+const TONE_COLOR_N = 'var(--color-fg)';
 
 /**
  * Inline style map. Exported so other v2 components / tests can cherry-pick
@@ -38,9 +38,12 @@ export const SAVINGS_CARD_STYLES = {
     justifyContent: 'space-between',
     padding: '20px 24px',
     margin: '12px 0',
-    background: 'var(--bg-2, #16181c)',
-    border: '1px solid var(--line-2, rgba(255,255,255,0.10))',
-    borderRadius: '10px',
+    background: 'var(--glass-bg)',
+    backdropFilter: 'var(--glass-blur)',
+    WebkitBackdropFilter: 'var(--glass-blur)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: 'var(--radius-chip)',
+    boxShadow: 'var(--glass-card-shadow)',
   } satisfies React.CSSProperties,
   cell: {
     display: 'flex',
@@ -53,13 +56,13 @@ export const SAVINGS_CARD_STYLES = {
     fontSize: '12px',
     letterSpacing: '0.04em',
     textTransform: 'uppercase',
-    color: 'var(--fg-3, #71717a)',
+    color: 'var(--color-fg-subtle)',
     fontWeight: 500,
   } satisfies React.CSSProperties,
   value: {
     fontSize: '32px',
     fontWeight: 600,
-    fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+    fontFamily: 'var(--font-mono)',
     fontVariantNumeric: 'tabular-nums',
     lineHeight: 1.1,
   } satisfies React.CSSProperties,

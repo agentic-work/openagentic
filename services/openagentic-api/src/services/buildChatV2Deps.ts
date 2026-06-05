@@ -45,6 +45,7 @@ import { executeTask } from './TaskTool.js';
 import { autoEmitStreamingTable } from './autoEmitStreamingTable.js';
 import { resolveMcpToolName } from './mcpToolNameResolver.js';
 import { prisma } from '../utils/prisma.js';
+import { trackMcpToolCall } from '../metrics/index.js';
 
 /**
  * Phase F-tel-3 (2026-05-07): chat-side MCP tool telemetry.
@@ -69,6 +70,12 @@ async function recordChatMcpUsage(args: {
   error?: string;
   startedAt: number;
 }): Promise<void> {
+  // Prom mirror — increment mcp_tool_calls_total{server,tool_name,outcome}
+  // alongside the durable mcp_usage DB row so the admin MCP-usage pie can be
+  // backed by PromQL `sum by (server) (mcp_tool_calls_total)`. Synchronous +
+  // self-guarding (trackMcpToolCall never throws) so it can't perturb the
+  // best-effort DB write below.
+  trackMcpToolCall(args.toolName, args.ok);
   try {
     await prisma.mCPUsage.create({
       data: {

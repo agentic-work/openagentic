@@ -597,7 +597,7 @@ const DataSection: React.FC<{
             <SharedMarkdownRenderer content={autoRoute.content} theme="dark" />
           </div>
         ) : autoRoute?.type === 'image' && typeof autoRoute.content === 'string' ? (
-          <div className="wf-rendered-output wf-scrollbar" style={{ maxHeight: 520, overflowY: 'auto', padding: 12, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.3)' }}>
+          <div className="wf-rendered-output wf-scrollbar" style={{ maxHeight: 520, overflowY: 'auto', padding: 12, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'color-mix(in srgb, var(--glass-page-bg) 70%, transparent)' }}>
             <img
               src={autoRoute.content}
               alt={`${nodeType} output`}
@@ -775,7 +775,7 @@ const OutputTab: React.FC<{
                 </summary>
                 <pre style={{
                   fontSize: 10, color: 'var(--color-fg-muted)', marginTop: 4, padding: 8,
-                  background: 'rgba(0,0,0,0.2)', borderRadius: 4, whiteSpace: 'pre-wrap',
+                  background: 'color-mix(in srgb, var(--glass-page-bg) 70%, transparent)', borderRadius: 4, whiteSpace: 'pre-wrap',
                   wordBreak: 'break-all', maxHeight: 200, overflow: 'auto',
                 }}>
                   {error}
@@ -1346,14 +1346,14 @@ const RunDetailView: React.FC<{
 
       {/* Export toolbar */}
       <div style={{ display: 'flex', gap: 6, padding: '8px 12px', borderTop: '1px solid var(--wf-ep-border)', background: 'var(--wf-ep-bg)', flexWrap: 'wrap' }}>
-        <button onClick={() => handleExport('json')} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.25)', color: 'var(--color-info)', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <button onClick={() => handleExport('json')} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: 'color-mix(in srgb, var(--color-info) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-info) 25%, transparent)', color: 'var(--color-info)', display: 'flex', alignItems: 'center', gap: 4 }}>
           {'{ }'} JSON
         </button>
         <button onClick={() => handleExport('markdown')} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: 'color-mix(in srgb, var(--color-success) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-success) 25%, transparent)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 4 }}>
           MD Export
         </button>
         {onLoadExecution && (
-          <button onClick={() => onLoadExecution(execution.id)} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: 'rgba(188,140,255,0.1)', border: '1px solid rgba(188,140,255,0.25)', color: 'var(--color-accent)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button onClick={() => onLoadExecution(execution.id)} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: 'var(--color-accent-soft)', border: '1px solid var(--color-accent-line)', color: 'var(--color-accent)', display: 'flex', alignItems: 'center', gap: 4 }}>
             Load on Canvas
           </button>
         )}

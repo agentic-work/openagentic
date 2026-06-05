@@ -27,6 +27,7 @@ import {
   useMcpServers,
   useMcpHealth,
   useMcpLogs,
+  useMcpStats,
   useMcpHealthcheckHistory,
   useMcpPermissions,
   type McpServerRow,
@@ -151,8 +152,8 @@ const AvailableBadge = ({ label = AVAILABLE_LABEL }: { label?: string }) => (
       gap: 6,
       padding: '1px 7px',
       borderRadius: 2,
-      border: '1px solid color-mix(in srgb, var(--info) 28%, var(--line-1))',
-      background: 'color-mix(in srgb, var(--info) 7%, var(--bg-2))',
+      border: '1px solid color-mix(in srgb, var(--info) 28%, var(--glass-border))',
+      background: 'color-mix(in srgb, var(--info) 12%, transparent)',
       color: 'var(--fg-2)',
       fontFamily: 'var(--font-mono)',
       fontSize: 'var(--v3-t-meta)',
@@ -220,6 +221,9 @@ export const MCPFleetV3 = () => {
   const servers = useMcpServers()
   const health = useMcpHealth()
   const metrics = useDashboardMetrics('24h')
+  // Real MCP-call aggregates from the mcp_usage table (grouped server + tool),
+  // since useDashboardMetrics().mcpToolUsage is hard-coded [] in OSS.
+  const mcpStats = useMcpStats()
 
   const [search, setSearch] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState<'all' | 'healthy' | 'degraded' | 'down' | 'available'>('all')
@@ -431,11 +435,22 @@ export const MCPFleetV3 = () => {
         />
       </KpiGrid>
 
-      {/* MCP fleet donut — tool count distribution across servers + live calls
-          spark per server. Counts come from server.tools (server-side discovery)
-          paired with mcpToolUsage groupings from the dashboard metrics. The user
-          asked specifically for the v1-style ring back; this is its v3 home. */}
-      <FleetDonut servers={list} mcpToolUsage={metrics.data?.mcpToolUsage ?? []} />
+      {/* MCP fleet donut — call distribution across servers + tools. Counts
+          come from the mcp_usage table via /api/admin/mcp-logs/stats (grouped
+          by server_name + tool_name), which is real DB data and needs no
+          Prometheus. The user asked specifically for the v1-style ring back;
+          this is its v3 home. */}
+      <FleetDonut
+        servers={list}
+        callsByServer={(mcpStats.data?.topServers ?? []).map((s) => ({
+          server: s.serverId,
+          count: s.count,
+        }))}
+        callsByTool={(mcpStats.data?.topTools ?? []).map((t) => ({
+          tool: t.toolName,
+          count: t.count,
+        }))}
+      />
 
       {/* Filter row */}
       <FilterRow
@@ -617,19 +632,26 @@ function deriveCallsPerMin(metrics: ReturnType<typeof useDashboardMetrics>): str
 // label list pattern from `pages/dashboard/DashboardOverview.tsx`,
 // scoped to the MCP Fleet page where it actually belongs.
 //
-// Two slices:
-//   - Tools-by-server : count of tools each MCP server exposes
-//   - Calls-by-tool   : top 8 tool-name frequencies from
-//                       metrics.mcpToolUsage (populated by the
-//                       MCPProxyClient → MCPUsage write path).
+// Slices (all real data, no Prometheus required):
+//   - Calls-by-server : mcp_usage rows grouped by server_name
+//                       (/api/admin/mcp-logs/stats → topServers).
+//   - Calls-by-tool   : mcp_usage rows grouped by tool_name
+//                       (/api/admin/mcp-logs/stats → topTools).
+//   - Tools-by-server : count of tools each MCP server exposes (registry).
+//
+// 2026-06-04: repointed off the deleted /api/admin/dashboard/metrics feed
+// (useDashboardMetrics now hard-codes mcpToolUsage:[]) onto the live
+// mcp-logs/stats aggregation, so the donut shows real call distribution.
 // ============================================================
 // FLEET_DONUT_COLORS ripped 2026-05-13 — <AwDonut> uses theme tokens directly.
 const FleetDonut = ({
   servers,
-  mcpToolUsage,
+  callsByServer,
+  callsByTool,
 }: {
   servers: McpServerRow[]
-  mcpToolUsage: { tool: string; count: number }[]
+  callsByServer: { server: string; count: number }[]
+  callsByTool: { tool: string; count: number }[]
 }) => {
   const toolsByServer = React.useMemo(
     () =>
@@ -647,21 +669,59 @@ const FleetDonut = ({
         .slice(0, 8),
     [servers],
   )
-  const callsByTool = React.useMemo(
+  const serverSlices = React.useMemo(
     () =>
-      [...(mcpToolUsage || [])]
+      [...(callsByServer || [])]
         .filter((r) => (r.count ?? 0) > 0)
         .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
         .slice(0, 8),
-    [mcpToolUsage],
+    [callsByServer],
+  )
+  const toolSlices = React.useMemo(
+    () =>
+      [...(callsByTool || [])]
+        .filter((r) => (r.count ?? 0) > 0)
+        .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
+        .slice(0, 8),
+    [callsByTool],
   )
 
-  if (toolsByServer.length === 0 && callsByTool.length === 0) {
+  if (toolsByServer.length === 0 && serverSlices.length === 0 && toolSlices.length === 0) {
     return null
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {serverSlices.length > 0 && (
+        <Panel>
+          <PanelHead title="calls by server" right={<span style={{ color: 'var(--fg-3)', fontSize: 11 }}>top {serverSlices.length}</span>} />
+          <div style={{ padding: 12, height: 240 }}>
+            <AwDonut
+              data={{
+                slices: serverSlices.map((s) => ({ name: s.server, value: s.count })),
+                centerSubtitle: 'calls',
+              } satisfies AwDonutData}
+              height={220}
+              disableFrame
+            />
+          </div>
+        </Panel>
+      )}
+      {toolSlices.length > 0 && (
+        <Panel>
+          <PanelHead title="calls by tool" right={<span style={{ color: 'var(--fg-3)', fontSize: 11 }}>top {toolSlices.length}</span>} />
+          <div style={{ padding: 12, height: 240 }}>
+            <AwDonut
+              data={{
+                slices: toolSlices.map((t) => ({ name: t.tool, value: t.count })),
+                centerSubtitle: 'calls',
+              } satisfies AwDonutData}
+              height={220}
+              disableFrame
+            />
+          </div>
+        </Panel>
+      )}
       {toolsByServer.length > 0 && (
         <Panel>
           <PanelHead title="tools by server" right={<span style={{ color: 'var(--fg-3)', fontSize: 11 }}>top {toolsByServer.length}</span>} />
@@ -670,21 +730,6 @@ const FleetDonut = ({
               data={{
                 slices: toolsByServer.map((s) => ({ name: s.name, value: s.tools })),
                 centerSubtitle: 'tools',
-              } satisfies AwDonutData}
-              height={220}
-              disableFrame
-            />
-          </div>
-        </Panel>
-      )}
-      {callsByTool.length > 0 && (
-        <Panel>
-          <PanelHead title="calls by tool (24h)" right={<span style={{ color: 'var(--fg-3)', fontSize: 11 }}>top {callsByTool.length}</span>} />
-          <div style={{ padding: 12, height: 240 }}>
-            <AwDonut
-              data={{
-                slices: callsByTool.map((t) => ({ name: t.tool, value: t.count })),
-                centerSubtitle: 'calls · 24h',
               } satisfies AwDonutData}
               height={220}
               disableFrame
@@ -733,8 +778,11 @@ const ServerCardGrid = ({
           aria-selected={isSelected}
           style={{
             padding: '10px 12px',
-            border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--line-1)'}`,
-            background: isSelected ? 'color-mix(in srgb, var(--accent) 7%, var(--bg-1))' : 'var(--bg-1)',
+            borderRadius: 'var(--radius-chip)',
+            border: `1px solid ${isSelected ? 'var(--ctl-focus-border)' : 'var(--glass-border)'}`,
+            background: isSelected ? 'var(--glass-accent-fill)' : 'var(--glass-bg)',
+            backdropFilter: 'var(--glass-blur)',
+            WebkitBackdropFilter: 'var(--glass-blur)',
             cursor: 'pointer',
             transition: 'border-color .12s, background .12s',
             display: 'flex',
@@ -1033,8 +1081,8 @@ const OverviewTab = ({ server }: { server: MCPServer }) => {
                   height: 18,
                   background:
                     p.status === 'success'
-                      ? 'color-mix(in srgb, var(--ok) 70%, var(--bg-2))'
-                      : 'color-mix(in srgb, var(--err) 70%, var(--bg-2))',
+                      ? 'color-mix(in srgb, var(--ok) 70%, transparent)'
+                      : 'color-mix(in srgb, var(--err) 70%, transparent)',
                   borderRadius: 1,
                 }}
               />
@@ -1086,9 +1134,10 @@ const ToolsTab = ({ server }: { server: MCPServer }) => {
           placeholder={`filter ${tools.length} tool${tools.length === 1 ? '' : 's'}…`}
           style={{
             width: '100%',
-            background: 'var(--bg-2)',
+            background: 'var(--ctl-surf)',
             color: 'var(--fg-0)',
-            border: '1px solid var(--line-1)',
+            border: '1px solid var(--glass-border)',
+            borderRadius: 'var(--ctl-radius-sm)',
             padding: '5px 9px',
             fontFamily: 'var(--font-mono)',
             fontSize: 'var(--v3-t-meta)',
@@ -1105,8 +1154,9 @@ const ToolsTab = ({ server }: { server: MCPServer }) => {
               key={t.name}
               style={{
                 padding: '8px 10px',
-                border: '1px solid var(--line-1)',
-                background: 'var(--bg-2)',
+                borderRadius: 'var(--radius-chip)',
+                border: '1px solid var(--glass-border)',
+                background: 'var(--ctl-surf)',
               }}
             >
               <div
@@ -1520,9 +1570,14 @@ const CostTab = ({
   const totalCalls = series.reduce((s, p) => s + (p.calls || 0), 0)
   const totalTokens = series.reduce((s, p) => s + (p.tokens || 0), 0)
 
-  const list = metrics.data?.mcpToolUsage ?? []
+  // Per-tool breakdown for this server comes from the real mcp_usage
+  // aggregation (/api/admin/mcp-logs/stats topTools carries serverId), not
+  // the deleted dashboard-metrics feed. react-query dedupes the shared key.
+  const mcpStats = useMcpStats()
   const target = serverName.toLowerCase()
-  const matching = list.filter((r) => String(r.tool ?? '').toLowerCase().includes(target))
+  const matching = (mcpStats.data?.topTools ?? [])
+    .filter((t) => String(t.serverId ?? '').toLowerCase() === target)
+    .map((t) => ({ tool: t.toolName, count: t.count }))
 
   return (
     <>
@@ -1680,8 +1735,10 @@ const LiveActivityDrawer = ({
         right: 0,
         bottom: 0,
         zIndex: 40,
-        background: 'var(--bg-1)',
-        borderTop: '1px solid var(--line-2)',
+        background: 'var(--glass-bg)',
+        backdropFilter: 'var(--glass-blur)',
+        WebkitBackdropFilter: 'var(--glass-blur)',
+        borderTop: '1px solid var(--glass-border)',
         boxShadow: '0 -8px 24px color-mix(in srgb, var(--color-shadow) 25%, transparent)',
         maxHeight: open ? 240 : 28,
         overflow: 'hidden',
@@ -1692,7 +1749,7 @@ const LiveActivityDrawer = ({
         onClick={onToggle}
         style={{
           width: '100%',
-          background: 'var(--bg-2)',
+          background: 'var(--ctl-surf)',
           border: 0,
           borderBottom: open ? '1px solid var(--line-1)' : 0,
           padding: '4px 14px',

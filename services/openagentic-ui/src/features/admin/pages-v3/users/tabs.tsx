@@ -198,8 +198,8 @@ export const PermissionsTab: React.FC<{ user: ApiUser }> = ({ user }) => {
           alignItems: 'center',
           gap: 8,
           padding: '8px 14px',
-          borderBottom: '1px solid var(--line-1)',
-          background: 'var(--bg-1)',
+          borderBottom: '1px solid var(--glass-border)',
+          background: 'var(--ctl-surf)',
         }}>
           <span style={{
             fontFamily: 'var(--font-mono)',
@@ -310,9 +310,9 @@ export const PermissionsTab: React.FC<{ user: ApiUser }> = ({ user }) => {
 
 const AccessPill: React.FC<{ state: string; onClick?: () => void }> = ({ state, onClick }) => {
   const tone: Record<string, { color: string; bg: string; label: string }> = {
-    allowed:        { color: 'var(--ok)',    bg: 'var(--bg-2)', label: 'allowed' },
-    denied:         { color: 'var(--err)',   bg: 'var(--bg-2)', label: 'denied' },
-    'implicit-deny':{ color: 'var(--warn)',  bg: 'var(--bg-2)', label: 'not in allow-list' },
+    allowed:        { color: 'var(--ok)',    bg: 'color-mix(in srgb, var(--ok) 14%, transparent)',   label: 'allowed' },
+    denied:         { color: 'var(--err)',   bg: 'color-mix(in srgb, var(--err) 14%, transparent)',  label: 'denied' },
+    'implicit-deny':{ color: 'var(--warn)',  bg: 'color-mix(in srgb, var(--warn) 14%, transparent)', label: 'not in allow-list' },
     inherit:        { color: 'var(--fg-3)',  bg: 'transparent', label: 'inherit' },
   }
   const v = tone[state] ?? tone.inherit

@@ -154,15 +154,15 @@ const Login: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Login Card — neo-brutalist field-guide panel: 2px ink border,
-            hard zero-blur offset shadow, sharp corners (radius 0). */}
+        {/* Login Card — Terminal Glass frosted panel (translucent --glass-bg +
+            --glass-blur + --glass-shadow over the living aurora). */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="relative">
-            <div className="relative p-8 rounded-none border-2 border-rule-strong bg-surface shadow-hard">
+            <div className="glass relative p-8">
               <AnimatePresence mode="wait">
                 {!showLocalForm ? (
                   <motion.div
@@ -186,7 +186,7 @@ const Login: React.FC = () => {
                       <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="p-4 rounded-none mb-6 flex items-start gap-3 border-2 border-err/40 bg-err/10"
+                        className="p-4 rounded-xl mb-6 flex items-start gap-3 border border-err/40 bg-err/10"
                       >
                         <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-err)' }} />
                         <span className="text-sm" style={{ color: 'var(--color-err)' }}>{error}</span>
@@ -198,7 +198,7 @@ const Login: React.FC = () => {
                       <motion.button
                         onClick={handleMicrosoftLogin}
                         whileTap={{ scale: 0.99 }}
-                        className="btn-label w-full py-3.5 px-4 rounded-none text-fg flex items-center justify-center gap-3 mb-3 transition-[background,border,box-shadow,transform] duration-100 bg-surface-2 border-2 border-rule-strong shadow-hard-xs hover:bg-surface active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+                        className="glass-btn glass-btn-secondary btn-label w-full py-3.5 px-4 gap-3 mb-3"
                       >
                         <svg className="w-5 h-5" viewBox="0 0 21 21" fill="none">
                           <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
@@ -215,7 +215,7 @@ const Login: React.FC = () => {
                       <motion.button
                         onClick={handleGoogleLogin}
                         whileTap={{ scale: 0.99 }}
-                        className={`btn-label w-full py-3.5 px-4 rounded-none text-fg flex items-center justify-center gap-3 transition-[background,border,box-shadow,transform] duration-100 bg-surface-2 border-2 border-rule-strong shadow-hard-xs hover:bg-surface active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${enabledProviders === 1 ? '' : 'mb-4'}`}
+                        className={`glass-btn glass-btn-secondary btn-label w-full py-3.5 px-4 gap-3 ${enabledProviders === 1 ? '' : 'mb-4'}`}
                       >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -241,7 +241,7 @@ const Login: React.FC = () => {
                       <motion.button
                         onClick={() => setShowLocalForm(true)}
                         whileTap={{ scale: 0.99 }}
-                        className="btn-label w-full py-3 px-4 rounded-none text-fg-muted flex items-center justify-center gap-3 transition-[color,background,border] duration-100 border-2 border-dashed border-rule hover:border-rule-strong hover:text-fg hover:bg-surface-2"
+                        className="glass-btn glass-btn-ghost btn-label w-full py-3 px-4 gap-3 text-fg-muted hover:text-fg"
                       >
                         <Mail className="w-4 h-4" />
                         <span>Continue with Email</span>
@@ -283,7 +283,7 @@ const Login: React.FC = () => {
                       <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="p-4 rounded-none mb-6 flex items-start gap-3 border-2 border-err/40 bg-err/10"
+                        className="p-4 rounded-xl mb-6 flex items-start gap-3 border border-err/40 bg-err/10"
                       >
                         <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-err)' }} />
                         <span className="text-sm" style={{ color: 'var(--color-err)' }}>{error}</span>

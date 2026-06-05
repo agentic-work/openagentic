@@ -92,20 +92,22 @@ export const NodePalette: React.FC<NodePaletteProps> = ({
           transition={{ type: 'spring', damping: 25, stiffness: 250 }}
           className="border-r flex flex-col overflow-hidden flex-shrink-0"
           style={{
-            background: 'var(--wf-node-bg)',
-            borderColor: 'var(--wf-node-border)',
+            background: 'var(--glass-bg)',
+            backdropFilter: 'var(--glass-blur)',
+            WebkitBackdropFilter: 'var(--glass-blur)',
+            borderColor: 'var(--glass-border)',
           }}
         >
           {/* Header + search */}
-          <div className="flex-shrink-0 p-3 border-b" style={{ borderColor: 'var(--wf-node-border)' }}>
+          <div className="flex-shrink-0 p-3 border-b" style={{ borderColor: 'var(--glass-border)' }}>
             <div className="flex items-center gap-2 mb-2.5">
               <Plus className="w-4 h-4" style={{ color: 'var(--color-info)' }} />
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--color-text, #333)' }}>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
                 Add Nodes
               </h2>
               <span
                 className="text-[10px] px-1.5 py-0.5 rounded-full ml-auto"
-                style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--color-text-tertiary, #999)' }}
+                style={{ background: 'var(--ctl-surf)', color: 'var(--color-text-tertiary)' }}
               >
                 {Object.keys(nodeConfigs).length}
               </span>
@@ -113,7 +115,7 @@ export const NodePalette: React.FC<NodePaletteProps> = ({
             <div className="relative">
               <Search
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
-                style={{ color: 'var(--color-text-tertiary, #999)' }}
+                style={{ color: 'var(--color-text-tertiary)' }}
               />
               <input
                 type="text"
@@ -122,16 +124,16 @@ export const NodePalette: React.FC<NodePaletteProps> = ({
                 placeholder="Search nodes..."
                 className="w-full pl-8 pr-8 py-1.5 rounded-lg border text-xs transition-all focus:outline-none focus:ring-1 focus:ring-[color-mix(in_srgb,var(--color-accent)_50%,transparent)]"
                 style={{
-                  background: 'rgba(0,0,0,0.03)',
-                  borderColor: 'var(--wf-node-border)',
-                  color: 'var(--color-text, #333)',
+                  background: 'var(--ctl-surf)',
+                  borderColor: 'var(--glass-border)',
+                  color: 'var(--color-text)',
                 }}
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
                   className="absolute right-2 top-1/2 -translate-y-1/2"
-                  style={{ color: 'var(--color-text-tertiary, #999)' }}
+                  style={{ color: 'var(--color-text-tertiary)' }}
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -144,7 +146,7 @@ export const NodePalette: React.FC<NodePaletteProps> = ({
             {loading && (
               <div className="p-6 text-center">
                 <div className="wf-loading rounded-full h-8 w-8 border-2 border-accent border-t-transparent mx-auto mb-2" style={{ animation: 'wf-spin 1s linear infinite' }} />
-                <p className="text-xs" style={{ color: 'var(--color-text-tertiary, #999)' }}>Loading nodes...</p>
+                <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Loading nodes...</p>
               </div>
             )}
 
@@ -161,7 +163,7 @@ export const NodePalette: React.FC<NodePaletteProps> = ({
             )}
 
             {!loading && sortedCategories.length === 0 && (
-              <div className="p-6 text-center" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+              <div className="p-6 text-center" style={{ color: 'var(--color-text-tertiary)' }}>
                 <Search className="w-8 h-8 mx-auto mb-2 opacity-40" />
                 <p className="text-xs font-medium">No nodes found</p>
               </div>

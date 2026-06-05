@@ -148,7 +148,7 @@ export const UserPermissionsPage: React.FC<UserPermissionsPageProps> = ({ initia
           minHeight: 0,
         }}
       >
-        <div style={{ background: 'var(--bg-0)', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: 'transparent', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <ListPanel
             users={users}
             isLoading={list.isLoading}
@@ -168,7 +168,7 @@ export const UserPermissionsPage: React.FC<UserPermissionsPageProps> = ({ initia
           />
         </div>
 
-        <div style={{ background: 'var(--bg-0)', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: 'transparent', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {selected ? (
             <DetailPanel user={selected} tab={tab} onTabChange={setTab} />
           ) : (

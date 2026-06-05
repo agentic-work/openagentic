@@ -148,6 +148,82 @@ export const mcpServerInstances = new Gauge({
   registers: [register]
 });
 
+// ──────────────────────────────────────────────────────────────────────────
+// mcp_tool_calls_total — per-server / per-tool MCP dispatch counter.
+//
+// Source: the SAME live chat-pipeline dispatch seam that writes a row to the
+// `mcp_usage` Postgres table (`recordChatMcpUsage` in buildChatV2Deps +
+// `recordMcpUsage` in MCPProxyClient). Every chat-v2 MCP tool dispatch and
+// every legacy sub-agent dispatch increments this counter alongside the DB
+// write, so the admin "MCP usage by server" pie/donut can be backed by a
+// PromQL `sum by (server) (mcp_tool_calls_total)` instead of depending on a
+// deleted REST aggregation endpoint. NOT fabricated — one inc per real
+// dispatch, mirroring the durable audit row 1:1.
+//
+// `server` is derived from the canonical (server-prefixed) tool name via
+// `mcpServerLabelFromToolName` below; `outcome` is ok|error.
+export const mcpToolCallsTotal = new Counter({
+  name: 'mcp_tool_calls_total',
+  help: 'MCP tool dispatches from the chat pipeline by server, tool, and outcome (ok|error). One inc per real dispatch (mirrors the mcp_usage DB row).',
+  labelNames: ['server', 'tool_name', 'outcome'],
+  registers: [register]
+});
+
+/**
+ * Canonical MCP server ids (matches `BUILTIN_MCP_CATALOG` bare ids). Used to
+ * resolve a clean `server` label from a server-prefixed tool slug. A small
+ * alias map folds common naming drifts (e.g. `k8s_*` tools → `kubernetes`)
+ * onto the catalog id so the pie aggregates to one slice per server.
+ *
+ * Kept here (not imported from mcpBuiltinCatalog) to keep the metrics module
+ * dependency-free / import-safe at module load — adding a catalog import here
+ * would pull the fleet module into every metric consumer.
+ */
+const MCP_SERVER_PREFIX_ALIASES: Record<string, string> = {
+  k8s: 'kubernetes',
+  kube: 'kubernetes',
+  kubectl: 'kubernetes',
+  prom: 'prometheus',
+};
+
+/**
+ * Derive the `server` label for `mcpToolCallsTotal` from a (canonical,
+ * server-prefixed) MCP tool slug. Tool slugs are `<server>_<verb>_<resource>`
+ * (e.g. `prometheus_query`, `aws_list_buckets`, `kubernetes_list_pods`), so
+ * the first underscore-delimited segment is the server id. Returns `'unknown'`
+ * for empty / unprefixable names so the counter never throws on a bad label.
+ */
+export function mcpServerLabelFromToolName(toolName: string | null | undefined): string {
+  const name = String(toolName ?? '').trim().toLowerCase();
+  if (!name) return 'unknown';
+  const first = name.split(/[_-]/)[0] || 'unknown';
+  return MCP_SERVER_PREFIX_ALIASES[first] ?? first;
+}
+
+/**
+ * Emit-site for `mcpToolCallsTotal`. Called from the chat-pipeline MCP
+ * dispatch seam (the same seam that records the durable `mcp_usage` row).
+ * Side-effect only — never throws, so a bad label can't break a tool call.
+ *
+ * @param toolName canonical tool slug (server-prefixed)
+ * @param ok       dispatch outcome
+ * @param server   optional explicit server id (e.g. the legacy MCPProxyClient
+ *                 path knows the server directly); falls back to deriving it
+ *                 from the tool name.
+ */
+export function trackMcpToolCall(toolName: string, ok: boolean, server?: string): void {
+  try {
+    const serverLabel = (server && server.trim())
+      ? server.trim().toLowerCase()
+      : mcpServerLabelFromToolName(toolName);
+    mcpToolCallsTotal
+      .labels(serverLabel, toolName || 'unknown', ok ? 'ok' : 'error')
+      .inc();
+  } catch {
+    // Side-effect only — never break a tool dispatch on a metrics emit.
+  }
+}
+
 // Authentication Metrics
 export const authAttemptsTotal = new Counter({
   name: 'auth_attempts_total',

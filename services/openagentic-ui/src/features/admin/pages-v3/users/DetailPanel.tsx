@@ -145,9 +145,9 @@ const Header: React.FC<{ user: ApiUser }> = ({ user }) => {
           fontSize: 'var(--v3-t-meta, 10px)',
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
-          border: '1px solid var(--line-1)',
+          border: '1px solid var(--glass-accent-line)',
           color: 'var(--accent)',
-          background: 'var(--bg-2)',
+          background: 'var(--glass-accent-fill)',
         }}>admin</span>
       )}
     </div>
@@ -164,8 +164,8 @@ const BigAvatar: React.FC<{ initials: string }> = ({ initials }) => (
       width: 36,
       height: 36,
       borderRadius: '50%',
-      background: 'var(--bg-2)',
-      border: '1px solid var(--line-1)',
+      background: 'var(--ctl-surf)',
+      border: '1px solid var(--glass-border)',
       color: 'var(--fg-1)',
       fontFamily: 'var(--font-mono)',
       fontSize: 13,
@@ -248,9 +248,12 @@ const KebabMenu: React.FC<KebabMenuProps> = ({
             right: 0,
             top: 'calc(100% + 4px)',
             minWidth: 200,
-            background: 'var(--bg-1)',
-            border: '1px solid var(--line-1)',
-            boxShadow: '0 8px 20px color-mix(in srgb, var(--color-shadow) 40%, transparent)',
+            background: 'var(--glass-bg)',
+            backdropFilter: 'var(--glass-blur)',
+            WebkitBackdropFilter: 'var(--glass-blur)',
+            border: '1px solid var(--glass-border)',
+            borderRadius: 'var(--radius-chip)',
+            boxShadow: 'var(--glass-card-shadow)',
             zIndex: 30,
             display: 'flex',
             flexDirection: 'column',
@@ -323,8 +326,8 @@ const TabStrip: React.FC<{ active: DetailTab; onChange: (t: DetailTab) => void }
   <div role="tablist" style={{
     display: 'flex',
     gap: 0,
-    borderBottom: '1px solid var(--line-1)',
-    background: 'var(--bg-1)',
+    borderBottom: '1px solid var(--glass-border)',
+    background: 'var(--ctl-surf)',
   }}>
     {TABS.map((t) => (
       <button

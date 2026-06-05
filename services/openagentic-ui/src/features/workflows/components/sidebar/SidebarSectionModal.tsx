@@ -97,19 +97,15 @@ const sectionTitles: Record<SidebarSectionType, string> = {
 };
 
 const inputClass =
-  'w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 transition-colors';
+  'glass-field w-full px-3 py-2 text-sm rounded-lg';
 
-const inputStyle: React.CSSProperties = {
-  backgroundColor: 'var(--color-bg-primary)',
-  borderColor: 'var(--color-border)',
-  color: 'var(--color-text)',
-};
+const inputStyle: React.CSSProperties = {};
 
 const btnPrimary =
   'px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50';
 
 const btnPrimaryStyle: React.CSSProperties = {
-  backgroundColor: 'var(--user-accent-primary, #FF5722)',
+  backgroundColor: 'var(--color-accent)',
   color: 'var(--color-on-accent)',
 };
 
@@ -180,8 +176,8 @@ const TabButton: React.FC<{
     className="px-3 py-1.5 text-sm font-medium rounded-[var(--ctl-radius)] transition-colors"
     style={{
       backgroundColor: active ? 'var(--glass-accent-fill-2)' : 'transparent',
-      borderBottom: active ? '2px solid var(--user-accent-primary, #FF5722)' : '2px solid transparent',
-      color: active ? 'var(--user-accent-primary, #FF5722)' : 'var(--color-text-secondary)',
+      borderBottom: active ? '2px solid var(--color-accent)' : '2px solid transparent',
+      color: active ? 'var(--color-accent)' : 'var(--color-text-secondary)',
     }}
   >
     {children}
@@ -380,8 +376,8 @@ const NodesContent: React.FC = () => {
   const allCats = [...orderedCats, ...remaining];
 
   const capBadgeStyle: React.CSSProperties = {
-    backgroundColor: 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 12%, transparent)',
-    color: 'var(--user-accent-primary, #FF5722)',
+    backgroundColor: 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
+    color: 'var(--color-accent)',
   };
 
   return (
@@ -419,7 +415,7 @@ const NodesContent: React.FC = () => {
                   onClick={() => setExpandedType(isExpanded ? null : config.type)}
                   className="rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md"
                   style={{
-                    borderColor: isExpanded ? 'var(--user-accent-primary, #FF5722)' : 'var(--color-border)',
+                    borderColor: isExpanded ? 'var(--color-accent)' : 'var(--color-border)',
                     backgroundColor: isExpanded ? 'var(--color-surface)' : 'var(--color-bg-primary)',
                   }}
                 >
@@ -486,7 +482,7 @@ const NodesContent: React.FC = () => {
                             <ul className="space-y-1">
                               {caps.useCases.map(u => (
                                 <li key={u} className="text-xs flex items-start gap-1.5" style={{ color: 'var(--color-text-tertiary)' }}>
-                                  <ChevronRight className="w-3 h-3 mt-0.5 flex-shrink-0" style={{ color: 'var(--user-accent-primary, #FF5722)' }} />
+                                  <ChevronRight className="w-3 h-3 mt-0.5 flex-shrink-0" style={{ color: 'var(--color-accent)' }} />
                                   {u}
                                 </li>
                               ))}
@@ -766,7 +762,7 @@ const AgentsContent: React.FC = () => {
                         disabled={testingId === agent.id}
                         className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface)]"
                         title="Test agent"
-                        style={{ color: 'var(--user-accent-primary, #FF5722)' }}
+                        style={{ color: 'var(--color-accent)' }}
                       >
                         {testingId === agent.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                       </button>
@@ -1187,7 +1183,7 @@ const DataContent: React.FC = () => {
                 className="flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors"
                 style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(156,39,176,0.1)' }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--color-accent-soft)' }}>
                   <Database className="w-4 h-4" style={{ color: 'var(--color-accent)' }} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -1419,7 +1415,7 @@ const WebhooksContent: React.FC<{ workflowId?: string }> = ({ workflowId }) => {
                     </td>
                     <td className={tableCellClass} style={tableCellStyle}>
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => handleTest(wh)} disabled={testingId === wh.id} className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface)]" title="Test webhook" style={{ color: 'var(--user-accent-primary, #FF5722)' }}>
+                        <button onClick={() => handleTest(wh)} disabled={testingId === wh.id} className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface)]" title="Test webhook" style={{ color: 'var(--color-accent)' }}>
                           {testingId === wh.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                         </button>
                         <button onClick={() => handleCopy(wh.url, wh.id)} className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface)]" title="Copy URL" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -1541,7 +1537,7 @@ const ApiEndpointContent: React.FC<{ workflowId?: string }> = ({ workflowId }) =
             <Terminal className="w-4 h-4" style={{ color: 'var(--color-success)' }} />
             <h3 className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Direct Execute</h3>
           </div>
-          <span className="text-xs px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: '#2ea04315', color: 'var(--color-success)' }}>POST</span>
+          <span className="text-xs px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: 'color-mix(in srgb, var(--color-success) 12%, transparent)', color: 'var(--color-success)' }}>POST</span>
         </div>
 
         <div className="flex items-center gap-2 p-2.5 rounded-lg" style={{ background: 'var(--color-bg-primary)' }}>
@@ -1560,7 +1556,7 @@ const ApiEndpointContent: React.FC<{ workflowId?: string }> = ({ workflowId }) =
           <div className="absolute top-2 right-2"><CopyBtn field="curl" text={curlDirect} /></div>
         </div>
 
-        <button onClick={handleTest} disabled={testing} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50" style={{ backgroundColor: 'var(--user-accent-primary)', color: 'var(--color-on-accent)' }}>
+        <button onClick={handleTest} disabled={testing} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50" style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-on-accent)' }}>
           <Play className="w-3 h-3" />
           {testing ? 'Running...' : 'Try it'}
         </button>
@@ -1703,7 +1699,7 @@ const TeamContent: React.FC<{ workflowId?: string }> = ({ workflowId }) => {
       {owner && (
         <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: 'var(--color-surface)' }}>
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-tertiary)' }}>Owner:</span>
-          <span className="text-sm font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--glass-accent-fill-2)', color: 'var(--user-accent-primary, #FF5722)' }}>
+          <span className="text-sm font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--glass-accent-fill-2)', color: 'var(--color-accent)' }}>
             {owner}
           </span>
         </div>
@@ -2083,8 +2079,7 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
         <select
           value={sortBy}
           onChange={e => setSortBy(e.target.value as any)}
-          className="px-3 py-2 text-sm rounded-lg border"
-          style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text)' }}
+          className="glass-field px-3 py-2 text-sm rounded-lg"
         >
           <option value="updated">Recently Updated</option>
           <option value="name">Name A-Z</option>
@@ -2128,14 +2123,13 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
               key={wf.id}
               data-testid={filter === 'templates' ? 'template-gallery-card' : undefined}
               data-template-slug={wf.name}
-              className="group relative p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer"
+              className="glass-card glass-surface-hover group relative p-4 cursor-pointer"
               style={{
                 borderColor: filter === 'templates' && expandedId === wf.id
-                  ? 'var(--user-accent-primary, #FF5722)'
-                  : 'var(--color-border)',
-                backgroundColor: 'var(--color-bg-secondary)',
+                  ? 'var(--color-accent)'
+                  : undefined,
                 boxShadow: filter === 'templates' && expandedId === wf.id
-                  ? '0 0 0 1px var(--user-accent-primary, #FF5722)' : undefined,
+                  ? '0 0 0 1px var(--color-accent)' : undefined,
               }}
               onClick={(e) => {
                 // Templates view: single-click toggles legend; clicks on
@@ -2178,7 +2172,7 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
                 <span className="relative flex-shrink-0 mt-1">
                   <span
                     className="inline-block w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: filter === 'deployed' ? 'var(--color-success)' : filter === 'templates' ? 'var(--user-accent-primary)' : 'var(--color-fg-subtle)' }}
+                    style={{ backgroundColor: filter === 'deployed' ? 'var(--color-success)' : filter === 'templates' ? 'var(--color-accent)' : 'var(--color-fg-subtle)' }}
                   />
                   {filter === 'deployed' && (
                     <span className="absolute inset-0 rounded-full animate-ping" style={{ backgroundColor: 'var(--color-success)', opacity: 0.3, width: 10, height: 10 }} />
@@ -2271,7 +2265,7 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
                   {filter === 'templates' && wf.meta && (
                     <span style={{
                       fontWeight: 600,
-                      color: 'var(--user-accent-primary, #FF5722)',
+                      color: 'var(--color-accent)',
                       cursor: 'pointer',
                     }}>
                       {expandedId === wf.id ? 'Hide legend' : 'Show legend'}
@@ -2312,7 +2306,7 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
                         }
                       }}
                       className="px-2 py-0.5 text-[11px] font-medium rounded border transition-colors"
-                      style={{ borderColor: 'var(--user-accent-primary, #FF5722)', color: 'var(--user-accent-primary, #FF5722)' }}
+                      style={{ borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }}
                     >
                       Use Template
                     </button>
@@ -2438,8 +2432,7 @@ const DeployedContent: React.FC = () => {
           {filtered.map(wf => (
             <div
               key={wf.id}
-              className="flex items-center gap-3 p-3 rounded-lg border transition-colors"
-              style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
+              className="glass-card glass-surface-hover flex items-center gap-3 p-3"
             >
               {/* Status dot */}
               <span className="relative flex-shrink-0">
@@ -2657,7 +2650,7 @@ const SettingsContent: React.FC<{
             </div>
           ))}
           <button onClick={() => { const nv = [...envVars, { key: '', value: '' }]; setEnvVars(nv); }}
-            className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:opacity-80 mt-2" style={{ color: 'var(--user-accent-primary, #FF5722)' }}>
+            className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:opacity-80 mt-2" style={{ color: 'var(--color-accent)' }}>
             <Plus className="w-3.5 h-3.5" /> Add Variable
           </button>
         </div>
@@ -2744,7 +2737,7 @@ const RunsContent: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>My Runs</h2>
-          <p className="text-xs" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+          <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
             Recent workflow executions you've launched. Workspace-scoped — admin observability lives in the admin portal.
           </p>
         </div>
@@ -2857,7 +2850,7 @@ const InsightsContent: React.FC = () => {
     <div className="space-y-4">
       <div>
         <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Insights</h2>
-        <p className="text-xs" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+        <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
           Stats across your last 200 runs. Workspace-scoped — for cross-tenant observability, ask your admin.
         </p>
       </div>
@@ -2875,10 +2868,9 @@ const InsightsContent: React.FC = () => {
             ].map(card => (
               <div
                 key={card.label}
-                className="rounded-lg border p-3"
-                style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary, var(--color-bg-primary))' }}
+                className="glass-card p-3"
               >
-                <div className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+                <div className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--color-text-tertiary)' }}>
                   {card.label}
                 </div>
                 <div className="text-xl font-semibold mt-1" style={{ color: card.color }}>
@@ -2890,13 +2882,13 @@ const InsightsContent: React.FC = () => {
           <div className="rounded-lg border p-4" style={{ borderColor: 'var(--color-border)' }}>
             <div className="text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>Top workflows</div>
             {stats.topWorkflows.length === 0 ? (
-              <div className="text-xs" style={{ color: 'var(--color-text-tertiary, #999)' }}>No runs yet.</div>
+              <div className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>No runs yet.</div>
             ) : (
               <ul className="space-y-1.5">
                 {stats.topWorkflows.map(([name, count]) => (
                   <li key={name} className="flex items-center justify-between text-sm" style={{ color: 'var(--color-text)' }}>
                     <span className="truncate">{name}</span>
-                    <span className="text-xs" style={{ color: 'var(--color-text-tertiary, #999)' }}>{count} runs</span>
+                    <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{count} runs</span>
                   </li>
                 ))}
               </ul>
@@ -2939,7 +2931,7 @@ const VersionsContent: React.FC<{
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold px-2 py-0.5 rounded-full" style={{
                     backgroundColor: idx === 0 ? 'var(--glass-accent-fill-2)' : 'var(--color-surface)',
-                    color: idx === 0 ? 'var(--user-accent-primary, #FF5722)' : 'var(--color-text-secondary)',
+                    color: idx === 0 ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                   }}>
                     v{version.version || versions.length - idx}
                   </span>
@@ -2960,7 +2952,7 @@ const VersionsContent: React.FC<{
                 {idx !== 0 && (
                   <button onClick={() => onRestoreVersion?.(version.id)}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors hover:bg-[var(--color-surface)]"
-                    style={{ borderColor: 'var(--color-border)', color: 'var(--user-accent-primary, #FF5722)' }}>
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}>
                     <RotateCw className="w-3 h-3" /> Restore
                   </button>
                 )}
@@ -3072,11 +3064,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
   const SectionIcon = sectionIcons[section] || Settings;
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
+    <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
       {/* Top bar — matches the toolbar style of WorkflowsContainer */}
       <div
-        className="flex items-center justify-between px-6 py-3 border-b flex-shrink-0"
-        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary, var(--color-bg-primary))' }}
+        className="glass-surface flex items-center justify-between px-6 py-3 border-b flex-shrink-0"
+        style={{ borderRadius: 0, borderColor: 'var(--glass-border)' }}
       >
         <div className="flex items-center gap-3">
           <button
@@ -3088,7 +3080,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
             Back to Canvas
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--user-accent-primary, #FF5722)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-accent)' }}>
               <SectionIcon className="w-4 h-4 text-text" />
             </div>
             <h1 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
@@ -3204,10 +3196,8 @@ export const SidebarSectionModal: React.FC<SidebarSectionModalProps> = ({
             style={{ padding: section === 'data' ? '2vh 2vw' : '3vh 4vw' }}
           >
             <div
-              className="w-full h-full flex flex-col rounded-xl border shadow-2xl pointer-events-auto"
+              className="glass w-full h-full flex flex-col pointer-events-auto"
               style={{
-                backgroundColor: 'var(--color-bg-primary)',
-                borderColor: 'var(--color-border)',
                 maxWidth: section === 'data' ? '96vw' : section === 'nodes' ? '80vw' : '60vw',
                 maxHeight: section === 'data' ? '96vh' : '90vh',
               }}
@@ -3335,7 +3325,7 @@ const ArtifactsModalContent: React.FC = () => {
             style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
           >
             <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--user-accent-primary, #FF5722)' }} />
+              <FileText className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-accent)' }} />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }} title={title}>
                   {title}
