@@ -18,7 +18,9 @@ import type { WizardConfig } from '../lib/types.ts';
  */
 
 const HOME = os.homedir();
-// A sensible default SA-key location to pre-fill when one is detectable.
+// Detect a service-account key under ~/.config/gcloud/keys to offer as the
+// default (adopted on Enter). Returned as a field DEFAULT, not pre-filled into
+// the editable value — so typing a different path never appends to it.
 const detectSaKey = (): string => {
   const dir = path.join(HOME, '.config', 'gcloud', 'keys');
   try {
@@ -27,15 +29,6 @@ const detectSaKey = (): string => {
   } catch { /* no keys dir */ }
   return '';
 };
-
-const FIELDS = [
-  { key: 'project',    label: 'GCP project id      ', placeholder: 'my-gcp-project', required: true },
-  { key: 'region',     label: 'Region              ', placeholder: 'us-central1', required: false },
-  { key: 'chatModel',  label: 'Chat model          ', placeholder: 'gemini-2.5-pro', required: false },
-  { key: 'embedModel', label: 'Embedding model     ', placeholder: 'text-embedding-005', required: false },
-  { key: 'imageModel', label: 'Image model         ', placeholder: 'imagen-4.0-generate-001', required: false },
-  { key: 'saKeyPath',  label: 'Service-account key ', placeholder: '~/.config/gcloud/keys/sa.json', required: true },
-] as const;
 
 interface Props {
   initial: WizardConfig['providers'];
@@ -46,39 +39,64 @@ interface Props {
 
 export const VertexStep: React.FC<Props> = ({ initial, step, total, onDone }) => {
   const seed = initial.vertex;
+  const detected = detectSaKey();
+
+  // Each field has a real `def` (adopted on an empty Enter) and an illustrative
+  // `placeholder`. `project` has NO default — it must be typed. Editable values
+  // start EMPTY (unless seeded from a prior .env) so typing a value never
+  // appends to a pre-filled string (the doubled-path footgun).
+  const FIELDS = [
+    { key: 'project',    label: 'GCP project id      ', def: '',                        placeholder: 'my-gcp-project', required: true },
+    { key: 'region',     label: 'Region              ', def: 'us-central1',             placeholder: 'us-central1', required: false },
+    { key: 'chatModel',  label: 'Chat model          ', def: 'gemini-2.5-pro',          placeholder: 'gemini-2.5-pro', required: false },
+    { key: 'embedModel', label: 'Embedding model     ', def: 'text-embedding-005',      placeholder: 'text-embedding-005', required: false },
+    { key: 'imageModel', label: 'Image model         ', def: 'imagen-4.0-generate-001', placeholder: 'imagen-4.0-generate-001', required: false },
+    { key: 'saKeyPath',  label: 'Service-account key ', def: detected,                  placeholder: detected || '~/.config/gcloud/keys/sa.json', required: true },
+  ] as const;
+
   const [values, setValues] = useState<Record<string, string>>({
     project: seed?.project || '',
-    region: seed?.region || 'us-central1',
-    chatModel: seed?.chatModel || 'gemini-2.5-pro',
-    embedModel: seed?.embedModel || 'text-embedding-005',
-    imageModel: seed?.imageModel || 'imagen-4.0-generate-001',
-    saKeyPath: seed?.saKeyPath || detectSaKey(),
+    region: seed?.region || '',
+    chatModel: seed?.chatModel || '',
+    embedModel: seed?.embedModel || '',
+    imageModel: seed?.imageModel || '',
+    saKeyPath: seed?.saKeyPath || '',
   });
   const [idx, setIdx] = useState(0);
   const current = FIELDS[idx];
-  const curRequiredEmpty = current.required && !values[current.key]?.trim();
 
-  const finish = (v: Record<string, string>) =>
+  // Effective value: the typed value, else the field's real default.
+  const resolve = (key: string): string => {
+    const typed = (values[key] || '').trim();
+    if (typed) return typed;
+    return FIELDS.find((f) => f.key === key)?.def || '';
+  };
+  const requiredUnmet = (key: string): boolean => {
+    const f = FIELDS.find((x) => x.key === key)!;
+    return f.required && !resolve(key);
+  };
+  const curRequiredEmpty = requiredUnmet(current.key);
+
+  const finish = () =>
     onDone({
       vertex: {
-        project: v.project.trim(),
-        region: v.region.trim() || 'us-central1',
-        chatModel: v.chatModel.trim() || 'gemini-2.5-pro',
-        embedModel: v.embedModel.trim() || 'text-embedding-005',
-        imageModel: v.imageModel.trim() || 'imagen-4.0-generate-001',
-        saKeyPath: v.saKeyPath.trim(),
+        project: resolve('project'),
+        region: resolve('region') || 'us-central1',
+        chatModel: resolve('chatModel') || 'gemini-2.5-pro',
+        embedModel: resolve('embedModel') || 'text-embedding-005',
+        imageModel: resolve('imageModel') || 'imagen-4.0-generate-001',
+        saKeyPath: resolve('saKeyPath'),
       },
     });
 
   useInput((input, key) => {
-    // Ctrl+D finishes early, but only once the required fields are filled.
-    if (key.ctrl && input === 'd' && values.project.trim() && values.saKeyPath.trim()) finish(values);
+    if (key.ctrl && input === 'd' && !requiredUnmet('project') && !requiredUnmet('saKeyPath')) finish();
   });
 
   const advance = () => {
-    if (curRequiredEmpty) return;  // refuse to leave a required field blank
+    if (curRequiredEmpty) return;  // refuse to leave a required field with no value
     if (idx + 1 < FIELDS.length) setIdx(idx + 1);
-    else finish(values);
+    else finish();
   };
 
   return (
@@ -106,7 +124,7 @@ export const VertexStep: React.FC<Props> = ({ initial, step, total, onDone }) =>
           </Box>
         ))}
         <Box marginTop={1}>
-          <Hint>No API keys — the api calls Vertex with the mounted service-account (ADC). Enter accepts each field.</Hint>
+          <Hint>No API keys — the api calls Vertex with the mounted service-account (ADC). Enter accepts each default.</Hint>
         </Box>
         {curRequiredEmpty && (
           <Box>
