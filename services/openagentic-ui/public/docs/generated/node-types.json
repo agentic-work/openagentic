@@ -4,7 +4,7 @@
   "description": "Registered Flow canvas node types, source-derived from the workflow-engine node registry.",
   "icon": "flow",
   "category": "workflows",
-  "generatedAt": "2026-06-05T01:14:20.988Z",
+  "generatedAt": "2026-06-05T01:51:25.478Z",
   "sourceFiles": [
     "services/shared/workflow-engine/src/nodes/registry.ts",
     "services/shared/workflow-engine/src/nodes/text/schema.json",

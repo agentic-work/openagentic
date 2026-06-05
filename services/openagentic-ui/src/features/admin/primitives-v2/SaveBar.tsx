@@ -70,13 +70,15 @@ export function SaveBar({
       role="region"
       aria-label="Save bar"
       data-state={showState === 'dirty' && pendingCount === 0 ? 'idle' : showState}
-      className={`bg-bg-2 font-mono mt-6 flex items-center gap-4 rounded border px-4 py-3 text-[11px] ${className}`}
+      className={`font-mono mt-6 flex items-center gap-4 rounded border px-4 py-3 text-[11px] ${className}`}
       style={{
         borderColor: color,
+        backdropFilter: 'var(--glass-blur)',
+        WebkitBackdropFilter: 'var(--glass-blur)',
         background:
           showState === 'saving' || showState === 'errored' || pendingCount > 0
-            ? `linear-gradient(180deg, var(--ap-bg-2, var(--bg-2)), color-mix(in srgb, ${color} 8%, var(--ap-bg-2, var(--bg-2))))`
-            : undefined,
+            ? `linear-gradient(180deg, var(--ctl-surf), color-mix(in srgb, ${color} 8%, var(--ctl-surf)))`
+            : 'var(--ctl-surf)',
       }}
     >
       <span className="text-fg-2" style={{ color: pendingCount === 0 ? 'var(--fg-3)' : color }}>
@@ -95,10 +97,10 @@ export function SaveBar({
           type="button"
           onClick={handleSave}
           disabled={isIdle || showState === 'saving' || showState === 'saved'}
-          className="rounded border bg-bg-2 px-3 py-1 text-[11px] font-semibold disabled:opacity-40"
+          className="rounded border px-3 py-1 text-[11px] font-semibold disabled:opacity-40"
           style={{
             background: showState === 'errored' ? 'var(--ap-err, var(--err))' : 'var(--ap-accent, var(--accent))',
-            color: 'var(--ap-bg-0, var(--bg-0))',
+            color: 'var(--color-on-accent)',
             borderColor: showState === 'errored' ? 'var(--err)' : 'var(--accent)',
           }}
         >

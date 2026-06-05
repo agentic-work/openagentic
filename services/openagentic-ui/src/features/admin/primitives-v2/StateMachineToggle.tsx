@@ -108,9 +108,9 @@ export function StateMachineToggle({
       ? 'var(--ap-err, var(--err))'
       : optimistic
         ? 'var(--ap-accent, var(--accent))'
-        : 'var(--ap-bg-3, var(--bg-3))'
+        : 'var(--ctl-surf)'
   const knobBg =
-    optimistic && status !== 'errored' ? 'var(--ap-bg-0, var(--bg-0))' : 'var(--ap-fg-2, var(--fg-2))'
+    optimistic && status !== 'errored' ? 'var(--color-on-accent)' : 'var(--ap-fg-2, var(--fg-2))'
   const knobShadow =
     status === 'busy'
       ? `inset 0 0 0 2px var(--accent, var(--ap-accent))`

@@ -166,7 +166,7 @@ const RoleEditor: React.FC<EditorProps> = ({ role, onClose, onSaved }) => {
             minHeight: 360,
             fontFamily: 'var(--font-mono)',
             fontSize: 12,
-            background: 'var(--bg-1)',
+            background: 'var(--ctl-surf)',
             color: 'var(--fg-0)',
             border: '1px solid var(--bd-1)',
             borderRadius: 4,
@@ -186,7 +186,7 @@ const RoleEditor: React.FC<EditorProps> = ({ role, onClose, onSaved }) => {
           placeholder="e.g. tightened tool-use directive"
           style={{
             width: '100%',
-            background: 'var(--bg-1)',
+            background: 'var(--ctl-surf)',
             color: 'var(--fg-0)',
             border: '1px solid var(--bd-1)',
             borderRadius: 4,

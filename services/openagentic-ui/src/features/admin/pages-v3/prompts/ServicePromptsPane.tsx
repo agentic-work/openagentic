@@ -160,7 +160,7 @@ const ServicePromptEditor: React.FC<EditorProps> = ({ promptKey, onClose, onSave
             minHeight: 280,
             fontFamily: 'var(--font-mono)',
             fontSize: 12,
-            background: 'var(--bg-1)',
+            background: 'var(--ctl-surf)',
             color: 'var(--fg-0)',
             border: '1px solid var(--bd-1)',
             borderRadius: 4,
@@ -179,7 +179,7 @@ const ServicePromptEditor: React.FC<EditorProps> = ({ promptKey, onClose, onSave
           placeholder="e.g. tightened Slack tone"
           style={{
             width: '100%',
-            background: 'var(--bg-1)',
+            background: 'var(--ctl-surf)',
             color: 'var(--fg-0)',
             border: '1px solid var(--bd-1)',
             borderRadius: 4,

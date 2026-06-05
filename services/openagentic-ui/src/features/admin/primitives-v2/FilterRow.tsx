@@ -46,9 +46,9 @@ export function FilterRow({
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          background: 'var(--ap-bg-1, var(--bg-1))',
-          border: '1px solid var(--ap-ln-2, var(--ln-2))',
-          borderRadius: 3,
+          background: 'var(--ctl-surf)',
+          border: '1px solid var(--glass-border)',
+          borderRadius: 'var(--ctl-radius-sm)',
           padding: '6px 12px',
           color: 'var(--ap-fg-2, var(--fg-2))',
         }}
@@ -78,10 +78,10 @@ export function FilterRow({
           aria-pressed={!!c.on}
           onClick={() => onChipClick?.(c.id)}
           style={{
-            background: c.on ? 'var(--ap-accent-soft, var(--accent-soft))' : 'var(--ap-bg-1, var(--bg-1))',
+            background: c.on ? 'var(--glass-accent-fill)' : 'var(--ctl-surf)',
             border: c.on
               ? '1px solid var(--ap-accent-line, var(--accent-line))'
-              : '1px solid var(--ap-ln-2, var(--ln-2))',
+              : '1px solid var(--glass-border)',
             color: c.on ? 'var(--ap-fg-0, var(--fg-0))' : 'var(--ap-fg-2, var(--fg-2))',
             padding: '5px 10px',
             borderRadius: 3,

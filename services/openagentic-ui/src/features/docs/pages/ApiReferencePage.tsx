@@ -224,7 +224,7 @@ const ApiReferencePage: React.FC = () => (
           display: 'inline-block',
           fontSize: '14px',
           fontWeight: 600,
-          color: 'var(--color-textOnPrimary, #fff)',
+          color: 'var(--color-textOnPrimary, var(--brand-on-accent))',
           background: 'var(--color-primary)',
           padding: '10px 28px',
           borderRadius: '8px',

@@ -48,6 +48,6 @@ const TONE_PALETTE: Record<PillTone, { bg: string; fg: string }> = {
   ok:   { bg: 'var(--ap-ok-soft, var(--ok-soft))',   fg: 'var(--ap-ok, var(--ok))' },
   warn: { bg: 'var(--ap-warn-soft, var(--warn-soft))', fg: 'var(--ap-warn, var(--warn))' },
   err:  { bg: 'var(--ap-err-soft, var(--err-soft))',  fg: 'var(--ap-err, var(--err))' },
-  idle: { bg: 'var(--ap-bg-2, var(--bg-2))',          fg: 'var(--ap-fg-2, var(--fg-2))' },
+  idle: { bg: 'var(--ctl-surf)',                       fg: 'var(--ap-fg-2, var(--fg-2))' },
   info: { bg: 'var(--ap-info-soft, var(--info-soft))', fg: 'var(--ap-info, var(--info))' },
 }

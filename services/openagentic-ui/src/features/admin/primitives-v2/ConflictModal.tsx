@@ -114,12 +114,12 @@ export function ConflictModal<TPayload extends Record<string, unknown>>({
           <div
             role="table"
             style={{
-              border: '1px solid var(--ap-ln-2, var(--line-2))',
+              border: '1px solid var(--glass-border)',
               borderRadius: 8,
               overflow: 'hidden',
               fontFamily: 'var(--font-mono)',
               fontSize: 12,
-              background: 'var(--ap-bg-0, var(--bg-0))',
+              background: 'var(--ctl-surf)',
             }}
           >
             <div
@@ -127,7 +127,7 @@ export function ConflictModal<TPayload extends Record<string, unknown>>({
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr 1fr',
-                background: 'var(--ap-bg-2, var(--bg-2))',
+                background: 'var(--ctl-surf-hover)',
                 color: 'var(--ap-fg-3, var(--fg-3))',
                 fontSize: 10,
                 textTransform: 'uppercase',

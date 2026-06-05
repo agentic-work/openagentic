@@ -113,7 +113,7 @@ const tableHeaderClass =
   'px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider';
 
 const tableHeaderStyle: React.CSSProperties = {
-  color: 'var(--color-text-tertiary, #777)',
+  color: 'var(--color-text-tertiary)',
   borderBottom: '1px solid var(--color-border)',
 };
 
@@ -751,7 +751,7 @@ const AgentsContent: React.FC = () => {
                     </span>
                   </td>
                   <td className={tableCellClass} style={tableCellStyle}>
-                    <button onClick={() => handleToggle(agent)} className="relative w-9 h-5 rounded-full transition-colors" style={{ backgroundColor: agent.enabled !== false ? 'var(--color-success)' : 'var(--color-surface-secondary, #555)' }}>
+                    <button onClick={() => handleToggle(agent)} className="relative w-9 h-5 rounded-full transition-colors" style={{ backgroundColor: agent.enabled !== false ? 'var(--color-success)' : 'var(--color-surface-2)' }}>
                       <motion.div className="absolute top-0.5 w-4 h-4 rounded-full bg-surface shadow" animate={{ left: agent.enabled !== false ? 18 : 2 }} transition={{ duration: 0.15 }} />
                     </button>
                   </td>
@@ -1072,7 +1072,7 @@ const DataContent: React.FC = () => {
           <div
             className="text-xs px-2 py-1.5 rounded"
             style={{
-              backgroundColor: uploadResult.success ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'rgba(239,83,80,0.1)',
+              backgroundColor: uploadResult.success ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-error) 10%, transparent)',
               color: uploadResult.success ? 'var(--color-success)' : 'var(--color-error)',
             }}
           >
@@ -1180,8 +1180,7 @@ const DataContent: React.FC = () => {
             {userDocuments.map((doc: any) => (
               <div
                 key={doc.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors"
-                style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
+                className="glass-card glass-row-hover flex items-center gap-3 px-3 py-2"
               >
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--color-accent-soft)' }}>
                   <Database className="w-4 h-4" style={{ color: 'var(--color-accent)' }} />
@@ -1765,7 +1764,7 @@ const TeamContent: React.FC<{ workflowId?: string }> = ({ workflowId }) => {
                         {share.type === 'group' ? (
                           <Users className="w-4 h-4" style={{ color: 'var(--color-text-tertiary)' }} />
                         ) : (
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold" style={{ backgroundColor: 'var(--color-surface-secondary, #444)', color: 'var(--color-text-secondary)' }}>
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold" style={{ backgroundColor: 'var(--color-surface-2)', color: 'var(--color-text-secondary)' }}>
                             {share.name?.charAt(0)?.toUpperCase() || '?'}
                           </span>
                         )}
@@ -1916,7 +1915,7 @@ const TagPill: React.FC<{ tag: string; selected?: boolean; onClick?: () => void 
 
 function getCategoryColor(category: string): string {
   const colors: Record<string, string> = {
-    ops: 'var(--color-warning)', data: 'var(--color-info)', security: 'var(--color-error)', cloud: '#00bcd4',
+    ops: 'var(--color-warning)', data: 'var(--color-info)', security: 'var(--color-error)', cloud: 'var(--color-info)',
     engineering: 'var(--color-success)', gov: 'var(--color-accent)', research: 'var(--color-accent)', starter: 'var(--color-fg-subtle)',
   };
   return colors[category?.toLowerCase()] || 'var(--color-fg-subtle)';
@@ -3182,7 +3181,7 @@ export const SidebarSectionModal: React.FC<SidebarSectionModalProps> = ({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-50"
-            style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+            style={{ backgroundColor: 'color-mix(in srgb, #000000 60%, transparent)' }}
             onClick={onClose}
           />
 
@@ -3321,8 +3320,7 @@ const ArtifactsModalContent: React.FC = () => {
         return (
           <div
             key={id}
-            className="rounded-xl p-4 border transition-colors hover:bg-[var(--color-surface)]"
-            style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
+            className="glass-card glass-surface-hover p-4"
           >
             <div className="flex items-start gap-3">
               <FileText className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-accent)' }} />

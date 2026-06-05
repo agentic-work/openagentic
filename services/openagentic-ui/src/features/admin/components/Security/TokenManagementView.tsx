@@ -337,8 +337,8 @@ export const TokenManagementView: React.FC = () => {
                 fontSize: 11,
                 padding: '4px 8px',
                 borderRadius: 3,
-                border: '1px solid var(--ap-ln-2, var(--ln-2))',
-                background: 'var(--ap-bg-1, var(--bg-1))',
+                border: '1px solid var(--glass-border)',
+                background: 'var(--ctl-surf)',
                 color: t.isActive
                   ? 'var(--ap-err, var(--err))'
                   : 'var(--ap-fg-3, var(--fg-3))',
@@ -428,7 +428,7 @@ export const TokenManagementView: React.FC = () => {
               onClick={() => setCreatedToken(null)}
               style={{
                 background: 'transparent',
-                border: '1px solid var(--ap-ln-2, var(--ln-2))',
+                border: '1px solid var(--glass-border)',
                 borderRadius: 3,
                 padding: '4px 10px',
                 fontSize: 11,
@@ -451,8 +451,8 @@ export const TokenManagementView: React.FC = () => {
                 fontSize: 12,
                 padding: '6px 10px',
                 borderRadius: 3,
-                border: '1px solid var(--ap-ln-2, var(--ln-2))',
-                background: 'var(--ap-bg-1, var(--bg-1))',
+                border: '1px solid var(--glass-border)',
+                background: 'var(--ctl-surf)',
                 color: 'var(--ap-fg-0, var(--fg-0))',
               }}
             />
@@ -570,8 +570,8 @@ export const TokenManagementView: React.FC = () => {
                 width: '100%',
                 padding: '6px 10px',
                 borderRadius: 3,
-                border: '1px solid var(--ap-ln-2, var(--ln-2))',
-                background: 'var(--ap-bg-1, var(--bg-1))',
+                border: '1px solid var(--glass-border)',
+                background: 'var(--ctl-surf)',
                 color: 'var(--ap-fg-0, var(--fg-0))',
                 fontSize: 13,
               }}
@@ -599,8 +599,8 @@ export const TokenManagementView: React.FC = () => {
                 width: '100%',
                 padding: '6px 10px',
                 borderRadius: 3,
-                border: '1px solid var(--ap-ln-2, var(--ln-2))',
-                background: 'var(--ap-bg-1, var(--bg-1))',
+                border: '1px solid var(--glass-border)',
+                background: 'var(--ctl-surf)',
                 color: 'var(--ap-fg-0, var(--fg-0))',
                 fontSize: 13,
               }}
@@ -624,8 +624,8 @@ export const TokenManagementView: React.FC = () => {
                 width: '100%',
                 padding: '6px 10px',
                 borderRadius: 3,
-                border: '1px solid var(--ap-ln-2, var(--ln-2))',
-                background: 'var(--ap-bg-1, var(--bg-1))',
+                border: '1px solid var(--glass-border)',
+                background: 'var(--ctl-surf)',
                 color: 'var(--ap-fg-0, var(--fg-0))',
                 fontSize: 13,
               }}
@@ -640,8 +640,8 @@ export const TokenManagementView: React.FC = () => {
                 width: '100%',
                 padding: '6px 10px',
                 borderRadius: 3,
-                border: '1px solid var(--ap-ln-2, var(--ln-2))',
-                background: 'var(--ap-bg-1, var(--bg-1))',
+                border: '1px solid var(--glass-border)',
+                background: 'var(--ctl-surf)',
                 color: 'var(--ap-fg-0, var(--fg-0))',
                 fontSize: 13,
               }}

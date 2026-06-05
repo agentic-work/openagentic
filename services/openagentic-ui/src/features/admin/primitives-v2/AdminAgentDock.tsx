@@ -129,8 +129,10 @@ export function AdminAgentDock({
             height: 28,
             padding: '0 12px',
             borderRadius: 999,
-            background: 'var(--ap-bg-1, var(--bg-1))',
-            border: '1px solid var(--ap-ln-2, var(--line-2))',
+            background: 'var(--glass-bg)',
+            backdropFilter: 'var(--glass-blur)',
+            WebkitBackdropFilter: 'var(--glass-blur)',
+            border: '1px solid var(--glass-border)',
             color: 'var(--ap-fg-0, var(--fg-0))',
             fontSize: 12,
             cursor: 'pointer',
@@ -157,8 +159,8 @@ export function AdminAgentDock({
               fontSize: 10,
               padding: '1px 6px',
               borderRadius: 4,
-              border: '1px solid var(--ap-ln-2, var(--line-2))',
-              background: 'var(--ap-bg-2, var(--bg-2))',
+              border: '1px solid var(--glass-border)',
+              background: 'var(--ctl-surf)',
               color: 'var(--ap-fg-3, var(--fg-3))',
             }}
           >

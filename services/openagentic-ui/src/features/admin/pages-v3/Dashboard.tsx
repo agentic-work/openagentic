@@ -99,10 +99,10 @@ const TimeRangeSelector = ({
           appearance: 'none',
           background:
             value === r
-              ? 'color-mix(in srgb, var(--accent) 12%, var(--bg-3))'
-              : 'var(--bg-2)',
+              ? 'var(--glass-accent-fill)'
+              : 'var(--ctl-surf)',
           border: 0,
-          borderLeft: i === 0 ? 0 : '1px solid var(--line-1)',
+          borderLeft: i === 0 ? 0 : '1px solid var(--glass-border)',
           color: value === r ? 'var(--accent)' : 'var(--fg-2)',
           fontFamily: 'var(--font-mono)',
           fontSize: 11,

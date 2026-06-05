@@ -495,7 +495,7 @@ const THROTTLE_CONTENT_LENGTH = 500;
 // reflect=purple (summarizing), plan=teal (structured intent),
 // verify=amber (validation).
 const REACT_STAGE_TONES: Record<string, { bg: string; fg: string; label: string }> = {
-  THINK:   { bg: 'rgba(33, 150, 243, 0.18)', fg: '#2196f3', label: 'THINK' },
+  THINK:   { bg: 'color-mix(in srgb, var(--color-nfo) 18%, transparent)', fg: 'var(--color-nfo)', label: 'THINK' },
   ACT:     { bg: 'rgba(255, 152, 0, 0.18)',  fg: '#ff9800', label: 'ACT' },
   OBSERVE: { bg: 'rgba(63, 185, 80, 0.18)',  fg: '#3fb950', label: 'OBSERVE' },
   REFLECT: { bg: 'rgba(124, 77, 255, 0.18)', fg: '#7c4dff', label: 'REFLECT' },

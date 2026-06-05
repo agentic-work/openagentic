@@ -165,7 +165,7 @@ export const PipelineVisualizer: React.FC = () => {
                     fontSize: '11px',
                     fontWeight: 600,
                     color: isActive
-                      ? 'var(--color-textOnPrimary, #fff)'
+                      ? 'var(--color-textOnPrimary, var(--brand-on-accent))'
                       : 'var(--color-text)',
                     lineHeight: 1.3,
                     whiteSpace: 'nowrap',

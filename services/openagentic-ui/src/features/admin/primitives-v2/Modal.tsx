@@ -208,7 +208,7 @@ export function Modal({
               }}
             >
               Type <code style={{
-                background: 'var(--ap-bg-2, var(--bg-2))',
+                background: 'var(--ctl-surf)',
                 color: 'var(--ap-fg-1, var(--fg-1))',
                 padding: '1px 5px',
                 borderRadius: 4,
@@ -226,9 +226,9 @@ export function Modal({
                 fontFamily: 'var(--font-mono)',
                 fontSize: 13,
                 padding: '8px 10px',
-                border: '1px solid var(--ap-ln-2, var(--line-2))',
+                border: '1px solid var(--glass-border)',
                 borderRadius: 8,
-                background: 'var(--ap-bg-0, var(--bg-0))',
+                background: 'var(--ctl-surf)',
                 color: 'var(--ap-fg-1, var(--fg-1))',
                 outline: 'none',
               }}

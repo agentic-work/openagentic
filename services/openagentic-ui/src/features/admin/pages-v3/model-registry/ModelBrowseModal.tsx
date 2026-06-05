@@ -85,7 +85,7 @@ function tierBadgeStyle(tier?: string): React.CSSProperties {
     low: ['color-mix(in srgb, var(--color-warn) 18%, transparent)', 'var(--color-warn)'],
     free: ['color-mix(in srgb, var(--color-ok) 18%, transparent)', 'var(--color-ok)'],
   }
-  const [bg, fg] = palette[t] || ['var(--bg-2)', 'var(--fg-2)']
+  const [bg, fg] = palette[t] || ['var(--ctl-surf)', 'var(--fg-2)']
   return {
     fontFamily: 'var(--font-mono)',
     fontSize: 10,
@@ -497,9 +497,9 @@ export const ModelBrowseModal: React.FC<ModelBrowseModalProps> = ({
                         style={{
                           fontSize: 9,
                           padding: '1px 4px',
-                          background: 'var(--bg-2)',
+                          background: 'var(--ctl-surf)',
                           color: 'var(--fg-2)',
-                          border: '1px solid var(--line-1)',
+                          border: '1px solid var(--glass-border)',
                         }}
                       >
                         {k}
@@ -538,9 +538,9 @@ function chipStyle(active: boolean): React.CSSProperties {
     fontFamily: 'var(--font-mono)',
     fontSize: 11,
     padding: '4px 8px',
-    background: active ? 'color-mix(in srgb, var(--accent) 18%, transparent)' : 'var(--bg-2)',
+    background: active ? 'var(--glass-accent-fill)' : 'var(--ctl-surf)',
     color: active ? 'var(--accent)' : 'var(--fg-1)',
-    border: active ? '1px solid var(--accent)' : '1px solid var(--line-1)',
+    border: active ? '1px solid var(--accent)' : '1px solid var(--glass-border)',
     cursor: 'pointer',
   }
 }

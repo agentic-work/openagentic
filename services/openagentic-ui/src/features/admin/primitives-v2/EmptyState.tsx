@@ -20,9 +20,12 @@ export function EmptyState({ title, hint, cta, onCta }: EmptyStateProps) {
       style={{
         textAlign: 'center',
         padding: '56px 24px',
-        background: 'var(--ap-bg-1, var(--bg-1))',
-        border: '1px dashed var(--ap-ln-2, var(--ln-2))',
-        borderRadius: 3,
+        background: 'var(--glass-bg)',
+        backdropFilter: 'var(--glass-blur)',
+        WebkitBackdropFilter: 'var(--glass-blur)',
+        border: '1px dashed var(--glass-border)',
+        borderRadius: 'var(--radius-chip)',
+        boxShadow: 'var(--glass-card-shadow)',
         color: 'var(--ap-fg-2, var(--fg-2))',
       }}
     >

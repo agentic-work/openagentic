@@ -37,9 +37,12 @@ export function ResourceTable({ columns, rows, emptyState }: ResourceTableProps)
       style={{
         width: '100%',
         borderCollapse: 'collapse',
-        background: 'var(--ap-bg-1, var(--bg-1))',
-        border: '1px solid var(--ap-ln-1, var(--ln-1))',
-        borderRadius: 3,
+        background: 'var(--glass-bg)',
+        backdropFilter: 'var(--glass-blur)',
+        WebkitBackdropFilter: 'var(--glass-blur)',
+        border: '1px solid var(--glass-border)',
+        borderRadius: 'var(--radius-chip)',
+        boxShadow: 'var(--glass-card-shadow)',
         overflow: 'hidden',
       }}
     >
@@ -56,8 +59,8 @@ export function ResourceTable({ columns, rows, emptyState }: ResourceTableProps)
                 textTransform: 'uppercase',
                 color: 'var(--ap-fg-3, var(--fg-3))',
                 padding: '10px 14px',
-                borderBottom: '1px solid var(--ap-ln-1, var(--ln-1))',
-                background: 'var(--ap-bg-1, var(--bg-1))',
+                borderBottom: '1px solid var(--glass-border)',
+                background: 'var(--ctl-surf)',
                 fontWeight: 500,
                 width: c.width != null ? c.width : undefined,
               }}

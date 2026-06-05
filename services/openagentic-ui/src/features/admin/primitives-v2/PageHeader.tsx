@@ -63,13 +63,15 @@ export function PageHeader({
       className="border-b border-ln-1"
       style={{
         padding: '20px 32px 16px',
-        background: 'var(--ap-bg-0, var(--bg-0))',
+        background: 'transparent',
         ...(sticky
           ? {
               position: 'sticky',
               top: 0,
               zIndex: 10,
-              background: 'var(--ap-bg-1)',
+              background: 'var(--ctl-surf)',
+              backdropFilter: 'var(--glass-blur)',
+              WebkitBackdropFilter: 'var(--glass-blur)',
             }
           : {}),
       }}
@@ -146,10 +148,10 @@ export function PageHeader({
                     fontWeight: 500,
                     padding: '6px 14px',
                     borderRadius: 3,
-                    border: '1px solid var(--ap-ln-2, var(--ln-2))',
+                    border: '1px solid var(--glass-border)',
                     background: (a as Extract<PageAction, { label: string }>).primary
                       ? 'var(--ap-accent, var(--accent))'
-                      : 'var(--ap-bg-1, var(--bg-1))',
+                      : 'var(--ctl-surf)',
                     color: (a as Extract<PageAction, { label: string }>).primary
                       ? 'var(--ap-fg-on-accent, white)'
                       : 'var(--ap-fg-1, var(--fg-1))',
@@ -211,7 +213,7 @@ export function PageHeader({
                       fontSize: 10,
                       padding: '1px 5px',
                       borderRadius: 2,
-                      background: isActive ? 'var(--ap-accent-soft, var(--accent-soft))' : 'var(--ap-bg-2, var(--bg-2))',
+                      background: isActive ? 'var(--glass-accent-fill)' : 'var(--ctl-surf)',
                       color: isActive ? 'var(--ap-accent, var(--accent))' : 'var(--ap-fg-2, var(--fg-2))',
                     }}
                   >

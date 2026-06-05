@@ -243,10 +243,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
     primary: 'var(--color-primary)',
     primaryRgb: '', // Not needed when using CSS variables with color-mix
     secondary: 'var(--color-secondary)',
-    // Background colors - use CSS variables
-    cardBg: 'var(--color-surface)',
-    cardBorder: 'var(--color-border)',
-    cardHover: 'var(--color-surfaceHover)',
+    // Background colors - Terminal Glass surface tokens
+    cardBg: 'var(--glass-bg)',
+    cardBorder: 'var(--glass-border)',
+    cardHover: 'var(--ctl-surf-hover)',
     // Text colors - use CSS variables
     textPrimary: 'var(--color-text)',
     textSecondary: 'var(--color-textSecondary)',
@@ -255,8 +255,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
     gridLine: 'var(--ap-chart-grid, color-mix(in srgb, var(--color-text) 8%, transparent))',
     axisLine: 'var(--color-textMuted)',
     axisTick: 'var(--color-textSecondary)',
-    // Tooltip - use CSS variables
-    tooltipBg: 'var(--color-surfaceTertiary)',
+    // Tooltip - Terminal Glass surface
+    tooltipBg: 'var(--glass-bg)',
     tooltipBorder: 'var(--color-border)',
     tooltipShadow: 'var(--color-shadow)',
     // Status colors - use CSS variables
@@ -567,9 +567,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
     const sankeyData = buildSankeyData(modelUsage);
     const sankeyColors = {
       background: 'var(--color-background)',
-      cardBg: 'var(--color-surface)',
-      glassBg: 'var(--color-surfaceSecondary)',
-      border: 'var(--color-border)',
+      cardBg: 'var(--glass-bg)',
+      glassBg: 'var(--glass-bg)',
+      border: 'var(--glass-border)',
       textPrimary: 'var(--color-text)',
       textSecondary: 'var(--color-textSecondary)',
       textMuted: 'var(--color-textMuted)',
@@ -891,8 +891,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
               alignItems: 'center',
               gap: 0,
               padding: '0 4px',
-              borderBottom: '1px solid var(--line-1, var(--color-border))',
-              background: 'var(--bg-1, var(--color-surface))',
+              borderBottom: '1px solid var(--glass-border)',
+              background: 'var(--ctl-surf)',
+              backdropFilter: 'var(--glass-blur)',
+              WebkitBackdropFilter: 'var(--glass-blur)',
               position: 'sticky',
               top: 0,
               zIndex: 5,
@@ -1542,7 +1544,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                   Math.random()*20`; that violated the no-mock-data rule.
                   When the timeseries is missing, surface an empty-state
                   pointing operators at the underlying endpoint. */}
-              <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+              <div className="rounded-lg p-4" style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-card-shadow)' }}>
                 <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
                   API Requests Over Time
                 </h3>
@@ -1556,7 +1558,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                       <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'var(--color-surfaceSecondary)',
+                          background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)',
                           border: '1px solid var(--color-border)',
                           borderRadius: 8,
                           fontSize: 12,
@@ -1580,7 +1582,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                     Previously hardcoded a 6-bucket histogram. Now uses
                     metrics.summary.responseTimeDistribution if the api
                     surfaces it; otherwise renders an empty-state. */}
-                <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                <div className="rounded-lg p-4" style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-card-shadow)' }}>
                   <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
                     Response Time (ms)
                   </h3>
@@ -1591,7 +1593,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                         <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} />
                         <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
-                        <Tooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
+                        <Tooltip contentStyle={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
                         <Bar dataKey="count" fill="var(--ap-accent)" radius={[3, 3, 0, 0]} name="Requests" />
                       </BarChart>
                     </ResponsiveContainer>
@@ -1605,7 +1607,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                 {/* Requests by Endpoint — REAL DATA ONLY (B'-10).
                     Previously hardcoded 5 endpoints. Wires to /admin/api-requests/top-endpoints
                     which the metrics endpoint may surface as summary.topEndpoints. */}
-                <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                <div className="rounded-lg p-4" style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-card-shadow)' }}>
                   <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
                     Top Endpoints
                   </h3>
@@ -1616,7 +1618,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                         <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
                         <YAxis dataKey="endpoint" type="category" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} width={80} />
-                        <Tooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
+                        <Tooltip contentStyle={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
                         <Bar dataKey="count" fill="var(--ap-ok)" radius={[0, 3, 3, 0]} name="Requests" />
                       </BarChart>
                     </ResponsiveContainer>
@@ -1631,13 +1633,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
               {/* Status codes breakdown — REAL DATA ONLY (B'-10).
                   Previously 5 hardcoded percentages. Pulls from
                   metrics.summary.statusCodes when available. */}
-              <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+              <div className="rounded-lg p-4" style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-card-shadow)' }}>
                 <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>HTTP Status Codes</h3>
                 {Array.isArray((metrics.summary as any).statusCodes)
                   && (metrics.summary as any).statusCodes.length > 0 ? (
                   <div className="grid grid-cols-5 gap-3">
                     {((metrics.summary as any).statusCodes as Array<{ code: string; pct: number; color?: string; label?: string }>).map((s) => (
-                      <div key={s.code} className="text-center p-3 rounded-lg" style={{ backgroundColor: 'var(--color-surfaceSecondary)' }}>
+                      <div key={s.code} className="text-center p-3 rounded-lg" style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)' }}>
                         <div className="text-lg font-bold" style={{ color: s.color ?? 'var(--ap-accent)' }}>{s.pct}%</div>
                         <div className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{s.code}</div>
                         <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{s.label ?? ''}</div>
@@ -1655,7 +1657,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                   Previously contained hardcoded fallbacks (`|| 5`,
                   `* 12`, fake auth-method math). Now strictly uses
                   fields the api surfaces; missing values render '—'. */}
-              <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+              <div className="rounded-lg p-4" style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-card-shadow)' }}>
                 <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Authentication & Sessions</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   {[
@@ -1664,7 +1666,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                     { label: 'Failed Logins', value: (metrics.summary as any).failedLogins24h, icon: <AlertTriangle size={16} />, color: 'var(--color-error)' },
                     { label: 'Token Validations', value: (metrics.summary as any).tokenValidations24h ?? metrics.summary.totalApiRequests, icon: <CheckCircle size={16} />, color: 'var(--color-info, var(--color-primary))' },
                   ].map(m => (
-                    <div key={m.label} className="p-3 rounded-lg" style={{ backgroundColor: 'var(--color-surfaceSecondary)' }}>
+                    <div key={m.label} className="p-3 rounded-lg" style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)' }}>
                       <div className="flex items-center gap-2 mb-1">
                         <span style={{ color: m.color }}>{m.icon}</span>
                         <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{m.label}</span>
@@ -1686,7 +1688,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                           <XAxis dataKey="method" tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} />
                           <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
-                          <Tooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
+                          <Tooltip contentStyle={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
                           <Bar dataKey="count" fill="var(--ap-accent)" radius={[3, 3, 0, 0]} name="Authentications" />
                         </BarChart>
                       </ResponsiveContainer>
@@ -1706,7 +1708,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                           <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} />
                           <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
-                          <Tooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
+                          <Tooltip contentStyle={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
                           <Bar dataKey="count" fill="var(--ap-ok)" radius={[3, 3, 0, 0]} name="Sessions" />
                         </BarChart>
                       </ResponsiveContainer>

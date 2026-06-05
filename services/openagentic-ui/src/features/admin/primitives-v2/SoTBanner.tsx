@@ -23,12 +23,14 @@ export function SoTBanner({
   return (
     <div
       role="note"
-      className="font-mono text-fg-2 mb-4 flex items-center gap-3 rounded border border-ln-2 bg-bg-1 px-4 py-3 text-[11px]"
+      className="font-mono text-fg-2 mb-4 flex items-center gap-3 rounded border border-ln-2 px-4 py-3 text-[11px]"
       style={{
         borderLeftWidth: 3,
         borderLeftColor: 'var(--ap-success, var(--ok))',
+        backdropFilter: 'var(--glass-blur)',
+        WebkitBackdropFilter: 'var(--glass-blur)',
         background:
-          'linear-gradient(90deg, color-mix(in srgb, var(--ap-success, var(--ok)) 8%, var(--ap-bg-1, var(--bg-1))), var(--ap-bg-1, var(--bg-1)) 60%)',
+          'linear-gradient(90deg, color-mix(in srgb, var(--ap-success, var(--ok)) 8%, var(--ctl-surf)), var(--ctl-surf) 60%)',
       }}
     >
       <span

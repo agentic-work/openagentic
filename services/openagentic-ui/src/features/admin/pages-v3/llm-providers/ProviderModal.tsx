@@ -25,8 +25,9 @@ const inputStyle: React.CSSProperties = {
   padding: '0 8px',
   fontFamily: 'var(--font-mono)',
   fontSize: 12,
-  background: 'var(--bg-0)',
-  border: '1px solid var(--line-1)',
+  background: 'var(--ctl-surf)',
+  border: '1px solid var(--glass-border)',
+  borderRadius: 'var(--ctl-radius-sm)',
   color: 'var(--fg-0)',
   outline: 'none',
 }

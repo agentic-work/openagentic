@@ -487,9 +487,12 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
               maxHeight: '90vh',
               display: 'flex',
               flexDirection: 'column',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 12,
+              background: 'var(--glass-bg)',
+              backdropFilter: 'var(--glass-blur)',
+              WebkitBackdropFilter: 'var(--glass-blur)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: 'var(--glass-radius)',
+              boxShadow: 'var(--glass-shadow)',
               overflow: 'hidden',
               boxShadow: '0 20px 60px color-mix(in srgb, var(--cm-text) 40%, transparent)',
             }}
@@ -563,7 +566,7 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
                 flex: 1,
                 overflow: 'auto',
                 padding: preview.kind === 'html' ? 0 : 16,
-                background: 'var(--color-background, var(--bg-0))',
+                background: 'var(--ctl-surf)',
               }}
             >
               {previewLoading && (

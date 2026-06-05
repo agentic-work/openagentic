@@ -147,13 +147,7 @@ const FormInput: React.FC<{
       max={max}
       data-required-field={required ? 'true' : undefined}
       data-field-error={error ? 'true' : undefined}
-      className="w-full px-3 py-2.5 rounded-lg border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:border-accent-primary"
-      style={{
-        backgroundColor: 'var(--ctl-surf)',
-        borderColor: error ? 'var(--color-error)' : 'var(--color-border)',
-        color: 'var(--color-text)',
-        ...(error ? { boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-error) 30%, transparent)' } : {}),
-      }}
+      className={`glass-field px-3 py-2.5 text-sm transition-all focus:outline-none${error ? ' glass-field-error' : ''}`}
     />
     {error && !value && (
       <p className="text-xs mt-1 flex items-center gap-1" data-testid="required-field-error" style={{ color: 'var(--color-error)' }}>
@@ -192,13 +186,7 @@ const FormTextarea: React.FC<{
       placeholder={placeholder}
       data-required-field={required ? 'true' : undefined}
       data-field-error={error ? 'true' : undefined}
-      className={`w-full px-3 py-2.5 rounded-lg border text-sm transition-all resize-none focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:border-accent-primary ${monospace ? 'font-mono' : ''}`}
-      style={{
-        backgroundColor: 'var(--ctl-surf)',
-        borderColor: error ? 'var(--color-error)' : 'var(--color-border)',
-        color: 'var(--color-text)',
-        ...(error ? { boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-error) 30%, transparent)' } : {}),
-      }}
+      className={`glass-field px-3 py-2.5 text-sm transition-all resize-none focus:outline-none${monospace ? ' font-mono' : ''}${error ? ' glass-field-error' : ''}`}
     />
     {helpText && (
       <p className="text-xs mt-1.5" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -223,11 +211,8 @@ const FormSelect: React.FC<{
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full px-3 py-2.5 rounded-lg border text-sm transition-all appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:border-accent-primary"
+      className="glass-field px-3 py-2.5 text-sm transition-all appearance-none cursor-pointer focus:outline-none"
       style={{
-        backgroundColor: 'var(--ctl-surf)',
-        borderColor: 'var(--color-border)',
-        color: 'var(--color-text)',
         backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
         backgroundPosition: 'right 0.5rem center',
         backgroundRepeat: 'no-repeat',
@@ -346,8 +331,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <select
           value={nodeData.triggerType || 'manual'}
           onChange={(e) => updateData('triggerType', e.target.value as any)}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-          style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+          className="glass-field px-3 py-2 focus:outline-none"
         >
           <option value="manual">Manual</option>
           <option value="schedule">Schedule (Cron)</option>
@@ -371,8 +355,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             value={nodeData.triggerConfig?.cron || ''}
             onChange={(e) => updateData('triggerConfig', { ...nodeData.triggerConfig, cron: e.target.value })}
             placeholder="0 */6 * * *"
-            className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-            style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+            className="glass-field px-3 py-2 focus:outline-none"
           />
           <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
             Example: 0 */6 * * * (every 6 hours)
@@ -390,8 +373,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             value={nodeData.triggerConfig?.messagePattern || ''}
             onChange={(e) => updateData('triggerConfig', { ...nodeData.triggerConfig, messagePattern: e.target.value })}
             placeholder="e.g., /workflow.*"
-            className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-            style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+            className="glass-field px-3 py-2 focus:outline-none"
           />
           <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
             Regex pattern to match incoming messages. Leave empty to trigger on any message.
@@ -426,13 +408,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
               }
             }
           }}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-          style={{
-            backgroundColor: 'var(--ctl-surf)',
-            borderColor: !nodeData.toolName ? 'var(--color-warning)' : 'var(--color-border)',
-            color: 'var(--color-text)',
-            ...(!nodeData.toolName ? { boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-warning) 30%, transparent)' } : {}),
-          }}
+          className="glass-field px-3 py-2 focus:outline-none"
+          style={!nodeData.toolName ? {
+            borderColor: 'var(--color-warning)',
+            boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-warning) 30%, transparent)',
+          } : undefined}
         >
           <option value="">Select a tool...</option>
           {availableTools.map((tool) => (
@@ -489,8 +469,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                           const newArgs = { ...args, [key]: e.target.value };
                           updateData('arguments', newArgs);
                         }}
-                        className="w-full px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-                        style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+                        className="glass-field px-2 py-1.5 text-sm focus:outline-none"
                       >
                         <option value="">Select...</option>
                         {prop.enum.map((v: string) => <option key={v} value={v}>{v}</option>)}
@@ -517,8 +496,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                           updateData('arguments', newArgs);
                         }}
                         placeholder={prop.default != null ? String(prop.default) : ''}
-                        className="w-full px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-                        style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+                        className="glass-field px-2 py-1.5 text-sm focus:outline-none"
                       />
                     ) : (
                       <input
@@ -529,8 +507,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                           updateData('arguments', newArgs);
                         }}
                         placeholder={prop.default != null ? String(prop.default) : `Enter ${key}...`}
-                        className="w-full px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-                        style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+                        className="glass-field px-2 py-1.5 text-sm focus:outline-none"
                       />
                     )}
                   </div>
@@ -560,8 +537,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 }
               }}
               rows={6}
-              className="w-full px-3 py-2 rounded-lg border font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
-              style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+              className="glass-field px-3 py-2 font-mono text-sm focus:outline-none"
               placeholder='{}'
             />
             <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -582,8 +558,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <select
           value={nodeData.model || ''}
           onChange={(e) => updateData('model', e.target.value)}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-          style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+          className="glass-field px-3 py-2 focus:outline-none"
         >
           <option value="auto">Auto (platform default)</option>
           {availableModels.map((model) => (
@@ -649,8 +624,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           onChange={(e) => updateData('maxTokens', parseInt(e.target.value))}
           min="1"
           max="32000"
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-          style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+          className="glass-field px-3 py-2 focus:outline-none"
         />
         <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
           Maximum tokens the model can generate in its response. Higher values allow longer outputs but cost more.
@@ -668,8 +642,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <select
           value={nodeData.language || 'javascript'}
           onChange={(e) => updateData('language', e.target.value as any)}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-          style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+          className="glass-field px-3 py-2 focus:outline-none"
         >
           <option value="javascript">JavaScript</option>
           <option value="python">Python</option>
@@ -713,8 +686,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <select
           value={nodeData.operator || 'equals'}
           onChange={(e) => updateData('operator', e.target.value as any)}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-          style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+          className="glass-field px-3 py-2 focus:outline-none"
         >
           <option value="equals">Equals</option>
           <option value="contains">Contains</option>
@@ -738,8 +710,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <select
           value={nodeData.transformType || 'map'}
           onChange={(e) => updateData('transformType', e.target.value as any)}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-          style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+          className="glass-field px-3 py-2 focus:outline-none"
         >
           <option value="map">Map</option>
           <option value="filter">Filter</option>
@@ -1017,7 +988,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
               ]}
               onChange={(v) => updateData('toolPolicyMode' as any, v)} />
             {toolPolicyMode !== 'allow_all' && (
-              <div className="max-h-40 overflow-y-auto rounded-lg border p-2 space-y-1" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--ctl-surf)' }}>
+              <div className="glass-surface-subtle max-h-40 overflow-y-auto rounded-lg p-2 space-y-1" style={{ border: '1px solid var(--glass-border)' }}>
                 {availableTools.map(tool => (
                   <label key={`${tool.server}-${tool.name}`} className="flex items-center gap-2 text-xs py-0.5 cursor-pointer">
                     <input type="checkbox" className="rounded"
@@ -1566,11 +1537,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           Agent ID {isFieldRequired('agent_single', 'agentId') && <span style={{ color: 'var(--color-error)' }}>*</span>}
         </label>
         <div
+          className="glass-field"
           onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
           style={{
-            padding: '6px 10px', borderRadius: 6, cursor: 'pointer',
-            border: '1px solid var(--glass-border)', background: 'var(--ctl-surf)',
-            fontSize: 13, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 10px', cursor: 'pointer',
+            fontSize: 13, display: 'flex', alignItems: 'center', gap: 6,
           }}
         >
           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1581,28 +1552,24 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <AnimatePresence>
           {agentDropdownOpen && (
             <motion.div
+              className="glass-surface glass-surface-strong"
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.12 }}
               style={{
                 position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, marginTop: 4,
-                background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)',
-                border: '1px solid var(--glass-border)',
-                borderRadius: 8, boxShadow: 'var(--glass-shadow)', maxHeight: 240, overflowY: 'auto',
+                maxHeight: 240, overflowY: 'auto',
               }}
             >
               <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--color-border)' }}>
                 <input
                   autoFocus
+                  className="glass-field"
                   value={agentSearchQuery}
                   onChange={(e) => setAgentSearchQuery(e.target.value)}
                   placeholder="Search agents..."
-                  style={{
-                    width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4,
-                    border: '1px solid var(--color-border)', background: 'var(--color-bg-primary)',
-                    color: 'var(--color-text)', outline: 'none',
-                  }}
+                  style={{ padding: '4px 8px', fontSize: 12, outline: 'none' }}
                 />
               </div>
               {filteredAgents.length === 0 && (
@@ -1618,11 +1585,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                   }}
                   style={{
                     padding: '6px 12px', cursor: 'pointer', fontSize: 12,
-                    background: agent.id === currentAgentId ? 'var(--color-surface-hover)' : 'transparent',
-                    borderBottom: '1px solid var(--color-border)',
+                    background: agent.id === currentAgentId ? 'var(--ctl-surf-hover)' : 'transparent',
+                    borderBottom: '1px solid var(--glass-border)',
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--color-surface-hover)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = agent.id === currentAgentId ? 'var(--color-surface-hover)' : 'transparent'; }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ctl-surf-hover)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = agent.id === currentAgentId ? 'var(--ctl-surf-hover)' : 'transparent'; }}
                 >
                   <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{agent.display_name}</div>
                   <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
@@ -1743,7 +1710,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
                   {toolPolicyMode === 'allow_selected' ? 'Allowed Tools' : 'Denied Tools'}
                 </label>
-                <div className="max-h-40 overflow-y-auto rounded-lg border p-2 space-y-1" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--ctl-surf)' }}>
+                <div className="glass-surface-subtle max-h-40 overflow-y-auto rounded-lg p-2 space-y-1" style={{ border: '1px solid var(--glass-border)' }}>
                   {availableTools.length === 0 ? (
                     <p className="text-xs py-2 text-center" style={{ color: 'var(--color-text-tertiary)' }}>No tools available</p>
                   ) : (
@@ -1854,7 +1821,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       <FormInput label="Timeout Per Agent (s)" value={(nodeData as any).timeoutPerAgent || 60}
         onChange={(v) => updateData('timeoutPerAgent' as any, parseInt(v) || 60)} type="number" min={5} max={600}
         helpText="Maximum time each agent can run before being terminated." />
-      <div className="text-[12px] p-2 rounded" style={{ backgroundColor: 'var(--ctl-surf)', color: 'var(--color-text-secondary)' }}>
+      <div className="glass-surface-subtle text-[12px] p-2 rounded" style={{ color: 'var(--color-text-secondary)' }}>
         Configure individual agents by connecting Agent nodes to this pool's input handles.
       </div>
     </div>
@@ -1890,7 +1857,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         rows={5} monospace
         placeholder={'[\n  { "id": "researcher", "role": "research", "model": "auto" },\n  { "id": "writer", "role": "summarization", "model": "auto" }\n]'}
         helpText="JSON array of worker agent definitions. Each needs at least an id and role." />
-      <div className="text-[12px] p-2 rounded" style={{ backgroundColor: 'var(--ctl-surf)', color: 'var(--color-text-secondary)' }}>
+      <div className="glass-surface-subtle text-[12px] p-2 rounded" style={{ color: 'var(--color-text-secondary)' }}>
         You can also connect worker Agent nodes to this supervisor visually on the canvas.
       </div>
     </div>
@@ -2451,8 +2418,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                     updateData('cases' as any, updated);
                   }}
                   placeholder="Value"
-                  className="flex-1 px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-                  style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+                  className="glass-field flex-1 px-2 py-1.5 text-sm focus:outline-none"
                 />
                 <input
                   type="text"
@@ -2463,8 +2429,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                     updateData('cases' as any, updated);
                   }}
                   placeholder="Label"
-                  className="flex-1 px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-                  style={{ backgroundColor: 'var(--ctl-surf)', borderColor: 'var(--glass-border)', color: 'var(--color-text)' }}
+                  className="glass-field flex-1 px-2 py-1.5 text-sm focus:outline-none"
                 />
                 <button
                   onClick={() => {
@@ -2651,10 +2616,9 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   const renderSchemaDrivenConfig = () => {
     if (!schemaSettings.hasSchema || schemaSettings.settings.length === 0) {
       return (
-        <div style={{
+        <div className="glass-surface-subtle" style={{
           padding: '12px',
-          background: 'var(--ctl-surf)',
-          border: '1px solid var(--color-border)',
+          border: '1px solid var(--glass-border)',
           borderRadius: 8,
           fontSize: 12,
           color: 'var(--color-text-tertiary)',
@@ -2690,7 +2654,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           }
           if (setting.type === 'boolean') {
             return (
-              <div key={setting.name} className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: 'var(--ctl-surf)', border: '1px solid var(--color-border)' }}>
+              <div key={setting.name} className="glass-surface-subtle flex items-center justify-between p-3 rounded-lg" style={{ border: '1px solid var(--glass-border)' }}>
                 <div>
                   <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{labelText}</div>
                   {helpText && <div className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>{helpText}</div>}
@@ -2812,21 +2776,21 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       exit={{ x: 320, opacity: 0 }}
       // Terminal Glass: the node inspector reads as a frosted slab over the
       // canvas/aurora — translucent surface + backdrop blur + soft left edge.
-      className="w-80 border-l overflow-y-auto"
+      // glass-surface supplies the frosted bg/blur/border from the ONE SOT; we
+      // flatten its radius + drop the non-edge borders so it sits flush as a
+      // right-side drawer with only its left hairline showing.
+      className="glass-surface w-80 overflow-y-auto"
       data-has-schema={schemaSettings.hasSchema ? 'true' : 'false'}
       data-node-type={node?.type}
       style={{
-        background: 'var(--glass-bg)',
-        backdropFilter: 'var(--glass-blur)',
-        WebkitBackdropFilter: 'var(--glass-blur)',
-        borderColor: 'var(--glass-border)',
+        borderRadius: 0,
+        borderTopWidth: 0,
+        borderRightWidth: 0,
+        borderBottomWidth: 0,
       }}
     >
-      <div className="sticky top-0 z-10 p-4 border-b backdrop-blur-sm"
-        style={{
-          backgroundColor: 'var(--ctl-surf)',
-          borderColor: 'var(--glass-border)',
-        }}
+      <div className="glass-surface-subtle sticky top-0 z-10 p-4 border-b backdrop-blur-sm"
+        style={{ borderColor: 'var(--glass-border)' }}
       >
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
@@ -2840,11 +2804,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="text-xs px-2 py-1 rounded"
-          style={{
-            backgroundColor: 'var(--ctl-surf)',
-            color: 'var(--color-text-tertiary)',
-          }}
+        <div className="glass-surface-subtle text-xs px-2 py-1 rounded"
+          style={{ color: 'var(--color-text-tertiary)' }}
         >
           {node.type?.replace(/_/g, ' ').toUpperCase()}
         </div>
@@ -2909,16 +2870,13 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 Fix with AI
               </button>
               <button
+                className="glass-btn glass-btn-secondary"
                 onClick={() => {
                   if (node?.id) {
                     onUpdate(node.id, { executionState: undefined, executionError: undefined } as any);
                   }
                 }}
-                style={{
-                  padding: '4px 12px', borderRadius: 6, fontSize: 11, fontWeight: 500,
-                  background: 'var(--ctl-surf)', color: 'var(--color-text-secondary)',
-                  border: '1px solid var(--glass-border)', cursor: 'pointer',
-                }}
+                style={{ padding: '4px 12px', fontSize: 11, fontWeight: 500, cursor: 'pointer' }}
               >
                 Clear Error
               </button>
@@ -2935,12 +2893,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             type="text"
             value={nodeData.label || ''}
             onChange={(e) => updateData('label', e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-            style={{
-              backgroundColor: 'var(--ctl-surf)',
-              borderColor: 'var(--color-border)',
-              color: 'var(--color-text)',
-            }}
+            className="glass-field px-3 py-2 focus:outline-none"
           />
           <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
             Display name shown on the canvas. Use a short, descriptive name.
@@ -2956,12 +2909,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             value={nodeData.description || ''}
             onChange={(e) => updateData('description', e.target.value)}
             rows={2}
-            className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
-            style={{
-              backgroundColor: 'var(--ctl-surf)',
-              borderColor: 'var(--color-border)',
-              color: 'var(--color-text)',
-            }}
+            className="glass-field px-3 py-2 focus:outline-none"
           />
           <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
             Optional notes about this node's purpose. Shown as a tooltip on the canvas.

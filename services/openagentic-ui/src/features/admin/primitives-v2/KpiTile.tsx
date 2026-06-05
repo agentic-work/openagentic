@@ -23,7 +23,12 @@ export function KpiTile({ label, value, unit, tone = 'default', delta, deltaTone
   return (
     <div
       style={{
-        background: 'var(--ap-bg-1, var(--bg-1))',
+        background: 'var(--glass-bg)',
+        backdropFilter: 'var(--glass-blur)',
+        WebkitBackdropFilter: 'var(--glass-blur)',
+        border: '1px solid var(--glass-border)',
+        borderRadius: 'var(--radius-chip)',
+        boxShadow: 'var(--glass-card-shadow)',
         padding: '12px 14px 14px',
         display: 'flex',
         flexDirection: 'column',

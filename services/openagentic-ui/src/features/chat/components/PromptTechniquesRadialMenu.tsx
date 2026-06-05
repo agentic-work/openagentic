@@ -332,7 +332,7 @@ export const PromptTechniquesRadialMenu: React.FC<PromptTechniquesRadialMenuProp
                       width: buttonSize,
                       height: buttonSize,
                       background: `linear-gradient(135deg, ${technique.gradientFrom} 0%, ${technique.gradientTo} 100%)`,
-                      border: `2px solid ${isHovered ? '#fff' : 'transparent'}`
+                      border: `2px solid ${isHovered ? 'var(--color-accent)' : 'transparent'}`
                     }}
                     onMouseEnter={() => setHoveredTechnique(technique.id)}
                     onMouseLeave={() => setHoveredTechnique(null)}

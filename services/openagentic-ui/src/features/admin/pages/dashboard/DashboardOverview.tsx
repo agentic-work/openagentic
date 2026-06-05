@@ -289,11 +289,11 @@ function OverviewTab({ m, range, onOpenSankey }: { m: Metrics | null; range: Ran
               <div className="flex-1 h-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={mcpData} dataKey="count" nameKey="tool" cx="50%" cy="50%" innerRadius={48} outerRadius={80} paddingAngle={2} stroke="var(--bg-0)" strokeWidth={2}>
+                    <Pie data={mcpData} dataKey="count" nameKey="tool" cx="50%" cy="50%" innerRadius={48} outerRadius={80} paddingAngle={2} stroke="var(--glass-page-bg)" strokeWidth={2}>
                       {mcpData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]}/>)}
                     </Pie>
                     <RTooltip
-                      contentStyle={{ background: 'var(--color-surface, var(--bg-1))', border: '1px solid var(--line-2)', borderRadius: 6, fontFamily: 'var(--font-mono, ui-monospace)', fontSize: 11, padding: '6px 10px' }}
+                      contentStyle={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', border: '1px solid var(--glass-border)', borderRadius: 6, fontFamily: 'var(--font-mono, ui-monospace)', fontSize: 11, padding: '6px 10px' }}
                       itemStyle={{ color: 'var(--fg-0)' }}
                       formatter={(v: any, n: any) => [`${v} calls`, n]}
                     />
@@ -323,7 +323,7 @@ function OverviewTab({ m, range, onOpenSankey }: { m: Metrics | null; range: Ran
               hasModels ? 'hover:bg-bg-2 text-fg-1' : 'text-fg-3 cursor-not-allowed',
             ].join(' ')}
           >
-            <div className="p-3 rounded-full" style={{ background: hasModels ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'var(--bg-2)' }}>
+            <div className="p-3 rounded-full" style={{ background: hasModels ? 'var(--glass-accent-fill)' : 'var(--ctl-surf)' }}>
               <GitMerge size={28} style={{ color: hasModels ? 'var(--accent)' : 'var(--fg-3)' }}/>
             </div>
             <div className="text-center">

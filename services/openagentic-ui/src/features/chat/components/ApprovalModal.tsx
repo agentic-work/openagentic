@@ -171,7 +171,7 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-pill font-medium disabled:opacity-50"
               style={{
                 backgroundColor: 'var(--user-accent-primary)',
-                color: 'var(--color-on-accent, #ffffff)',
+                color: 'var(--color-on-accent, var(--brand-on-accent))',
               }}
             >
               <Check className="w-5 h-5" />
