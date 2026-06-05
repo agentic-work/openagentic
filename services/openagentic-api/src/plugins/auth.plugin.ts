@@ -16,6 +16,7 @@ import fp from 'fastify-plugin';
 import { authMiddleware } from '../middleware/unifiedAuth.js';
 import { loggers } from '../utils/logger.js';
 import { featureFlags } from '../config/featureFlags.js';
+import { isEnterpriseFeatureLicensed, FEATURE_RUNTIME_IDP } from '../ee/license.js';
 import { authRoutes } from '../routes/auth.js';
 import { oboRoutes } from '../routes/obo.js';
 import { authSsoRoutes } from '../routes/auth-sso.js';
@@ -75,8 +76,15 @@ const authPlugin: FastifyPluginAsync<AuthPluginOptions> = async (
       'identityDirectory.count failed — falling back to AUTH_MODE/AUTH_PROVIDER env for ssoActive',
     );
   }
+  // License-aware: DB directories only suppress local login when the runtime
+  // Identity Directory registry is actually LICENSED + loaded. Without a license
+  // the registry loads nothing (IdentityDirectoryConfigService gates it off), so a
+  // stale enabled row must NOT remove local login — otherwise an unlicensed deploy
+  // with a leftover directory row would be a hard lockout (no SSO, no password).
+  const registryActive =
+    directoryCount > 0 && isEnterpriseFeatureLicensed(FEATURE_RUNTIME_IDP);
   const ssoActive =
-    directoryCount > 0 ||
+    registryActive ||
     ['azure-ad', 'azuread', 'google', 'hybrid', 'both', 'all'].includes(
       (process.env.AUTH_MODE || featureFlags.authProvider).toLowerCase(),
     );
