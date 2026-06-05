@@ -9,6 +9,7 @@ const describeStrategy = (s: LlmStrategy): string => {
   switch (s) {
     case 'ollama': return 'local Ollama only';
     case 'cloud':  return 'AWS Bedrock (Claude via IAM)';
+    case 'vertex': return 'Google Vertex AI (Gemini via service account)';
     case 'both':   return 'Ollama embeddings + AWS Bedrock (Claude) chat';
     case 'skip':   return 'skipped — configure in admin panel';
   }
@@ -21,6 +22,13 @@ const describeBedrock = (b: WizardConfig['providers']['awsBedrock']): string => 
   if (b.profile)      return `profile ${b.profile}, region ${b.region}`;
   if (b.accessKeyId)  return `inline IAM key, region ${b.region}`;
   return `region ${b.region}`;
+};
+
+/** Human summary of the chosen Vertex AI config for the review screen. */
+const describeVertex = (v: WizardConfig['providers']['vertex']): string => {
+  if (!v || !v.project) return 'none — chat will fail until set';
+  const auth = v.saKeyPath ? `SA key ${v.saKeyPath}` : 'host gcloud ADC';
+  return `${v.project} (${v.region}), ${auth}`;
 };
 
 interface Props {
@@ -72,6 +80,10 @@ export const ReviewStep: React.FC<Props> = ({ config, step, total, onLaunch, onC
           row('AWS Bedrock', describeBedrock(config.providers.awsBedrock))}
         {(config.llmStrategy === 'cloud' || config.llmStrategy === 'both') &&
           row('chat model', 'claude-sonnet-4-6 (default)')}
+        {config.llmStrategy === 'vertex' &&
+          row('Vertex AI', describeVertex(config.providers.vertex), config.providers.vertex?.project ? undefined : COLORS.err)}
+        {config.llmStrategy === 'vertex' &&
+          row('chat / embed', `${config.providers.vertex?.chatModel || 'gemini-2.5-pro'} · ${config.providers.vertex?.embedModel || 'text-embedding-005'}`)}
         {row('MCPs', mcpSummary)}
         {row('UI port', String(config.uiPort))}
         {missingCreds.length > 0 && (

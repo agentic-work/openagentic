@@ -29,6 +29,11 @@ const ITEMS: Array<{ label: string; value: LlmStrategy; hint: string }> = [
     hint: 'Authenticate with AWS IAM creds — no raw API keys. Seeds Claude Sonnet 4.6 as the default chat + flows model.',
   },
   {
+    label: 'Google Vertex AI (Gemini via service account)',
+    value: 'vertex',
+    hint: 'Authenticate with a GCP service account / workload identity — no API keys. Seeds gemini-2.5-pro chat + text-embedding-005 embeddings + Imagen, all on Vertex.',
+  },
+  {
     label: 'Both — gpt-oss:20b (local) + AWS Bedrock Claude Sonnet 4.6 (default), Ollama embeddings',
     value: 'both',
     hint: 'Richest demo: TWO selectable chat models — local gpt-oss:20b + frontier Claude Sonnet 4.6 (the default), free Ollama embeddings, all via AWS IAM (no raw keys).',

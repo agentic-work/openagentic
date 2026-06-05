@@ -192,7 +192,7 @@ services:
       MILVUS_HOST: ${MILVUS_HOST:-milvus}
       MILVUS_PORT: "19530"
       SKIP_TOOL_SEMANTIC_CACHE: ${SKIP_TOOL_SEMANTIC_CACHE:-true}
-      OLLAMA_ENABLED: "true"
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-true}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
@@ -203,7 +203,8 @@ services:
       # bootstrap default — see LLMProviderSeeder.seedSecondaryOllamaProvider.
       # Empty by default so a bare Ollama-only install is unaffected.
       OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-}
-      EMBEDDING_PROVIDER: ollama
+      # Default ollama; the setup wizard's Vertex strategy overrides to vertex-ai.
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
       # Bootstrap an Ollama LLM provider on first boot so a bare install can
       # chat with zero API keys. Seeds ONE provider row only when the provider
       # table is empty (admin UI owns it thereafter). The chat role is seeded
@@ -250,6 +251,20 @@ services:
       # a named profile; empty → default credential chain (incl. inline keys).
       AWS_PROFILE: ${AWS_PROFILE:-}
       GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+      # ── Google Vertex AI (set by the setup wizard's Vertex strategy) ────────
+      # Empty by default. Chat reads GOOGLE_CLOUD_*; embeddings read the GCP_*
+      # family (separate vars, no cross-fallback — the wizard sets both). The
+      # vertex-ai BOOTSTRAP_PROVIDER_* block above is already passed through.
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-${GCP_PROJECT_ID:-}}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-${GCP_LOCATION:-us-central1}}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+      GCP_LOCATION: ${GCP_LOCATION:-us-central1}
+      GCP_EMBEDDING_MODEL: ${GCP_EMBEDDING_MODEL:-}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-}
+      DEFAULT_IMAGE_MODEL: ${DEFAULT_IMAGE_MODEL:-}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      VERTEX_AI_API_KEY: ${VERTEX_AI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       # Auth
       AUTH_PROVIDER: ${AUTH_PROVIDER:-local}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
@@ -291,6 +306,11 @@ services:
       # (and AWS_PROFILE) can resolve. Harmless when the dir is absent / when
       # inline IAM keys are used instead.
       - ${HOME}/.aws:/root/.aws:ro
+      # Google Vertex AI service-account key (read-only). GCP_SA_KEY_FILE is set
+      # by the wizard's Vertex strategy to the host key path; the in-container
+      # GOOGLE_APPLICATION_CREDENTIALS points the adapter here. Defaults to an
+      # empty device when Vertex isn't used (mounted but never read).
+      - ${GCP_SA_KEY_FILE:-/dev/null}:/var/secrets/gcp/key.json:ro
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
