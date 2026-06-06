@@ -2,25 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { Text, Box } from 'ink';
 
 /**
- * beepboop — the agenticode / openagentics mascot, ported to the terminal.
+ * beepboop — the agenticode / openagentics mascot (Fren.astro), in the terminal.
  *
- * The web Fren.astro is a muted retro-teal desk-robot whose CRT visor IS his
- * face (eyes when idle, a spinner when he's working, a grin when he's done). He
- * blinks a burnt-orange antenna LED, has amber status-LED cheeks + treads, and
- * speaks in his own glyph-gibberish — never real words. Same fella, rendered in
- * box-drawing + his exact palette so he lives in the install wizard.
+ * A muted retro-teal desk-robot whose CRT visor IS his face: glow eyes + a
+ * sweeping scanline, a burnt-orange antenna that pulses transmit rings when he's
+ * broadcasting, amber status-LED cheeks, treads, and his own glyph-gibberish.
+ * Mood drives the visor (idle eyes / twin-spinner working / grin happy).
  */
 
-// his palette, lifted straight from Fren.astro
 export const BB = {
   hi: '#6FB3A8', // muted retro teal (body)
-  lo: '#3C7C72', // deep aged teal (legs / outline)
+  lo: '#3C7C72', // deep aged teal (legs / outline / dim scan)
   tip: '#9FD8C4', // phosphor screen ink (eyes / visor)
+  glow: '#CFF5E6', // hot phosphor (eye glint / scan crest)
   led: '#DB8240', // BURNT-ORANGE brand signal (antenna LED)
+  ledDim: '#8A5226', // faded ring
   ochre: '#D9AE52', // amber status LEDs (cheeks)
 } as const;
 
-// his fake script — a short "word" of these, never real language
 const GLYPHS = ['◇', '◈', '⊹', '⋄', '✦', '⟁', '⌇', '∿', '⊙', '⌖', '※', '⟡', '▷', '◁', '△', '▽'];
 const SPIN = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
@@ -34,35 +33,71 @@ function gibber(seed: number, min = 2, max = 4): string {
   return s;
 }
 
-// body is a 9-wide box (╭ + 7 + ╮); every interior row is exactly 7 cells.
-function robot(mood: BBMood, frame: number): Seg[][] {
-  const ledOn = frame % 6 !== 0;
-  const led: Seg = { t: ledOn ? '◉' : '◌', c: BB.led, bold: ledOn };
-  const blink = mood === 'idle' && frame % 22 === 7;
+// body is a 9-wide box; interior rows are exactly 7 cells.
+// indices: 0 antenna · 1 stalk · 2 top · 3 eyes · 4 scan · 5 mouth · 6 cheeks · 7 treads
+function robot(mood: BBMood, frame: number, broadcast: boolean): Seg[][] {
+  // antenna: pulsing transmit rings when broadcasting, else a blinking LED
+  let antenna: Seg[];
+  if (broadcast) {
+    const ph = Math.floor(frame / 3) % 4; // 0..3 expanding
+    const cells = Array(9).fill(' ');
+    cells[4] = '◉';
+    if (ph >= 1) {
+      cells[4 - ph] = '(';
+      cells[4 + ph] = ')';
+    }
+    antenna = [
+      { t: '   ' },
+      ...cells.map((ch, i) =>
+        ch === '◉'
+          ? { t: ch, c: BB.led, bold: true }
+          : ch === ' '
+            ? { t: ch }
+            : { t: ch, c: ph >= 2 ? BB.ledDim : BB.led },
+      ),
+    ];
+  } else {
+    const on = frame % 6 !== 0;
+    antenna = [{ t: '       ' }, { t: on ? '◉' : '◌', c: BB.led, bold: on }];
+  }
 
-  // visor face — each eye is ONE cell; interior pattern ` X   X ` = 7 cells
-  let eL: string, eR: string, ec: string = BB.tip, eb = false;
+  // eyes (glow)
+  const blink = mood === 'idle' && frame % 24 === 9;
+  let eL: string, eR: string, ec: string = BB.tip, eb = true;
   if (mood === 'working') {
     const s = SPIN[frame % SPIN.length];
-    eL = s; eR = s; ec = BB.led; eb = true;
+    eL = s; eR = s; ec = BB.led;
   } else if (mood === 'happy') {
-    eL = '◠'; eR = '◠'; eb = true;
+    eL = '◠'; eR = '◠'; ec = BB.glow;
   } else if (mood === 'bashful') {
     eL = '◔'; eR = '◔';
   } else {
-    eL = blink ? '▬' : '●'; eR = blink ? '▬' : '●';
+    eL = blink ? '▬' : '●'; eR = blink ? '▬' : '●'; ec = blink ? BB.tip : BB.glow;
   }
-  const face: Seg[] = [{ t: '┃ ', c: BB.hi }, { t: `${eL}   ${eR}`, c: ec, bold: eb }, { t: ' ┃', c: BB.hi }];
+  const eyes: Seg[] = [{ t: '┃ ', c: BB.hi }, { t: `${eL}   ${eR}`, c: ec, bold: eb }, { t: ' ┃', c: BB.hi }];
+
+  // scanline sweep — a bright crest gliding over a dim phosphor row
+  const span = 12;
+  const raw = frame % span;
+  const pos = raw < 7 ? raw : span - raw; // 0..6 bounce
+  const scanCells: Seg[] = Array.from({ length: 7 }, (_, i) => {
+    const d = Math.abs(i - pos);
+    if (d < 1) return { t: '▓', c: BB.glow, bold: true };
+    if (d < 2) return { t: '▒', c: BB.tip };
+    return { t: '░', c: BB.lo, dim: true };
+  });
+  const scan: Seg[] = [{ t: '┃', c: BB.hi }, ...scanCells, { t: '┃', c: BB.hi }];
 
   const m = mood === 'happy' ? ' ◡◡◡◡◡ ' : mood === 'bashful' ? '  ◡‿◡  ' : '  ‿‿‿  ';
   const mouth: Seg[] = [{ t: '┃', c: BB.hi }, { t: m, c: BB.tip }, { t: '┃', c: BB.hi }];
   const cheek: Seg = { t: '◍', c: BB.ochre, bold: mood === 'happy' };
 
   return [
-    [{ t: '       ' }, led],
+    antenna,
     [{ t: '       ' }, { t: '╿', c: BB.lo }],
     [{ t: '   ' }, { t: '╭━━━━━━━╮', c: BB.hi }],
-    [{ t: '   ' }, ...face],
+    [{ t: '   ' }, ...eyes],
+    [{ t: '   ' }, ...scan],
     [{ t: '   ' }, ...mouth],
     [{ t: '   ' }, { t: '╰', c: BB.lo }, cheek, { t: '━━━━━', c: BB.lo }, cheek, { t: '╯', c: BB.lo }],
     [{ t: '     ' }, { t: '▟▙ ▟▙', c: BB.lo }],
@@ -81,26 +116,31 @@ const Line: React.FC<{ segs: Seg[] }> = ({ segs }) => (
 
 interface BeepboopProps {
   mood?: BBMood;
-  /** real words for his bubble; omit and he speaks glyph-gibberish */
   says?: string;
   animate?: boolean;
-  /** head only (no bubble, no legs) — for the banner */
+  /** head only (antenna · top · eyes · scan · cheeks) — for the banner */
   compact?: boolean;
+  /** pulse transmit rings from the antenna */
+  broadcast?: boolean;
 }
 
-export const Beepboop: React.FC<BeepboopProps> = ({ mood = 'idle', says, animate = true, compact = false }) => {
+export const Beepboop: React.FC<BeepboopProps> = ({
+  mood = 'idle',
+  says,
+  animate = true,
+  compact = false,
+  broadcast = false,
+}) => {
   const [frame, setFrame] = useState(0);
   useEffect(() => {
     if (!animate) return;
-    // smooth while he's working (spinner); a calm blink otherwise so the
-    // banner doesn't churn the screen during text entry.
-    const tick = mood === 'working' ? 110 : 430;
+    const tick = mood === 'working' || broadcast ? 120 : 240;
     const id = setInterval(() => setFrame((f) => (f + 1) % 600), tick);
     return () => clearInterval(id);
-  }, [animate, mood]);
+  }, [animate, mood, broadcast]);
 
-  const all = robot(mood, frame);
-  const lines = compact ? all.slice(0, 6) : all; // drop the treads row for the head
+  const all = robot(mood, frame, broadcast);
+  const lines = compact ? [all[0], all[1], all[2], all[3], all[4], all[6]] : all;
 
   if (compact) {
     return (
@@ -116,7 +156,6 @@ export const Beepboop: React.FC<BeepboopProps> = ({ mood = 'idle', says, animate
   const W = text.length;
   return (
     <Box flexDirection="column">
-      {/* speech bubble — a small rounded callout, tail toward his antenna */}
       <Text color={BB.lo}>{`   ╭${'─'.repeat(W + 2)}╮`}</Text>
       <Text>
         <Text color={BB.lo}>{'   │ '}</Text>
