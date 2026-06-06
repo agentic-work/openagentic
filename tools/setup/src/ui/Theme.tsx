@@ -1,122 +1,60 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Text, Box } from 'ink';
-import { Beepboop, BB } from './Beepboop.tsx';
-import { Grad, ScanRule } from './effects.tsx';
+import { Grad, Rule, Bar } from './effects.tsx';
 
 // openagentics.io / Boards-of-Canada palette — warm retro greens, amber, cream.
 export const COLORS = {
   accent: '#88CCA0',
   accentDeep: '#5FA877',
   ink: '#E3EBE0',
-  muted: '#A9BCA9',
+  muted: '#8C9C8C',
+  faint: '#5E6E5E',
   ok: '#88CCA0',
   warn: '#D9AE52',
   err: '#E0663A',
-  led: BB.led,
-  teal: BB.tip,
+  signal: '#DB8240',
+  teal: '#9FD8C4',
 } as const;
 
 // the brand sweep: teal → phosphor → green → amber → burnt-orange
-const STOPS = [BB.hi, BB.tip, '#88CCA0', COLORS.warn, BB.led];
+const STOPS = ['#6FB3A8', '#9FD8C4', '#88CCA0', '#D9AE52', '#DB8240'];
 
-// boot-in plays exactly once per process (first step the wizard renders).
-let booted = false;
+const width = () => Math.max(44, Math.min((process.stdout.columns || 80) - 6, 88));
 
-const Badge: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Box marginRight={2}>
-    <Text color={COLORS.accentDeep}>▸ </Text>
-    <Text color={COLORS.ink}>{children}</Text>
-  </Box>
-);
-
-const Wordmark: React.FC<{ shown: string; caret?: string }> = ({ shown, caret }) => (
-  <Box>
-    <Text color={BB.led} bold>
-      ⌥{' '}
-    </Text>
-    <Grad text={shown} stops={STOPS} bold />
-    {caret ? (
-      <Text color={BB.glow} bold>
-        {caret}
-      </Text>
-    ) : null}
-  </Box>
-);
-
-export const Banner: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
-  const [f, setF] = useState(0);
-  const [phase, setPhase] = useState<'boot' | 'live'>(booted || compact ? 'live' : 'boot');
-
-  useEffect(() => {
-    const id = setInterval(() => setF((x) => (x + 1) % 1000), 130);
-    return () => clearInterval(id);
-  }, []);
-  useEffect(() => {
-    if (phase !== 'boot') return;
-    const t = setTimeout(() => {
-      booted = true;
-      setPhase('live');
-    }, 1100);
-    return () => clearTimeout(t);
-  }, [phase]);
-
-  // slim header for steps 2+ — beepboop's head, the wordmark, a thin trace
-  if (compact) {
-    return (
-      <Box flexDirection="column" paddingY={1}>
-        <Box>
-          <Beepboop compact broadcast />
-          <Box marginLeft={2} marginTop={1}>
-            <Wordmark shown="openagentic" />
-          </Box>
-        </Box>
-        <ScanRule width={48} frame={f} stops={STOPS} />
-      </Box>
-    );
-  }
-
-  // full hero — panel + boot-in + badges + signal trace
-  const word = 'openagentic';
-  const shown = phase === 'boot' ? word.slice(0, Math.min(word.length, Math.floor(f * 1.4))) : word;
-  const caret = phase === 'boot' && f % 2 === 0 ? '▌' : '';
-
+export const Banner: React.FC = () => {
+  const w = width();
   return (
     <Box flexDirection="column" paddingY={1}>
-      <Box borderStyle="round" borderColor={COLORS.accentDeep} paddingX={2}>
-        <Beepboop compact broadcast />
-        <Box flexDirection="column" marginLeft={2} marginTop={1}>
-          <Wordmark shown={shown} caret={caret} />
-          <Text color={COLORS.muted}>the open agentic platform for IT operations</Text>
-          <Box marginTop={1}>
-            <Badge>self-hosted</Badge>
-            <Badge>docker · k8s</Badge>
-            <Badge>v1.0</Badge>
-          </Box>
-          <Box>
-            <Text color={BB.tip} italic>
-              beep boop
-            </Text>
-            <Text color={COLORS.muted}> — let&apos;s build something.</Text>
-          </Box>
+      <Box width={w} justifyContent="space-between">
+        <Box>
+          <Text color={COLORS.signal} bold>
+            ⌥{'  '}
+          </Text>
+          <Grad text="openagentic" stops={STOPS} bold />
         </Box>
+        <Text color={COLORS.faint}>self-hosted · docker / k8s · v1.0</Text>
       </Box>
-      <Box paddingX={1}>
-        <ScanRule width={60} frame={phase === 'boot' ? f * 3 : f} stops={STOPS} />
-      </Box>
+      <Rule width={w} stops={STOPS} />
+      <Text color={COLORS.muted}>the open agentic platform for IT operations</Text>
     </Box>
   );
 };
 
 export const StepHeader: React.FC<{ step: number; total: number; title: string }> = ({ step, total, title }) => (
-  <Box marginBottom={1}>
-    <Text color={COLORS.accentDeep}>◆ </Text>
-    <Text color={COLORS.muted}>
-      step {step}/{total}
-    </Text>
-    <Text color={COLORS.muted}> · </Text>
-    <Text color={COLORS.ink} bold>
-      {title}
-    </Text>
+  <Box flexDirection="column" marginBottom={1}>
+    <Box>
+      <Text color={COLORS.accent} bold>
+        {String(step).padStart(2, '0')}
+      </Text>
+      <Text color={COLORS.faint}> / {String(total).padStart(2, '0')}</Text>
+      <Text color={COLORS.faint}>{'   '}</Text>
+      <Text color={COLORS.ink} bold>
+        {title}
+      </Text>
+    </Box>
+    <Box marginTop={0}>
+      <Bar value={step} total={total} width={Math.min(36, width())} stops={STOPS} />
+    </Box>
   </Box>
 );
 
@@ -133,7 +71,7 @@ interface ScreenProps {
 
 export const Screen: React.FC<ScreenProps> = ({ step, total, title, children }) => (
   <Box flexDirection="column" paddingX={2}>
-    <Banner compact={step > 1} />
+    <Banner />
     <StepHeader step={step} total={total} title={title} />
     {children}
   </Box>

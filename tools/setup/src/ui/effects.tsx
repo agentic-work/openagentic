@@ -17,19 +17,19 @@ export function gradColor(stops: string[], t: number): string {
   return hexLerp(stops[i], stops[i + 1], seg - i);
 }
 
-/** per-character gradient text. `shift` animates the gradient sideways. */
-export const Grad: React.FC<{ text: string; stops: string[]; bold?: boolean; shift?: number }> = ({
+/** per-character gradient text */
+export const Grad: React.FC<{ text: string; stops: string[]; bold?: boolean; dim?: boolean }> = ({
   text,
   stops,
   bold,
-  shift = 0,
+  dim,
 }) => {
   const chars = [...text];
   const n = Math.max(1, chars.length - 1);
   return (
     <Text>
       {chars.map((ch, i) => (
-        <Text key={i} color={gradColor(stops, ((i + shift) % chars.length) / n)} bold={bold}>
+        <Text key={i} color={gradColor(stops, i / n)} bold={bold} dimColor={dim}>
           {ch}
         </Text>
       ))}
@@ -37,29 +37,43 @@ export const Grad: React.FC<{ text: string; stops: string[]; bold?: boolean; shi
   );
 };
 
-/**
- * an animated rule: a dim baseline with a bright gradient spot sweeping across,
- * like a scanline / signal trace. `frame` drives the sweep.
- */
-export const ScanRule: React.FC<{ width: number; frame: number; stops: string[]; dim?: string }> = ({
-  width,
-  frame,
-  stops,
-  dim = '#243329',
-}) => {
-  const span = width + 10;
-  const pos = (frame % span) - 5;
+/** a full-width gradient rule */
+export const Rule: React.FC<{ width: number; stops: string[]; char?: string }> = ({ width, stops, char = '─' }) => {
+  const n = Math.max(1, width - 1);
   return (
     <Text>
-      {Array.from({ length: width }, (_, i) => {
-        const d = Math.abs(i - pos);
-        const lit = d < 4;
-        return (
-          <Text key={i} color={lit ? gradColor(stops, 1 - d / 4) : dim} bold={d < 1.5}>
-            {d < 1 ? '━' : '─'}
+      {Array.from({ length: width }, (_, i) => (
+        <Text key={i} color={gradColor(stops, i / n)}>
+          {char}
+        </Text>
+      ))}
+    </Text>
+  );
+};
+
+/** a slim progress bar — filled is gradient, the rest is a hairline track */
+export const Bar: React.FC<{ value: number; total: number; width: number; stops: string[]; track?: string }> = ({
+  value,
+  total,
+  width,
+  stops,
+  track = '#2C3A31',
+}) => {
+  const filled = Math.max(0, Math.min(width, Math.round((value / Math.max(1, total)) * width)));
+  const n = Math.max(1, width - 1);
+  return (
+    <Text>
+      {Array.from({ length: width }, (_, i) =>
+        i < filled ? (
+          <Text key={i} color={gradColor(stops, i / n)}>
+            ━
           </Text>
-        );
-      })}
+        ) : (
+          <Text key={i} color={track}>
+            ─
+          </Text>
+        ),
+      )}
     </Text>
   );
 };

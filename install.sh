@@ -50,14 +50,13 @@ readonly C_ORANGE=$'\033[38;2;219;130;64m'    # antenna LED / signal
 readonly C_AMBER=$'\033[38;2;217;174;82m'     # amber cheeks
 readonly C_CREAM=$'\033[38;2;227;235;224m'    # warm cream text
 
-# beepboop says hi from the masthead (his retro-teal CRT head + the wordmark).
+# clean masthead — gradient wordmark + rule + tagline (matches the Ink wizard).
 banner() {
   printf '\n'
-  printf '       %s◉%s\n' "$C_ORANGE" "$C_RESET"
-  printf '   %s╭━━━━━━━╮%s   %s%s⌥ openagentic%s\n' "$C_TEAL" "$C_RESET" "$C_BOLD" "$C_GREEN" "$C_RESET"
-  printf '   %s┃ %s●   ●%s ┃%s   %sthe open agentic platform for IT operations%s\n' "$C_TEAL" "$C_PHOS" "$C_TEAL" "$C_RESET" "$C_CREAM" "$C_RESET"
-  printf '   %s┃  %s‿‿‿%s  ┃%s   %sbeep boop%s%s — let'"'"'s get you set up.%s\n' "$C_TEAL" "$C_PHOS" "$C_TEAL" "$C_RESET" "$C_PHOS" "$C_RESET" "$C_GRAY" "$C_RESET"
-  printf '   %s╰%s◍%s━━━━━%s◍%s╯%s\n' "$C_TEAL" "$C_AMBER" "$C_TEAL" "$C_AMBER" "$C_TEAL" "$C_RESET"
+  printf '  %s%s⌥  %sopen%sagen%stic%s          %sself-hosted · docker / k8s · v1.0%s\n' \
+    "$C_BOLD" "$C_ORANGE" "$C_TEAL" "$C_GREEN" "$C_AMBER" "$C_RESET" "$C_GRAY" "$C_RESET"
+  printf '  %s──────────────────────────────────────────────────────────────────%s\n' "$C_GREEN" "$C_RESET"
+  printf '  %sthe open agentic platform for IT operations%s\n' "$C_CREAM" "$C_RESET"
   printf '\n'
 }
 
