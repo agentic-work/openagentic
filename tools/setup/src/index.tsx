@@ -265,4 +265,7 @@ const App: React.FC = () => {
   );
 };
 
+// Start in a clean terminal — wipe the screen + scrollback so the wizard owns
+// the view and renders fresh from the top, not appended below earlier output.
+if (process.stdout.isTTY) process.stdout.write('\x1b[2J\x1b[3J\x1b[H');
 render(<App />);

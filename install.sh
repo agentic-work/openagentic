@@ -52,6 +52,7 @@ readonly C_CREAM=$'\033[38;2;227;235;224m'    # warm cream text
 
 # clean masthead — gradient wordmark + rule + tagline (matches the Ink wizard).
 banner() {
+  [ -t 1 ] && printf '\033[2J\033[3J\033[H'   # start in a clean terminal
   printf '\n'
   printf '  %s%s⌥  %sopen%sagen%stic%s          %sself-hosted · docker / k8s · v1.0%s\n' \
     "$C_BOLD" "$C_ORANGE" "$C_TEAL" "$C_GREEN" "$C_AMBER" "$C_RESET" "$C_GRAY" "$C_RESET"
