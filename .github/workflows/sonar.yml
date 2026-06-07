@@ -1,0 +1,52 @@
+# SonarQube Code Analysis — runs on the self-hosted ARC pool registered
+# for this repo (scale-set name `openagentic-runners`, k8s-backed,
+# scale-to-zero). Reports to the AgenticWork SQ instance at
+# sonarqube-dev.agenticwork.io.
+#
+# Triggers: push to main, PRs to main, manual dispatch. Community Edition
+# doesn't support non-main branch analysis or PR decoration, so we don't
+# scan develop branches.
+name: SonarQube
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  sonarqube:
+    name: SonarQube Scan
+    runs-on: openagentic-runners
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history — SQ needs it for blame/new-code detection
+
+      - name: Set up Node.js
+        # The JS/TS analyzer shells out to `node -v` at scan start;
+        # without it, scans crash before uploading any report.
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # No deps install / no coverage step yet — there's no monorepo-wide
+      # `test:coverage` script in package.json. Once one lands, add an
+      # `Install deps` step and `pnpm test:coverage || true` here so SQ
+      # picks up coverage/lcov.info (the path is wired in
+      # sonar-project.properties).
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=600
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
