@@ -645,6 +645,46 @@ PRESERVE = {
     'services/openagentic-ui/src/features/docs/pages/ChangelogPage.tsx',
     'services/openagentic-ui/scripts/docs/__tests__/no-removed-features.test.ts',
     'services/openagentic-ui/scripts/docs/manifest.ts',
+
+    # ─── OSS-only SECURITY / SECRET / PII fixes the full sync REGRESSES ──────
+    # Found by the 2026-06-09 PRESERVE-hardening audit (62 in-both security
+    # files diffed main vs a full-sync base; these 12 are where OSS main holds
+    # a security property the enterprise upstream LACKS or actively regresses).
+    # A sync must NEVER overwrite these or it re-introduces the listed defect.
+    #
+    #   googleAuth.ts / google-auth/index.ts — main fails CLOSED on the Google
+    #     OIDC admin grant; upstream hardcodes `trent@openagentic.io` as the
+    #     GOOGLE_ADMIN_EMAILS default → PII + privilege-escalation backdoor.
+    'services/openagentic-api/src/auth/googleAuth.ts',
+    'services/openagentic-api/src/routes/google-auth/index.ts',
+    #   featureFlags.ts — carries the OSS approvalGateMutating (default-ON
+    #     human-approval gate); preserving it ALSO blocks the upstream Code-Mode
+    #     re-leak (codeManagerUrl / codemode.plugin.ts / controlPlaneCodemode).
+    #     (Upstream's stronger mfaFreshnessSecs / hitlApprovalTimeoutMs / fail-
+    #     closed posInt() are ported SURGICALLY in remediation, not via clobber.)
+    'services/openagentic-api/src/config/featureFlags.ts',
+    #   routes/auth.ts — main persists sso_login + login_failed to auth_audit_log
+    #     on the Azure SSO path; upstream never calls logAuthEvent here (audit
+    #     gap). (Upstream's AC-8 system-use-banner endpoints get ported on top.)
+    'services/openagentic-api/src/routes/auth.ts',
+    #   DLPScannerService.ts — main has NO cloud-inventory PII exemption; upstream
+    #     #1144 unconditionally skips the `pii` category for gcp_/aws_/azure_/k8s_
+    #     read tools. Main's stricter PII posture is the FedRAMP-correct one.
+    'services/openagentic-api/src/services/DLPScannerService.ts',
+    #   utils/secrets.ts — upstream getVaultServiceInstance() calls ITSELF
+    #     (infinite recursion / stack overflow); main calls getVaultService().
+    'services/openagentic-api/src/utils/secrets.ts',
+    #   LoginDev.tsx — main scrubbed the dev IP allowlist to loopback + Docker
+    #     bridge (env-configurable); upstream ships a real personal public IP+LAN.
+    'services/openagentic-ui/src/features/auth/components/LoginDev.tsx',
+    #   Test files that scrubbed real PII / internal infra the upstream still ships
+    #   (personal emails, real-key-shaped fallbacks, AAD tenant domains, live
+    #   internal *-dev.openagentic.io hostnames) — a sync would re-leak them.
+    'services/openagentic-mcp-proxy/tests/test_jwt_auth.py',
+    'tests/config.js',
+    'tests/e2e/auth.setup.ts',
+    'tests/e2e/helpers/loginAsMcpTester.ts',
+    'tests/e2e/helpers/saveAuthState.ts',
 }
 
 # Directory PREFIXES whose every (current + future) file must survive a sync.
