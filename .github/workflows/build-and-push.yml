@@ -56,6 +56,7 @@ jobs:
             dockerfile: services/openagentic-mcp-proxy/Dockerfile
             build_arg: SRC_PATH=services/openagentic-mcp-proxy
             platforms: linux/amd64,linux/arm64
+            no_cache: "true"
           - service: openagentic-proxy
             dockerfile: services/openagentic-proxy/Dockerfile
             build_arg: ''
@@ -128,7 +129,8 @@ jobs:
           # network=host lets RUN curl/pip/npm reach the internet during build layers.
           # Required in DinD environments where the build container is otherwise isolated.
           network: host
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache
+          # Skip corrupt cache on mcp-proxy first build; all others use GHCR layer cache.
+          cache-from: ${{ matrix.no_cache == 'true' && '' || format('type=registry,ref={0}/{1}/{2}:buildcache', env.REGISTRY, env.ORG, matrix.service) }}
           cache-to:   type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache,mode=max
           provenance: false
 
