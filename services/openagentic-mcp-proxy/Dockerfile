@@ -17,8 +17,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Azure CLI (used by official Azure MCP)
-RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+# Install Azure CLI (architecture-aware — aka.ms script is amd64-only)
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
+        curl -sL https://aka.ms/InstallAzureCLIDeb | bash; \
+    else \
+        # arm64: install via pip (azure-cli) which is cross-platform
+        pip3 install --no-cache-dir --break-system-packages azure-cli 2>/dev/null \
+        || pip3 install --no-cache-dir azure-cli; \
+    fi
 
 # Install AWS CLI v2 (required by OpenAgentic AWS MCP for CLI command execution, architecture-aware)
 RUN ARCH=$(dpkg --print-architecture) && \
