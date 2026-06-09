@@ -56,6 +56,11 @@ RENAMES = [
 
 # ─── Filter: directories whose contents never cross the OSS boundary ─────────
 SKIP_PREFIXES = (
+    # Brand-leaked workflow node — the upstream ships a 'agenticwork_chat' node
+    # whose path has no awp-/agenticwork- prefix to rewrite, so a sync would
+    # re-create it in the public OSS tree. Removed in the 2026-06-09 cleanup;
+    # SKIP so it never returns. (0 importers — dead brand leak.)
+    'services/shared/workflow-engine/src/nodes/agenticwork_chat/',
     # Docs, mockups, screenshots, internal tracking
     'docs/', 'tests/uat/', 'tests/results/', 'tests/reports/',
     # Internal CI / k8s-deploy machinery
@@ -735,6 +740,67 @@ PRESERVE = {
     'tests/e2e/auth.setup.ts',
     'tests/e2e/helpers/loginAsMcpTester.ts',
     'tests/e2e/helpers/saveAuthState.ts',
+
+    # ─── A+++/FedRAMP remediation campaign (2026-06-09) — local-auth-only ──
+    # Every file the FedRAMP remediation + AAD/OBO/Google-SSO excision edited.
+    # A re-sync MUST NOT overwrite these or it re-injects the enterprise AAD/OBO
+    # surface and undoes the security hardening (fail-closed secrets, jwt alg-pin,
+    # mcp-proxy HMAC auth, SSRF gate, CORS, etc.). The deleted AAD/OBO/SSO files
+    # are in SKIP (above) so they never re-appear. Generated docs manifests are
+    # intentionally NOT here — they rebuild from source at build time.
+    '.githooks/pre-commit',
+    'CONTRIBUTING.md',
+    'docs/enterprise-setup/README.md',
+    'docs/enterprise-setup/aws.md',
+    'docs/enterprise-setup/azure.md',
+    'docs/enterprise-setup/setup.sh',
+    'helm/openagentic/templates/ui.yaml',
+    'helm/openagentic/values-local-airgapped.yaml.template',
+    'helm/openagentic/values-local-k8s.yaml.template',
+    'helm/openagentic/values.yaml',
+    'services/openagentic-api/prisma/seed-docs-assistant.sql',
+    'services/openagentic-api/prisma/seed-flows-agent.sql',
+    'services/openagentic-api/src/__tests__/architecture/no-hardcoded-model-literals.source-regression.test.ts',
+    'services/openagentic-api/src/__tests__/architecture/registry-sot-cage-no-env-vars.source-regression.test.ts',
+    'services/openagentic-api/src/auth/tokenValidator.ts',
+    'services/openagentic-api/src/config/featureFlags.ts',
+    'services/openagentic-api/src/config/secrets.config.ts',
+    'services/openagentic-api/src/middleware/authorization.ts',
+    'services/openagentic-api/src/middleware/unifiedAuth.ts',
+    'services/openagentic-api/src/plugins/__tests__/v1.plugin.test.ts',
+    'services/openagentic-api/src/plugins/auth.plugin.ts',
+    'services/openagentic-api/src/plugins/cluster.plugin.ts',
+    'services/openagentic-api/src/routes/admin-mcp-logs.ts',
+    'services/openagentic-api/src/routes/admin.ts',
+    'services/openagentic-api/src/routes/admin/__tests__/mcp-tools-list-auth-forward.test.ts',
+    'services/openagentic-api/src/routes/admin/registry-tombstones.ts',
+    'services/openagentic-api/src/routes/advanced-prompting/prompts.ts',
+    'services/openagentic-api/src/routes/analytics-monitoring/prompt-metrics.ts',
+    'services/openagentic-api/src/routes/auth.ts',
+    'services/openagentic-api/src/routes/azure-integration/index.ts',
+    'services/openagentic-api/src/routes/chat/index.ts',
+    'services/openagentic-api/src/routes/chat/middleware/auth.middleware.ts',
+    'services/openagentic-api/src/routes/chat/services/ChatAuthService.ts',
+    'services/openagentic-api/src/routes/cluster/services.handler.ts',
+    'services/openagentic-api/src/routes/memory-vector/contexts.ts',
+    'services/openagentic-api/src/routes/setup.ts',
+    'services/openagentic-api/src/routes/v1/index.ts',
+    'services/openagentic-api/src/routes/workflows.ts',
+    'services/openagentic-api/src/services/VaultInitService.ts',
+    'services/openagentic-api/src/services/WorkflowExecutionEngine.ts',
+    'services/openagentic-api/src/services/WorkflowScheduler.ts',
+    'services/openagentic-api/src/services/buildChatV2Deps.ts',
+    'services/openagentic-api/src/services/composeAppTemplates/build-progress.template.ts',
+    'services/openagentic-api/src/startup/01-secrets.ts',
+    'services/openagentic-api/src/startup/06-rag.ts',
+    'services/openagentic-mcp-proxy/Dockerfile',
+    'services/openagentic-mcp-proxy/README.md',
+    'services/openagentic-mcp-proxy/requirements.txt',
+    'services/openagentic-mcp-proxy/src/mcp_manager.py',
+    'services/openagentic-mcp-proxy/tests/test_auth_hardening.py',
+    'services/openagentic-ui/src/config/runtime.ts',
+    'services/openagentic-ui/src/features/docs/pages/ApiRoutesPage.tsx',
+    'services/openagentic-ui/src/types/modules.d.ts',
 }
 
 # Directory PREFIXES whose every (current + future) file must survive a sync.
