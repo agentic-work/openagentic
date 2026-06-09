@@ -37,21 +37,29 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Node.js images: amd64-only — tsc segfaults under QEMU arm64 emulation.
+          # Add arm64 later by wiring native RPi runners with a separate job.
           - service: openagentic-api
             dockerfile: services/openagentic-api/Dockerfile
             build_arg: SRC_PATH=services/openagentic-api
+            platforms: linux/amd64
           - service: openagentic-ui
             dockerfile: services/openagentic-ui/Dockerfile
             build_arg: SRC_PATH=services/openagentic-ui
+            platforms: linux/amd64
           - service: openagentic-workflows
             dockerfile: services/openagentic-workflows/Dockerfile
             build_arg: ''
+            platforms: linux/amd64
+          # Python/light images: multi-arch fine under QEMU
           - service: openagentic-mcp-proxy
             dockerfile: services/openagentic-mcp-proxy/Dockerfile
             build_arg: SRC_PATH=services/openagentic-mcp-proxy
+            platforms: linux/amd64,linux/arm64
           - service: openagentic-proxy
             dockerfile: services/openagentic-proxy/Dockerfile
             build_arg: ''
+            platforms: linux/amd64,linux/arm64
 
     steps:
       # ── Wait for DinD daemon ──────────────────────────────────────────────────
@@ -112,7 +120,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.platforms }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
