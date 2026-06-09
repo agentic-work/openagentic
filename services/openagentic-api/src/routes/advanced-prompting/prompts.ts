@@ -34,7 +34,7 @@ export const advancedPromptingRoutes: FastifyPluginAsync = async (fastify) => {
 
     try {
       const token = authHeader.replace('Bearer ', '');
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
       return decoded.userId || decoded.id || decoded.oid;
     } catch (error) {
       logger.warn({ error }, 'Failed to decode user token');

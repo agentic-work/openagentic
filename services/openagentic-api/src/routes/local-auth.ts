@@ -104,7 +104,7 @@ const verifyToken = async (request: FastifyRequest, reply: any) => {
   
   const token = authHeader.replace('Bearer ', '');
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
     
     // Verify session exists and is active
     const sessionResult = await prisma.userSession.findMany({

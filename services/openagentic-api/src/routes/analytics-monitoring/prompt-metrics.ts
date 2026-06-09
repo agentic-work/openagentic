@@ -26,7 +26,7 @@ export const promptMetricsRoutes: FastifyPluginAsync = async (fastify) => {
 
     try {
       const token = authHeader.replace('Bearer ', '');
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
       return {
         userId: decoded.userId || decoded.id || decoded.oid,
         isAdmin: decoded.isAdmin || false

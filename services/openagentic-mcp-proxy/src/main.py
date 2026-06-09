@@ -462,10 +462,11 @@ ALLOWED_ORIGINS_ENV = os.getenv("ALLOWED_ORIGINS", "")
 if ALLOWED_ORIGINS_ENV:
     ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_ENV.split(",") if origin.strip()]
 else:
-    # Default: Only allow internal Docker network services
+    # Default (C5 / NIST SC-7, AC-4): internal Docker-network services ONLY.
+    # localhost dev origins are NOT in the default — add them via ALLOWED_ORIGINS
+    # for local UI/API dev. (Browsers reject wildcard origin with credentials
+    # anyway; we never use "*".)
     ALLOWED_ORIGINS = [
-        "http://localhost:3000",          # Local API development
-        "http://localhost:5173",          # Local UI development (Vite)
         "http://openagentic-api:8000",    # Internal API service
         "http://openagentic-ui:3000",     # Internal UI service
     ]
@@ -474,8 +475,13 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    # C5: explicit method/header allow-lists instead of "*" (which is invalid
+    # with allow_credentials=True and over-broad for an internal proxy).
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=[
+        "Authorization", "Content-Type", "X-Request-From",
+        "X-Internal-Secret", "X-User-Id", "X-User-Email", "X-API-Key",
+    ],
 )
 
 # Prometheus metrics instrumentation

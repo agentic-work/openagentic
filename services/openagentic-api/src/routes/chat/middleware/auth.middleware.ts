@@ -189,7 +189,7 @@ async function verifyToken(token: string): Promise<any> {
     }, '[AUTH] Starting token verification - trying JWT first');
     
     if (jwtSecret) {
-      jwt.verify(token, jwtSecret, (err, decoded) => {
+      jwt.verify(token, jwtSecret, { algorithms: ['HS256'] }, (err, decoded) => {
         if (!err && decoded) {
           loggers.auth.debug({
             tokenId,

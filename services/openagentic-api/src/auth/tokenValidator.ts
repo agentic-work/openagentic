@@ -67,7 +67,7 @@ export async function validateAnyToken(
 
     // Step 1: Treat as a locally-issued HS256 JWT. Verify against JWT_SECRET.
     try {
-      const payload = jwt.verify(token, JWT_SECRET) as any;
+      const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
 
       if (!payload?.userId) {
         return {

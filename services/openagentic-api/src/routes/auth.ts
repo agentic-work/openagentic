@@ -448,7 +448,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
       const token = authHeader.substring(7);
       try {
         const JWT_SECRET = process.env.JWT_SECRET || process.env.SIGNING_SECRET || (() => { throw new Error('FATAL: JWT_SECRET must be set'); })();
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
 
         // Audit successful logout
         try {
@@ -487,7 +487,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
 
         try {
           const JWT_SECRET = process.env.JWT_SECRET || process.env.SIGNING_SECRET || (() => { throw new Error('FATAL: JWT_SECRET must be set'); })();
-          const decoded = jwt.verify(token, JWT_SECRET) as any;
+          const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
           userId = decoded.userId || decoded.id;
           email = decoded.email;
         } catch {
@@ -544,7 +544,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
     try {
       // Validate token and get user ID
       const JWT_SECRET = process.env.JWT_SECRET || process.env.SIGNING_SECRET || (() => { throw new Error('FATAL: JWT_SECRET must be set'); })();
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
       const userId = decoded.userId || decoded.id;
 
       if (!userId) {
