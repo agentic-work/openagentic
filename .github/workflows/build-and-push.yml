@@ -1,9 +1,9 @@
 name: Build & Push to GHCR
 
 # Triggers:
-#   - push to main (publishes :latest + :sha)
-#   - version tag (publishes :vX.Y.Z + :latest)
-#   - manual dispatch
+#   - push to main  → :latest + :sha-XXXXXXX
+#   - version tag   → :vX.Y.Z + :X.Y + :latest
+#   - manual        → optional tag override
 on:
   push:
     branches: [main]
@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       tag_override:
-        description: 'Image tag override (default: sha short)'
+        description: 'Extra image tag (optional)'
         required: false
         default: ''
 
@@ -20,13 +20,6 @@ env:
   ORG: agentic-work
 
 jobs:
-  # ── Build all 5 images using kaniko ────────────────────────────────────────
-  # kaniko builds container images inside a Kubernetes pod without a Docker
-  # daemon — it talks directly to the containerd image store and can push to
-  # any OCI registry. Perfect for ARC runners on a containerd-only cluster.
-  #
-  # Each matrix job: checkout → compute tags → write kaniko config →
-  # launch kaniko executor pod → wait for it → confirm push.
   build:
     name: Build & push (${{ matrix.service }})
     runs-on: openagentic-runners
@@ -34,6 +27,13 @@ jobs:
     permissions:
       contents: read
       packages: write
+
+    # DinD sidecar (added to the openagentic-runners RunnerSet via helm upgrade)
+    # provides a full Docker daemon at tcp://localhost:2376 with TLS.
+    env:
+      DOCKER_HOST: tcp://localhost:2376
+      DOCKER_TLS_VERIFY: "1"
+      DOCKER_CERT_PATH: /certs/client
 
     strategy:
       fail-fast: false
@@ -56,116 +56,66 @@ jobs:
             build_arg: ''
 
     steps:
+      # ── Wait for DinD daemon ──────────────────────────────────────────────────
+      - name: Wait for DinD
+        run: |
+          for i in $(seq 1 30); do
+            docker info >/dev/null 2>&1 && echo "Docker ready (${i}s)" && break
+            sleep 1
+          done
+          docker info
+
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Compute the image tags we want to push ──────────────────────────────
-      - name: Compute tags
-        id: tags
-        run: |
-          IMAGE="${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}"
-          SHA="sha-$(git rev-parse --short HEAD)"
-          TAGS="$IMAGE:$SHA"
+      # ── Auth ──────────────────────────────────────────────────────────────────
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-          # :latest on default branch
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            TAGS="$TAGS,$IMAGE:latest"
-          fi
+      # ── QEMU + buildx ─────────────────────────────────────────────────────────
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-          # :vX.Y.Z + :X.Y on version tags
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VER="${GITHUB_REF_NAME}"
-            MAJOR_MINOR="${VER%.*}"     # e.g. v1.0 from v1.0.1
-            TAGS="$TAGS,$IMAGE:$VER,$IMAGE:$MAJOR_MINOR,$IMAGE:latest"
-          fi
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+          driver-opts: |
+            env.BUILDKIT_STEP_LOG_MAX_SIZE=10485760
 
-          # manual override
-          if [[ -n "${{ github.event.inputs.tag_override }}" ]]; then
-            TAGS="$TAGS,$IMAGE:${{ github.event.inputs.tag_override }}"
-          fi
+      # ── Tags ──────────────────────────────────────────────────────────────────
+      - name: Compute image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-,format=short
+            type=raw,value=${{ github.event.inputs.tag_override }},enable=${{ github.event.inputs.tag_override != '' }}
 
-          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
-          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-          echo "Tags: $TAGS"
+      # ── Build & push ─────────────────────────────────────────────────────────
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build_arg }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache
+          cache-to:   type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache,mode=max
+          provenance: false
 
-      # ── Write GHCR credentials for kaniko ──────────────────────────────────
-      # kaniko reads ~/.docker/config.json for registry auth.
-      - name: Write kaniko registry auth
-        run: |
-          mkdir -p ~/.docker
-          # GITHUB_TOKEN is automatically available; ${{ github.actor }} is the
-          # job's identity (the ARC runner service account in this context).
-          CREDS="$(echo -n "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" | base64 -w0)"
-          cat > ~/.docker/config.json <<EOF
-          {
-            "auths": {
-              "ghcr.io": { "auth": "$CREDS" }
-            }
-          }
-          EOF
-
-      # ── Build & push with kaniko ────────────────────────────────────────────
-      # kaniko executor runs in the same pod as the runner (using the runner's
-      # container image to exec the kaniko binary, or as a sidecar).
-      # Simpler: shell out to the kaniko binary directly since the runner already
-      # has it available via the kaniko executor container in PATH.
-      #
-      # If kaniko binary is not in PATH we pull it from the official image and
-      # copy the binary out before running it.
-      - name: Build and push with kaniko
-        run: |
-          # Ensure kaniko executor is available
-          if ! command -v executor &>/dev/null; then
-            echo "Extracting kaniko executor from official image…"
-            KANIKO_IMAGE="gcr.io/kaniko-project/executor:latest"
-            # Use nerdctl (containerd CLI) or ctr to pull and extract
-            if command -v nerdctl &>/dev/null; then
-              nerdctl pull --quiet "$KANIKO_IMAGE"
-              nerdctl container create --name kaniko-extract "$KANIKO_IMAGE" 2>/dev/null || true
-              nerdctl cp kaniko-extract:/kaniko/executor /usr/local/bin/executor 2>/dev/null || \
-                nerdctl container export kaniko-extract | tar -x kaniko/executor -O > /usr/local/bin/executor
-              nerdctl container rm kaniko-extract 2>/dev/null || true
-            else
-              # Fall back: download the static binary from GCS
-              curl -fsSL "https://storage.googleapis.com/kaniko-project/executor/latest/executor-linux-amd64" \
-                -o /usr/local/bin/executor
-            fi
-            chmod +x /usr/local/bin/executor
-          fi
-
-          # Build the --destination flags (one per tag)
-          DEST_FLAGS=""
-          IFS=',' read -ra TAG_LIST <<< "${{ steps.tags.outputs.tags }}"
-          for tag in "${TAG_LIST[@]}"; do
-            DEST_FLAGS="$DEST_FLAGS --destination $tag"
-          done
-
-          # Build arg flag (empty string = no --build-arg)
-          BUILD_ARG_FLAG=""
-          if [[ -n "${{ matrix.build_arg }}" ]]; then
-            BUILD_ARG_FLAG="--build-arg ${{ matrix.build_arg }}"
-          fi
-
-          # Kaniko cache is stored in GHCR alongside the image (:cache tag)
-          CACHE_REPO="${{ steps.tags.outputs.image }}"
-
-          # Run kaniko build
-          executor \
-            --context "dir://$(pwd)" \
-            --dockerfile "${{ matrix.dockerfile }}" \
-            $BUILD_ARG_FLAG \
-            $DEST_FLAGS \
-            --cache=true \
-            --cache-repo "$CACHE_REPO" \
-            --push-retry 3 \
-            --snapshot-mode=redo \
-            --log-format=text \
-            --verbosity=info
-
-          echo "✓ ${{ matrix.service }} pushed: ${{ steps.tags.outputs.tags }}"
-
-  # ── On version tags: package compose bundle + helm OCI + npm wizard ────────
+  # ── On version tags: compose tarball + OCI helm chart + npm wizard ──────────
   release-artifacts:
     name: Package release artifacts
     needs: build
@@ -181,21 +131,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Compose-only tarball (no source) ────────────────────────────────────
+      # ── Compose-only tarball — no source code ────────────────────────────────
       - name: Package compose bundle
         run: |
-          VERSION="${GITHUB_REF_NAME}"
+          V="${GITHUB_REF_NAME}"
           mkdir -p /tmp/oa-bundle
-
           cp docker-compose.yml /tmp/oa-bundle/
           [[ -f docker-compose.gpu-nvidia.yml ]] && cp docker-compose.gpu-nvidia.yml /tmp/oa-bundle/
           [[ -f docker-compose.gpu-wsl.yml    ]] && cp docker-compose.gpu-wsl.yml    /tmp/oa-bundle/
           [[ -f .env.example                  ]] && cp .env.example                  /tmp/oa-bundle/
-          echo "$VERSION" > /tmp/oa-bundle/VERSION
-
-          tar -czf "openagentic-compose-${VERSION}.tar.gz" -C /tmp/oa-bundle .
-          echo "BUNDLE=openagentic-compose-${VERSION}.tar.gz" >> "$GITHUB_ENV"
-          echo "Created $(du -sh openagentic-compose-${VERSION}.tar.gz | cut -f1) bundle"
+          echo "$V" > /tmp/oa-bundle/VERSION
+          tar -czf "openagentic-compose-${V}.tar.gz" -C /tmp/oa-bundle .
+          echo "BUNDLE=openagentic-compose-${V}.tar.gz" >> "$GITHUB_ENV"
 
       - name: Upload compose bundle to GitHub Release
         uses: softprops/action-gh-release@v2
@@ -203,25 +150,24 @@ jobs:
           files: ${{ env.BUNDLE }}
           fail_on_unmatched_files: true
 
-      # ── Helm chart as OCI artifact ──────────────────────────────────────────
+      # ── Helm OCI chart ────────────────────────────────────────────────────────
       - name: Install Helm
         run: |
-          if ! command -v helm &>/dev/null; then
-            curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-          fi
-          echo "Helm $(helm version --short)"
+          command -v helm || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
       - name: Push Helm chart to GHCR
+        env:
+          DOCKER_HOST: tcp://localhost:2376
+          DOCKER_TLS_VERIFY: "1"
+          DOCKER_CERT_PATH: /certs/client
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
-            -u "${{ github.actor }}" --password-stdin
-          helm package helm/openagentic --version "$VERSION" --app-version "$VERSION"
-          helm push "openagentic-${VERSION}.tgz" oci://ghcr.io/${{ env.ORG }}/charts
-          echo "✓ Chart pushed: oci://ghcr.io/${{ env.ORG }}/charts/openagentic:$VERSION"
+          V="${GITHUB_REF_NAME#v}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          helm package helm/openagentic --version "$V" --app-version "$V"
+          helm push "openagentic-${V}.tgz" oci://ghcr.io/${{ env.ORG }}/charts
 
-      # ── npm wizard package ──────────────────────────────────────────────────
-      - name: Setup Node.js for npm publish
+      # ── npm wizard ────────────────────────────────────────────────────────────
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -230,9 +176,9 @@ jobs:
       - name: Build and publish @openagentic/setup
         working-directory: tools/setup
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          V="${GITHUB_REF_NAME#v}"
           npm ci --silent
-          npm version "$VERSION" --no-git-tag-version
+          npm version "$V" --no-git-tag-version
           npm run build
           npm publish --access public
         env:
