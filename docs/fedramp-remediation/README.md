@@ -23,10 +23,15 @@ auditable and so a future upstream sync cannot silently regress it.
 | Phase | What | Status |
 |---|---|---|
 | P0 | Harden `sync-upstream.py` PRESERVE against OSS-only security regressions | ✅ done — see `ledger/P0-preserve-hardening.md` |
-| P1 | Full re-sync onto a throwaway audit base (hardened PRESERVE) | pending |
-| P2 | Adversarial re-audit (FedRAMP-High + OSS lens) | pending |
-| P3 | Remediation to A+++ on a fresh branch off green main (green-gated) | pending |
+| P1 | Full re-sync onto a throwaway audit base (hardened PRESERVE) | ✅ done — audit base `audit/full-sync-v2`, all 12 PRESERVE files verified un-regressed |
+| P2 | Adversarial re-audit (FedRAMP-High + OSS lens) | ✅ done — **D / NO-GO**, 27 confirmed crit/high; see `ledger/P2-reaudit-gradecard.md` |
+| P3 | Remediation to A+++ on a fresh branch off green main (green-gated) | in progress — BLOCKERS → PORTS → CONTROL GAPS |
 | P4 | Adversarial re-grade + FedRAMP-readiness evidence package | pending |
+
+> **Note (B5, fixed):** the P2 audit caught that this very directory re-leaked the
+> PII/infra identifiers it documents removing. `redact.py` now scrubs all tracked
+> evidence/ledger files to `<REDACTED-*>` placeholders (idempotent; run
+> `python3 docs/fedramp-remediation/redact.py --check` as a CI gate before commit).
 
 ## Layout
 

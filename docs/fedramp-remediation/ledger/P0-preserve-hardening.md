@@ -31,7 +31,7 @@ Result: **12 PRESERVE · 18 TAKE_UPSTREAM · 32 NEUTRAL · 0 errors.**
 
 | File | Category | What a sync would regress |
 |---|---|---|
-| `api/src/auth/googleAuth.ts` | admin-default / PII | Re-adds `trent@openagentic.io` as the `GOOGLE_ADMIN_EMAILS` default → PII + privilege-escalation backdoor; main fails closed. |
+| `api/src/auth/googleAuth.ts` | admin-default / PII | Re-adds `<REDACTED-PERSONAL-EMAIL>` as the `GOOGLE_ADMIN_EMAILS` default → PII + privilege-escalation backdoor; main fails closed. |
 | `api/src/routes/google-auth/index.ts` | admin-default / PII | Same hardcoded-admin default on the OIDC allow/admin path; main fails closed + warns. |
 | `api/src/config/featureFlags.ts` | authz-gate / codemode | Deletes the default-ON `approvalGateMutating` gate **and** re-leaks Code Mode (`codeManagerUrl`, `controlPlaneCodemode`, `codemode.plugin.ts`). |
 | `api/src/routes/auth.ts` | audit-failclose | Drops `sso_login` + `login_failed` persistence to `auth_audit_log` on the Azure SSO path. |
@@ -42,7 +42,7 @@ Result: **12 PRESERVE · 18 TAKE_UPSTREAM · 32 NEUTRAL · 0 errors.**
 | `tests/config.js` | PII | Re-adds a personal email + real-key-shaped fallback. |
 | `tests/e2e/auth.setup.ts` | infra-leak | Re-adds an internal dev hostname (vs RFC-2606 placeholder). |
 | `tests/e2e/helpers/loginAsMcpTester.ts` | PII / infra | Re-adds a real AAD tenant domain, internal test email, live internal hostname. |
-| `tests/e2e/helpers/saveAuthState.ts` | infra-leak | Re-adds `chat-dev.openagentic.io`. |
+| `tests/e2e/helpers/saveAuthState.ts` | infra-leak | Re-adds `<REDACTED-INTERNAL-HOST>`. |
 
 ## Note carried forward to P3
 
