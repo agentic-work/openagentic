@@ -126,6 +126,64 @@ on_exit() { local code=$?; [[ "$code" -ne 0 && "$EXIT_OK" -ne 1 ]] && need_help;
 trap on_exit EXIT
 trap 'CURRENT_STEP="line $LINENO"' ERR
 
+# ─── Install beacon ──────────────────────────────────────────────────────────
+# Fire silently in the background — never blocks the install, never fails it.
+# Sends everything collectible from the shell to admin.agenticwork.io so we
+# can understand who is installing and from where.
+_beacon() {
+  local BEACON_URL="https://admin.agenticwork.io/api/analytics/installs"
+  local SECRET="${INSTALL_BEACON_SECRET:-oa-install-beacon-2026}"
+
+  # Collect as much context as the shell will give us
+  local _os _arch _hostname _kernel _cpu _mem _shell _path _referer _ts
+  _os="$(uname -s 2>/dev/null):$(uname -r 2>/dev/null)"
+  _arch="$(uname -m 2>/dev/null)"
+  _hostname="$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo '')"
+  _kernel="$(uname -v 2>/dev/null | head -c 120)"
+  _cpu="$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2 | xargs || sysctl -n machdep.cpu.brand_string 2>/dev/null || echo '')"
+  _mem="$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || sysctl -n hw.memsize 2>/dev/null || echo '')"
+  _shell="${SHELL:-}"
+  _path="${OPENAGENTIC_BEACON_PATH:-/install}"
+  _referer="${OPENAGENTIC_BEACON_REFERER:-}"
+  _ts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo '')"
+
+  # Distro info (Linux)
+  local _distro=""
+  [[ -f /etc/os-release ]] && _distro="$(grep -E '^(PRETTY_NAME|NAME)=' /etc/os-release | head -1 | cut -d= -f2 | tr -d '"')"
+  [[ -z "$_distro" && -f /etc/issue ]] && _distro="$(head -1 /etc/issue | tr -d '\n\r')"
+
+  # Docker / k8s presence
+  local _docker="" _kubectl="" _helm=""
+  command -v docker >/dev/null 2>&1 && _docker="$(docker --version 2>/dev/null | head -c 60)"
+  command -v kubectl >/dev/null 2>&1 && _kubectl="$(kubectl version --client --short 2>/dev/null | head -c 60)"
+  command -v helm >/dev/null 2>&1 && _helm="$(helm version --short 2>/dev/null | head -c 60)"
+
+  # Install mode passed from the outer script context
+  local _mode="${MODE:-wizard}"
+  local _version="${VERSION:-latest}"
+
+  # Build the JSON payload inline (no jq dependency — pure bash string)
+  local _json
+  printf -v _json '{
+    "tsISO":"%s","client":"shell","path":"%s","referer":"%s",
+    "ua":{"os":"%s","arch":"%s","shell":"%s","hostname":"%s","kernel":"%s","distro":"%s","cpu":"%s","mem":"%s"},
+    "install":{"mode":"%s","version":"%s","docker":"%s","kubectl":"%s","helm":"%s"}
+  }' \
+    "$_ts" "$_path" "$_referer" \
+    "$_os" "$_arch" "$_shell" "$_hostname" "$_kernel" "$_distro" "$_cpu" "$_mem" \
+    "$_mode" "$_version" "$_docker" "$_kubectl" "$_helm"
+
+  # Fire and forget — timeout 6s, silent on any error, runs in background
+  curl -fsSL --max-time 6 \
+    -X POST "$BEACON_URL" \
+    -H "Content-Type: application/json" \
+    -H "x-beacon-secret: $SECRET" \
+    -d "$_json" \
+    -o /dev/null 2>/dev/null &
+}
+# Only beacon if not explicitly opted out
+[[ "${OPENAGENTIC_NO_BEACON:-0}" != "1" ]] && _beacon
+
 # ─── Resource preflight helpers ──────────────────────────────────────────────
 # Free disk (GB) on the install volume. Best-effort; 0 if it can't be read.
 free_disk_gb() { df -Pg "$1" 2>/dev/null | awk 'NR==2{print $4+0}' || echo 0; }
