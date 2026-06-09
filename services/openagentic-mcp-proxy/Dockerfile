@@ -34,8 +34,12 @@ RUN ARCH=$(dpkg --print-architecture) && \
     && rm -rf awscliv2.zip aws \
     && aws --version
 
-# Install Helm v3 (required by OpenAgentic Kubernetes MCP for Helm operations)
-RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash \
+# Install Helm v3 — direct binary download, arch-aware (avoids get-helm-3 script
+# which fails on Debian Trixie and under QEMU arm64 emulation)
+RUN ARCH=$(dpkg --print-architecture) \
+    && HELM_VER="v3.17.3" \
+    && curl -fsSL "https://get.helm.sh/helm-${HELM_VER}-linux-${ARCH}.tar.gz" \
+       | tar -xz -C /usr/local/bin --strip-components=1 "linux-${ARCH}/helm" \
     && helm version
 
 # Install global Node.js dependencies for MCP servers
