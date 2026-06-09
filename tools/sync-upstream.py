@@ -38,15 +38,18 @@ RENAMES = [
     ('services/mcps/awp-azure-cost-mcp',   'services/mcps/oap-azure-cost-mcp'),
     ('services/mcps/awp-gcp-mcp',          'services/mcps/oap-gcp-mcp'),
     ('services/mcps/awp-github-mcp',       'services/mcps/oap-github-mcp'),
-    ('services/mcps/awp-knowledge-mcp',    'services/mcps/oap-knowledge-mcp'),
     ('services/mcps/awp-kubernetes-mcp',   'services/mcps/oap-kubernetes-mcp'),
     ('services/mcps/awp-loki-mcp',         'services/mcps/oap-loki-mcp'),
     ('services/mcps/awp-prometheus-mcp',   'services/mcps/oap-prometheus-mcp'),
-    ('services/mcps/awp-alertmanager-mcp', 'services/mcps/oap-alertmanager-mcp'),
-    ('services/mcps/awp-incident-mcp',     'services/mcps/oap-incident-mcp'),
-    ('services/mcps/awp-runbook-mcp',      'services/mcps/oap-runbook-mcp'),
     ('services/mcps/awp-web-mcp',          'services/mcps/oap-web-mcp'),
-    ('services/mcps/awp-agent-architect-mcp', 'services/mcps/oap-agent-architect-mcp'),
+    # The 9 wired built-ins are above. These 5 were removed upstream as out-of-
+    # scope/redundant and are NOT wired in mcp_manager.py initialize_servers;
+    # dropped from OSS entirely (None) so a sync never re-creates the dead dirs.
+    ('services/mcps/awp-knowledge-mcp',       None),
+    ('services/mcps/awp-alertmanager-mcp',    None),
+    ('services/mcps/awp-incident-mcp',        None),
+    ('services/mcps/awp-runbook-mcp',         None),
+    ('services/mcps/awp-agent-architect-mcp', None),
     ('services/mcps/awp-agenticode-mcp',   None),  # Code Mode MCP — dropped from OSS entirely
     ('helm/agenticwork',                   'helm/openagentic'),
 ]

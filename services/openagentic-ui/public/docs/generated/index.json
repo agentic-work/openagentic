@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-05T17:02:13.312Z",
+  "generatedAt": "2026-06-09T19:15:52.468Z",
   "version": "1.0.0",
   "codename": "Open Field",
   "categories": [
@@ -46,8 +46,8 @@
       "description": "Model Context Protocol servers and their tools",
       "category": "tools",
       "file": "mcp-servers.json",
-      "sectionCount": 14,
-      "itemCount": 223,
+      "sectionCount": 9,
+      "itemCount": 185,
       "adminOnly": false
     },
     {

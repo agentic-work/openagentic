@@ -1,2 +1,0 @@
-FROM harbor.agenticwork.io/openagentic/openagentic-api:fleet-06012241
-COPY dist /app/dist

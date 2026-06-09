@@ -4,7 +4,7 @@
   "description": "Canonical headline counts and version, source-derived from the repo on every build.",
   "icon": "brain",
   "category": "core",
-  "generatedAt": "2026-06-05T17:02:13.310Z",
+  "generatedAt": "2026-06-09T19:15:52.464Z",
   "sourceFiles": [
     "version.json",
     "docker-compose.yml"
@@ -31,10 +31,10 @@
         {
           "id": "mcp-server-count",
           "name": "Built-in MCP Servers",
-          "description": "14 built-in MCP servers under services/mcps/",
+          "description": "9 built-in MCP servers under services/mcps/",
           "type": "summary-count",
           "properties": {
-            "value": 14,
+            "value": 9,
             "kind": "count"
           },
           "sourceFile": "services/mcps"

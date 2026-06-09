@@ -399,3 +399,7 @@ releases
 tests/demos-pw/node_modules/
 tests/demos-pw/videos/
 tests/demos-pw/package-lock.json
+
+# Screenshot/mockup image dumps (test artifacts)
+*.jpeg
+*.jpg

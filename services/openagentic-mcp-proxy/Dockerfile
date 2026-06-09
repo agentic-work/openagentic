@@ -99,8 +99,8 @@ RUN cd /app/mcp-servers/oap-kubernetes-mcp && pip install --no-cache-dir -r requ
 # Install OpenAgentic Prometheus MCP server dependencies (ADMIN-ONLY - Metrics querying and visualization)
 RUN cd /app/mcp-servers/oap-prometheus-mcp && pip install --no-cache-dir -r requirements.txt
 
-# Install OpenAgentic Agent Architect MCP server dependencies (Natural language agent/workflow creation)
-RUN cd /app/mcp-servers/oap-agent-architect-mcp && pip install --no-cache-dir -r requirements.txt
+# REMOVED: OpenAgentic Agent Architect MCP — out of scope/redundant (removed upstream).
+# It was pip-installed here but never registered in mcp_manager.py initialize_servers.
 
 # Install OpenAgentic GitHub MCP server dependencies (GitHub API operations via user OAuth tokens)
 RUN cd /app/mcp-servers/oap-github-mcp && pip install --no-cache-dir -r requirements.txt

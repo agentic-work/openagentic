@@ -1,2 +1,0 @@
-FROM harbor.agenticwork.io/openagentic/openagentic-ui:fleet-06012241
-COPY --chown=agentic:agentic dist /usr/share/nginx/html

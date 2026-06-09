@@ -4,7 +4,7 @@
   "description": "Release history, source-derived from version.json — the single source of truth for platform versions.",
   "icon": "brain",
   "category": "core",
-  "generatedAt": "2026-06-05T17:02:13.308Z",
+  "generatedAt": "2026-06-09T19:15:52.461Z",
   "sourceFiles": [
     "version.json"
   ],
