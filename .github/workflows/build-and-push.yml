@@ -28,12 +28,10 @@ jobs:
       contents: read
       packages: write
 
-    # DinD sidecar (added to the openagentic-runners RunnerSet via helm upgrade)
-    # provides a full Docker daemon at tcp://localhost:2376 with TLS.
+    # DinD sidecar shares /var/run/docker.sock via an emptyDir volume.
+    # Runner connects via the standard Unix socket — no TLS needed (in-pod only).
     env:
-      DOCKER_HOST: tcp://localhost:2376
-      DOCKER_TLS_VERIFY: "1"
-      DOCKER_CERT_PATH: /certs/client
+      DOCKER_HOST: unix:///var/run/docker.sock
 
     strategy:
       fail-fast: false
@@ -157,9 +155,7 @@ jobs:
 
       - name: Push Helm chart to GHCR
         env:
-          DOCKER_HOST: tcp://localhost:2376
-          DOCKER_TLS_VERIFY: "1"
-          DOCKER_CERT_PATH: /certs/client
+          DOCKER_HOST: unix:///var/run/docker.sock
         run: |
           V="${GITHUB_REF_NAME#v}"
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
