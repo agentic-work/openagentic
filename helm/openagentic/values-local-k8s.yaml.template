@@ -75,6 +75,9 @@ mcpProxy:
       memory: 1Gi
   env:
     ENABLE_AUTH: "false"
+    # Azure MCP Service Principal (client-credentials flow) — also powers the
+    # SP-based Azure cost dashboard. Pair with secrets.azureClientSecret. NOT
+    # user login / AAD SSO.
     AZURE_TENANT_ID: "<YOUR_AZURE_TENANT_ID>"
     AZURE_CLIENT_ID: "<YOUR_AZURE_CLIENT_ID>"
     LOG_LEVEL: "debug"
@@ -275,20 +278,10 @@ embedding:
     model: "embeddinggemma"
 
 # ===========================================
-# AUTHENTICATION
+# AUTHENTICATION (local username/password only — no federated identity / SSO)
 # ===========================================
 auth:
-  azure:
-    clientId: "<YOUR_AZURE_CLIENT_ID>"
-    tenantId: "<YOUR_AZURE_TENANT_ID>"
-    authority: "https://login.microsoftonline.com/<YOUR_AZURE_TENANT_ID>"
-    redirectUri: "http://localhost/auth/callback"
-    adminGroup: ""
-    authorizedUserGroups: ""
-    authorizedAdminGroups: ""
   admin:
-    aadAssociation: ""
-    aadUuid: ""
     requirePasswordReset: "false"
   testMode:
     enabled: "true"

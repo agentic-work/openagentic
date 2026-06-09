@@ -3,7 +3,8 @@
  *
  * SIMPLIFIED VERSION - Uses single token validator
  *
- * Provides authentication for all routes, supporting both local JWT and Azure AD tokens.
+ * Provides authentication for all routes, supporting local JWT tokens and
+ * oa_/oa_sys_ API keys, plus the internal-service-secret bypass.
  */
 
 import { FastifyRequest, FastifyReply, FastifyPluginAsync } from 'fastify';
@@ -22,15 +23,11 @@ export interface AuthenticatedRequest extends FastifyRequest {
     name?: string;
     isAdmin: boolean;
     groups: string[];
-    oid?: string;
-    azureOid?: string;
     localAccount: boolean;
     accessToken?: string;  // Optional for local accounts
     /**
      * Caller's tenant id, propagated from the validated UserContext.
-     * Azure AD: decoded.tid (the Azure AD tenant GUID).
      * Local JWT: 'local'.
-     * Google: hosted domain or 'google'.
      * API key: 'api-key'.
      * SEV-0 Flows-fix-A1: this field is REQUIRED by `defaultTenantExtractor`
      * in middleware/tenantContext.ts — its absence is what caused every
@@ -60,28 +57,24 @@ export function buildRequestUser(
     isAdmin?: boolean;
     groups?: string[];
     tenantId?: string;
-    oid?: string;
-    azureOid?: string;
   },
-  tokenType: 'local' | 'azure-ad' | 'google' | 'api-key',
+  tokenType: 'local' | 'api-key',
   token: string,
-): AuthenticatedRequest['user'] & { oid?: string; authMethod: string } {
+): AuthenticatedRequest['user'] & { authMethod: string } {
   return {
     id: validatedUser.userId,
     userId: validatedUser.userId,
-    oid: (validatedUser as any).oid,
     email: validatedUser.email,
     name: validatedUser.name,
     groups: validatedUser.groups || [],
     isAdmin: validatedUser.isAdmin || false,
-    azureOid: (validatedUser as any).azureOid || (validatedUser as any).oid,
     localAccount: tokenType === 'local',
     accessToken: token,
     authMethod: tokenType,
     // SEV-0 Flows-fix-A1: tokenValidator populates this for every token type
-    // (Azure AD: decoded.tid, local: 'local', google: hostedDomain, api-key:
-    // 'api-key'). Pre-fix this field was dropped here and every authenticated
-    // request had request.tenantId === null, breaking Flows end-to-end.
+    // (local: 'local', api-key: 'api-key'). Pre-fix this field was dropped
+    // here and every authenticated request had request.tenantId === null,
+    // breaking Flows end-to-end.
     tenantId: validatedUser.tenantId ?? null,
   };
 }
@@ -231,7 +224,7 @@ export async function unifiedAuthHook(request: FastifyRequest): Promise<void> {
 
     // If no token in header or query, check cookies
     // Check multiple cookie names for compatibility:
-    // - openagentic_token: Set by Google OAuth login flow
+    // - openagentic_token: Set by the local login flow
     // - accessToken: Legacy cookie name
     if (!token) {
       const cookies = (request as any).cookies as Record<string, string> | undefined;
@@ -271,27 +264,26 @@ export async function unifiedAuthHook(request: FastifyRequest): Promise<void> {
     // tenantId propagation that drives every tenanted DB query downstream.
     (request as any).user = buildRequestUser(user as any, result.tokenType!, token);
 
-    // CRITICAL: For LOCAL auth, load azure_oid from database if available
-    // This enables OBO authentication for users who have linked Azure AD accounts
+    // For LOCAL auth, reconcile the request.user.id with the DB record.
     if (result.tokenType === 'local' && user.userId) {
       try {
-        let dbUser = await prisma.user.findFirst({
+        const dbUser = await prisma.user.findFirst({
           where: { id: user.userId },
-          select: { id: true, azure_oid: true }
+          select: { id: true }
         });
 
-        // Sev-0 — JWT was minted with Azure OID rather than DB id (or DB id rotated
-        // post-mint). Without this fallback, every authenticated POST after session
-        // creation 403s SESSION_NOT_OWNED because request.user.id stays at the OID.
+        // Sev-0 — JWT was minted with a non-DB id (or the DB id rotated
+        // post-mint). Without this fallback, every authenticated POST after
+        // session creation 403s SESSION_NOT_OWNED because request.user.id
+        // stays at the stale id.
         if (!dbUser && user.email) {
           const byEmail = await prisma.user.findUnique({
             where: { email: user.email },
-            select: { id: true, azure_oid: true }
+            select: { id: true }
           });
           if (byEmail) {
             (request as any).user.id = byEmail.id;
             (request as any).user.userId = byEmail.id;
-            dbUser = byEmail;
             loggers.auth.info({
               requestId,
               tokenUserId: user.userId,
@@ -300,89 +292,12 @@ export async function unifiedAuthHook(request: FastifyRequest): Promise<void> {
             }, '[AUTH] Local-token user.id missed DB; remapped via email lookup');
           }
         }
-
-        if (dbUser?.azure_oid) {
-          (request as any).user.azureOid = dbUser.azure_oid;
-          (request as any).user.oid = dbUser.azure_oid;
-
-          loggers.auth.debug({
-            requestId,
-            userId: user.userId,
-            azureOid: dbUser.azure_oid
-          }, '[AUTH] Loaded azure_oid from database for local auth user');
-        }
       } catch (dbError) {
         loggers.auth.warn({
           requestId,
           userId: user.userId,
           error: dbError
-        }, '[AUTH] Failed to load azure_oid from database - OBO may not work');
-      }
-    }
-
-    // Auto-sync Azure AD users to database
-    if (result.tokenType === 'azure-ad' && user.email) {
-      try {
-        const existingUser = await prisma.user.findFirst({
-          where: {
-            OR: [
-              { azure_oid: (user as any).oid },
-              { email: user.email }
-            ]
-          }
-        });
-
-        if (!existingUser) {
-          // Auto-create Azure AD user in database
-          const newUser = await prisma.user.create({
-            data: {
-              id: `azure_${(user as any).oid || user.userId}`,
-              email: user.email,
-              name: user.name || user.email,
-              azure_oid: (user as any).oid,
-              azure_tenant_id: user.tenantId || 'default-tenant',
-              is_admin: user.isAdmin,
-              groups: user.groups,
-              created_at: new Date(),
-              updated_at: new Date()
-            }
-          });
-
-          // Update user ID to match database record
-          (request as any).user.id = newUser.id;
-          (request as any).user.userId = newUser.id;
-
-          loggers.auth.info({
-            requestId,
-            userId: newUser.id,
-            email: user.email,
-            azureOid: (user as any).oid
-          }, '[AUTH] Auto-created Azure AD user in database');
-        } else {
-          // Update user ID to match existing database record
-          (request as any).user.id = existingUser.id;
-          (request as any).user.userId = existingUser.id;
-
-          // Update existing user's Azure AD info
-          await prisma.user.update({
-            where: { id: existingUser.id },
-            data: {
-              azure_oid: (user as any).oid,
-              name: user.name,
-              is_admin: user.isAdmin,
-              groups: user.groups,
-              updated_at: new Date()
-            }
-          });
-        }
-      } catch (dbError) {
-        loggers.auth.error({
-          requestId,
-          error: dbError,
-          userEmail: user.email,
-          azureOid: (user as any).oid
-        }, '[AUTH] Failed to auto-sync Azure AD user to database');
-        // Continue with authentication even if DB sync fails
+        }, '[AUTH] Failed to reconcile local-auth user id with database');
       }
     }
 

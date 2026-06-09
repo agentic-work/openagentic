@@ -41,7 +41,6 @@ const FORBIDDEN_ENV_PATTERNS: Array<{ pattern: RegExp; name: string }> = [
  * - LLMProviderSeeder: cold-start provider-row seeding
  * - bootstrapProviderEnv: pure parser of BOOTSTRAP_PROVIDER_* env block
  * - RegistryBootstrapSeeder: F2's idempotent seeder (reads SEEDER_VERSION + bootstrap env)
- * - AdminValidationService: admin-portal probe model (validation only, not routing)
  *
  * Paths are relative to services/openagentic-api/src/.
  */
@@ -51,7 +50,6 @@ const ALLOW_LIST = new Set<string>([
   'services/LLMProviderSeeder.ts',
   'services/llm-providers/bootstrapProviderEnv.ts',
   'services/model-routing/RegistryBootstrapSeeder.ts',
-  'services/AdminValidationService.ts',
 ]);
 
 function* walkSource(dir: string): Generator<string> {

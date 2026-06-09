@@ -39,7 +39,6 @@ import { SettingsModal } from '@/features/settings/components/SettingsModal';
 import SettingsDropdown from './SettingsDropdown';
 import { useSettings } from '@/features/settings/hooks/useSettings';
 // import { useTextToSpeech } from '../hooks/useTextToSpeech'; // DISABLED
-import AADLogin from '@/features/auth/components/AADLogin';
 import CanvasPanel from '@/shared/components/CanvasPanel';
 import { DocsViewer } from '@/features/docs/DocsViewer';
 import { getDocsUrl } from '@/utils/api';

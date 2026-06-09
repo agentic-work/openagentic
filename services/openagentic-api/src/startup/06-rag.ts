@@ -147,7 +147,7 @@ export const INIT_RAG: BootstrapStep = {
         forceReinit: process.env.FORCE_REINIT === 'true',
         components: {
           prompts: true, adminUser: true, mcpServers: true,
-          milvusCollections: true, mcpToolIndexing: true, azureValidation: true,
+          milvusCollections: true, mcpToolIndexing: true,
           systemSettings: true, databaseSchema: true
         }
       });

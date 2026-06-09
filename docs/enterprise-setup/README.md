@@ -10,14 +10,16 @@ This doc captures the exact resources we created for the first reference instanc
 
 | Cloud | What we created | Identity for the MCP |
 |---|---|---|
-| Azure | App Registration + Service Principal + security group + Reader role | Service Principal (client credentials flow) |
+| Azure | App Registration + Service Principal + Reader role | Service Principal (client credentials flow) |
 | AWS   | IAM user with `ReadOnlyAccess` | Access key pair |
 | GCP   | Service Account with viewer roles | JSON service-account key |
 
+These are **MCP service credentials only** — openagentic auth is local username/password (there is no cloud / federated user sign-in). The Azure Service Principal also backs the SP-based Azure cost dashboard.
+
 Deep-dive in each cloud's page:
 
-- [azure.md](./azure.md) — Entra ID App Reg, admin group, Reader on sub, SSO wiring
-- [aws.md](./aws.md) — Read-only IAM user (quick path) and IAM Identity Center federation (full SSO)
+- [azure.md](./azure.md) — Entra ID App Reg, Service Principal, Reader on sub
+- [aws.md](./aws.md) — Read-only IAM user + access key pair
 - [gcp.md](./gcp.md) — Service Account with least-privilege viewer roles
 - [secrets.md](./secrets.md) — Where credentials live, how the MCPs consume them
 
@@ -28,7 +30,7 @@ All credentials from these steps are written to `~/.openagentic/cloud-secrets/`,
 ## Prerequisites
 
 - `az` CLI (≥ 2.60) with an account that can create App Registrations + assign subscription roles.
-- `aws` CLI (v2) with a principal that has `iam:*` on the target account (the Organizations management account if you want the full IdC path).
+- `aws` CLI (v2) with a principal that has `iam:*` on the target account.
 - `gcloud` CLI with permission to create Service Accounts + set IAM policy on the target project.
 - A tenant / account / project you're willing to use for the openagentic instance — do **not** run this against a production cloud tenant.
 

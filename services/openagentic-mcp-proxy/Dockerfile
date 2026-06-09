@@ -84,7 +84,7 @@ RUN cd /app/mcp-servers/oap-azure-mcp && pip install --no-cache-dir -r requireme
 # Install OpenAgentic GCP MCP server dependencies (Platform-level GCP management via Service Account)
 RUN cd /app/mcp-servers/oap-gcp-mcp && pip install --no-cache-dir -r requirements.txt
 
-# Install OpenAgentic AWS MCP server dependencies (AWS via Azure AD OBO + Identity Center)
+# Install OpenAgentic AWS MCP server dependencies (AWS via static keypair credentials)
 RUN cd /app/mcp-servers/oap-aws-mcp && pip install --no-cache-dir -r requirements.txt
 
 # Install OpenAgentic Web MCP server dependencies (Intelligent web browsing and research)

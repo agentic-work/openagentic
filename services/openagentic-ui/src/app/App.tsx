@@ -11,7 +11,6 @@ import { motion } from 'framer-motion';
 import Chat from '@/features/chat/components/ChatContainer';
 import Login from '@/features/auth/components/Login';
 import LoginDev from '@/features/auth/components/LoginDev';
-import AuthCallback from '@/features/auth/components/AuthCallback';
 import AccessDenied from '@/features/auth/components/AccessDenied';
 // #502 v2 primitives showcase — visual smoke test for every mock-parity
 // primitive shipped under @/features/chat/components/v2. Dev-only,
@@ -361,7 +360,6 @@ function AppContent(): React.ReactElement {
                   : <LoginComponent />
             } />
             <Route path="/auth/magic" element={<MagicLinkHandler />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/auth/access-denied" element={<AccessDenied />} />
             <Route path="/logout" element={<LogoutHandler />} />
             <Route path="/*" element={

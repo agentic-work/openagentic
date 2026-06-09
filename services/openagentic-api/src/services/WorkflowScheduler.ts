@@ -428,13 +428,11 @@ export class WorkflowScheduler {
     // schedule-level error rather than a silent cross-tenant write.
     const tenantId = (workflow as any).tenant_id || null;
 
-    // #1275 run-as-user OBO for SCHEDULED runs: load the workflow owner's Azure
-    // AD token (refreshed if expired) and thread it as authToken/idToken/email
-    // so cloud/OBO MCP tools run AS THE OWNER, not the service principal. If NO
-    // owner token can be obtained, we leave authToken undefined → the AgentRunner
-    // OBO guard fails cloud tools fast (no silent SP substitution).
-    let scheduledAuthToken: string | undefined;
-    let scheduledIdToken: string | undefined;
+    // Scheduled runs have no inbound user token (the scheduler runs out of
+    // band). CSP MCP tools invoked by the flow authenticate to the cloud via
+    // their own service-principal / static-keypair / ADC creds, so authToken
+    // is left undefined here. We still resolve the owner email for MCP
+    // workspace-isolation hints.
     let scheduledUserEmail: string | undefined;
     try {
       const owner = await prisma.user.findUnique({
@@ -442,26 +440,10 @@ export class WorkflowScheduler {
         select: { email: true },
       });
       scheduledUserEmail = owner?.email || undefined;
-      const { AzureTokenService } = await import('./AzureTokenService.js');
-      const azureTokenService = new AzureTokenService(logger as any);
-      const tokenInfo = await azureTokenService.getOrRefreshToken(workflow.created_by);
-      if (tokenInfo?.access_token) {
-        scheduledAuthToken = `Bearer ${tokenInfo.access_token}`;
-        scheduledIdToken = (tokenInfo as any).id_token || undefined;
-        logger.info(
-          { scheduleId: schedule.id, ownerId: workflow.created_by, hasIdToken: !!scheduledIdToken },
-          '[WorkflowScheduler] Loaded owner Azure AD token for run-as-user OBO on scheduled run',
-        );
-      } else {
-        logger.warn(
-          { scheduleId: schedule.id, ownerId: workflow.created_by },
-          '[WorkflowScheduler] No owner Azure token for scheduled run — cloud/OBO tools will fail-fast (no SP substitution)',
-        );
-      }
-    } catch (tokenErr: any) {
+    } catch (ownerErr: any) {
       logger.warn(
-        { scheduleId: schedule.id, ownerId: workflow.created_by, error: tokenErr?.message },
-        '[WorkflowScheduler] Failed to load owner Azure token for scheduled run-as-user',
+        { scheduleId: schedule.id, ownerId: workflow.created_by, error: ownerErr?.message },
+        '[WorkflowScheduler] Failed to resolve owner email for scheduled run',
       );
     }
 
@@ -471,9 +453,9 @@ export class WorkflowScheduler {
       { nodes: definition.nodes, edges: definition.edges || [] },
       inputData,
       workflow.created_by,
-      scheduledAuthToken, // run-as-owner OBO token (undefined → cloud tools fail-fast)
+      undefined, // No inbound user token — cloud tools use service-account creds
       undefined, // No event sink — scheduled executions don't stream
-      { tenantId, idToken: scheduledIdToken, userEmail: scheduledUserEmail }
+      { tenantId, userEmail: scheduledUserEmail }
     ).then(async (result) => {
       // Update schedule stats
       await prisma.workflowSchedule.update({

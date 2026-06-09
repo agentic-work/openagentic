@@ -231,7 +231,6 @@ vi.mock('../../hooks/useTopbarToolsCounts', () => ({
 vi.mock('@/features/settings/components/SettingsModal', () => ({
   SettingsModal: () => null,
 }));
-vi.mock('@/features/auth/components/AADLogin', () => ({ default: () => null }));
 vi.mock('@/shared/components/CanvasPanel', () => ({ default: () => null }));
 vi.mock('@/shared/components/ArtifactPanel', () => ({ ArtifactPanel: () => null }));
 vi.mock('@/features/docs/DocsViewer', () => ({ DocsViewer: () => null }));

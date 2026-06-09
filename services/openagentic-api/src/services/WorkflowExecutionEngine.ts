@@ -220,7 +220,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
   /**
    * Get internal service auth headers for self-calls (LLM endpoint, etc.)
    * Uses INTERNAL_SERVICE_SECRET bypass so workflow LLM calls don't depend on user JWT validity.
-   * MCP calls still use the user's auth token for OBO (on-behalf-of) flows.
+   * Cloud MCP calls use the per-MCP Service Account credentials (no user-token OBO).
    */
   private getInternalAuthHeaders(): Record<string, string> {
     const secret = process.env.INTERNAL_SERVICE_SECRET;

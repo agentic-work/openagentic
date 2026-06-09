@@ -30,7 +30,6 @@ import { ChatMCPService } from './services/ChatMCPService.js';
 import { ChatCompletionService } from './services/ChatCompletionService.js';
 import { ChatAnalyticsService } from './services/ChatAnalyticsService.js';
 import { ChatCacheService } from './services/ChatCacheService.js';
-import { AzureTokenService } from '../../services/AzureTokenService.js';
 import { ExtendedCapabilitiesService } from '../../services/ModelCapabilitiesService.js';
 import { TitleGenerationService } from '../../services/TitleGenerationService.js';
 // import { PromptTechniqueService } from '../../services/PromptTechniqueService.js'; // REMOVED: Prompt techniques disabled
@@ -105,9 +104,6 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
     throw new Error('ChatStorageService is required');
   }
 
-  // Initialize services - use fastify.log instead of pino logger
-  const azureTokenService = new AzureTokenService(fastify.log);
-  
   // Initialize capabilities service for intelligent model selection
   const capabilitiesService = new ExtendedCapabilitiesService({
     autoDiscovery: true,
@@ -191,7 +187,6 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
     capabilities: capabilitiesService,
     analytics: new ChatAnalyticsService(options.chatStorage, fastify.log),
     cache: cacheService,
-    azureToken: azureTokenService,
     redis: options.redis,
     // Pass getter function or use direct milvus option
     milvus: options.milvus,
@@ -329,12 +324,6 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
   const v2Deps = buildChatV2Deps({
     providerManager: options.providerManager,
     prismaLike: prisma,
-    // LIVE fix 2026-05-11 — wire AzureTokenService so the chat→mcp-proxy
-    // hop uses the DB-persisted Azure access_token for OBO instead of
-    // the inbound bearer (often an id_token from the SPA session, which
-    // Azure rejects with AADSTS240002). Pinned by
-    // buildChatV2Deps.obo-db-token.test.ts.
-    azureTokenService,
     // Wave 5 — wire the chatStorage singleton so the deps struct surfaces
     // loadPriorMessages / persistUserMessage / persistAssistantMessage. The
     // stream handler reads these directly off the v2Deps via the
@@ -440,21 +429,6 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
         smartRouter,
         priorClassification,
       });
-    },
-    // OBO PLUMB (LIVE 2026-04-30): mirror V1 auth.stage Azure token loading
-    // so V2 ctx.user gets accessToken+idToken populated before tool calls.
-    // services.auth is a ChatAuthService — its getAzureTokenInfo wraps
-    // the same prisma query V1's auth.stage used.
-    getAzureTokenInfo: async (userId: string) => {
-      try {
-        return await services.auth.getAzureTokenInfo(userId);
-      } catch {
-        return null;
-      }
-    },
-    isTokenExpired: (expiresAt) => {
-      if (!expiresAt) return true;
-      return new Date() >= new Date(expiresAt);
     },
   };
 

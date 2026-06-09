@@ -4,9 +4,6 @@ import bcrypt from 'bcrypt';
 import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import axios from 'axios';
 import { serviceDiscovery } from '../config/service-discovery.js';
-import { AdminValidationService } from './AdminValidationService.js';
-import { AzureTokenService } from './AzureTokenService.js';
-import { ChatMCPService } from '../routes/chat/services/ChatMCPService.js';
 import { VaultService } from './vault.service.js';
 import { MCPToolIndexingService } from './MCPToolIndexingService.js';
 
@@ -22,11 +19,9 @@ export interface InitializationConfig {
     mcpServers: boolean;        // MCP server configurations
     milvusCollections: boolean; // RAG + vector collections in Milvus
     mcpToolIndexing: boolean;   // Index MCP tools from MCP Proxy into Milvus
-    azureValidation: boolean;   // Azure AD app registration validation
     systemSettings: boolean;    // Core system configuration
     databaseSchema: boolean;    // Database indexes + constraints
     modelDiscovery?: boolean;   // Discover and test all available models
-    azureSDKKnowledge?: boolean; // Ingest Azure SDK/CLI documentation for RAG
   }
   }
 
@@ -230,11 +225,9 @@ export class InitializationService {
       mcpServers: true,
       milvusCollections: true,
       mcpToolIndexing: true,  // Enable MCP tool indexing by default
-      azureValidation: true,
       systemSettings: true,
       databaseSchema: true,
-      modelDiscovery: true,  // Enable by default
-      azureSDKKnowledge: true  // Enable Azure SDK documentation ingestion
+      modelDiscovery: true  // Enable by default
     }
   }): Promise<InitializationStatus> {
 
@@ -324,13 +317,6 @@ export class InitializationService {
         this.logger.info('✅ MCP tools indexed from MCP Proxy into Milvus');
       }
 
-      // 6. Validate Azure AD configuration and connectivity
-      if (config.components.azureValidation) {
-        await this.validateAzureConfiguration();
-        completedComponents.push('azureValidation');
-        this.logger.info('✅ Azure AD configuration validated');
-      }
-
       // 7. Initialize core system settings and feature flags
       if (config.components.systemSettings) {
         await this.initializeSystemSettings();
@@ -349,13 +335,6 @@ export class InitializationService {
         await this.initializeModelDiscovery();
         completedComponents.push('modelDiscovery');
         this.logger.info('✅ Model capabilities discovered and indexed');
-      }
-
-      // 9. Ingest Azure SDK/CLI documentation for RAG (requires Milvus)
-      if (config.components.azureSDKKnowledge && config.components.milvusCollections) {
-        await this.initializeAzureSDKKnowledge();
-        completedComponents.push('azureSDKKnowledge');
-        this.logger.info('✅ Azure SDK documentation ingested for RAG');
       }
 
       // 10. COMPREHENSIVE VALIDATION - Validate everything is working before marking as initialized
@@ -1691,106 +1670,6 @@ export class InitializationService {
     } catch (error) {
       // Azure SDK knowledge is non-critical - system can work without it
       this.logger.warn({ error }, 'Azure SDK documentation ingestion failed - Azure-related queries may have less context');
-    }
-  }
-
-  private async validateAzureConfiguration(): Promise<void> {
-    const azureConfig = {
-      tenantId: process.env.AZURE_TENANT_ID,
-      clientId: process.env.AZURE_CLIENT_ID,
-      clientSecret: process.env.AZURE_CLIENT_SECRET
-    };
-
-    // Skip if not configured
-    if (!azureConfig.tenantId || !azureConfig.clientId) {
-      this.logger.info('Azure AD not configured - skipping validation');
-      return;
-    }
-
-    try {
-      // Test Azure AD endpoint connectivity
-      const wellKnownUrl = `https://login.microsoftonline.com/${azureConfig.tenantId}/.well-known/openid-configuration`;
-      const response = await axios.get(wellKnownUrl, { 
-        timeout: 10000,
-        validateStatus: (status) => status < 500 // Accept any non-server error
-      });
-      
-      if (response.status === 200 && response.data.issuer) {
-        this.logger.info(`Azure AD tenant ${azureConfig.tenantId} is accessible`);
-        
-        // Test service principal if configured
-        if (azureConfig.clientSecret) {
-          try {
-            const tokenResponse = await axios.post(
-              `https://login.microsoftonline.com/${azureConfig.tenantId}/oauth2/v2.0/token`,
-              new URLSearchParams({
-                'grant_type': 'client_credentials',
-                'client_id': azureConfig.clientId,
-                'client_secret': azureConfig.clientSecret,
-                'scope': 'https://graph.microsoft.com/.default'
-              }),
-              { 
-                timeout: 10000,
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-              }
-            );
-            
-            if (tokenResponse.data.access_token) {
-              this.logger.info('Azure AD Service Principal authentication successful');
-            }
-          } catch (tokenError) {
-            this.logger.warn(`Azure AD Service Principal test failed: ${tokenError.message}`);
-            // Don't throw - app might still work with user auth
-          }
-        }
-        
-        // Validate all admin users have proper Azure MCP access
-        this.logger.info('🔐 Validating Azure MCP for admin users...');
-        await this.validateAdminAzureAccess();
-        
-      } else if (response.status === 404) {
-        this.logger.warn(`Azure AD tenant ${azureConfig.tenantId} not found - may be invalid`);
-      } else {
-        this.logger.warn(`Azure AD validation returned status ${response.status}`);
-      }
-    } catch (error) {
-      // Only log as error if it's not a network timeout
-      if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
-        this.logger.warn('Azure AD validation timed out - service may be slow');
-      } else if (error.response?.status === 404) {
-        this.logger.warn(`Azure AD endpoint not found: ${error.config?.url}`);
-      } else {
-        this.logger.warn(`Azure AD validation check failed: ${error.message}`);
-      }
-      // Don't throw - system can work without Azure AD
-    }
-  }
-
-  /**
-   * Validate all admin users have Azure MCP properly configured
-   */
-  private async validateAdminAzureAccess(): Promise<void> {
-    try {
-      // Initialize services needed for validation
-      const azureTokenService = new AzureTokenService(this.logger);
-      const mcpService = new ChatMCPService(this.logger);
-      
-      // Create admin validation service
-      const adminValidation = new AdminValidationService(
-        this.prisma,
-        azureTokenService,
-        mcpService,
-        this.logger
-      );
-      
-      // Validate all admin users
-      await adminValidation.validateAllAdmins();
-      
-      this.logger.info('✅ Admin Azure MCP validation completed');
-      
-    } catch (error) {
-      this.logger.error(`Admin Azure validation failed: ${error.message}`);
-      // Don't throw - this is a warning but not fatal
     }
   }
 

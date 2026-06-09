@@ -14,9 +14,6 @@ import { trackAuthAttempt } from '../metrics/index.js';
 import { prisma } from '../utils/prisma.js';
 import { logAuthEvent } from '../services/audit/authAuditLogger.js';
 import { getJWTSecret } from '../utils/secrets.js';
-import { AdminValidationService } from '../services/AdminValidationService.js';
-import { AzureTokenService } from '../services/AzureTokenService.js';
-import { ChatMCPService } from './chat/services/ChatMCPService.js';
 
 interface User {
   id: string;
@@ -24,8 +21,6 @@ interface User {
   name?: string;
   passwordHash?: string;
   groups?: string[];
-  azureOid?: string;
-  azureTenantId?: string;
   isAdmin: boolean;
   isActive: boolean;
   lastLoginAt?: string;
@@ -43,18 +38,11 @@ interface CreateUserRequest {
   name: string;
   password: string;
   groups?: string[];
-  azureOid?: string;
-  azureTenantId?: string;
   isAdmin?: boolean;
 }
 
 interface UpdateGroupsRequest {
   groups: string[];
-}
-
-interface MapAzureRequest {
-  azureOid: string;
-  azureTenantId: string;
 }
 
 // JWT secret will be loaded from Vault or environment

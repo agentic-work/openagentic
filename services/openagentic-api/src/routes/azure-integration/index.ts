@@ -8,15 +8,11 @@
  */
 
 import { FastifyPluginAsync } from 'fastify';
-import { azureAuthRoutes } from './auth.js';
 import { azureAdminRoutes } from './admin.js';
 import { azureMetricsRoutes } from './metrics.js';
 import { azureEventsRoutes } from './events.js';
 
 export const azureIntegrationPlugin: FastifyPluginAsync = async (fastify) => {
-  // Register Azure authentication and OBO routes
-  await fastify.register(azureAuthRoutes, { prefix: '/auth' });
-  
   // Register Azure admin routes (resource info stub)
   await fastify.register(azureAdminRoutes, { prefix: '/admin/azure' });
   

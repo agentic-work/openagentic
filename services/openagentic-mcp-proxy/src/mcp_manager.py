@@ -575,26 +575,20 @@ class MCPManager:
 
         # REMOVED: Old azure_cost Node.js server - deprecated in favor of openagentic_azure cost tools
 
-        # OpenAgentic Azure MCP Server - Platform-level FastMCP with direct user token auth
+        # OpenAgentic Azure MCP Server - Platform-level FastMCP
         # Consolidated: Includes both ARM operations AND Cost Management tools
         # This is our custom Azure MCP with:
-        # - On-Behalf-Of (OBO) authentication flow
+        # - Service-principal authentication (AZURE_CLIENT_ID/SECRET/TENANT_ID/SUBSCRIPTION_ID)
         # - Universal ARM API execution
-        # - Focused set of Azure tools for platform-wide use
+        # - Focused set of Azure tools for platform-wide use (incl. SP-based cost dashboards)
         if not os.getenv("OpenAgentic_AZURE_MCP_DISABLED", "false").lower() == "true":
-            # OBO Flow: User token is scoped for Main App (AZURE_CLIENT_ID)
-            # Main App uses its credentials to exchange that token for Azure Management token
-            # This is standard OAuth 2.0 On-Behalf-Of flow
+            # Service-principal credentials — the MCP logs in with this SP for
+            # all Azure ARM + Cost Management calls.
             openagentic_azure_env = {
                 "AZURE_TENANT_ID": os.getenv("AZURE_TENANT_ID", ""),
-                # Fallback credentials when NO user token - uses shared service principal
                 "AZURE_CLIENT_ID": os.getenv("AZURE_CLIENT_ID", ""),
                 "AZURE_CLIENT_SECRET": os.getenv("AZURE_CLIENT_SECRET", ""),
                 "AZURE_SUBSCRIPTION_ID": os.getenv("AZURE_SUBSCRIPTION_ID", ""),
-                # OBO credentials - MUST be Main App credentials (not Azure MCP SP)
-                # because user token is scoped for Main App's Application ID URI
-                "AWC_AZURE_OBO_CLIENT_ID": os.getenv("AZURE_CLIENT_ID", ""),
-                "AWC_AZURE_OBO_CLIENT_SECRET": os.getenv("AZURE_CLIENT_SECRET", ""),
                 "LOG_LEVEL": "info"
             }
 
@@ -605,7 +599,7 @@ class MCPManager:
                 self.servers["openagentic_azure"] = RemoteMCPServer(RemoteMCPServerConfig(
                     name="openagentic_azure",
                     url=openagentic_azure_remote_url,
-                    supports_obo=True
+                    supports_obo=False
                 ))
                 logger.info(f"OpenAgentic Azure MCP server configured as REMOTE at {openagentic_azure_remote_url}")
             else:
@@ -614,7 +608,7 @@ class MCPManager:
                     name="openagentic_azure",
                     command=["fastmcp", "run", "-t", "stdio", "/app/mcp-servers/oap-azure-mcp/src/server.py"],
                     env=openagentic_azure_env,
-                    supports_obo=True  # This server supports OBO token injection
+                    supports_obo=False  # Service-principal auth (no per-user OBO)
                 ))
                 logger.info("OpenAgentic Azure MCP server configured (ARM + Cost tools consolidated)")
 
@@ -639,21 +633,15 @@ class MCPManager:
             ))
             logger.info("OpenAgentic GCP MCP server configured (Platform-level GCP management)")
 
-        # OpenAgentic AWS MCP Server - AWS Operations with Azure AD OBO via OIDC Federation
-        # Uses Azure AD ID token → AWS STS AssumeRoleWithWebIdentity → temporary credentials
+        # OpenAgentic AWS MCP Server - AWS Operations via static keypair credentials
+        # Uses AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (boto3 default chain)
         if not os.getenv("OpenAgentic_AWS_MCP_DISABLED", "false").lower() == "true":
             openagentic_aws_env = {
                 "AWS_REGION": os.getenv("AWS_REGION", ""),
-                # AWS OIDC Federation configuration for OBO (Azure AD → STS)
-                "AWS_OBO_ROLE_ARN": os.getenv("AWS_OBO_ROLE_ARN", ""),  # IAM role to assume via web identity
-                "AWS_ACCOUNT_ID": os.getenv("AWS_ACCOUNT_ID", ""),  # Fallback for constructing role ARN
-                # AWS Identity Center configuration (legacy - kept for backwards compat)
-                "AWS_IC_INSTANCE_ARN": os.getenv("AWS_IC_INSTANCE_ARN", ""),
-                "AWS_IC_APPLICATION_ARN": os.getenv("AWS_IC_APPLICATION_ARN", ""),
-                # Fallback credentials when NO user token (or OBO fails with fallback enabled)
+                "AWS_ACCOUNT_ID": os.getenv("AWS_ACCOUNT_ID", ""),
+                # Static keypair credentials (boto3 shared-config / default chain)
                 "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID", ""),
                 "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY", ""),
-                "AWS_OBO_FALLBACK_TO_SERVICE": os.getenv("AWS_OBO_FALLBACK_TO_SERVICE", "false"),
                 # Redis for credential caching
                 "REDIS_HOST": os.getenv("REDIS_HOST", "redis"),
                 "REDIS_PORT": os.getenv("REDIS_PORT", "6379"),
@@ -668,7 +656,7 @@ class MCPManager:
                 self.servers["openagentic_aws"] = RemoteMCPServer(RemoteMCPServerConfig(
                     name="openagentic_aws",
                     url=openagentic_aws_remote_url,
-                    supports_obo=True
+                    supports_obo=False
                 ))
                 logger.info(f"OpenAgentic AWS MCP server configured as REMOTE at {openagentic_aws_remote_url}")
             else:
@@ -677,9 +665,9 @@ class MCPManager:
                     name="openagentic_aws",
                     command=["fastmcp", "run", "-t", "stdio", "/app/mcp-servers/oap-aws-mcp/server.py"],
                     env=openagentic_aws_env,
-                    supports_obo=True  # This server supports OBO token injection (Azure AD → AWS IC)
+                    supports_obo=False  # Static keypair auth (no per-user OBO)
                 ))
-                logger.info("OpenAgentic AWS MCP server configured (AWS via Azure AD OBO + Identity Center)")
+                logger.info("OpenAgentic AWS MCP server configured (static keypair credentials)")
 
         # VMware MCP Server (if enabled) - VMware infrastructure management
         vmware_env = {

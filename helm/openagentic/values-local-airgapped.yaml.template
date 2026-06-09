@@ -288,20 +288,10 @@ embedding:
     model: "embeddinggemma"
 
 # ===========================================
-# AUTHENTICATION (Local auth only)
+# AUTHENTICATION (local username/password only — no federated identity / SSO)
 # ===========================================
 auth:
-  azure:
-    clientId: ""
-    tenantId: ""
-    authority: ""
-    redirectUri: ""
-    adminGroup: ""
-    authorizedUserGroups: ""
-    authorizedAdminGroups: ""
   admin:
-    aadAssociation: ""
-    aadUuid: ""
     requirePasswordReset: "false"
   testMode:
     enabled: "false"  # Disable test mode in production

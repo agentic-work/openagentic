@@ -5,7 +5,7 @@
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { UserContext } from '../auth/azureADAuth.js';
+import { UserContext } from '../auth/types.js';
 
 /**
  * Role-based authorization middleware

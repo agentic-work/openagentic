@@ -345,7 +345,6 @@ async function initializeServices() {
         mcpServers: true,
         milvusCollections: true,
         mcpToolIndexing: true,
-        azureValidation: true,
         systemSettings: true,
         databaseSchema: true
       }
@@ -1324,24 +1323,6 @@ async function registerAllRoutes() {
     loggers.routes.info('Prompt templates routes registered at /api/prompt-templates');
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register prompt templates routes');
-  }
-
-  // Register Azure AD Sync routes
-  try {
-    const { azureADSyncRoutes } = await import('./routes/azure-ad-sync.js');
-    await server.register(azureADSyncRoutes);
-    loggers.routes.info('Azure AD sync routes registered at /api/auth/azure/*');
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register Azure AD sync routes');
-  }
-
-  // Register Account Linking routes
-  try {
-    const { accountLinkingRoutes } = await import('./routes/account-linking.js');
-    await server.register(accountLinkingRoutes);
-    loggers.routes.info('Account linking routes registered at /api/accounts/*');
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register account linking routes');
   }
 
   // Register Storage routes for secure token/data storage (converted to Fastify)

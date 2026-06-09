@@ -496,38 +496,22 @@ import { getGenAITracer, type GenAITracer } from './observability/GenAITracer.js
  * map of (toolName → serverName). Posting to `/mcp/tool` with `{tool, arguments}`
  * (no explicit `server`) makes the proxy resolve the server itself.
  *
- * OBO HEADER PLUMB (LIVE 2026-04-30 fix):
- *   - Azure-AD user with valid JWT access token → Authorization: Bearer
- *     <accessToken> (the MCP proxy uses this assertion for OBO).
- *   - idToken present → X-Azure-ID-Token + X-AWS-ID-Token headers (these
- *     have audience = app's client ID, required for OBO; access token
- *     has audience = ARM, which AAD rejects with AADSTS500131).
- *   - userId / userEmail → X-User-Id / X-User-Email (workspace isolation).
- *   - api-key / local user → fallback to internal HS256 JWT (MCP proxy
- *     validates it with shared JWT_SECRET).
+ * AUTH HEADER PLUMB:
+ *   - api-key / local user → internal HS256 JWT signed with the shared
+ *     JWT_SECRET/SIGNING_SECRET (the MCP proxy validates it with the same
+ *     secret). This is the service-to-service auth for chat→mcp-proxy tool
+ *     calls.
+ *   - Unknown auth method with an inbound bearer → pass it through.
  *   - Anonymous → API_INTERNAL_KEY (service-to-service).
+ *   - userId / userEmail → X-User-Id / X-User-Email (workspace isolation).
  *
- * Without these headers, oap-azure-mcp returns
- * "No user token provided (expected 'userAccessToken')" — exactly what
- * was happening live. ctx.user is populated by the chat plugin from the
- * decoded JWT + Azure-token DB lookup (mirrors V1 auth.stage).
+ * ctx.user is populated by the chat plugin from the decoded local JWT
+ * (mirrors V1 auth.stage). CSP MCP servers (aws/azure/gcp) authenticate to
+ * the cloud via their own service-principal / static-keypair / ADC creds,
+ * not via a per-user token forwarded here.
  */
-/**
- * Optional dependency used to look up the DB-persisted Azure access_token.
- * When wired + the user is azure-ad authenticated, the function consults the
- * DB instead of trusting ctx.user.accessToken — which is the inbound bearer
- * (often an id_token from the SPA session). Without this lookup mcp-proxy's
- * OBO exchange fails with AADSTS240002 ("Input id_token cannot be used as
- * 'urn:ietf:params:oauth:grant-type:jwt-bearer' grant"). Regression pinned
- * by buildChatV2Deps.obo-db-token.test.ts (LIVE 2026-05-11).
- */
-interface AzureTokenServiceLike {
-  getOrRefreshToken: (userId: string) => Promise<{ access_token: string } | null>;
-}
-
 async function buildMcpProxyHeaders(
   ctx: any,
-  azureTokenService?: AzureTokenServiceLike,
 ): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -535,7 +519,6 @@ async function buildMcpProxyHeaders(
 
   const user = ctx?.user ?? {};
   const userToken: string | undefined = user.accessToken;
-  const idToken: string | undefined = user.idToken;
   const userId: string | undefined = user.id;
   const userEmail: string | undefined = user.email;
   const userName: string | undefined = user.name;
@@ -543,32 +526,10 @@ async function buildMcpProxyHeaders(
   const userGroups: string[] = Array.isArray(user.groups) ? user.groups : [];
   const authMethod: string | undefined = user.authMethod;
 
-  const isAzureAdAuth = authMethod === 'azure-ad';
   const isApiKeyAuth = authMethod === 'api-key';
-  const isLocalAuth = authMethod === 'local';
-  const isValidAzureJwt =
-    isAzureAdAuth && !!userToken && userToken.split('.').length === 3;
 
-  if (isValidAzureJwt) {
-    // OBO assertion MUST be an Azure access_token (audience = this app's
-    // client_id), NOT an id_token. Look up the DB-persisted access_token
-    // when the service is wired; fall back to inbound bearer otherwise.
-    let oboToken = userToken!;
-    if (azureTokenService && userId) {
-      try {
-        const info = await azureTokenService.getOrRefreshToken(userId);
-        if (info?.access_token) {
-          oboToken = info.access_token;
-        }
-      } catch {
-        // Graceful fallback: keep the inbound bearer rather than dropping
-        // auth entirely. A silent 401 at dispatch is harder to debug than
-        // an OBO failure with a valid trace.
-      }
-    }
-    headers['Authorization'] = `Bearer ${oboToken}`;
-  } else if ((isApiKeyAuth || isLocalAuth || !userToken) && userId) {
-    // Internal HS256 JWT for non-Azure authenticated users.
+  if (userId) {
+    // Internal HS256 JWT for local-auth / api-key authenticated users.
     const jwtSecret = process.env.JWT_SECRET || process.env.SIGNING_SECRET;
     if (jwtSecret) {
       try {
@@ -606,15 +567,8 @@ async function buildMcpProxyHeaders(
     headers['Authorization'] = `Bearer ${apiInternalKey}`;
   }
 
-  // OBO ID token (audience = app client ID, NOT a resource URL). Both
-  // Azure ARM and AWS Identity Center MCP servers consume the same idToken.
-  if (idToken) {
-    headers['X-Azure-ID-Token'] = idToken;
-    headers['X-AWS-ID-Token'] = idToken;
-  }
-
   // Workspace isolation hints. MCP servers fall back to userEmail/userId
-  // when no OBO token is available (Google auth, API keys, local).
+  // for per-user scoping (api-key, local).
   if (userEmail) headers['X-User-Email'] = userEmail;
   if (userId) headers['X-User-Id'] = userId;
 
@@ -647,7 +601,6 @@ const UNKNOWN_PROVIDER = 'unknown';
 
 export function makeExecuteMcpToolWithResolver(
   getRegisteredTools?: () => Promise<Array<{ name: string; aliases?: string[] } | string>>,
-  azureTokenService?: AzureTokenServiceLike,
 ): (ctx: any, name: string, input: any) => Promise<{ ok: boolean; output?: unknown; error?: string }> {
   let cachedTools: Array<{ name: string; aliases?: string[] } | string> | null = null;
   let cacheExpiresAt = 0;
@@ -684,7 +637,7 @@ export function makeExecuteMcpToolWithResolver(
     try {
       const resp = await fetch(`${mcpProxyUrl}/mcp/tool`, {
         method: 'POST',
-        headers: await buildMcpProxyHeaders(ctx, azureTokenService),
+        headers: await buildMcpProxyHeaders(ctx),
         body: JSON.stringify({
           tool: canonicalName,
           arguments: input ?? {},
@@ -728,9 +681,7 @@ export function makeExecuteMcpToolWithResolver(
   };
 }
 
-function makeExecuteMcpTool(
-  azureTokenService?: AzureTokenServiceLike,
-): (ctx: any, name: string, input: any) => Promise<any> {
+function makeExecuteMcpTool(): (ctx: any, name: string, input: any) => Promise<any> {
   return async (ctx: any, name: string, input: any) => {
     const mcpProxyUrl = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
     const reqId = `chat-v2-${Date.now()}`;
@@ -738,7 +689,7 @@ function makeExecuteMcpTool(
     try {
       const resp = await fetch(`${mcpProxyUrl}/mcp/tool`, {
         method: 'POST',
-        headers: await buildMcpProxyHeaders(ctx, azureTokenService),
+        headers: await buildMcpProxyHeaders(ctx),
         body: JSON.stringify({
           tool: name,
           arguments: input ?? {},
@@ -888,14 +839,6 @@ export interface BuildChatV2DepsOptions {
    * history / persistence — fine for first-message smoke tests.
    */
   chatStorage?: ChatStorageLike;
-  /**
-   * Optional AzureTokenService — when wired, buildMcpProxyHeaders looks up
-   * the DB-persisted Azure access_token for OBO instead of trusting the
-   * inbound bearer (which is often an id_token from the SPA session and
-   * fails AADSTS240002 at the OBO exchange). Pinned by
-   * buildChatV2Deps.obo-db-token.test.ts (LIVE 2026-05-11).
-   */
-  azureTokenService?: AzureTokenServiceLike;
   /** Override the MCP fall-through (tests). */
   executeMcpTool?: (ctx: any, name: string, input: any) => Promise<any>;
   /** Override the browser sandbox executor (tests). */
@@ -1254,10 +1197,10 @@ export function buildChatV2Deps(opts: BuildChatV2DepsOptions): ChatV2DepsWithPer
     };
   }
 
-  // Build the inner MCP executor first (resolver-based with OBO headers).
+  // Build the inner MCP executor first (resolver-based with internal-auth headers).
   const innerExecuteMcpTool =
     opts.executeMcpTool ??
-    makeExecuteMcpToolWithResolver(opts.builtInDispatch?.listMcpProxyTools, opts.azureTokenService);
+    makeExecuteMcpToolWithResolver(opts.builtInDispatch?.listMcpProxyTools);
 
   // Wrap with cross-user cache. Meta-tools bypass this because they never
   // route through executeMcpTool (see dispatchChatToolCall.ts — the MCP

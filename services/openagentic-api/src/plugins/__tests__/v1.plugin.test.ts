@@ -74,12 +74,6 @@ describe('v1RoutesPlugin — Phase 3.9 smoke tests', () => {
     'Follow-up: integration test with real auth context.'
   );
 
-  it.todo(
-    'Credential routes (/api/v1/credentials/* and /v1/credentials/*) — auth-gated. ' +
-    'Returns 404 in Bun test runtime due to raw.writableEnded quirk. ' +
-    'Follow-up: integration test with real auth context.'
-  );
-
   // ---------------------------------------------------------------------------
   // Active assertions — /status is unauthenticated, confirms both mounts live
   // ---------------------------------------------------------------------------

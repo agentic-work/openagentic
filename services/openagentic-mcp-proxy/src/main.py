@@ -1,7 +1,7 @@
 
 
 """
-MCP Proxy Service - Centralized MCP Server Management with OBO Authentication
+MCP Proxy Service - Centralized MCP Server Management
 Hosts and manages ALL MCP servers for the OpenAgentic platform
 """
 
@@ -19,11 +19,11 @@ import redis
 import subprocess
 import uuid
 from typing import Dict, Any, Optional, List, Union
-from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks, Cookie, Response
+from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import uvicorn
@@ -32,8 +32,6 @@ from contextlib import asynccontextmanager
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from mcp_manager import MCPManager, MCPServerStatus, RemoteMCPServer
-from user_session_manager import get_user_session_manager
-from azure_oauth import AzureOAuthService
 
 # Configure structured logging via structlog
 try:
@@ -76,15 +74,12 @@ logging.getLogger("mcp-manager").setLevel(logging.INFO)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 # Configuration
-TENANT_ID = os.getenv("AZURE_TENANT_ID")
-CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
-CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
 PORT = int(os.getenv("PORT", "8080"))
 API_BASE_URL = os.getenv("API_BASE_URL", "http://openagentic-api:8000")  # Internal API for logging
 
 # Authentication can be disabled for local development
-# Azure AD users: Validated via Azure AD token, RBAC policies apply
-# Local admin users: No token = system admin role with full access
+# Local-auth users: validated via internal HS256 JWT / oa_ API key from the api
+# Local admin users: No token = system admin role with full access (ENABLE_AUTH=false only)
 ENABLE_AUTH = os.getenv("ENABLE_AUTH", "true").lower() in ("true", "1", "yes")
 
 # FedRAMP CM-7 / SA-15 — the MCP Inspector is a dev-only debug surface (unauthenticated
@@ -128,7 +123,6 @@ def bootstrap_jwt_keys() -> Dict[str, Optional[str]]:
         )
     return {
         "signing_key": signing_key,
-        "aad_public_key": os.getenv("AAD_PUBLIC_KEY"),
     }
 
 
@@ -285,7 +279,6 @@ def is_tool_blocked_in_read_only(tool_name: str, arguments: dict, server_name: s
 # Global instances
 mcp_manager: Optional[MCPManager] = None
 redis_client: Optional[redis.Redis] = None
-oauth_service: Optional[AzureOAuthService] = None
 inspector_process: Optional[subprocess.Popen] = None
 
 # === HELPER FUNCTIONS ===
@@ -342,7 +335,7 @@ async def send_mcp_log_to_api(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events for MCP servers"""
-    global mcp_manager, redis_client, oauth_service, inspector_process
+    global mcp_manager, redis_client, inspector_process
 
     logger.info("=== MCP PROXY STARTUP ===")
 
@@ -370,14 +363,6 @@ async def lifespan(app: FastAPI):
     )
     redis_client.ping()  # Test connection
     logger.info(f"✅ Redis connected at {redis_host}:{redis_port}")
-
-    # Initialize OAuth service (only if auth is enabled)
-    if ENABLE_AUTH:
-        logger.info("Initializing Azure OAuth service...")
-        oauth_service = AzureOAuthService(redis_client)
-        logger.info("✅ OAuth service initialized")
-    else:
-        logger.info("⚠️ Auth disabled - skipping Azure OAuth service initialization")
 
     # Start MCP Inspector subprocess (dev-only, opt-in via ENABLE_MCP_INSPECTOR;
     # defaults OFF so production images never expose this unauthenticated debug surface)
@@ -409,12 +394,6 @@ async def lifespan(app: FastAPI):
     logger.info("=== MCP SERVER STATUS ===")
     for name, status in statuses.items():
         logger.info(f"{name}: {status['status']} (PID: {status.get('pid', 'N/A')})")
-
-    # Start per-user Azure MCP session cleanup
-    logger.info("Starting per-user Azure MCP session manager...")
-    session_manager = get_user_session_manager()
-    await session_manager.start_periodic_cleanup(interval_minutes=15)
-    logger.info("✅ User session manager started with periodic cleanup (every 15 minutes)")
 
     # Background reconnect loop for failed remote MCP servers
     async def _reconnect_failed_servers():
@@ -463,12 +442,6 @@ async def lifespan(app: FastAPI):
     if mcp_manager:
         await mcp_manager.stop_all()
 
-    # Stop user session cleanup
-    logger.info("Stopping user session manager...")
-    session_manager = get_user_session_manager()
-    await session_manager.stop_periodic_cleanup()
-    logger.info("✅ User session manager stopped")
-
     # Close Redis connection
     if redis_client:
         redis_client.close()
@@ -478,7 +451,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="MCP Proxy Service",
     version="2.0.0",
-    description="Centralized MCP Server Management with OBO Authentication",
+    description="Centralized MCP Server Management",
     lifespan=lifespan
 )
 
@@ -534,34 +507,7 @@ class MCPToolCall(BaseModel):
     tool: str
     arguments: Dict[str, Any] = {}
     id: str = "1"
-    meta: Optional[Dict[str, Any]] = None  # Meta info including userAccessToken for Azure/AWS OBO
-
-class TokenExchangeError(Exception):
-    def __init__(self, message: str, status_code: int = 500):
-        self.message = message
-        self.status_code = status_code
-        super().__init__(message)
-
-# Authentication helpers - using same logic as API
-def get_authorized_groups():
-    """Get authorized groups from environment - same as API"""
-    user_groups = os.getenv('AAD_AUTHORIZED_USER_GROUPS', '').split(',')
-    user_groups = [g.strip() for g in user_groups if g.strip()]
-
-    admin_groups = os.getenv('AAD_AUTHORIZED_ADMIN_GROUPS', '').split(',')
-    admin_groups = [g.strip() for g in admin_groups if g.strip()]
-
-    return user_groups, admin_groups
-
-def is_user_authorized(user_groups, required_groups):
-    """Check if user is in authorized groups - same as API"""
-    if not required_groups:
-        return True
-    return any(group in required_groups for group in user_groups)
-
-def is_admin_user(user_groups, admin_groups):
-    """Check if user is admin - same as API"""
-    return is_user_authorized(user_groups, admin_groups)
+    meta: Optional[Dict[str, Any]] = None  # Optional per-call metadata
 
 async def fetch_user_mcp_access_policies(user_groups: List[str]) -> Dict[str, str]:
     """Fetch MCP access policies for user's groups from API"""
@@ -723,16 +669,17 @@ def check_tool_access(
 
 async def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Optional[Dict[str, Any]]:
     """
-    Get user info from JWT token or return system admin for local users.
+    Get user info from a token, or return system admin for local-dev users.
 
-    Supports THREE authentication methods:
-    1. Azure AD tokens (RS256, has 'kid') - Validated against JWKS
-    2. Internal API tokens (HS256, no 'kid') - Validated against shared secret
-    3. Raw API keys (not JWT) - Direct string comparison
+    Supports these inter-service / local-auth credential types:
+    1. oa_sys_ system token (HMAC) - inter-service SP context
+    2. oa_ user API key - validated against the api's /api/auth/me
+    3. INTERNAL_API_KEY (raw) - api→proxy service path
+    4. Internal HS256 JWT (no 'kid') - validated against the shared signing secret
 
-    - Azure AD users: Token validated via JWKS, RBAC policies enforced
-    - Internal API users: Token validated via shared secret, user context from claims
-    - Local admin users (no token): System admin role with full access
+    - Local-auth users: token validated via the api, RBAC policies enforced
+    - Internal API users: token validated via shared secret, user context from claims
+    - Local admin users (no token, ENABLE_AUTH=false): system admin role
     """
     if not credentials:
         # B3 (NIST AC-3/IA-2): FAIL CLOSED. A request with no Authorization
@@ -784,7 +731,7 @@ async def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(secu
 
     # Check for OpenAgentic user API key (oa_ prefix, not the oa_sys_ system key)
     # Format: oa_<base64url(randomBytes(32))>  (43-char base64url body)
-    # This is used when users authenticate with API keys instead of Azure AD
+    # This is used when users authenticate with API keys (local-auth)
     if token and token.startswith('oa_') and not token.startswith('oa_sys_'):
         logger.info("OpenAgentic user API key detected - validating against API")
         try:
@@ -799,7 +746,7 @@ async def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(secu
                     user_data = response.json()
                     logger.info(f"API key validated for user: {user_data.get('email', 'unknown')}")
                     return {
-                        'token': token,  # Pass the original API key for OBO
+                        'token': token,  # The validated oa_ user API key
                         'payload': {},
                         'user_id': user_data.get('userId', 'unknown'),
                         'user_name': user_data.get('name') or user_data.get('email', 'API User'),
@@ -901,135 +848,10 @@ async def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(secu
                 logger.error(f"[JWT-DEBUG] Internal token validation failed: {e}")
                 raise HTTPException(status_code=401, detail=f"Invalid internal token: {e}")
 
-        # =================================================================
-        # AZURE AD JWT (RS256) - From browser/Azure AD
-        # =================================================================
-        # Azure AD tokens are signed with RS256 and have a 'kid' for key lookup
-        logger.info("[JWT-DEBUG] Detected Azure AD RS256 token - validating against JWKS")
-
-        # Get Azure AD public keys for token validation
-        jwks_url = f"https://login.microsoftonline.com/{TENANT_ID}/discovery/v2.0/keys"
-        async with httpx.AsyncClient() as client:
-            response = await client.get(jwks_url)
-            jwks = response.json()
-
-        logger.info(f"[JWT-DEBUG] JWKS has {len(jwks.get('keys', []))} keys")
-        logger.info(f"[JWT-DEBUG] JWKS key IDs: {[k.get('kid') for k in jwks.get('keys', [])]}")
-
-        # Find the correct key
-        rsa_key = {}
-        for key in jwks['keys']:
-            if key['kid'] == kid:
-                rsa_key = {
-                    'kty': key['kty'],
-                    'kid': key['kid'],
-                    'use': key['use'],
-                    'n': key['n'],
-                    'e': key['e']
-                }
-                logger.info(f"[JWT-DEBUG] Found matching key: kid={kid}")
-                break
-
-        if not rsa_key:
-            logger.error(f"[JWT-DEBUG] Unable to find key with kid={kid} in JWKS endpoint")
-            logger.error(f"[JWT-DEBUG] Token preview (first 50 chars): {token[:50]}...")
-            raise HTTPException(status_code=401, detail="Unable to find appropriate key")
-
-        # Convert to PEM format and verify token
-        from jwt.algorithms import RSAAlgorithm
-        public_key = RSAAlgorithm.from_jwk(rsa_key)
-
-        # Azure AD can use different issuer formats (v1.0 vs v2.0)
-        # Support both for compatibility
-        valid_issuers = [
-            f"https://login.microsoftonline.com/{TENANT_ID}/v2.0",  # v2.0 format
-            f"https://sts.windows.net/{TENANT_ID}/",                # v1.0 format
-            f"https://login.microsoftonline.com/{TENANT_ID}/"       # Alternative v1.0 format
-        ]
-
-        # First decode without validation to see the actual issuer and audience
-        try:
-            unverified_payload = jwt.decode(
-                token,
-                options={"verify_signature": False, "verify_aud": False, "verify_iss": False}
-            )
-            actual_issuer = unverified_payload.get('iss', 'unknown')
-            actual_audience = unverified_payload.get('aud', 'unknown')
-            logger.info(f"[JWT-DEBUG] Token issuer: {actual_issuer}")
-            logger.info(f"[JWT-DEBUG] Token audience: {actual_audience}")
-            logger.info(f"[JWT-DEBUG] Valid issuers: {valid_issuers}")
-        except Exception as e:
-            logger.warning(f"[JWT-DEBUG] Could not peek at token claims: {e}")
-            actual_audience = 'unknown'
-
-        # Azure AD tokens can have different audience formats for OBO flow:
-        # - CLIENT_ID directly (rare)
-        # - api://{CLIENT_ID} (most common for OBO - the API's application ID URI)
-        # - api://{CLIENT_ID}/{scope} (with specific scope)
-        # - https://management.azure.com (for Azure ARM access tokens - used in chat pipeline)
-        valid_audiences = [
-            CLIENT_ID,                              # Direct client ID
-            f"api://{CLIENT_ID}",                   # Application ID URI (most common for OBO)
-            "https://management.azure.com",         # Azure ARM access token (from chat API)
-        ]
-        logger.info(f"[JWT-DEBUG] Valid audiences: {valid_audiences}")
-
-        # Try to validate with each valid issuer and audience combination
-        payload = None
-        last_error = None
-        for issuer in valid_issuers:
-            for audience in valid_audiences:
-                try:
-                    payload = jwt.decode(
-                        token,
-                        public_key,
-                        algorithms=['RS256'],
-                        audience=audience,
-                        issuer=issuer
-                    )
-                    logger.info(f"[JWT-DEBUG] Token validated successfully with issuer: {issuer}, audience: {audience}")
-                    break
-                except jwt.InvalidIssuerError:
-                    last_error = f"Issuer mismatch for {issuer}, audience {audience}"
-                    continue
-                except jwt.InvalidAudienceError as e:
-                    last_error = f"Audience mismatch for {issuer}, audience {audience}: {str(e)}"
-                    continue
-                except Exception as e:
-                    last_error = f"Validation failed for {issuer}, audience {audience}: {str(e)}"
-                    continue
-            if payload is not None:
-                break  # Break outer loop if validated
-
-        if payload is None:
-            raise jwt.InvalidIssuerError(f"Token validation failed with all combinations. Actual issuer: {actual_issuer}, Actual audience: {actual_audience}, Expected issuers: {valid_issuers}, Expected audiences: {valid_audiences}. Last error: {last_error}")
-
-        # Get user groups from token
-        user_groups = payload.get('groups', [])
-
-        # Check if user is authorized to access the system
-        authorized_user_groups, authorized_admin_groups = get_authorized_groups()
-        all_authorized_groups = list(set(authorized_user_groups + authorized_admin_groups))
-
-        if all_authorized_groups and not is_user_authorized(user_groups, all_authorized_groups):
-            raise HTTPException(
-                status_code=403,
-                detail=f"Access denied. You must be a member of one of these groups: {', '.join(all_authorized_groups)}"
-            )
-
-        # Determine if user is admin
-        is_admin = is_admin_user(user_groups, authorized_admin_groups)
-
-        return {
-            'token': token,
-            'payload': payload,
-            'user_id': payload.get('oid'),
-            'user_name': payload.get('name') or payload.get('preferred_username'),
-            'email': payload.get('email') or payload.get('preferred_username'),
-            'upn': payload.get('upn'),
-            'groups': user_groups,
-            'is_admin': is_admin
-        }
+        # Any other token shape (e.g. a kid-bearing RS256 token) is not a
+        # supported credential in the local-auth-only build. Reject fail-closed.
+        logger.warning(f"[JWT-DEBUG] Unsupported token type (kid={kid}, alg={alg}) — rejecting")
+        raise HTTPException(status_code=401, detail="Unsupported token type")
 
     except HTTPException:
         # Re-raise HTTP exceptions (like 403)
@@ -1038,103 +860,6 @@ async def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(secu
         logger.error(f"Token validation error: {type(e).__name__}: {e}", exc_info=True)
         # Auth is always enabled - always raise on validation failure
         raise HTTPException(status_code=401, detail=f"Token validation failed: {str(e)}")
-
-# OBO token exchange (for Azure MCP when user token is available)
-async def exchange_token_for_azure(original_token: str, scope: str = "https://management.azure.com/.default") -> str:
-    """Exchange user token for Azure resource access using OBO flow"""
-    obo_url = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
-
-    data = {
-        "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-        "assertion": original_token,
-        "scope": scope,
-        "requested_token_use": "on_behalf_of",
-    }
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(obo_url, data=data)
-
-            if response.status_code == 200:
-                token_response = response.json()
-                return token_response["access_token"]
-            else:
-                error_detail = response.text
-                logger.error(f"OBO token exchange failed: {error_detail}")
-                raise TokenExchangeError(f"Token exchange failed: {error_detail}", response.status_code)
-
-    except httpx.RequestError as e:
-        logger.error(f"Network error during token exchange: {e}")
-        raise TokenExchangeError(f"Network error: {str(e)}")
-    except Exception as e:
-        logger.error(f"Unexpected error during token exchange: {e}")
-        raise TokenExchangeError(f"Unexpected error: {str(e)}")
-
-
-async def require_obo_token(original_token: str, audience: str = "https://management.azure.com/.default") -> str:
-    """Fail-closed OBO exchange (B3 / NIST AC-3, SC-8).
-
-    Wraps exchange_token_for_azure and converts ANY exchange failure into a
-    structured HTTPException 401 (error=obo_failed). The proxy MUST NOT fall
-    back to passing the user's original AAD token to the upstream MCP — that
-    would grant the upstream the user's full delegated scope. On failure the
-    original token is NEVER returned and NEVER echoed in the error body.
-    """
-    try:
-        return await exchange_token_for_azure(original_token, scope=audience)
-    except TokenExchangeError as e:
-        logger.warning(f"OBO exchange failed for audience {audience}: {e}")
-        raise HTTPException(
-            status_code=401,
-            detail={"error": "obo_failed", "audience": audience},
-        )
-
-
-async def acquire_azure_obo_tokens(
-    obo_token: str,
-    audiences: Dict[str, str],
-    user_name: Optional[str] = None,
-    skip: Optional[set] = None,
-) -> Dict[str, str]:
-    """Fail-closed multi-audience OBO exchange (B3 / NIST AC-3, SC-8).
-
-    Exchanges `obo_token` for every audience in `audiences` (a
-    {token_key: scope} mapping) IN PARALLEL, skipping any token_key in `skip`.
-    Returns {token_key: exchanged_token} for all requested (non-skipped)
-    audiences.
-
-    Fail-CLOSED: if ANY audience exchange fails, raises HTTPException(401,
-    error=obo_failed) with the failing audience attached. The proxy MUST NOT
-    silently fall back to passing the user's original AAD token to the
-    upstream MCP. The original obo_token is NEVER returned and NEVER echoed in
-    the error body.
-    """
-    skip = skip or set()
-    keys = [k for k in audiences if k not in skip]
-    if not keys:
-        return {}
-
-    tasks = [require_obo_token(obo_token, audience=audiences[k]) for k in keys]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    acquired: Dict[str, str] = {}
-    for token_key, result in zip(keys, results):
-        if isinstance(result, HTTPException):
-            # require_obo_token already converted the failure into a 401 with
-            # the audience attached and never leaks the original token.
-            raise result
-        if isinstance(result, BaseException):
-            raise HTTPException(
-                status_code=401,
-                detail={"error": "obo_failed", "audience": audiences[token_key]},
-            )
-        acquired[token_key] = result
-
-    if user_name:
-        logger.info(f"[OBO] Azure tokens acquired for {user_name}: {list(acquired.keys())}")
-    return acquired
 
 # === MAIN MCP ENDPOINTS ===
 
@@ -1234,135 +959,13 @@ async def proxy_mcp_request(
     user_id = user_info.get('user_id') if user_info else None
 
     try:
-        # For MCP servers that support OBO (On-Behalf-Of), pass the user's tokens
-        # Azure needs tokens for ALL API audiences to match az login parity:
-        # - ARM: https://management.azure.com (VMs, Storage, Networks, Cost, etc.)
-        # - Graph: https://graph.microsoft.com (Azure AD/Entra ID)
-        # - Key Vault: https://vault.azure.net (Secrets, Keys, Certificates)
-        # - Storage: https://storage.azure.com (Blob, File, Queue, Table)
-        # - SQL: https://database.windows.net (Azure SQL with AAD)
-        # - Log Analytics: https://api.loganalytics.io (Workspace queries)
+        # Local-auth-only build: no per-user OBO token exchange. Cloud MCPs
+        # (aws/azure/gcp) authenticate via their service-principal / static
+        # keypair / ADC credentials supplied through the server's config.env
+        # and the read-only host CLI mounts — not a user-delegated token.
         user_token = None
-        azure_tokens = {}  # All Azure tokens for different audiences
+        azure_tokens = None
 
-        # Check if the target server supports OBO authentication
-        server_supports_obo = False
-        if mcp_manager and target_server in mcp_manager.servers:
-            server_supports_obo = mcp_manager.servers[target_server].config.supports_obo
-
-        if server_supports_obo and user_info and ENABLE_AUTH:
-            # Check if configured for shared SP mode (bypasses user token)
-            use_shared_sp = os.getenv("AZURE_MCP_USE_SHARED_SP", "false").lower() == "true"
-
-            if not use_shared_sp and user_info.get('token') and user_info.get('token') != 'SYSTEM_SP_AUTH':
-                access_token = user_info['token']
-                user_name = user_info.get('user_name', 'anonymous')
-
-                # Safety check: if token is an internal HS256 JWT, try using ID token for OBO instead
-                # Internal tokens have 'source' claim like 'api-key-internal' or 'local-internal'
-                payload = user_info.get('payload', {})
-                is_internal_jwt = payload.get('source') and 'internal' in str(payload.get('source', ''))
-                if is_internal_jwt:
-                    id_token_header = request.headers.get('X-Azure-ID-Token')
-                    if id_token_header:
-                        # Use the ID token (which IS a valid Azure AD token) for OBO
-                        access_token = id_token_header
-                        logger.info(f"[OBO] Internal HS256 JWT detected, using X-Azure-ID-Token for OBO instead (source={payload.get('source')})")
-                    else:
-                        logger.warning(f"[OBO] Skipping OBO for {user_name} - internal HS256 JWT and no ID token, skipping OBO")
-
-                if target_server == 'openagentic_azure' and not (is_internal_jwt and not request.headers.get('X-Azure-ID-Token')):
-                    # Azure: Exchange tokens for ALL API audiences in parallel
-                    # This provides full az login parity
-
-                    # Define ALL Azure API audiences we need
-                    AZURE_AUDIENCES = {
-                        "userAccessToken": "https://management.azure.com/.default",      # ARM API
-                        "graphAccessToken": "https://graph.microsoft.com/.default",       # Microsoft Graph
-                        "keyvaultAccessToken": "https://vault.azure.net/.default",        # Key Vault
-                        "storageAccessToken": "https://storage.azure.com/.default",       # Azure Storage
-                        "sqlAccessToken": "https://database.windows.net/.default",        # Azure SQL
-                        "logAnalyticsAccessToken": "https://api.loganalytics.io/.default", # Log Analytics
-                    }
-
-                    # Determine which token to use for OBO:
-                    # - If access token already has management.azure.com audience, use it directly for ARM
-                    #   and use ID token (which has app client ID audience) for OBO to other resources
-                    # - If access token has api://client-id audience, use it for all OBO exchanges
-                    id_token = request.headers.get('X-Azure-ID-Token')
-                    obo_token = None  # Token to use for OBO exchanges
-
-                    try:
-                        parts = access_token.split('.')
-                        if len(parts) >= 2:
-                            payload_b64 = parts[1] + '=' * (4 - len(parts[1]) % 4)
-                            payload = json.loads(base64.b64decode(payload_b64))
-                            access_token_audience = payload.get('aud', '')
-
-                            if 'management.azure.com' in access_token_audience:
-                                # Access token is for ARM - use directly for ARM API
-                                azure_tokens["userAccessToken"] = access_token
-                                logger.info(f"[OBO] DIRECT ARM TOKEN for {user_name} (access token has ARM audience)")
-
-                                # For OBO to other resources (Graph, KeyVault, etc), we need a token
-                                # with audience = app client ID. Check if ID token is available.
-                                if id_token:
-                                    # Verify ID token has app audience
-                                    try:
-                                        id_parts = id_token.split('.')
-                                        if len(id_parts) >= 2:
-                                            id_payload_b64 = id_parts[1] + '=' * (4 - len(id_parts[1]) % 4)
-                                            id_payload = json.loads(base64.b64decode(id_payload_b64))
-                                            id_audience = id_payload.get('aud', '')
-                                            if id_audience and 'management.azure.com' not in id_audience:
-                                                obo_token = id_token
-                                                logger.info(f"[OBO] Using ID token for OBO exchange (aud={id_audience[:50]}...)")
-                                    except Exception as e:
-                                        logger.warning(f"[OBO] Failed to decode ID token: {e}")
-                            else:
-                                # Access token has app audience - perfect for OBO
-                                obo_token = access_token
-                                logger.info(f"[OBO] Access token has app audience - using for all OBO exchanges")
-                    except Exception as e:
-                        logger.warning(f"[OBO] Failed to decode access token: {e}")
-                        # Fallback: try using access token for OBO
-                        obo_token = access_token
-
-                    # Exchange for all audiences in parallel (skip ones we already have).
-                    # Fail-CLOSED: any audience failure raises HTTPException(401);
-                    # we NEVER fall back to passing the original AAD token through.
-                    if obo_token:
-                        acquired = await acquire_azure_obo_tokens(
-                            obo_token,
-                            AZURE_AUDIENCES,
-                            user_name=user_name,
-                            skip=set(azure_tokens.keys()),
-                        )
-                        azure_tokens.update(acquired)
-                    else:
-                        logger.warning(f"[OBO] No suitable token for OBO exchange - only ARM token available")
-
-                    # Set primary user_token to ARM token for backwards compatibility.
-                    user_token = azure_tokens.get("userAccessToken")
-
-                    # Log summary
-                    successful_tokens = [k for k, v in azure_tokens.items() if v]
-                    logger.info(f"[OBO] Azure tokens acquired for {user_name}: {successful_tokens}")
-
-                else:
-                    # AWS and others: Use ID token for federation
-                    id_token = request.headers.get('X-Azure-ID-Token')
-                    if id_token:
-                        user_token = id_token
-                        logger.info(f"Using ID token for {target_server} (federation): {user_info.get('user_name')}")
-                    else:
-                        user_token = user_info['token']
-                        logger.warning(f"No ID token for {target_server}, using access token")
-            else:
-                logger.info(f"MCP server {target_server} configured for shared SP mode - no user token passed")
-
-        # Note: User ID injection for openagentic_openagentic removed - that MCP server was deprecated
-        # Code execution now uses dedicated Code Mode (openagentic-manager + openagentic-exec)
         params_to_send = mcp_request.params
 
         # Route request to MCP server
@@ -1376,13 +979,12 @@ async def proxy_mcp_request(
         # Get user email from user_info for workspace isolation (Openagentic, etc.)
         user_email = user_info.get('email') if user_info else None
 
-        # Pass all Azure tokens if available
         result = await mcp_manager.route_request(
             target_server,
             request_data,
             user_token,
             user_email,
-            azure_tokens=azure_tokens if azure_tokens else None
+            azure_tokens=azure_tokens
         )
 
         execution_time = time.time() - start_time
@@ -1491,14 +1093,6 @@ async def call_mcp_tool(
 ):
     """Call a specific tool on an MCP server"""
 
-    # If meta.userAccessToken is provided, inject it into user_info for Azure/AWS OBO flow
-    if tool_call.meta and tool_call.meta.get('userAccessToken'):
-        if user_info is None:
-            user_info = {}
-        user_info = dict(user_info)  # Make a copy to avoid mutating the original
-        user_info['token'] = tool_call.meta['userAccessToken']
-        logger.info(f"[/mcp/tool] Injected userAccessToken from meta for {tool_call.server or 'auto-detected'} server")
-
     mcp_request = MCPRequest(
         method="tools/call",
         params={
@@ -1548,7 +1142,6 @@ async def health_check():
             "statuses": server_statuses
         },
         "auth_enabled": ENABLE_AUTH,
-        "tenant_id": TENANT_ID,
         "read_only_mode": {
             "enabled": MCP_READ_ONLY_MODE,
             "affected_servers": READ_ONLY_AFFECTED_SERVERS if MCP_READ_ONLY_MODE else [],
@@ -1813,234 +1406,6 @@ async def list_server_tools(server_name: str, user_info: Optional[Dict[str, Any]
         logger.error(f"Failed to list tools from {server_name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# === USER SESSION MANAGEMENT ===
-
-class UserSessionStartRequest(BaseModel):
-    user_id: str
-    email: str
-    access_token: str
-
-class UserSessionStopRequest(BaseModel):
-    user_id: str
-
-@app.post("/user-sessions/start")
-async def start_user_session(request: UserSessionStartRequest, user_info: Optional[Dict[str, Any]] = Depends(get_user_info)):
-    """Start a per-user Azure MCP session with OBO authentication"""
-    try:
-        session_manager = get_user_session_manager()
-        result = await session_manager.start_user_session(
-            user_id=request.user_id,
-            email=request.email,
-            access_token=request.access_token
-        )
-        return result
-    except Exception as e:
-        logger.error(f"Failed to start user session for {request.user_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/user-sessions/stop")
-async def stop_user_session(request: UserSessionStopRequest, user_info: Optional[Dict[str, Any]] = Depends(get_user_info)):
-    """Stop a per-user Azure MCP session"""
-    try:
-        session_manager = get_user_session_manager()
-        success = await session_manager.stop_user_session(request.user_id)
-        return {"success": success, "user_id": request.user_id}
-    except Exception as e:
-        logger.error(f"Failed to stop user session for {request.user_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/user-sessions")
-async def list_user_sessions(user_info: Optional[Dict[str, Any]] = Depends(get_user_info)):
-    """List all active user sessions"""
-    try:
-        session_manager = get_user_session_manager()
-        sessions = await session_manager.list_sessions()
-        return {"sessions": sessions, "count": len(sessions)}
-    except Exception as e:
-        logger.error(f"Failed to list user sessions: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/user-sessions/{user_id}")
-async def get_user_session(user_id: str, user_info: Optional[Dict[str, Any]] = Depends(get_user_info)):
-    """Get a specific user's session info including their Azure MCP tools"""
-    try:
-        session_manager = get_user_session_manager()
-        session = await session_manager.get_session(user_id)
-        if not session:
-            raise HTTPException(status_code=404, detail=f"No session found for user {user_id}")
-        return {
-            "user_id": session.user_id,
-            "email": session.email,
-            "created_at": session.created_at.isoformat(),
-            "last_accessed": session.last_accessed_at.isoformat(),
-            "is_alive": session.is_alive(),
-            "tool_count": len(session.tools) if session.tools else 0,
-            "tools": session.tools or [],  # Include the actual tools for LLM discovery
-            "pid": session.process.pid if session.process else None
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get user session for {user_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# === AZURE AD OAUTH ENDPOINTS ===
-
-@app.get("/auth/login")
-async def auth_login():
-    """Initiate Azure AD OAuth login flow"""
-    try:
-        if not oauth_service:
-            raise HTTPException(status_code=500, detail="OAuth service not initialized")
-
-        # Generate auth URL with PKCE
-        auth_data = oauth_service.generate_auth_url()
-
-        # Redirect user to Azure AD login
-        return RedirectResponse(url=auth_data["auth_url"])
-
-    except Exception as e:
-        logger.error(f"Failed to initiate login: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/auth/callback")
-async def auth_callback(code: Optional[str] = None, state: Optional[str] = None, error: Optional[str] = None):
-    """Handle Azure AD OAuth callback"""
-    try:
-        if error:
-            logger.error(f"OAuth error: {error}")
-            # Redirect to UI with error
-            return RedirectResponse(url=f"/?error={error}")
-
-        if not code or not state:
-            raise HTTPException(status_code=400, detail="Missing code or state parameter")
-
-        if not oauth_service:
-            raise HTTPException(status_code=500, detail="OAuth service not initialized")
-
-        # Exchange code for tokens
-        tokens = oauth_service.exchange_code_for_token(code, state)
-
-        # Extract user info from tokens
-        user_info = oauth_service.extract_user_info(tokens)
-
-        # Create session
-        session_id = oauth_service.create_session(user_info)
-
-        # Automatically start per-user Azure MCP session
-        session_manager = get_user_session_manager()
-        try:
-            await session_manager.start_user_session(
-                user_id=user_info["user_id"],
-                email=user_info["email"],
-                access_token=user_info["access_token"]
-            )
-            logger.info(f"✅ Auto-started Azure MCP session for {user_info['email']}")
-        except Exception as mcp_error:
-            logger.error(f"Failed to start Azure MCP session: {str(mcp_error)}")
-            # Continue anyway - user can manually start session
-
-        # Redirect to UI with session cookie
-        response = RedirectResponse(url="/", status_code=302)
-        response.set_cookie(
-            key="mcp_session",
-            value=session_id,
-            httponly=True,
-            max_age=86400,  # 24 hours
-            samesite="lax"
-        )
-
-        return response
-
-    except Exception as e:
-        logger.error(f"OAuth callback failed: {str(e)}")
-        return RedirectResponse(url=f"/?error=auth_failed")
-
-@app.get("/auth/me")
-async def auth_me(mcp_session: Optional[str] = Cookie(None)):
-    """Get current user info from session"""
-    try:
-        if not mcp_session:
-            raise HTTPException(status_code=401, detail="Not authenticated")
-
-        if not oauth_service:
-            raise HTTPException(status_code=500, detail="OAuth service not initialized")
-
-        session_data = oauth_service.get_session(mcp_session)
-
-        if not session_data:
-            raise HTTPException(status_code=401, detail="Invalid or expired session")
-
-        return {
-            "user_id": session_data["user_id"],
-            "email": session_data["email"],
-            "name": session_data["name"],
-            "tenant_id": session_data["tenant_id"]
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get user info: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/auth/logout")
-async def auth_logout(response: Response, mcp_session: Optional[str] = Cookie(None)):
-    """Logout and destroy session"""
-    try:
-        if mcp_session and oauth_service:
-            # Stop user's Azure MCP session
-            if oauth_service.get_session(mcp_session):
-                session_data = oauth_service.get_session(mcp_session)
-                user_id = session_data.get("user_id")
-
-                if user_id:
-                    session_manager = get_user_session_manager()
-                    await session_manager.stop_user_session(user_id)
-                    logger.info(f"Stopped Azure MCP session for user {user_id}")
-
-            # Delete OAuth session
-            oauth_service.delete_session(mcp_session)
-
-        # Clear cookie
-        response.delete_cookie("mcp_session")
-
-        return {"success": True}
-
-    except Exception as e:
-        logger.error(f"Logout failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Pydantic model for manual token testing
-class ManualSessionRequest(BaseModel):
-    user_id: str
-    email: str
-    access_token: str
-
-@app.post("/auth/manual-session")
-async def create_manual_session(request: ManualSessionRequest):
-    """
-    Create a user session manually with an access token (for testing).
-    This allows testing with tokens obtained from other sources.
-    """
-    try:
-        session_manager = get_user_session_manager()
-
-        # Start Azure MCP session with provided token
-        result = await session_manager.start_user_session(
-            user_id=request.user_id,
-            email=request.email,
-            access_token=request.access_token
-        )
-
-        logger.info(f"✅ Manual session created for {request.email}")
-
-        return result
-
-    except Exception as e:
-        logger.error(f"Failed to create manual session: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 # === MCP TOOL EXECUTION ===
 
 class MCPCallRequest(BaseModel):
@@ -2296,46 +1661,10 @@ async def batch_call_tools(
                 detail=f"Access denied. Admin privileges required for '{call.server}' server."
             )
 
-    # Handle OBO tokens (same as /call endpoint)
-    azure_tokens = {}
+    # Local-auth-only build: no per-user OBO token exchange. Cloud MCPs
+    # authenticate via their service-principal / static keypair / ADC creds.
+    azure_tokens = None
     user_token = None
-
-    if user_info and user_info.get('token') and user_info.get('token') != 'SYSTEM_SP_AUTH':
-        has_azure_calls = any('azure' in c.server.lower() for c in batch_request.calls)
-        if has_azure_calls:
-            original_token = user_info['token']
-            AZURE_AUDIENCES = {
-                "userAccessToken": "https://management.azure.com/.default",
-                "graphAccessToken": "https://graph.microsoft.com/.default",
-                "keyvaultAccessToken": "https://vault.azure.net/.default",
-                "storageAccessToken": "https://storage.azure.com/.default",
-                "sqlAccessToken": "https://database.windows.net/.default",
-                "logAnalyticsAccessToken": "https://api.loganalytics.io/.default",
-            }
-
-            try:
-                parts = original_token.split('.')
-                if len(parts) >= 2:
-                    payload_b64 = parts[1] + '=' * (4 - len(parts[1]) % 4)
-                    payload = json.loads(base64.b64decode(payload_b64))
-                    if 'management.azure.com' in payload.get('aud', ''):
-                        azure_tokens["userAccessToken"] = original_token
-            except Exception:
-                pass
-
-            # Fail-CLOSED: any audience failure raises HTTPException(401); we
-            # NEVER fall back to passing the original AAD token through.
-            acquired = await acquire_azure_obo_tokens(
-                original_token,
-                AZURE_AUDIENCES,
-                user_name=user_name,
-                skip=set(azure_tokens.keys()),
-            )
-            azure_tokens.update(acquired)
-
-            user_token = azure_tokens.get("userAccessToken")
-        else:
-            user_token = user_info.get('token')
 
     # Execute all tool calls in parallel
     async def execute_single_call(call: BatchToolCall) -> BatchToolResult:
@@ -2536,90 +1865,22 @@ async def call_mcp_tool(
             "params": mcp_request.params
         }
 
-        # CRITICAL: Pass user's tokens for OBO authentication
-        # Azure needs tokens for ALL API audiences to match az login parity
-        # - ARM: https://management.azure.com (VMs, Storage, Networks, Cost, etc.)
-        # - Graph: https://graph.microsoft.com (Azure AD/Entra ID)
-        # - Key Vault: https://vault.azure.net (Secrets, Keys, Certificates)
-        # - Storage: https://storage.azure.com (Blob, File, Queue, Table)
-        # - SQL: https://database.windows.net (Azure SQL with AAD)
-        # - Log Analytics: https://api.loganalytics.io (Workspace queries)
-        azure_tokens = {}  # All Azure tokens for different audiences
+        # Local-auth-only build: no per-user OBO token exchange. Cloud MCPs
+        # (aws/azure/gcp) authenticate via their service-principal / static
+        # keypair / ADC creds supplied through the server's config.env, not a
+        # user-delegated token.
+        azure_tokens = None
         user_token = None
-
-        if user_info and user_info.get('token') and user_info.get('token') != 'SYSTEM_SP_AUTH':
-            id_token = http_request.headers.get('X-Azure-ID-Token')
-
-            if 'azure' in call_request.server.lower():
-                original_token = user_info['token']
-
-                # Define ALL Azure API audiences we need for full az login parity
-                AZURE_AUDIENCES = {
-                    "userAccessToken": "https://management.azure.com/.default",      # ARM API
-                    "graphAccessToken": "https://graph.microsoft.com/.default",       # Microsoft Graph
-                    "keyvaultAccessToken": "https://vault.azure.net/.default",        # Key Vault
-                    "storageAccessToken": "https://storage.azure.com/.default",       # Azure Storage
-                    "sqlAccessToken": "https://database.windows.net/.default",        # Azure SQL
-                    "logAnalyticsAccessToken": "https://api.loganalytics.io/.default", # Log Analytics
-                }
-
-                # Check if original token already has an Azure audience
-                try:
-                    parts = original_token.split('.')
-                    if len(parts) >= 2:
-                        payload_b64 = parts[1] + '=' * (4 - len(parts[1]) % 4)
-                        payload = json.loads(base64.b64decode(payload_b64))
-                        token_audience = payload.get('aud', '')
-
-                        # If token already has management.azure.com, use directly for ARM
-                        if 'management.azure.com' in token_audience:
-                            azure_tokens["userAccessToken"] = original_token
-                            logger.info(f"[OBO] DIRECT ARM TOKEN for {user_name}")
-                except Exception:
-                    pass  # Will exchange below
-
-                # Exchange for all audiences in parallel (skip ARM if already have it).
-                # Fail-CLOSED: any audience failure raises HTTPException(401); we
-                # NEVER fall back to passing the original AAD token through.
-                acquired = await acquire_azure_obo_tokens(
-                    original_token,
-                    AZURE_AUDIENCES,
-                    user_name=user_name,
-                    skip=set(azure_tokens.keys()),
-                )
-                azure_tokens.update(acquired)
-
-                # Set primary user_token to ARM token for backwards compatibility.
-                user_token = azure_tokens.get("userAccessToken")
-
-                # Log summary
-                successful_tokens = [k for k, v in azure_tokens.items() if v]
-                logger.info(f"[OBO] Azure tokens acquired for {user_name}: {successful_tokens}")
-            elif 'aws' in call_request.server.lower():
-                # AWS: Use ID token for Identity Center federation
-                if id_token:
-                    user_token = id_token
-                    logger.info(f"[OBO] Using ID token for {call_request.server}: {user_name}")
-                else:
-                    user_token = user_info['token']
-                    logger.warning(f"[OBO] No ID token for {call_request.server}, using access token")
-            else:
-                # Non-OBO servers use the access token
-                user_token = user_info['token']
-                logger.info(f"[OBO] Passing access token to {call_request.server}: {user_name}")
-        else:
-            logger.debug(f"No user token available for {call_request.server} - will use fallback credentials")
 
         # Get user email from user_info for workspace isolation (Openagentic, etc.)
         user_email = user_info.get('email') if user_info else None
 
-        # Pass all Azure tokens if available, otherwise just user_token
         result = await mcp_manager.route_request(
             call_request.server,
             request_data,
             user_token,
             user_email,
-            azure_tokens=azure_tokens if azure_tokens else None
+            azure_tokens=azure_tokens
         )
 
         execution_time_ms = (time.time() - start_time) * 1000
@@ -2782,7 +2043,6 @@ async def inspector_ui_proxy_all(path: str, request: Request):
 if __name__ == "__main__":
     logger.info("=== STARTING MCP PROXY SERVICE ===")
     logger.info(f"Auth Enabled: {ENABLE_AUTH}")
-    logger.info(f"Tenant ID: {TENANT_ID}")
     logger.info(f"Port: {PORT}")
 
     uvicorn.run(

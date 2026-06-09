@@ -112,19 +112,6 @@ export const v1Router: FastifyPluginAsync = async (fastify: FastifyInstance) => 
   // Note: Legacy /v1/chat/completions still works for backward compatibility
 
   // ============================================================================
-  // CREDENTIAL EXCHANGE ROUTES
-  // Token exchange for OAT/Synth cloud credential injection
-  // ============================================================================
-
-  try {
-    const { credentialRoutes } = await import('./credentials.js');
-    await fastify.register(credentialRoutes, { prefix: '/credentials' });
-    logger.info('✅ Credential exchange routes registered at /api/v1/credentials/*');
-  } catch (error) {
-    logger.warn({ err: error }, 'Credential exchange routes not available');
-  }
-
-  // ============================================================================
   // WEBHOOK TRIGGER ROUTES
   // External webhook receivers that trigger workflow executions
   // ============================================================================

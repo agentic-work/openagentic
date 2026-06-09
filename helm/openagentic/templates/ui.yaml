@@ -68,10 +68,6 @@ spec:
               value: local
             - name: LOCAL_LOGIN_ENABLED
               value: "true"
-            - name: MICROSOFT_LOGIN_ENABLED
-              value: "false"
-            - name: GOOGLE_LOGIN_ENABLED
-              value: "false"
           readinessProbe:
             httpGet:
               path: /healthz

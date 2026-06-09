@@ -21,15 +21,9 @@ say "Azure — App Registration + SP + Reader"
 TENANT=$(az account show --query tenantId -o tsv)
 SUB=$(az account show --query id -o tsv)
 
-az ad group create --display-name "openagentic-admins" --mail-nickname "openagentic-admins" >/dev/null
-GROUP_ID=$(az ad group show --group "openagentic-admins" --query id -o tsv)
-
 APP_JSON=$(az ad app create \
-  --display-name "openagentic-test" \
-  --sign-in-audience "AzureADMyOrg" \
-  --web-redirect-uris "http://localhost:8080/api/auth/microsoft/callback" \
-  --enable-id-token-issuance true \
-  --enable-access-token-issuance true -o json)
+  --display-name "openagentic-readonly" \
+  --sign-in-audience "AzureADMyOrg" -o json)
 APP_ID=$(echo "$APP_JSON" | python3 -c 'import sys,json;print(json.load(sys.stdin)["appId"])')
 APP_OBJ=$(echo "$APP_JSON" | python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])')
 
@@ -42,17 +36,11 @@ az role assignment create \
   --assignee-object-id "$SP_OBJ" --assignee-principal-type ServicePrincipal \
   --role "Reader" --scope "/subscriptions/$SUB" >/dev/null
 
-MCP_TESTER_ID=$(az ad user list --query "[?contains(userPrincipalName,'mcp-tester')].id | [0]" -o tsv || true)
-if [[ -n "${MCP_TESTER_ID:-}" ]]; then
-  az ad group member add --group "$GROUP_ID" --member-id "$MCP_TESTER_ID" || true
-fi
-
 cat > "$SECRETS/azure.env" <<EOF
 AZURE_TENANT_ID=$TENANT
 AZURE_SUBSCRIPTION_ID=$SUB
 AZURE_CLIENT_ID=$APP_ID
 AZURE_CLIENT_SECRET=$SECRET
-AZURE_ADMIN_GROUP_ID=$GROUP_ID
 AZURE_APP_OBJECT_ID=$APP_OBJ
 AZURE_SP_OBJECT_ID=$SP_OBJ
 EOF

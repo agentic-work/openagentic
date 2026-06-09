@@ -1,8 +1,8 @@
 # MCP Proxy Service
 
-**Centralized MCP Server Manager with User Session Isolation**
+**Centralized MCP Server Manager**
 
-The MCP Proxy is a Python FastAPI service that manages Model Context Protocol (MCP) servers, providing user session isolation, OAuth token management, and centralized tool execution.
+The MCP Proxy is a Python FastAPI service that manages Model Context Protocol (MCP) servers, providing inter-service authentication and centralized tool execution. Cloud MCPs (aws/azure/gcp) authenticate with service-principal / static-keypair / ADC credentials.
 
 ---
 
@@ -14,8 +14,7 @@ The MCP Proxy is a Python FastAPI service that manages Model Context Protocol (M
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [API Reference](#api-reference)
-- [User Session Management](#user-session-management)
-- [OAuth Integration](#oauth-integration)
+- [Cloud MCP Credentials](#cloud-mcp-credentials)
 - [Development](#development)
 - [Deployment](#deployment)
 - [Monitoring](#monitoring)
@@ -28,8 +27,8 @@ The MCP Proxy is a Python FastAPI service that manages Model Context Protocol (M
 The MCP Proxy service acts as a centralized gateway for all MCP (Model Context Protocol) servers in the OpenAgentic platform. It provides:
 
 - **Lifecycle Management**: Start, stop, restart, and monitor MCP servers
-- **User Session Isolation**: Per-user MCP instances for secure multi-tenancy
-- **OAuth Integration**: Automatic token management for Azure and other cloud MCPs
+- **Inter-service Authentication**: Validates the api→proxy service token (HS256 JWT / `oa_sys_` HMAC / internal API key) and local-auth `oa_` user API keys
+- **Cloud Credentials**: Service-principal / static-keypair / ADC creds for the cloud MCPs
 - **Tool Discovery**: Centralized registry of all available MCP tools
 - **Health Monitoring**: Automatic health checks and recovery
 - **Metrics**: Prometheus-compatible metrics for observability
@@ -39,10 +38,9 @@ The MCP Proxy service acts as a centralized gateway for all MCP (Model Context P
 The dedicated MCP Proxy provides centralized MCP management:
 
 1. **Clear Separation**: MCP management separate from LLM integration
-2. **User Isolation**: Each user gets their own MCP instances
-3. **OAuth at Scale**: Per-user cloud credentials, not shared service principals
-4. **Better Monitoring**: Dedicated metrics and health checks
-5. **Flexibility**: Easy to add new MCP servers without touching LLM code
+2. **Single Credential Model**: Cloud MCPs share a service-principal / static-keypair / ADC credential set
+3. **Better Monitoring**: Dedicated metrics and health checks
+4. **Flexibility**: Easy to add new MCP servers without touching LLM code
 
 ---
 
@@ -55,11 +53,11 @@ The dedicated MCP Proxy provides centralized MCP management:
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                   │
 │  ┌─────────────────┐  ┌──────────────────┐  ┌────────────────┐ │
-│  │   MCP Manager   │  │ Session Manager  │  │  OAuth Manager │ │
+│  │   MCP Manager   │  │  Auth Resolver   │  │  Tool Indexer  │ │
 │  │                 │  │                  │  │                │ │
-│  │ • Start/Stop    │  │ • User Sessions  │  │ • Token Mgmt   │ │
-│  │ • Health Check  │  │ • Isolation      │  │ • Auto Refresh │ │
-│  │ • Recovery      │  │ • Redis Tracking │  │ • Encryption   │ │
+│  │ • Start/Stop    │  │ • HS256 JWT      │  │ • Index tools  │ │
+│  │ • Health Check  │  │ • oa_sys_ HMAC   │  │ • Redis-backed │ │
+│  │ • Recovery      │  │ • oa_ API key    │  │ • Semantic     │ │
 │  └─────────────────┘  └──────────────────┘  └────────────────┘ │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────┐   │
@@ -70,32 +68,29 @@ The dedicated MCP Proxy provides centralized MCP management:
 │  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
                               │
-        ┌─────────────────────┼─────────────────────┐
-        │                     │                     │
-        ▼                     ▼                     ▼
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│ System MCPs  │     │  User MCPs   │     │   Cloud MCPs │
-│              │     │              │     │              │
-│ • admin      │     │ • User1      │     │ • aws        │
-│ • web        │     │   Azure MCP  │     │ • azure      │
-│ • github     │     │ • User2      │     │ • gcp        │
-│ • kubernetes │     │   Azure MCP  │     │              │
-│ • prometheus │     │ • User3      │     │              │
-│ • loki       │     │   Azure MCP  │     │              │
-└──────────────┘     └──────────────┘     └──────────────┘
+              ┌───────────────┴───────────────┐
+              │                               │
+              ▼                               ▼
+      ┌──────────────┐               ┌──────────────┐
+      │ System MCPs  │               │   Cloud MCPs │
+      │              │               │              │
+      │ • admin      │               │ • aws        │
+      │ • web        │               │ • azure      │
+      │ • github     │               │ • gcp        │
+      │ • kubernetes │               │  (SP/static/ │
+      │ • prometheus │               │   ADC creds) │
+      │ • loki       │               │              │
+      └──────────────┘               └──────────────┘
 ```
 
-The wired built-in MCP servers (see `src/mcp_manager.py` `initialize_servers`) are: **aws, azure, gcp, kubernetes, prometheus, loki, github, admin, web** (9). Azure runs as per-user instances with OBO tokens; the rest are system-level.
+The wired built-in MCP servers (see `src/mcp_manager.py` `initialize_servers`) are: **aws, azure, gcp, kubernetes, prometheus, loki, github, admin, web** (9). All run as system-level subprocesses; the cloud MCPs authenticate with a shared service-principal / static-keypair / ADC credential set.
 
 ### Component Responsibilities
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| **Main Application** | `src/main.py` | FastAPI app, routes, tool execution |
+| **Main Application** | `src/main.py` | FastAPI app, routes, auth resolution, tool execution |
 | **MCP Manager** | `src/mcp_manager.py` | MCP lifecycle, process management, health |
-| **Session Manager** | `src/user_session_manager.py` | Per-user Azure MCP session isolation |
-| **OAuth Manager** | `src/azure_oauth.py` | Azure AD OAuth |
-| **OBO Strategy** | `src/azure_obo_strategy.py` | Azure AD on-behalf-of token exchange |
 | **Tool Indexer** | `src/tool_indexer.py` | Tool discovery & indexing |
 | **Tool Search** | `src/tool_search.py` | Semantic tool search |
 | **Static UI** | `src/static/index.html` | Web-based MCP inspector |
@@ -104,40 +99,28 @@ The wired built-in MCP servers (see `src/mcp_manager.py` `initialize_servers`) a
 
 ## Features
 
-### 1. User Session Isolation
+### 1. Inter-service Authentication
 
-Each user gets their own isolated MCP instances:
+Every request is resolved per-request by `get_user_info` in `src/main.py`,
+which accepts only these credential types (fail-closed otherwise):
 
-```python
-# User1 requests Azure VM list
-# → MCP Proxy creates User1's Azure MCP with User1's OAuth token
-# → User1 sees only their VMs
+- **`oa_sys_` system token** — HMAC-verified against `INTERNAL_SERVICE_SECRET` (api→proxy SP context)
+- **`oa_` user API key** — validated against the api's `/api/auth/me` (local-auth)
+- **`INTERNAL_API_KEY`** — plain match for the api→proxy service path
+- **Internal HS256 JWT** — verified against the shared signing secret (`JWT_SECRET` / `SIGNING_SECRET`)
 
-# User2 requests Azure VM list
-# → MCP Proxy creates User2's Azure MCP with User2's OAuth token
-# → User2 sees only their VMs
-```
+When `ENABLE_AUTH=false` (local dev only), a request with no Authorization
+header falls back to a local system-admin context.
 
-**Benefits:**
-- No shared credentials
-- Azure RBAC respected per user
-- Audit trail per user
-- Compliance-friendly
+### 2. Cloud MCP Credentials
 
-### 2. OAuth Token Management
+The cloud MCPs (aws/azure/gcp) authenticate with a shared credential set,
+supplied via each server's `config.env` (built from `os.getenv` in
+`mcp_manager.initialize_servers`) and the read-only host CLI mounts:
 
-Automatic OAuth token lifecycle:
-
-1. User authenticates → API sends OAuth token to MCP Proxy
-2. MCP Proxy creates user session with encrypted token
-3. Token used for all user's Azure MCP operations
-4. Automatic token refresh before expiry
-5. Session cleanup on logout/timeout
-
-**Supported OAuth Providers:**
-- Azure AD (Microsoft Identity Platform)
-- AWS Cognito (planned)
-- Google OAuth (planned)
+- **Azure** — service principal (`AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` / `AZURE_SUBSCRIPTION_ID`); also powers the SP-based cost dashboards
+- **AWS** — static keypair (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION`)
+- **GCP** — service account / ADC (`GCP_PROJECT_ID` / `GCP_CREDENTIALS_JSON` / `GCP_CREDENTIALS_FILE`)
 
 ### 3. Health Monitoring & Auto-Recovery
 
@@ -245,11 +228,22 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/openagentic
 MILVUS_HOST=localhost
 MILVUS_PORT=19530
 
-# Azure OAuth Configuration
+# Inter-service auth (must match the api)
+JWT_SECRET=your-strong-random-signing-key
+SIGNING_SECRET=your-strong-random-signing-key
+INTERNAL_SERVICE_SECRET=your-internal-service-secret
+INTERNAL_API_KEY=your-internal-api-key
+
+# Cloud MCP credentials (service principal / static keypair / ADC)
 AZURE_TENANT_ID=your-tenant-id
-AZURE_CLIENT_ID=your-client-id
-AZURE_CLIENT_SECRET=your-client-secret
-AZURE_REDIRECT_URI=http://localhost:3000/auth/callback
+AZURE_CLIENT_ID=your-sp-client-id
+AZURE_CLIENT_SECRET=your-sp-client-secret
+AZURE_SUBSCRIPTION_ID=your-subscription-id
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=us-east-1
+GCP_PROJECT_ID=your-project-id
+GCP_CREDENTIALS_JSON=your-service-account-json
 
 # Built-in MCP Server Toggles (set to "true" to disable a server)
 OpenAgentic_ADMIN_MCP_DISABLED=false
@@ -278,9 +272,10 @@ self.servers["openagentic_admin"] = MCPServer(MCPServerConfig(
 ))
 ```
 
-The Azure MCP runs as a per-user instance with OBO authentication
-(see `src/user_session_manager.py`); the AWS and admin MCPs can also be attached
-as remote HTTP servers via their respective `*_MCP_URL` env vars.
+The Azure MCP authenticates with a service principal (`AZURE_CLIENT_ID` /
+`AZURE_CLIENT_SECRET` / `AZURE_TENANT_ID` / `AZURE_SUBSCRIPTION_ID`); the Azure
+and AWS MCPs can also be attached as remote HTTP servers via their respective
+`*_MCP_URL` env vars.
 
 ---
 
@@ -337,40 +332,6 @@ List tools for a single server.
 - `GET /servers/enabled` — list enabled servers
 - `GET /servers/{server_id}/enabled` — check whether a server is enabled
 
-### User Session Management
-
-#### POST /user-sessions/start
-
-Start a per-user Azure MCP session with OBO authentication.
-
-**Request:**
-```json
-{
-  "user_id": "user-123",
-  "email": "user@example.com",
-  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc..."
-}
-```
-
-#### POST /user-sessions/stop
-
-Stop a user's MCP session.
-
-**Request:**
-```json
-{
-  "user_id": "user-123"
-}
-```
-
-#### GET /user-sessions
-
-List all active user sessions.
-
-#### GET /user-sessions/{user_id}
-
-Get a specific user's session info, including their per-user Azure MCP tools.
-
 ### Health & Monitoring
 
 #### GET /health
@@ -388,98 +349,26 @@ Prometheus-compatible HTTP metrics (text format), exposed via
 
 ---
 
-## User Session Management
+## Cloud MCP Credentials
 
-### Session Lifecycle
+The cloud MCPs authenticate with a single shared credential set (no per-user
+token exchange). Credentials reach each MCP subprocess two ways:
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant API
-    participant MCPProxy
-    participant Azure
-    participant MCPServer
+1. **`config.env` merge** — each cloud MCP's env block in
+   `mcp_manager.initialize_servers` is built from `os.getenv(...)` and merged
+   into the spawned subprocess env (see the FedRAMP SC-4 filtered child-process
+   env in `src/mcp_manager.py`).
+2. **Read-only host CLI mounts** — `~/.azure`, `~/.aws`, `~/.config/gcloud`,
+   `~/.kube` are mounted read-only so the SDKs (`az`, `boto3`, `google-auth`)
+   pick up their default credential chains.
 
-    User->>API: Login (Azure AD)
-    API->>Azure: OAuth request
-    Azure->>API: OAuth token
-    API->>MCPProxy: POST /user-sessions/start
-    MCPProxy->>Redis: Store session
-    MCPProxy->>MCPServer: Start user's Azure MCP
-    MCPServer->>MCPServer: Initialize with OAuth token
-    MCPProxy->>API: Session created
+| Provider | Credential model | Env |
+|----------|------------------|-----|
+| **Azure** | Service principal | `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_SUBSCRIPTION_ID` |
+| **AWS** | Static keypair | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` |
+| **GCP** | Service account / ADC | `GCP_PROJECT_ID`, `GCP_CREDENTIALS_JSON`, `GCP_CREDENTIALS_FILE` |
 
-    User->>API: Execute Azure tool
-    API->>MCPProxy: POST /call
-    MCPProxy->>MCPServer: Route to user's MCP
-    MCPServer->>Azure: Use user's OAuth token
-    Azure->>MCPServer: Azure resources
-    MCPServer->>MCPProxy: Tool result
-    MCPProxy->>API: Result
-    API->>User: Display result
-
-    User->>API: Logout
-    API->>MCPProxy: POST /user-sessions/stop
-    MCPProxy->>MCPServer: Stop user's MCP
-    MCPProxy->>Redis: Delete session
-    MCPProxy->>API: Session destroyed
-```
-
-### Session Storage (Redis)
-
-```python
-# Redis key structure
-mcp:session:{user_id} = {
-    "session_id": "session-456",
-    "user_id": "user-123",
-    "oauth_token_encrypted": "...",
-    "mcp_servers": ["user-azure-mcp"],
-    "created_at": "2025-01-13T10:30:00Z",
-    "expires_at": "2025-01-13T11:30:00Z",
-    "last_activity": "2025-01-13T10:35:00Z"
-}
-
-# TTL set to session expiry
-TTL mcp:session:user-123 → 3600 seconds
-```
-
----
-
-## OAuth Integration
-
-### Azure AD OAuth Flow
-
-```python
-# 1. User authenticates via Azure AD (handled by API)
-# 2. API receives OAuth token
-# 3. API sends token to MCP Proxy
-
-# In MCP Proxy (src/azure_oauth.py):
-class AzureOAuthService:
-    def __init__(self, redis_client: redis.Redis):
-        # tenant_id / client_id / client_secret are read from the environment
-        self.msal_app = msal.ConfidentialClientApplication(
-            self.client_id,
-            authority=self.authority,
-            client_credential=self.client_secret,
-        )
-
-    def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
-        """Refresh an expired access token"""
-        result = self.msal_app.acquire_token_by_refresh_token(
-            refresh_token=refresh_token,
-            scopes=self.scopes,
-        )
-        return {
-            "access_token": result["access_token"],
-            "refresh_token": result.get("refresh_token"),
-            "expires_in": result.get("expires_in", 3600),
-            "token_type": result.get("token_type", "Bearer"),
-        }
-```
-
-On-behalf-of (OBO) token exchange for per-user cloud access lives in
-`src/azure_obo_strategy.py`.
+The Azure service principal also backs the SP-based Azure cost dashboards.
 
 ---
 
@@ -490,11 +379,8 @@ On-behalf-of (OBO) token exchange for per-user cloud access lives in
 ```
 openagentic-mcp-proxy/
 ├── src/
-│   ├── main.py                    # FastAPI application + routes
+│   ├── main.py                    # FastAPI application + routes + auth resolution
 │   ├── mcp_manager.py             # MCP lifecycle management
-│   ├── user_session_manager.py    # Per-user Azure MCP session isolation
-│   ├── azure_oauth.py             # Azure AD OAuth
-│   ├── azure_obo_strategy.py      # Azure AD on-behalf-of token exchange
 │   ├── tool_indexer.py            # Tool discovery & indexing
 │   ├── tool_search.py             # Semantic tool search
 │   ├── tools/
@@ -504,7 +390,6 @@ openagentic-mcp-proxy/
 ├── tests/
 │   ├── conftest.py
 │   ├── test_auth_hardening.py
-│   ├── test_azure_obo_strategy.py
 │   ├── test_jwt_auth.py
 │   └── test_tool_search.py
 ├── requirements.txt               # Python dependencies
@@ -607,18 +492,18 @@ process metrics.
 4. Verify environment variables are set correctly
 5. Confirm the server is not disabled via its `*_MCP_DISABLED` toggle
 
-### User Session Not Creating
+### Cloud MCP Authentication Failing
 
 **Symptoms:**
-- `POST /user-sessions/start` returns 500 error
-- User's Azure MCP tools not available
+- Azure/AWS/GCP tool calls return auth errors
+- Cloud MCP tools not available
 
 **Solutions:**
-1. Check OAuth token valid: Decode JWT, verify expiry
-2. Check Redis connection: `redis-cli ping`
-3. Verify Azure credentials: `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`
-4. Check MCP Proxy logs for OAuth errors
-5. Verify user has Azure RBAC permissions
+1. Verify the cloud credentials are set: Azure (`AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_SUBSCRIPTION_ID`), AWS (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`), GCP (`GCP_PROJECT_ID`, `GCP_CREDENTIALS_JSON`)
+2. Check the read-only host CLI mounts exist (`~/.azure`, `~/.aws`, `~/.config/gcloud`)
+3. Verify the service principal / keypair / service account has the required RBAC
+4. Check MCP Proxy logs for the failing cloud MCP subprocess
+5. Check Redis connection: `redis-cli ping`
 
 ### Tool Execution Timeout
 
@@ -632,17 +517,17 @@ process metrics.
 3. Verify the tool parameters are valid
 4. Check the underlying service (Azure API, etc.) is responsive
 
-### OAuth Token Refresh Failing
+### Inter-service Auth Rejected (401)
 
 **Symptoms:**
-- Logs show "Failed to refresh OAuth token"
-- User's Azure tools stop working after 1 hour
+- The api's tool calls to the proxy return 401
+- Logs show "internal token verification unavailable" or "System token verification failed"
 
 **Solutions:**
-1. Verify the refresh token is being stored
-2. Check the Azure AD app registration has the `offline_access` scope
-3. Verify the Azure AD credentials are correct
-4. Review the Azure AD sign-in/audit logs for errors
+1. Confirm `JWT_SECRET` / `SIGNING_SECRET` match between the api and the proxy
+2. Confirm `INTERNAL_SERVICE_SECRET` matches (used for the `oa_sys_` HMAC)
+3. Confirm `INTERNAL_API_KEY` matches the api's `API_INTERNAL_KEY`
+4. Verify none of the signing keys are a `dev-secret*` placeholder (boot fails closed)
 
 ---
 

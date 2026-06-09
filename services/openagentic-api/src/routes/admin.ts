@@ -13,7 +13,6 @@ import { prisma } from '../utils/prisma.js';
 import os from 'os';
 // jwt import removed — admin auth handled by outer adminMiddleware (unifiedAuth.ts)
 import { MilvusClient } from '@zilliz/milvus2-sdk-node';
-import { AzureGroupService } from '../services/AzureGroupService.js';
 import { loggers } from '../utils/logger.js';
 import llmProviderRoutes from './admin/llm-providers.js';
 import multiModelRoutes from './admin/multi-model.js';
@@ -100,7 +99,6 @@ interface InspectorAPIResponse {
  */
 export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   const logger = fastify.log;
-  const azureGroupService = new AzureGroupService();
 
   // Ensure Prisma is connected on startup
   try {

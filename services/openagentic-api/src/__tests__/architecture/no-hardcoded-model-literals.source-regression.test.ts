@@ -128,7 +128,6 @@ const KNOWN_VIOLATORS: Record<string, number> = {
   'services/model-routing/modelFamily.ts': 10,
   'services/InitializationService.ts': 10,
   'services/context/ContextManagerService.ts': 10,
-  'services/AdminValidationService.ts': 5,
   'services/RAGHealthCheck.ts': 5,
   // Routes that still embed literals (M-tier audit items)
   // 'routes/admin-test-harness.ts': closed 2026-05-05 (M7). 4 hardcoded

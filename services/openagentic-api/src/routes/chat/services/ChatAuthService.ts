@@ -6,7 +6,6 @@
 
 import { prisma } from '../../../utils/prisma.js';
 import type { Logger } from 'pino';
-import { AzureTokenService } from '../../../services/AzureTokenService.js';
 
 export interface UserLimits {
   dailyTokenLimit: number | null;
@@ -25,11 +24,9 @@ export interface LimitCheckResult {
 
 export class ChatAuthService {
   private prisma = prisma;
-  private azureTokenService: AzureTokenService;
 
   constructor(private logger: any) {
     this.logger = logger.child({ service: 'ChatAuthService' }) as Logger;
-    this.azureTokenService = new AzureTokenService(this.logger);
   }
 
   /**
@@ -324,49 +321,6 @@ export class ChatAuthService {
         userId,
         error: error.message
       }, 'Failed to increment usage counters');
-    }
-  }
-
-  /**
-   * Get Azure token information for user
-   * Automatically refreshes expired tokens using MSAL if refresh token is available
-   */
-  async getAzureTokenInfo(userId: string): Promise<any | null> {
-    try {
-      // Use AzureTokenService which handles auto-refresh
-      const tokenInfo = await this.azureTokenService.getOrRefreshToken(userId);
-
-      if (!tokenInfo) {
-        this.logger.debug({ userId }, 'No Azure token found for user');
-        return null;
-      }
-
-      this.logger.debug({
-        userId,
-        hasToken: true,
-        hasIdToken: !!tokenInfo.id_token,
-        isExpired: tokenInfo.is_expired,
-        wasRefreshed: !tokenInfo.is_expired,
-        expiresAt: tokenInfo.expires_at
-      }, 'Azure token info retrieved (with auto-refresh)');
-
-      return {
-        hasToken: true,
-        isExpired: tokenInfo.is_expired,
-        accessToken: tokenInfo.access_token, // For Azure ARM OBO (aud: management.azure.com)
-        idToken: tokenInfo.id_token,         // For AWS IC OBO (aud: app's client ID)
-        expiresAt: tokenInfo.expires_at,
-        scope: 'https://management.azure.com/.default',
-        updatedAt: new Date()
-      };
-
-    } catch (error) {
-      this.logger.error({
-        userId,
-        error: error.message
-      }, 'Azure token info retrieval failed');
-
-      return null;
     }
   }
 

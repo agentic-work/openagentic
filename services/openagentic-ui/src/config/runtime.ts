@@ -37,26 +37,6 @@ export function getApiUrl(): string {
   return getRuntimeConfig('VITE_API_URL', '');
 }
 
-export function getAADClientId(): string {
-  return getRuntimeConfig('VITE_AAD_CLIENT_ID', '');
-}
-
-export function getAzureTenantId(): string {
-  return getRuntimeConfig('VITE_AZURE_TENANT_ID', '');
-}
-
-export function getAADAuthority(): string {
-  return getRuntimeConfig('VITE_AAD_AUTHORITY', '');
-}
-
-export function getAADRedirectUri(): string {
-  return getRuntimeConfig('VITE_AAD_REDIRECT_URI', '/auth/callback');
-}
-
-export function getAzureADAuthorizedGroups(): string {
-  return getRuntimeConfig('VITE_AZURE_AD_AUTHORIZED_GROUPS', '');
-}
-
 /**
  * @deprecated SECURITY WARNING: API keys and secrets should NEVER be exposed in client-side code.
  * These values are visible to anyone who inspects the JavaScript bundle or window.__CONFIG__.
@@ -110,54 +90,14 @@ export function getWorkflowsApiUrl(): string {
 }
 
 // ===== AUTH PROVIDER CONFIGURATION =====
-// Controls which login buttons are shown on the login page
+// Local username/password is the only supported auth provider.
 
 /**
- * Get the primary auth provider (google, azure-ad, all)
- * When set to a specific provider, only that login button is shown
- * When set to 'all', all enabled login buttons are shown
- */
-export function getAuthProvider(): string {
-  return getRuntimeConfig('VITE_AUTH_PROVIDER', 'all');
-}
-
-/**
- * Check if Microsoft/Azure AD login is enabled
- */
-export function isMicrosoftLoginEnabled(): boolean {
-  const provider = getAuthProvider();
-  if (provider === 'google') return false;  // Google-only mode
-  const value = getRuntimeConfig('VITE_MICROSOFT_LOGIN_ENABLED', 'true');
-  return value !== 'false';
-}
-
-/**
- * Check if Google login is enabled
- */
-export function isGoogleLoginEnabled(): boolean {
-  const provider = getAuthProvider();
-  // Azure-only mode - accept both 'azure' and 'azure-ad' values
-  if (provider === 'azure-ad' || provider === 'azure') return false;
-  const value = getRuntimeConfig('VITE_GOOGLE_LOGIN_ENABLED', 'true');
-  return value !== 'false';
-}
-
-/**
- * Check if local admin login is enabled
- * This can be enabled alongside SSO for admin testing purposes
- * Set VITE_LOCAL_LOGIN_ENABLED=true to enable even with SSO providers
+ * Check if local admin login is enabled.
+ * Local auth is the sole provider, so this is always true.
  */
 export function isLocalLoginEnabled(): boolean {
-  // Explicit override - if VITE_LOCAL_LOGIN_ENABLED is set, respect it
-  const value = getRuntimeConfig('VITE_LOCAL_LOGIN_ENABLED', '');
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-
-  // Default: disable local login for SSO-only providers
-  const provider = getAuthProvider();
-  if (provider === 'google' || provider === 'azure-ad' || provider === 'azure') return false;
-
-  return true; // Default to enabled for local/development
+  return true;
 }
 
 /**

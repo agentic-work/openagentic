@@ -1,11 +1,8 @@
 # AWS — identity for the AWS MCP
 
-Two paths:
+A dedicated IAM user with `ReadOnlyAccess`, access key pair, creds written to `~/.openagentic/cloud-secrets/aws.env`. 1 minute, no console clicks. (openagentic auth is local username/password only — these are MCP service credentials, not user sign-in.)
 
-- **Quick path** (what we did for the reference instance) — a dedicated IAM user with `ReadOnlyAccess`, access key pair, creds written to `~/.openagentic/cloud-secrets/aws.env`. 1 minute, no console clicks.
-- **Full IAM Identity Center + Azure AD federation** — for orgs where you want SSO-driven access and SCIM group sync. Requires console steps in two portals; captured at the bottom.
-
-## Quick path (read-only IAM user)
+## Read-only IAM user
 
 ### Preconditions
 
@@ -75,24 +72,3 @@ aws iam detach-user-policy --user-name openagentic-mcp --policy-arn arn:aws:iam:
 aws iam delete-user --user-name openagentic-mcp
 rm ~/.openagentic/cloud-secrets/aws.env
 ```
-
-## Full path — IAM Identity Center federated to Entra ID (SSO)
-
-Skip this unless you're wiring openagentic into an existing SSO setup. Needs the AWS Organizations management account + console access in both Azure and AWS. Ballpark 30–60 minutes of setup the first time.
-
-### Outline
-
-1. **AWS** — enable IAM Identity Center in the Organizations management account (`aws sso-admin list-instances` after enablement shows the instance ARN).
-2. **Azure** — in Entra ID → Enterprise applications → New application → "AWS IAM Identity Center" from the gallery. Copy the Microsoft SAML endpoints + upload the AWS IdC SP metadata XML.
-3. **AWS IdC** — External IdP → upload the Azure SAML metadata you exported.
-4. **SCIM** — enable automatic provisioning from Azure to IdC; sync the `openagentic-admins` group.
-5. **IdC Permission Set** — create `openagentic-mcp-read` with `ReadOnlyAccess`.
-6. **Assign** the permission set to the synced group in the target account.
-
-Once this is wired up, replace the IAM user in `aws.env` with an IdC-derived short-lived credential using `aws sso login` or the `aws-vault` flow. The MCP container will need the SSO refresh mechanism mounted in; that's out of scope for the read-only quick path.
-
-### References
-
-- [AWS docs — Enable IAM Identity Center](https://docs.aws.amazon.com/singlesignon/latest/userguide/get-started-enable-identity-center.html)
-- [Azure docs — AWS IAM Identity Center federation](https://learn.microsoft.com/en-us/entra/identity/saas-apps/aws-single-sign-on-tutorial)
-- [AWS docs — SCIM provisioning from Azure AD](https://docs.aws.amazon.com/singlesignon/latest/userguide/azure-ad-idp.html)

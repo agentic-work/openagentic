@@ -499,24 +499,6 @@ export interface ChatStreamHandlerDeps {
       contentBlocks?: any[];
     },
   ) => Promise<void>;
-  /**
-   * OBO PLUMB (LIVE 2026-04-30):
-   * Load Azure tokens from DB for Azure-AD users. V2 has no auth
-   * stage, so we plumb directly into the stream handler. When this
-   * returns fresh tokens, they're attached to
-   * `v2Ctx.user.{accessToken,idToken}` and
-   * `buildChatV2Deps.makeExecuteMcpTool` injects them as
-   * `Authorization: Bearer` + `X-Azure-ID-Token` headers on /mcp/tool.
-   * Without this, oap-azure-mcp returns "No user token provided".
-   */
-  getAzureTokenInfo?: (
-    userId: string,
-  ) => Promise<{ accessToken: string; idToken?: string; expiresAt: Date | string } | null>;
-  /**
-   * Companion to getAzureTokenInfo: predicate the handler uses to decide
-   * whether to use the loaded token. Mirrors AuthStage.isTokenExpired.
-   */
-  isTokenExpired?: (expiresAt: Date | string | undefined) => boolean;
 }
 
 /**
@@ -1386,17 +1368,17 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
 
         // #51 (2026-06-01) — derive per-session MCP availability ground
         // truth. `connectedServers` is the set of RUNNING servers from the
-        // mcp-proxy /servers status endpoint (open-dev: openagentic_admin +
-        // openagentic_web + aws_knowledge; NO azure). The proxy returns a
+        // mcp-proxy /servers status endpoint. The proxy returns a
         // DICT keyed by server name — verified live 2026-06-01 — so we read
         // Object.entries, not data.servers. (The normalized mcpTools array
         // drops the per-tool `server` field by contract, so the proxy status
         // endpoint is the authoritative source.) `needsAuthServers` is the
         // known cloud/ops set MINUS whatever is connected — these require
-        // credentials / Azure AD OBO the local-admin session doesn't have.
+        // credentials (service-principal / static-keypair / ADC) the current
+        // session doesn't have configured.
         // Threaded into runChat → <connected-capabilities> prompt section so
-        // the model can say "Azure isn't connected (needs OBO)" on turn 1
-        // instead of looping tool_search forever (the live spin). Fully
+        // the model can say "Azure isn't connected (needs credentials)" on
+        // turn 1 instead of looping tool_search forever (the live spin). Fully
         // best-effort: a proxy hiccup yields [] connected (section degrades
         // to "none connected", still honest) and never blocks the stream.
         let connectedServers: string[] = [];
@@ -1424,7 +1406,7 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
           );
         }
         connectedServers = Array.from(new Set(connectedServers)).sort();
-        // Known credential/OBO-gated servers. Matching is substring-based so
+        // Known credential-gated servers. Matching is substring-based so
         // a connected name like `openagentic_azure` or `azure_knowledge`
         // suppresses the generic `azure` entry.
         const KNOWN_AUTH_SERVERS = [
@@ -1549,51 +1531,12 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
           }
         }
 
-        // OBO HEADER PLUMB (LIVE 2026-04-30):
-        // For Azure-AD users, load the user's accessToken + idToken from
-        // DB so V2's executeMcpTool can inject them as
-        // `Authorization: Bearer` + `X-Azure-ID-Token` headers on every
-        // /mcp/tool POST. Without this, oap-azure-mcp returns
-        // "No user token provided (expected 'userAccessToken')".
-        // V2 has no auth stage, so we plumb it here at the request
-        // boundary.
-        let azureAccessToken: string | undefined;
-        let azureIdToken: string | undefined;
-        let resolvedAuthMethod = (request.user as any)?.authMethod;
-        const isAzureUser = !!(
-          (request.user as any)?.azureOid ||
-          v2UserId?.startsWith('azure_')
-        );
-        if (isAzureUser && deps.getAzureTokenInfo) {
-          try {
-            const tokenInfo = await deps.getAzureTokenInfo(v2UserId);
-            if (tokenInfo && !deps.isTokenExpired?.(tokenInfo.expiresAt)) {
-              azureAccessToken = tokenInfo.accessToken;
-              azureIdToken = tokenInfo.idToken;
-              if (resolvedAuthMethod !== 'azure-ad') {
-                resolvedAuthMethod = 'azure-ad';
-              }
-              logger.info(
-                {
-                  userId: v2UserId,
-                  hasAccessToken: !!azureAccessToken,
-                  hasIdToken: !!azureIdToken,
-                },
-                '[STREAM] V2 OBO context loaded — Azure tokens attached to ctx.user',
-              );
-            } else {
-              logger.warn(
-                { userId: v2UserId, hasToken: !!tokenInfo },
-                '[STREAM] V2 OBO context: Azure token expired or missing — MCP tool calls will lack OBO',
-              );
-            }
-          } catch (oboErr: any) {
-            logger.warn(
-              { err: oboErr?.message, userId: v2UserId },
-              '[STREAM] V2 OBO context load failed (non-fatal — falling back to internal JWT)',
-            );
-          }
-        }
+        // Auth method for the chat ctx. Local-auth / api-key users get an
+        // internal HS256 JWT minted in buildChatV2Deps.buildMcpProxyHeaders;
+        // CSP MCP servers (aws/azure/gcp) authenticate to the cloud via their
+        // own service-principal / static-keypair / ADC creds, not a forwarded
+        // per-user token.
+        const resolvedAuthMethod = (request.user as any)?.authMethod;
 
         // Persistence Sev-0 2026-05-08: collect inline render frames during
         // streaming so chat_messages.visualizations is populated. Without
@@ -1689,8 +1632,8 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
           // route progress events back to the parent NDJSON stream via
           // the AgentEventStore keyed on turnId.
           turnId,
-          // OBO plumb — buildChatV2Deps.makeExecuteMcpTool reads this when
-          // constructing /mcp/tool headers. See buildChatV2Deps.ts comment.
+          // buildChatV2Deps.buildMcpProxyHeaders reads this when constructing
+          // /mcp/tool headers (internal HS256 JWT). See buildChatV2Deps.ts.
           user: {
             id: v2UserId,
             email: (request.user as any)?.email,
@@ -1698,8 +1641,6 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
             isAdmin: (request.user as any)?.isAdmin,
             groups: (request.user as any)?.groups,
             authMethod: resolvedAuthMethod,
-            accessToken: azureAccessToken,
-            idToken: azureIdToken,
           },
         };
 

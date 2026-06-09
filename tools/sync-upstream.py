@@ -324,6 +324,54 @@ SKIP_PREFIXES = (
     'services/openagentic-api/src/services/__seed__/templates/07-deep-research-team.ts',
     # Enterprise aiops template test harness (only tested the removed templates).
     'services/openagentic-workflows/test/harness/templates/',
+    # ─── AAD/Entra + Google SSO login + OBO token exchange — removed from OSS ──
+    # Local username/password auth only (2026-06-09). These whole files were
+    # deleted; sync must NEVER re-create them. KEEP (not skipped): routes/auth.ts
+    # (now the inter-service / local-auth path, in PRESERVE) and routes/local-auth.ts
+    # (the username/password login). The SP/static/ADC cloud-MCP creds and the
+    # Azure-OpenAI / Vertex LLM provider backends are unaffected.
+    #   API — Azure-AD / Google-OIDC user login + group validation + OBO exchange:
+    'services/openagentic-api/src/auth/azureADAuth.ts',
+    'services/openagentic-api/src/auth/googleAuth.ts',
+    'services/openagentic-api/src/auth/__tests__/googleAuth.adminEmails.test.ts',
+    'services/openagentic-api/src/middleware/azureAdAuth.ts',
+    'services/openagentic-api/src/utils/validateAzureToken.ts',
+    'services/openagentic-api/src/routes/azure-ad-sync.ts',
+    'services/openagentic-api/src/routes/obo.ts',
+    'services/openagentic-api/src/routes/google-auth/',
+    'services/openagentic-api/src/routes/account-linking.ts',
+    'services/openagentic-api/src/routes/azure-integration/auth.ts',
+    'services/openagentic-api/src/routes/v1/credentials.ts',
+    'services/openagentic-api/src/plugins/integrations.plugin.ts',
+    'services/openagentic-api/src/plugins/__tests__/integrations.plugin.test.ts',
+    'services/openagentic-api/src/services/AzureOBOService.ts',
+    'services/openagentic-api/src/services/AzureTokenService.ts',
+    'services/openagentic-api/src/services/AzureGroupService.ts',
+    'services/openagentic-api/src/services/UserAzureMCPService.ts',
+    'services/openagentic-api/src/services/AdminValidationService.ts',
+    'services/openagentic-api/src/services/__tests__/AzureTokenService.mfaFreshness.test.ts',
+    'services/openagentic-api/src/services/__tests__/AzureTokenService.mfaFreshnessEnforcement.test.ts',
+    'services/openagentic-api/src/services/__tests__/AzureTokenService.selfAudience.test.ts',
+    'services/openagentic-api/src/services/__tests__/buildChatV2Deps.obo-db-token.test.ts',
+    'services/openagentic-api/src/services/__tests__/buildChatV2Deps.obo-headers.test.ts',
+    'services/openagentic-api/src/auth/__tests__/azureADAuth-mfa-claim-privileged.test.ts',
+    'services/openagentic-api/src/auth/__tests__/azureADAuth-mfa-freshness.test.ts',
+    'services/openagentic-api/src/auth/__tests__/azureADAuth-no-pii-log-leak.source-regression.test.ts',
+    'services/openagentic-api/src/auth/__tests__/azureADAuth-no-pii-log-leak-whole-file.source-regression.test.ts',
+    'services/openagentic-api/src/tests/AzureGroupService.simple.test.ts',
+    'services/openagentic-api/src/tests/AzureGroupService.test.ts',
+    'services/openagentic-api/src/__tests__/integration/oboAuthHeaders.end-to-end.test.ts',
+    'services/openagentic-api/src/__tests__/architecture/server-routes-not-leaked.integrations.source-regression.test.ts',
+    'services/openagentic-api/src/__tests__/architecture/account-linking-auth.source-regression.test.ts',
+    #   mcp-proxy — Azure OBO user-token→cloud-token exchange + per-user sessions:
+    'services/openagentic-mcp-proxy/src/azure_oauth.py',
+    'services/openagentic-mcp-proxy/src/user_session_manager.py',
+    'services/openagentic-mcp-proxy/src/azure_obo_strategy.py',
+    'services/openagentic-mcp-proxy/tests/test_azure_obo_strategy.py',
+    #   UI — Azure-AD login button + OAuth redirect callback + token client:
+    'services/openagentic-ui/src/features/auth/components/AADLogin.tsx',
+    'services/openagentic-ui/src/features/auth/components/AuthCallback.tsx',
+    'services/openagentic-ui/src/services/AzureTokenService.ts',
 )
 
 # Exact filename bans (anywhere in tree)
@@ -655,20 +703,19 @@ PRESERVE = {
     # a security property the enterprise upstream LACKS or actively regresses).
     # A sync must NEVER overwrite these or it re-introduces the listed defect.
     #
-    #   googleAuth.ts / google-auth/index.ts — main fails CLOSED on the Google
-    #     OIDC admin grant; upstream hardcodes `trent@openagentic.io` as the
-    #     GOOGLE_ADMIN_EMAILS default → PII + privilege-escalation backdoor.
-    'services/openagentic-api/src/auth/googleAuth.ts',
-    'services/openagentic-api/src/routes/google-auth/index.ts',
+    #   googleAuth.ts / google-auth/index.ts — Google SSO login was EXCISED from
+    #     OSS (local-auth only, 2026-06-09); these source files are deleted and
+    #     now live in SKIP_PREFIXES so a sync never re-creates them. (They are no
+    #     longer preserved.)
     #   featureFlags.ts — carries the OSS approvalGateMutating (default-ON
     #     human-approval gate); preserving it ALSO blocks the upstream Code-Mode
     #     re-leak (codeManagerUrl / codemode.plugin.ts / controlPlaneCodemode).
     #     (Upstream's stronger mfaFreshnessSecs / hitlApprovalTimeoutMs / fail-
     #     closed posInt() are ported SURGICALLY in remediation, not via clobber.)
     'services/openagentic-api/src/config/featureFlags.ts',
-    #   routes/auth.ts — main persists sso_login + login_failed to auth_audit_log
-    #     on the Azure SSO path; upstream never calls logAuthEvent here (audit
-    #     gap). (Upstream's AC-8 system-use-banner endpoints get ported on top.)
+    #   routes/auth.ts — OSS edited this to the local-auth-only / inter-service
+    #     auth path (Azure/Google SSO login excised 2026-06-09). The OSS version
+    #     must win; a sync would re-introduce the federated-identity login routes.
     'services/openagentic-api/src/routes/auth.ts',
     #   DLPScannerService.ts — main has NO cloud-inventory PII exemption; upstream
     #     #1144 unconditionally skips the `pii` category for gcp_/aws_/azure_/k8s_

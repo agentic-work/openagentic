@@ -1588,18 +1588,11 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
             sendEvent({ type: 'execution_start', executionId: execution.id, data: { workflowId: id }, timestamp: new Date().toISOString() });
 
             try {
-              let effectiveAuthToken = request.headers.authorization
+              // CSP MCP tools invoked by the flow authenticate to the cloud via
+              // their own service-principal / static-keypair / ADC creds. The
+              // inbound bearer is forwarded for inter-service auth only.
+              const effectiveAuthToken = request.headers.authorization
                 || (user?.accessToken ? `Bearer ${user.accessToken}` : undefined);
-              let effectiveIdToken: string | undefined;
-              try {
-                const { AzureTokenService } = await import('../services/AzureTokenService.js');
-                const azureTokenService = new AzureTokenService(logger as any);
-                const tokenInfo = await azureTokenService.getOrRefreshToken(userId);
-                if (tokenInfo?.access_token && !tokenInfo.is_expired) {
-                  effectiveAuthToken = `Bearer ${tokenInfo.access_token}`;
-                  effectiveIdToken = tokenInfo.id_token;
-                }
-              } catch {}
 
               let userEmail: string | undefined;
               try {
@@ -1614,7 +1607,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
                     workflowId: id, executionId: execution.id,
                     definition: { nodes: definition.nodes || [], edges: definition.edges || [] },
                     input: input || {}, userId,
-                    authToken: effectiveAuthToken, idToken: effectiveIdToken, userEmail,
+                    authToken: effectiveAuthToken, userEmail,
                     // Task 1.3 (V3 Enterprise Chatmode S5).
                     tenantId,
                   },
@@ -1643,7 +1636,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
                   { nodes: definition.nodes || [], edges: definition.edges || [] },
                   input || {}, userId, effectiveAuthToken, sendEvent,
                   // Task 1.3 (V3 Enterprise Chatmode S5).
-                  { userEmail, idToken: effectiveIdToken, tenantId }
+                  { userEmail, tenantId }
                 );
               }
 
@@ -1748,64 +1741,11 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
         reply.raw.on('close', unsubscribeAgentProgress);
 
         try {
-          // Load Azure AD access token for MCP calls (works for both proxy and local paths)
-          let effectiveAuthToken = request.headers.authorization
+          // CSP MCP tools invoked by the flow authenticate to the cloud via
+          // their own service-principal / static-keypair / ADC creds. The
+          // inbound bearer is forwarded for inter-service auth only.
+          const effectiveAuthToken = request.headers.authorization
             || (user?.accessToken ? `Bearer ${user.accessToken}` : undefined);
-          let effectiveIdToken: string | undefined;
-          try {
-            // Try to load Azure tokens for this user. This works for:
-            // 1. Azure AD SSO users (userId starts with 'azure_')
-            // 2. API key users who also have Azure AD tokens (linked accounts)
-            // We attempt to load tokens for the actual userId first, then try
-            // finding any azure_* token that might belong to the same person.
-            const { AzureTokenService } = await import('../services/AzureTokenService.js');
-            const azureTokenService = new AzureTokenService(logger as any);
-
-            let tokenInfo = null;
-            const isAzureUser = !!(user?.azureOid || userId?.startsWith('azure_'));
-            if (isAzureUser) {
-              tokenInfo = await azureTokenService.getOrRefreshToken(userId);
-            }
-
-            // If no direct Azure tokens, find any Azure user with tokens and refresh
-            if (!tokenInfo && !isAzureUser) {
-              // Strategy: Find any azure_* user that has a refresh token, use getOrRefreshToken
-              // which will auto-refresh expired tokens using the refresh_token
-              const azureUsersWithTokens = await prisma.userAuthToken.findMany({
-                where: {
-                  refresh_token: { not: null },
-                },
-                orderBy: { updated_at: 'desc' },
-                select: { user_id: true },
-                take: 3,
-              });
-
-              for (const azureUser of azureUsersWithTokens) {
-                tokenInfo = await azureTokenService.getOrRefreshToken(azureUser.user_id);
-                if (tokenInfo && !tokenInfo.is_expired) {
-                  logger.info({ userId, azureUserId: azureUser.user_id }, '[Workflows] Using refreshed Azure AD tokens for workflow');
-                  break;
-                }
-                tokenInfo = null; // Refresh failed, try next
-              }
-            }
-
-            if (tokenInfo && tokenInfo.access_token) {
-              // getOrRefreshToken auto-refreshes expired tokens, so trust the result
-              const isExpired = tokenInfo.is_expired || new Date() >= new Date(tokenInfo.expires_at);
-              if (!isExpired) {
-                effectiveAuthToken = `Bearer ${tokenInfo.access_token}`;
-                effectiveIdToken = tokenInfo.id_token;
-                logger.info({ userId, hasIdToken: !!effectiveIdToken }, '[Workflows] Azure AD tokens loaded for workflow MCP calls');
-              } else {
-                logger.warn({ userId, expires_at: tokenInfo.expires_at }, '[Workflows] Azure token expired even after refresh attempt');
-              }
-            } else {
-              logger.info({ userId }, '[Workflows] No Azure AD tokens available — using API key auth for MCP calls');
-            }
-          } catch (tokenErr: any) {
-            logger.warn({ userId, error: tokenErr.message }, '[Workflows] Failed to load Azure tokens');
-          }
 
           if (WORKFLOW_SERVICE_URL) {
             // ── Proxy to dedicated workflow service ──
@@ -1830,7 +1770,6 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
                 input: input || {},
                 userId,
                 authToken: effectiveAuthToken,
-                idToken: effectiveIdToken,
                 userEmail,
                 // Task 1.3 (V3 Enterprise Chatmode S5).
                 tenantId,
@@ -1892,7 +1831,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
               effectiveAuthToken,
               sendEvent,
               // Task 1.3 (V3 Enterprise Chatmode S5).
-              { userEmail, idToken: effectiveIdToken, tenantId }
+              { userEmail, tenantId }
             );
 
             // Update workflow stats
