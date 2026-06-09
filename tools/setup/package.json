@@ -1,14 +1,20 @@
 {
   "name": "@openagentic/setup",
   "version": "1.0.0",
-  "private": true,
   "type": "module",
   "bin": {
-    "openagentic-setup": "./src/index.tsx"
+    "openagentic-setup": "./dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "start": "tsx src/index.tsx",
-    "dev": "tsx watch src/index.tsx"
+    "dev": "tsx watch src/index.tsx",
+    "build": "tsx build.ts",
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test --test-force-exit tests/*.test.tsx"
   },
   "engines": {
     "node": ">=20"
@@ -16,16 +22,18 @@
   "dependencies": {
     "execa": "^9.5.2",
     "figures": "^6.1.0",
-    "ink": "^5.2.0",
-    "ink-select-input": "^6.0.0",
-    "ink-spinner": "^5.0.0",
-    "ink-text-input": "^6.0.0",
+    "ink": "^7.0.5",
     "open": "^10.1.0",
-    "react": "^18.3.1"
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-devtools-core": "^7.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
-    "@types/react": "^18.3.12",
-    "tsx": "^4.19.2"
+    "@types/react": "^19.2.17",
+    "esbuild": "^0.24.0",
+    "ink-testing-library": "^4.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
   }
 }

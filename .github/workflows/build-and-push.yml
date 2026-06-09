@@ -1,0 +1,203 @@
+name: Build & Push to GHCR
+
+# Triggers:
+#   - push to main (publishes :latest + :sha)
+#   - version tag (publishes :vX.Y.Z + :latest)
+#   - manual dispatch (pick a ref, optional tag override)
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag_override:
+        description: 'Image tag override (default: sha short)'
+        required: false
+        default: ''
+
+env:
+  REGISTRY: ghcr.io
+  ORG: agentic-work
+
+jobs:
+  # ── Single job: build all 5 images on the self-hosted ARC runner ───────────
+  # The runner has Docker + buildx already installed (it runs on the homelab
+  # cluster via the openagentic-runners ARC scale-set).
+  build:
+    name: Build & push (${{ matrix.service }})
+    runs-on: openagentic-runners
+
+    permissions:
+      contents: read
+      packages: write   # needed to push to GHCR
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: openagentic-api
+            dockerfile: services/openagentic-api/Dockerfile
+            build_args: SRC_PATH=services/openagentic-api
+          - service: openagentic-ui
+            dockerfile: services/openagentic-ui/Dockerfile
+            build_args: SRC_PATH=services/openagentic-ui
+          - service: openagentic-workflows
+            dockerfile: services/openagentic-workflows/Dockerfile
+            build_args: ''
+          - service: openagentic-mcp-proxy
+            dockerfile: services/openagentic-mcp-proxy/Dockerfile
+            build_args: SRC_PATH=services/openagentic-mcp-proxy
+          - service: openagentic-proxy
+            dockerfile: services/openagentic-proxy/Dockerfile
+            build_args: ''
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Auth to GHCR ────────────────────────────────────────────────────────
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Set up buildx (multi-arch: amd64 + arm64) ───────────────────────────
+      # The ARC runner runs on your homelab (mixed amd64/arm64 nodes), so we use
+      # the host's Docker daemon for the native arch and QEMU for the other.
+      - name: Set up QEMU (for cross-arch builds)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container   # runs buildkit in a container, keeps the host daemon clean
+
+      # ── Compute tags ────────────────────────────────────────────────────────
+      - name: Compute image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}
+          tags: |
+            # :latest on main
+            type=raw,value=latest,enable={{is_default_branch}}
+            # :vX.Y.Z on a version tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            # :sha-XXXXXXX always (short commit sha)
+            type=sha,prefix=sha-,format=short
+            # manual override if provided
+            type=raw,value=${{ github.event.inputs.tag_override }},enable=${{ github.event.inputs.tag_override != '' }}
+
+      # ── Build & push ────────────────────────────────────────────────────────
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build_args }}
+          # Layer caching via GHCR — keeps rebuilds fast
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache
+          cache-to:   type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache,mode=max
+          provenance: false   # keeps manifest digest simple for Helm chart pinning
+
+  # ── After all images are pushed: package the compose bundle + helm chart ───
+  release-artifacts:
+    name: Package release artifacts
+    needs: build
+    runs-on: openagentic-runners
+    if: startsWith(github.ref, 'refs/tags/v')   # only on version tags
+
+    permissions:
+      contents: write   # to upload release assets
+      packages: write   # to push OCI helm chart
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Compose-only tarball (no source code) ───────────────────────────────
+      # This is what install.sh downloads instead of cloning the repo.
+      # Contains only what's needed to run: compose files + env template.
+      - name: Package compose bundle
+        run: |
+          VERSION="${GITHUB_REF_NAME}"   # e.g. v1.0.1
+          mkdir -p /tmp/oa-release
+
+          cp docker-compose.yml                     /tmp/oa-release/
+          cp docker-compose.gpu-nvidia.yml          /tmp/oa-release/ 2>/dev/null || true
+          cp docker-compose.gpu-wsl.yml             /tmp/oa-release/ 2>/dev/null || true
+          cp .env.example                           /tmp/oa-release/.env.example
+
+          # Write VERSION file so install.sh knows exactly what it downloaded
+          echo "$VERSION" > /tmp/oa-release/VERSION
+
+          tar -czf "openagentic-compose-${VERSION}.tar.gz" -C /tmp/oa-release .
+          echo "BUNDLE=openagentic-compose-${VERSION}.tar.gz" >> "$GITHUB_ENV"
+
+      # ── Upload compose bundle to the GitHub Release ─────────────────────────
+      - name: Upload compose bundle to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.BUNDLE }}
+          fail_on_unmatched_files: true
+
+      # ── Package and push Helm chart as OCI artifact to GHCR ────────────────
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
+
+      - name: Log in to GHCR (for helm push)
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Package and push Helm chart
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"   # strip leading 'v' → X.Y.Z
+          helm package helm/openagentic --version "$VERSION" --app-version "$VERSION"
+          helm push "openagentic-${VERSION}.tgz" oci://ghcr.io/${{ env.ORG }}/charts
+
+  # ── Publish the Ink wizard to npm as @openagentic/setup ───────────────────
+  publish-wizard:
+    name: Publish wizard to npm
+    needs: build
+    runs-on: openagentic-runners
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: read
+      id-token: write   # for npm provenance
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install + build wizard
+        working-directory: tools/setup
+        run: |
+          npm ci --silent
+          npm run build
+
+      - name: Bump version to match release tag
+        working-directory: tools/setup
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          npm version "$VERSION" --no-git-tag-version
+
+      - name: Publish @openagentic/setup
+        working-directory: tools/setup
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
