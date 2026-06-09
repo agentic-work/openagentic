@@ -17,15 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Azure CLI (architecture-aware — aka.ms script is amd64-only)
-RUN ARCH=$(dpkg --print-architecture) && \
-    if [ "$ARCH" = "amd64" ]; then \
-        curl -sL https://aka.ms/InstallAzureCLIDeb | bash; \
-    else \
-        # arm64: install via pip (azure-cli) which is cross-platform
-        pip3 install --no-cache-dir --break-system-packages azure-cli 2>/dev/null \
-        || pip3 install --no-cache-dir azure-cli; \
-    fi
+# Install Azure CLI via pip3 — cross-platform (amd64 + arm64) and works on
+# Debian Trixie where the aka.ms/InstallAzureCLIDeb script fails (no trixie support).
+RUN pip3 install --no-cache-dir --break-system-packages azure-cli \
+    || pip3 install --no-cache-dir azure-cli
 
 # Install AWS CLI v2 (required by OpenAgentic AWS MCP for CLI command execution, architecture-aware)
 RUN ARCH=$(dpkg --print-architecture) && \
