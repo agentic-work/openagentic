@@ -809,8 +809,21 @@ async def call_aws(
                                 "success": False,
                                 "error": "AWS OBO failed and no fallback credentials available. Set AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY.",
                             }
+                    elif AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
+                        # Keypair-auth deployment: Identity Center OBO is an optional
+                        # enterprise feature. When it isn't configured (or fails) but a
+                        # static service keypair IS present, use it — a plain keypair
+                        # install must work for authenticated users too, not only for
+                        # unauthenticated system/service calls.
+                        logger.warning(f"OBO: unavailable for {user_display} - no Identity Center; using static keypair (AWS_ACCESS_KEY_ID present)")
+                        credentials = get_fallback_credentials()
+                        if not credentials:
+                            return {
+                                "success": False,
+                                "error": "AWS OBO unavailable and static keypair credentials could not be loaded.",
+                            }
                     else:
-                        # Production: Do NOT fallback to service credentials when user token is provided
+                        # No OBO path AND no static keypair — genuinely cannot authenticate.
                         logger.error(f"OBO: FAILED to get credentials for {user_display} - NO FALLBACK")
 
                         role_arn = os.environ.get("AWS_OBO_ROLE_ARN", "")
@@ -1115,6 +1128,17 @@ async def _execute_aws_command(
                 credentials = get_obo_credentials()
                 if credentials:
                     logger.info(f"OBO: Successfully obtained AWS credentials for {user_display}")
+                elif AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
+                    # Keypair-auth deployment: OBO is optional — fall back to the static
+                    # service keypair for authenticated users when it's configured.
+                    logger.warning(f"OBO: unavailable for {user_display} - using static keypair (AWS_ACCESS_KEY_ID present)")
+                    credentials = get_fallback_credentials()
+                    if not credentials:
+                        return {
+                            "success": False,
+                            "error": "AWS OBO unavailable and static keypair credentials could not be loaded.",
+                            "details": {"user": user_display}
+                        }
                 else:
                     logger.error(f"OBO: FAILED to get credentials for {user_display}")
                     return {
