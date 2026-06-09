@@ -76,23 +76,28 @@ The dedicated MCP Proxy provides centralized MCP management:
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │ System MCPs  │     │  User MCPs   │     │   Cloud MCPs │
 │              │     │              │     │              │
-│ • Memory     │     │ • User1      │     │ • Azure Cost │
-│ • Admin      │     │   Azure MCP  │     │ • AWS MCP    │
-│ • Background │     │ • User2      │     │              │
-│ • Formatting │     │   Azure MCP  │     │              │
-│ • Fetch      │     │ • User3      │     │              │
-│              │     │   Azure MCP  │     │              │
+│ • admin      │     │ • User1      │     │ • aws        │
+│ • web        │     │   Azure MCP  │     │ • azure      │
+│ • github     │     │ • User2      │     │ • gcp        │
+│ • kubernetes │     │   Azure MCP  │     │              │
+│ • prometheus │     │ • User3      │     │              │
+│ • loki       │     │   Azure MCP  │     │              │
 └──────────────┘     └──────────────┘     └──────────────┘
 ```
+
+The wired built-in MCP servers (see `src/mcp_manager.py` `initialize_servers`) are: **aws, azure, gcp, kubernetes, prometheus, loki, github, admin, web** (9). Azure runs as per-user instances with OBO tokens; the rest are system-level.
 
 ### Component Responsibilities
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| **Main Application** | `src/main.py` | FastAPI app, routes, WebSocket handling |
+| **Main Application** | `src/main.py` | FastAPI app, routes, tool execution |
 | **MCP Manager** | `src/mcp_manager.py` | MCP lifecycle, process management, health |
-| **Session Manager** | `src/user_session_manager.py` | User session isolation, Redis tracking |
-| **OAuth Manager** | `src/azure_oauth.py` | Azure AD OAuth, token refresh |
+| **Session Manager** | `src/user_session_manager.py` | Per-user Azure MCP session isolation |
+| **OAuth Manager** | `src/azure_oauth.py` | Azure AD OAuth |
+| **OBO Strategy** | `src/azure_obo_strategy.py` | Azure AD on-behalf-of token exchange |
+| **Tool Indexer** | `src/tool_indexer.py` | Tool discovery & indexing |
+| **Tool Search** | `src/tool_search.py` | Semantic tool search |
 | **Static UI** | `src/static/index.html` | Web-based MCP inspector |
 
 ---
@@ -136,70 +141,24 @@ Automatic OAuth token lifecycle:
 
 ### 3. Health Monitoring & Auto-Recovery
 
-MCP Proxy continuously monitors MCP server health:
-
-```python
-# Health check every 30 seconds
-if mcp_process.poll() is not None:
-    log.error(f"MCP {server_id} crashed, restarting...")
-    restart_mcp(server_id)
-    notify_admin(server_id, "auto_recovered")
-```
+MCP Proxy monitors MCP server health and can restart crashed subprocesses. See `MCPManager` in `src/mcp_manager.py` for the lifecycle and recovery logic, and the `/servers/{server_id}/restart` route in `src/main.py`.
 
 **Health Checks:**
 - Process alive check
-- Response time monitoring
-- Error rate tracking
-- Resource usage monitoring
+- Server status reported via `GET /health`
 
 ### 4. Tool Discovery & Registry
 
-All MCP tools indexed in Redis for fast discovery:
-
-```json
-{
-  "tool_id": "admin_mcp.get_user_analytics",
-  "server_id": "admin-mcp",
-  "name": "get_user_analytics",
-  "description": "Retrieve user activity analytics",
-  "parameters": {
-    "user_id": "string",
-    "start_date": "string",
-    "end_date": "string"
-  },
-  "category": "analytics",
-  "last_updated": "2025-01-13T10:30:00Z"
-}
-```
+MCP tools are indexed for discovery and semantic search (see `src/tool_indexer.py` and `src/tool_search.py`).
 
 **Tool Discovery API:**
-- List all tools: `GET /tools/list`
-- Search tools: `GET /tools/search?q=analytics`
-- Get tool details: `GET /tools/{tool_id}`
+- List all tools: `GET /tools`
+- List tools for a server: `GET /servers/{server_name}/tools`
 
 ### 5. Metrics & Observability
 
-Prometheus metrics exposed at `/metrics`:
-
-```
-# MCP Server Metrics
-mcp_server_status{server_id="admin-mcp"} 1
-mcp_server_uptime_seconds{server_id="admin-mcp"} 3600
-mcp_server_restarts_total{server_id="admin-mcp"} 0
-
-# Tool Execution Metrics
-mcp_tool_executions_total{tool_id="admin_mcp.get_users",status="success"} 150
-mcp_tool_execution_duration_seconds{tool_id="admin_mcp.get_users"} 0.320
-
-# Session Metrics
-mcp_user_sessions_active 12
-mcp_user_sessions_created_total 156
-mcp_user_sessions_destroyed_total 144
-
-# OAuth Metrics
-mcp_oauth_token_refreshes_total{provider="azure"} 45
-mcp_oauth_token_refresh_failures_total{provider="azure"} 2
-```
+Prometheus-compatible HTTP metrics are exposed at `/metrics` via
+`prometheus-fastapi-instrumentator` (request counts, latencies, status codes).
 
 ---
 
@@ -216,8 +175,8 @@ mcp_oauth_token_refresh_failures_total{provider="azure"} 2
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/openagentic.git
-cd openagentic/services/mcp-proxy
+git clone https://github.com/agentic-work/openagentic.git
+cd openagentic/services/openagentic-mcp-proxy
 
 # Create virtual environment
 python3.11 -m venv venv
@@ -256,7 +215,7 @@ docker run -d \
 
 ```bash
 # Deploy via Helm
-helm install openagentic ./helm/openagenticchat-v3 \
+helm install openagentic ./helm/openagentic \
   --set mcpProxy.enabled=true \
   --set mcpProxy.replicas=2
 ```
@@ -292,166 +251,125 @@ AZURE_CLIENT_ID=your-client-id
 AZURE_CLIENT_SECRET=your-client-secret
 AZURE_REDIRECT_URI=http://localhost:3000/auth/callback
 
-# MCP Server Configuration
-ADMIN_MCP_DISABLED=false
-MEMORY_MCP_DISABLED=false
-BACKGROUND_SERVICE_MCP_DISABLED=false
-FORMATTING_MCP_DISABLED=false
-FETCH_MCP_DISABLED=false
-AZURE_COST_MCP_DISABLED=false
-
-# User MCP Configuration
-USER_AZURE_MCP_ENABLED=true
-USER_AZURE_MCP_TIMEOUT=3600  # Session timeout in seconds
-
-# Health Check Configuration
-HEALTH_CHECK_INTERVAL=30  # Seconds
-AUTO_RESTART_ENABLED=true
-MAX_RESTART_ATTEMPTS=3
+# Built-in MCP Server Toggles (set to "true" to disable a server)
+OpenAgentic_ADMIN_MCP_DISABLED=false
+OpenAgentic_WEB_MCP_DISABLED=false
+OpenAgentic_GITHUB_MCP_DISABLED=false
+OpenAgentic_KUBERNETES_MCP_DISABLED=false
+OpenAgentic_PROMETHEUS_MCP_DISABLED=false
+OpenAgentic_LOKI_MCP_DISABLED=false
+OpenAgentic_AWS_MCP_DISABLED=false
+OpenAgentic_AZURE_MCP_DISABLED=false
+OpenAgentic_GCP_MCP_DISABLED=false
 ```
 
-### MCP Server Configuration
+### MCP Server Registration
 
-MCPs can be configured via config files or environment variables:
+Built-in MCP servers are registered programmatically in
+`MCPManager.initialize_servers` (`src/mcp_manager.py`), each gated behind a
+disable env var (see the toggles above). Most are spawned as FastMCP stdio
+subprocesses, e.g.:
 
-```json
-// config/mcps.json
-{
-  "servers": [
-    {
-      "id": "admin-mcp",
-      "type": "node",
-      "command": "node",
-      "args": ["/app/mcp-servers/admin-mcp/dist/index.js"],
-      "env": {
-        "DATABASE_URL": "${DATABASE_URL}",
-        "REDIS_URL": "${REDIS_URL}"
-      },
-      "enabled": true,
-      "shared": true  // Shared across all users
-    },
-    {
-      "id": "user-azure-mcp",
-      "type": "node",
-      "command": "node",
-      "args": ["/app/mcp-servers/azure-mcp/dist/index.js"],
-      "env": {
-        "AZURE_TENANT_ID": "${AZURE_TENANT_ID}"
-      },
-      "enabled": true,
-      "shared": false,  // Per-user instances
-      "oauth_required": true,
-      "oauth_provider": "azure"
-    }
-  ]
-}
+```python
+self.servers["openagentic_admin"] = MCPServer(MCPServerConfig(
+    name="openagentic_admin",
+    command=["fastmcp", "run", "-t", "stdio", "/app/mcp-servers/oap-admin-mcp/server.py"],
+    env={"LOG_LEVEL": "info"},
+))
 ```
+
+The Azure MCP runs as a per-user instance with OBO authentication
+(see `src/user_session_manager.py`); the AWS and admin MCPs can also be attached
+as remote HTTP servers via their respective `*_MCP_URL` env vars.
 
 ---
 
 ## API Reference
 
+The endpoints below are the actual FastAPI routes in `src/main.py`. Authentication
+is resolved per-request from the forwarded user context.
+
 ### Tool Execution
 
-#### POST /tools/call
+#### POST /call
 
-Execute an MCP tool.
+Execute a single MCP tool.
 
 **Request:**
 ```json
 {
-  "tool_id": "admin_mcp.get_users",
-  "parameters": {
+  "server": "openagentic_admin",
+  "tool": "get_users",
+  "arguments": {
     "limit": 10,
     "offset": 0
-  },
-  "user_id": "user-123",
-  "session_id": "session-456"
+  }
 }
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "result": {
-    "users": [...],
-    "total": 50
-  },
-  "execution_time_ms": 320,
-  "tool_id": "admin_mcp.get_users",
-  "timestamp": "2025-01-13T10:30:00Z"
-}
-```
+The response includes the tool result plus a structured error envelope and
+cache metadata.
 
-#### GET /tools/list
+#### POST /batch-call
 
-List all available tools.
+Execute multiple MCP tool calls in one request.
 
-**Query Parameters:**
-- `server_id` (optional) - Filter by MCP server
-- `category` (optional) - Filter by category
-- `search` (optional) - Search tool names/descriptions
+#### POST /mcp and POST /mcp/tool
 
-**Response:**
-```json
-{
-  "tools": [
-    {
-      "tool_id": "admin_mcp.get_users",
-      "server_id": "admin-mcp",
-      "name": "get_users",
-      "description": "Retrieve list of users",
-      "parameters": {...},
-      "category": "user_management"
-    }
-  ],
-  "total": 25,
-  "page": 1,
-  "page_size": 50
-}
-```
+Lower-level MCP JSON-RPC passthrough endpoints (`tools/list`, `tools/call`, etc.).
 
-### Session Management
+#### GET /tools
 
-#### POST /sessions/start
+List all indexed tools across registered servers.
 
-Start a user MCP session.
+#### GET /servers/{server_name}/tools
+
+List tools for a single server.
+
+### Server Management
+
+- `GET /servers` — list registered MCP servers
+- `POST /servers` — register a server
+- `POST /servers/{server_id}/start` — start a server
+- `POST /servers/{server_id}/stop` — stop a server
+- `POST /servers/{server_id}/restart` — restart a server
+- `DELETE /servers/{server_id}` — remove a server
+- `GET /servers/enabled` — list enabled servers
+- `GET /servers/{server_id}/enabled` — check whether a server is enabled
+
+### User Session Management
+
+#### POST /user-sessions/start
+
+Start a per-user Azure MCP session with OBO authentication.
 
 **Request:**
 ```json
 {
   "user_id": "user-123",
-  "oauth_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
-  "provider": "azure",
-  "mcp_servers": ["user-azure-mcp"]
+  "email": "user@example.com",
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc..."
 }
 ```
 
-**Response:**
+#### POST /user-sessions/stop
+
+Stop a user's MCP session.
+
+**Request:**
 ```json
 {
-  "session_id": "session-456",
-  "user_id": "user-123",
-  "mcp_servers": ["user-azure-mcp"],
-  "created_at": "2025-01-13T10:30:00Z",
-  "expires_at": "2025-01-13T11:30:00Z"
+  "user_id": "user-123"
 }
 ```
 
-#### DELETE /sessions/{user_id}
+#### GET /user-sessions
 
-Stop user's MCP session.
+List all active user sessions.
 
-**Response:**
-```json
-{
-  "success": true,
-  "user_id": "user-123",
-  "servers_stopped": ["user-azure-mcp"],
-  "stopped_at": "2025-01-13T10:45:00Z"
-}
-```
+#### GET /user-sessions/{user_id}
+
+Get a specific user's session info, including their per-user Azure MCP tools.
 
 ### Health & Monitoring
 
@@ -459,24 +377,14 @@ Stop user's MCP session.
 
 Health check endpoint.
 
-**Response:**
-```json
-{
-  "status": "healthy",
-  "version": "1.0.0",
-  "uptime_seconds": 3600,
-  "mcp_servers": {
-    "admin-mcp": "healthy",
-    "memory-mcp": "healthy"
-  },
-  "redis": "connected",
-  "database": "connected"
-}
-```
+#### GET /version
+
+Service version information.
 
 #### GET /metrics
 
-Prometheus metrics (text format).
+Prometheus-compatible HTTP metrics (text format), exposed via
+`prometheus-fastapi-instrumentator`.
 
 ---
 
@@ -495,14 +403,14 @@ sequenceDiagram
     User->>API: Login (Azure AD)
     API->>Azure: OAuth request
     Azure->>API: OAuth token
-    API->>MCPProxy: POST /sessions/start
+    API->>MCPProxy: POST /user-sessions/start
     MCPProxy->>Redis: Store session
     MCPProxy->>MCPServer: Start user's Azure MCP
     MCPServer->>MCPServer: Initialize with OAuth token
     MCPProxy->>API: Session created
 
     User->>API: Execute Azure tool
-    API->>MCPProxy: POST /tools/call
+    API->>MCPProxy: POST /call
     MCPProxy->>MCPServer: Route to user's MCP
     MCPServer->>Azure: Use user's OAuth token
     Azure->>MCPServer: Azure resources
@@ -511,7 +419,7 @@ sequenceDiagram
     API->>User: Display result
 
     User->>API: Logout
-    API->>MCPProxy: DELETE /sessions/{user_id}
+    API->>MCPProxy: POST /user-sessions/stop
     MCPProxy->>MCPServer: Stop user's MCP
     MCPProxy->>Redis: Delete session
     MCPProxy->>API: Session destroyed
@@ -547,48 +455,31 @@ TTL mcp:session:user-123 → 3600 seconds
 # 3. API sends token to MCP Proxy
 
 # In MCP Proxy (src/azure_oauth.py):
-class AzureOAuthManager:
-    def __init__(self, tenant_id, client_id, client_secret):
+class AzureOAuthService:
+    def __init__(self, redis_client: redis.Redis):
+        # tenant_id / client_id / client_secret are read from the environment
         self.msal_app = msal.ConfidentialClientApplication(
-            client_id,
-            authority=f"https://login.microsoftonline.com/{tenant_id}",
-            client_credential=client_secret
+            self.client_id,
+            authority=self.authority,
+            client_credential=self.client_secret,
         )
 
-    async def refresh_token(self, refresh_token: str):
-        """Refresh OAuth token before expiry"""
+    def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
+        """Refresh an expired access token"""
         result = self.msal_app.acquire_token_by_refresh_token(
-            refresh_token,
-            scopes=["https://management.azure.com/.default"]
+            refresh_token=refresh_token,
+            scopes=self.scopes,
         )
-        return result["access_token"]
-
-    async def validate_token(self, token: str) -> bool:
-        """Validate OAuth token"""
-        # Decode JWT, check expiry, verify signature
-        ...
+        return {
+            "access_token": result["access_token"],
+            "refresh_token": result.get("refresh_token"),
+            "expires_in": result.get("expires_in", 3600),
+            "token_type": result.get("token_type", "Bearer"),
+        }
 ```
 
-### Token Refresh Strategy
-
-```python
-# Background task runs every 5 minutes
-@repeat_every(seconds=300)
-async def refresh_expiring_tokens():
-    """Refresh tokens expiring in next 10 minutes"""
-    sessions = await get_sessions_with_expiring_tokens(buffer_minutes=10)
-
-    for session in sessions:
-        try:
-            new_token = await oauth_manager.refresh_token(
-                session["refresh_token"]
-            )
-            await update_session_token(session["user_id"], new_token)
-            logger.info(f"Refreshed token for user {session['user_id']}")
-        except Exception as e:
-            logger.error(f"Failed to refresh token: {e}")
-            await notify_user_token_expired(session["user_id"])
-```
+On-behalf-of (OBO) token exchange for per-user cloud access lives in
+`src/azure_obo_strategy.py`.
 
 ---
 
@@ -597,24 +488,28 @@ async def refresh_expiring_tokens():
 ### Project Structure
 
 ```
-mcp-proxy/
+openagentic-mcp-proxy/
 ├── src/
-│   ├── main.py                    # FastAPI application
+│   ├── main.py                    # FastAPI application + routes
 │   ├── mcp_manager.py             # MCP lifecycle management
-│   ├── user_session_manager.py    # User session isolation
-│   ├── azure_oauth.py             # Azure OAuth integration
-│   ├── tool_registry.py           # Tool discovery & indexing
-│   ├── health_monitor.py          # Health checks & recovery
-│   ├── metrics.py                 # Prometheus metrics
+│   ├── user_session_manager.py    # Per-user Azure MCP session isolation
+│   ├── azure_oauth.py             # Azure AD OAuth
+│   ├── azure_obo_strategy.py      # Azure AD on-behalf-of token exchange
+│   ├── tool_indexer.py            # Tool discovery & indexing
+│   ├── tool_search.py             # Semantic tool search
+│   ├── tools/
+│   │   └── formatting_instructions.py
 │   └── static/
 │       └── index.html             # MCP Inspector UI
-├── config/
-│   └── mcps.json                  # MCP server configuration
 ├── tests/
-│   ├── test_mcp_manager.py
-│   ├── test_session_manager.py
-│   └── test_oauth.py
+│   ├── conftest.py
+│   ├── test_auth_hardening.py
+│   ├── test_azure_obo_strategy.py
+│   ├── test_jwt_auth.py
+│   └── test_tool_search.py
 ├── requirements.txt               # Python dependencies
+├── requirements-dev.txt           # Dev/test dependencies
+├── pytest.ini                     # Pytest configuration
 ├── Dockerfile                     # Docker image
 └── README.md                      # This file
 ```
@@ -634,24 +529,20 @@ pytest --cov=src tests/
 
 ### Adding a New MCP Server
 
-1. **Create MCP server** (Node.js or Python)
-2. **Add to config/mcps.json:**
-   ```json
-   {
-     "id": "my-new-mcp",
-     "type": "node",
-     "command": "node",
-     "args": ["/app/mcp-servers/my-new-mcp/dist/index.js"],
-     "enabled": true,
-     "shared": true
-   }
+Built-in MCP servers are registered programmatically in
+`MCPManager.initialize_servers` (`src/mcp_manager.py`).
+
+1. **Create the MCP server** (Node.js or Python — see `services/mcps/*`).
+2. **Register it in `initialize_servers`**, gated behind a disable env var, e.g.:
+   ```python
+   if not os.getenv("OpenAgentic_MY_NEW_MCP_DISABLED", "false").lower() == "true":
+       self.servers["openagentic_my_new"] = MCPServer(MCPServerConfig(
+           name="openagentic_my_new",
+           command=["fastmcp", "run", "-t", "stdio", "/app/mcp-servers/oap-my-new-mcp/server.py"],
+           env={"LOG_LEVEL": "info"},
+       ))
    ```
-3. **Add enable/disable env var:**
-   ```bash
-   MY_NEW_MCP_DISABLED=false
-   ```
-4. **Update MCP Manager** (`src/mcp_manager.py`)
-5. **Restart MCP Proxy**
+3. **Restart the MCP Proxy** so the new server is spawned and indexed.
 
 ---
 
@@ -681,57 +572,23 @@ services:
 
 ### Kubernetes
 
-See [helm/openagenticchat-v3/templates/mcp-proxy/](../../helm/openagenticchat-v3/templates/mcp-proxy/) for full Kubernetes manifests.
+See the platform Helm chart at [helm/openagentic/](../../helm/openagentic/) for the full Kubernetes manifests.
 
-**Key Resources:**
-- **Deployment**: 2 replicas, rolling update strategy
+**Key Resources** (see `helm/openagentic/templates/mcp-proxy.yaml` and `mcp-proxy-rbac.yaml`):
+- **Deployment**: spawns the proxy and its built-in MCP subprocesses
 - **Service**: ClusterIP, port 8080
-- **HPA**: Auto-scale 2-10 replicas based on CPU/memory
-- **ConfigMap**: MCP server configuration
-- **Secrets**: OAuth credentials, Redis password
+- **ServiceAccount + ClusterRole + ClusterRoleBinding**: in-cluster RBAC for the kubernetes MCP
+- **Secrets**: configuration is loaded from the `openagentic-secrets` secret
 
 ---
 
 ## Monitoring
 
-### Grafana Dashboard
-
-Import dashboard from `observability/dashboards/mcp-proxy-dashboard.json`:
-
-**Panels:**
-- MCP Server Status (up/down)
-- Tool Execution Rate
-- Tool Execution Duration (p50, p95, p99)
-- User Session Count
-- OAuth Token Refresh Rate
-- Error Rate by MCP Server
-
-### Alerts
-
-Recommended Prometheus alerts:
-
-```yaml
-groups:
-  - name: mcp_proxy
-    rules:
-      - alert: MCPServerDown
-        expr: mcp_server_status == 0
-        for: 2m
-        annotations:
-          summary: "MCP server {{ $labels.server_id }} is down"
-
-      - alert: HighToolExecutionErrors
-        expr: rate(mcp_tool_executions_total{status="error"}[5m]) > 0.1
-        for: 5m
-        annotations:
-          summary: "High error rate for tool {{ $labels.tool_id }}"
-
-      - alert: OAuthTokenRefreshFailures
-        expr: rate(mcp_oauth_token_refresh_failures_total[10m]) > 0
-        for: 5m
-        annotations:
-          summary: "OAuth token refresh failing for {{ $labels.provider }}"
-```
+The proxy exposes Prometheus-compatible HTTP metrics at `GET /metrics` via
+`prometheus-fastapi-instrumentator` (request counts, latencies, and status codes
+per route). Liveness/health is reported by `GET /health`, and version by
+`GET /version`. Build alerts and dashboards on top of these standard HTTP and
+process metrics.
 
 ---
 
@@ -744,16 +601,16 @@ groups:
 - Logs show "Failed to start MCP server"
 
 **Solutions:**
-1. Check MCP server logs: `docker logs mcp-proxy | grep "mcp-server-id"`
-2. Verify Node.js installed: `node --version`
-3. Check MCP server file exists: `ls /app/mcp-servers/admin-mcp/dist/index.js`
-4. Verify environment variables set correctly
-5. Try manual start: `node /app/mcp-servers/admin-mcp/dist/index.js`
+1. Check the proxy logs for the failing server name
+2. Verify the runtime is installed (`fastmcp`/`python` for Python MCPs, `node`/`npx` for Node MCPs)
+3. Check the MCP server file exists, e.g. `ls /app/mcp-servers/oap-admin-mcp/server.py`
+4. Verify environment variables are set correctly
+5. Confirm the server is not disabled via its `*_MCP_DISABLED` toggle
 
 ### User Session Not Creating
 
 **Symptoms:**
-- `POST /sessions/start` returns 500 error
+- `POST /user-sessions/start` returns 500 error
 - User's Azure MCP tools not available
 
 **Solutions:**
@@ -766,15 +623,14 @@ groups:
 ### Tool Execution Timeout
 
 **Symptoms:**
-- `POST /tools/call` times out after 30 seconds
+- `POST /call` times out
 - Tool shows as "in_progress" indefinitely
 
 **Solutions:**
-1. Check MCP server logs for errors
-2. Increase timeout: `TOOL_EXECUTION_TIMEOUT=60`
-3. Check Redis connectivity
-4. Verify tool parameters are valid
-5. Check underlying service (Azure API, etc.) is responsive
+1. Check the MCP server logs for errors
+2. Check Redis connectivity
+3. Verify the tool parameters are valid
+4. Check the underlying service (Azure API, etc.) is responsive
 
 ### OAuth Token Refresh Failing
 
@@ -783,11 +639,10 @@ groups:
 - User's Azure tools stop working after 1 hour
 
 **Solutions:**
-1. Verify refresh token is being stored
-2. Check Azure AD app registration has offline_access scope
-3. Verify Azure AD credentials are correct
-4. Check token refresh background task is running
-5. Review Azure AD audit logs for errors
+1. Verify the refresh token is being stored
+2. Check the Azure AD app registration has the `offline_access` scope
+3. Verify the Azure AD credentials are correct
+4. Review the Azure AD sign-in/audit logs for errors
 
 ---
 
@@ -815,19 +670,11 @@ groups:
 
 ## License
 
-MIT License - see [LICENSE](../../LICENSE)
+Apache-2.0 License — see [LICENSE](../../LICENSE)
 
 ---
 
 ## Support
 
-- **Documentation**: https://docs.openagentic.io/mcp-proxy
-- **Issues**: https://github.com/your-org/openagentic/issues
-- **Slack**: #mcp-proxy-dev
-- **Email**: mcp-proxy-team@openagentic.io
-
----
-
-**Version**: 1.0.0
-**Last Updated**: 2025-01-13
-**Maintainers**: MCP Team
+- **Issues**: https://github.com/agentic-work/openagentic/issues
+- **Email**: hello@agenticwork.io

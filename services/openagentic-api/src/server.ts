@@ -918,6 +918,19 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register docs chat plugin');
   }
 
+  // Register Cluster topology plugin (docs "Deployed Services" page).
+  // GET /api/cluster/services — live k8s deployment/statefulset inventory under
+  // helm/k8s; degrades to an empty {services:[]} list under docker compose
+  // (no in-cluster kubeconfig) so the docs page shows "no data" not a 404/500.
+  // Uses the same encapsulated dynamic-import pattern as the docs plugin.
+  try {
+    const clusterPlugin = (await import('./plugins/cluster.plugin.js')).default;
+    await server.register(clusterPlugin, { prefix: '/api/cluster' });
+    loggers.routes.info('Cluster topology plugin registered at /api/cluster/services');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register cluster topology plugin');
+  }
+
   // Register NEW modern chat system
   try {
     const { chatPlugin } = await import('./routes/chat/index.js');

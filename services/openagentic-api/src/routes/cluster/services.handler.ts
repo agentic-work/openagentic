@@ -140,11 +140,19 @@ export async function clusterServicesHandler(
   const apis = getApis();
   const release = loadReleaseInfo();
   if (!apis) {
-    return reply.status(503).send({
-      error: 'k8s_unavailable',
-      message: 'Could not load in-cluster kubeconfig — endpoint requires running inside the cluster.',
+    // Not running in-cluster (e.g. docker compose) — no kube-apiserver to query.
+    // Degrade gracefully to an empty inventory (HTTP 200) so the docs
+    // "Deployed Services" page renders a clean "no data" topology instead of
+    // treating it as an error and polling every 30s on a 5xx. The `degraded`
+    // flag + message explain why the list is empty; live topology is only
+    // available under helm/k8s.
+    return reply.send({
       release,
       namespace: NAMESPACE,
+      scrapedAt: new Date().toISOString(),
+      degraded: true,
+      message: 'Live cluster topology is only available under helm/k8s — no in-cluster kubeconfig present.',
+      services: [],
     });
   }
 

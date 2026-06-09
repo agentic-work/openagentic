@@ -13,8 +13,13 @@ The fastest path to a working dev environment is the same one users get:
 git clone https://github.com/agentic-work/openagentic
 cd openagentic
 cp .env.example .env
-# edit .env: set POSTGRES_PASSWORD + ADMIN_SEED_PASSWORD + OLLAMA_HOST
-docker compose up -d
+# Easiest: run install.sh (or the setup wizard under tools/setup) — it
+# generates all required secrets for you. To hand-edit .env instead, set
+# POSTGRES_PASSWORD + ADMIN_SEED_PASSWORD + OLLAMA_HOST, plus the 5 internal
+# secrets that docker-compose.yml now fails-fast on if unset:
+# JWT_SECRET, SIGNING_SECRET, INTERNAL_API_KEY, FRONTEND_SECRET,
+# INTERNAL_SERVICE_SECRET — generate each with: openssl rand -hex 32
+docker compose --profile milvus up -d
 ```
 
 Wait ~90s for `openagentic-api-1` to report healthy:
@@ -40,7 +45,7 @@ docker logs -f openagentic-api-1
 ```bash
 docker compose down
 docker volume rm openagentic_pg-data    # ⚠️ destroys all data
-docker compose up -d
+docker compose --profile milvus up -d
 ```
 
 ## Running tests

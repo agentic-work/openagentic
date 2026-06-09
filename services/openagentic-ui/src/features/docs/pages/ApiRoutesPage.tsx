@@ -1,61 +1,22 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useDocsStore } from '@/stores/useDocsStore';
 import { DocsCodeIcon } from '../components/DocsIcons';
 
-const routeGroups = [
-  {
-    group: 'Chat',
-    routes: [
-      { method: 'POST', path: '/api/chat/completions', desc: 'Send a message and stream the AI response' },
-      { method: 'POST', path: '/api/chat/completions/cancel', desc: 'Cancel an in-progress completion' },
-      { method: 'GET', path: '/api/chat/models', desc: 'List available models and their capabilities' },
-    ],
-  },
-  {
-    group: 'Conversations',
-    routes: [
-      { method: 'GET', path: '/api/conversations', desc: 'List conversations for the current user' },
-      { method: 'GET', path: '/api/conversations/:id', desc: 'Get a conversation with its messages' },
-      { method: 'DELETE', path: '/api/conversations/:id', desc: 'Delete a conversation' },
-      { method: 'PATCH', path: '/api/conversations/:id', desc: 'Update conversation title or metadata' },
-    ],
-  },
-  {
-    group: 'Flows',
-    routes: [
-      { method: 'GET', path: '/api/flows', desc: 'List saved workflows' },
-      { method: 'POST', path: '/api/flows', desc: 'Create a new workflow' },
-      { method: 'POST', path: '/api/flows/:id/execute', desc: 'Trigger a workflow execution' },
-      { method: 'GET', path: '/api/flows/:id/runs', desc: 'List execution history for a workflow' },
-    ],
-  },
-  {
-    group: 'Agents',
-    routes: [
-      { method: 'GET', path: '/api/agents', desc: 'List available agent types' },
-      { method: 'GET', path: '/api/agents/:id', desc: 'Get agent configuration details' },
-    ],
-  },
-  {
-    group: 'MCP',
-    routes: [
-      { method: 'GET', path: '/api/mcp/servers', desc: 'List MCP servers and their tools' },
-      { method: 'POST', path: '/api/mcp/invoke', desc: 'Directly invoke an MCP tool' },
-    ],
-  },
-  {
-    group: 'Admin',
-    routes: [
-      { method: 'GET', path: '/api/admin/providers', desc: 'List LLM provider configurations' },
-      { method: 'PUT', path: '/api/admin/providers/:id', desc: 'Update a provider configuration' },
-      { method: 'GET', path: '/api/admin/users', desc: 'List platform users' },
-      { method: 'GET', path: '/api/admin/audit', desc: 'Query the audit trail' },
-      { method: 'GET', path: '/api/admin/settings', desc: 'Get system settings' },
-      { method: 'PUT', path: '/api/admin/settings', desc: 'Update system settings' },
-    ],
-  },
-];
+/**
+ * ApiRoutesPage — the HTTP route reference, SOURCE-READ from the generated
+ * api-routes manifest (public/docs/generated/api-routes.json), which the docs
+ * generator derives by scanning services/openagentic-api/src/routes for every
+ * registered fastify.{get,post,put,patch,delete}(...) call. The route table,
+ * the per-group routes, and the headline count all come from real source — no
+ * hand-maintained route array (which had drifted to advertise fabricated
+ * endpoints — e.g. an OpenAI-style chat-completions path and a conversations
+ * resource — that the API never served; the real chat endpoint is the streaming
+ * one and sessions live under the chat prefix). Each group below maps 1:1 to a
+ * manifest section (a route
+ * source file / area); the paths shown are exactly the paths registered in the
+ * source.
+ */
 
 const methodColors: Record<string, { color: string; bg: string }> = {
   GET: { color: 'var(--color-info)', bg: 'color-mix(in srgb, var(--color-info) 12%, transparent)' },
@@ -65,14 +26,51 @@ const methodColors: Record<string, { color: string; bg: string }> = {
   DELETE: { color: 'var(--color-error)', bg: 'color-mix(in srgb, var(--color-error) 12%, transparent)' },
 };
 
+interface RenderRoute {
+  method: string;
+  path: string;
+}
+
+interface RenderGroup {
+  id: string;
+  title: string;
+  routes: RenderRoute[];
+}
+
 const ApiRoutesPage: React.FC = () => {
   const { loadManifest, loadedManifests } = useDocsStore();
 
   useEffect(() => {
-    if (!loadedManifests.has('http-routes')) {
-      loadManifest('http-routes').catch(() => {});
+    if (!loadedManifests.has('api-routes')) {
+      loadManifest('api-routes').catch(() => {});
     }
   }, [loadManifest, loadedManifests]);
+
+  const manifest = loadedManifests.get('api-routes');
+
+  // Route groups + paths SOURCE-READ from the generated manifest (one section
+  // per route source-file / area). Method + path come straight from each item's
+  // properties — the literal route registered in the API source.
+  const groups = useMemo<RenderGroup[]>(() => {
+    if (!manifest) return [];
+    return manifest.sections
+      .map((section) => {
+        const routes = section.items
+          .filter((item) => item.type === 'http-route')
+          .map((item) => {
+            const props = (item.properties ?? {}) as { method?: string; path?: string };
+            return {
+              method: (props.method ?? '').toUpperCase(),
+              path: props.path ?? '',
+            };
+          })
+          .filter((r) => r.method && r.path);
+        return { id: section.id, title: section.title, routes };
+      })
+      .filter((g) => g.routes.length > 0);
+  }, [manifest]);
+
+  const totalRoutes = useMemo(() => groups.reduce((n, g) => n + g.routes.length, 0), [groups]);
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 32px 96px' }}>
@@ -82,20 +80,27 @@ const ApiRoutesPage: React.FC = () => {
           API Routes
         </h1>
         <p style={{ fontSize: '15px', color: 'var(--color-textSecondary)', lineHeight: 1.7, maxWidth: '680px' }}>
-          A quick reference of all HTTP endpoints exposed by the OpenAgentic API. For
-          interactive testing and full request/response schemas, use the Swagger UI page.
+          {totalRoutes > 0 ? (
+            <>
+              A reference of the {totalRoutes} HTTP routes registered by the OpenAgentic API,
+              generated directly from the API source — each entry is a real, registered route.
+              For interactive testing and full request/response schemas, use the Swagger UI page.
+            </>
+          ) : (
+            <>Loading the API route reference…</>
+          )}
         </p>
       </motion.div>
 
-      {routeGroups.map((group, gi) => (
+      {groups.map((group, gi) => (
         <motion.section
-          key={group.group}
+          key={group.id}
           style={{ marginBottom: '40px' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 + gi * 0.05, duration: 0.4 }}
+          transition={{ delay: 0.1 + gi * 0.03, duration: 0.4 }}
         >
-          <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '12px' }}>{group.group}</h2>
+          <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '12px' }}>{group.title}</h2>
           <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden' }}>
             {group.routes.map((route, i) => (
               <div
@@ -123,10 +128,9 @@ const ApiRoutesPage: React.FC = () => {
                 >
                   {route.method}
                 </span>
-                <code style={{ fontSize: '13px', fontFamily: 'var(--font-mono)', color: 'var(--color-text)', fontWeight: 500, minWidth: '280px' }}>
+                <code style={{ fontSize: '13px', fontFamily: 'var(--font-mono)', color: 'var(--color-text)', fontWeight: 500 }}>
                   {route.path}
                 </code>
-                <span style={{ fontSize: '12px', color: 'var(--color-textMuted)' }}>{route.desc}</span>
               </div>
             ))}
           </div>
