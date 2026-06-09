@@ -41,6 +41,38 @@ const EMBED_RE = /(?:embed|embedding|bge-|gte-|e5-|nomic-embed|mxbai-embed)/i;
 
 const isEmbed = (name: string): boolean => EMBED_RE.test(name);
 
+// B4 (NIST SC-7/AC-4): SSRF guard for the unauthenticated probe-ollama route.
+// A legitimate Ollama host is on the LAN / loopback / docker-internal, so we do
+// NOT block all private space (that would break the install). We DO block the
+// cloud-metadata endpoints and any non-http(s) scheme — there is no legitimate
+// Ollama at the IMDS address or behind file://, gopher://, etc. The durable
+// fix is the needsSetup gate (the route dies once an admin exists).
+const METADATA_HOSTS = new Set([
+  '169.254.169.254',       // AWS/GCP/Azure IMDS (IPv4)
+  '[fd00:ec2::254]',       // AWS IMDS (IPv6)
+  'fd00:ec2::254',
+  'metadata.google.internal',
+  'metadata.goog',
+]);
+
+/** Returns an error string if `host` is an SSRF-unsafe target, else null. */
+function ssrfReject(host: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(host);
+  } catch {
+    return 'host must be a valid http(s) URL';
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return `scheme "${url.protocol}" is not allowed (use http or https)`;
+  }
+  const hostname = url.hostname.toLowerCase();
+  if (METADATA_HOSTS.has(hostname) || METADATA_HOSTS.has(`[${hostname}]`)) {
+    return 'host is a blocked cloud-metadata endpoint';
+  }
+  return null;
+}
+
 export const setupRoutes: FastifyPluginAsync = async (fastify) => {
   // ─── GET /api/setup/status ───────────────────────────────────────────────
   fastify.get('/status', async () => {
@@ -60,8 +92,21 @@ export const setupRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ─── POST /api/setup/probe-ollama ────────────────────────────────────────
   fastify.post<{ Body: ProbeBody }>('/probe-ollama', async (request, reply) => {
+    // B4 (NIST AC-3): setup-gate. Once an admin exists, setup is done and this
+    // unauthenticated route must be dead — otherwise it lingers as an SSRF
+    // primitive for the life of the deployment.
+    const adminCount = await prisma.user.count({ where: { is_admin: true, is_active: true } });
+    if (adminCount > 0) {
+      return reply.code(409).send({ error: 'setup already complete' });
+    }
+
     const host = (request.body?.host || '').trim().replace(/\/+$/, '');
     if (!host) return reply.code(400).send({ error: 'host is required' });
+
+    // B4 (NIST SC-7/AC-4): block IMDS + non-http(s) schemes before fetching.
+    const ssrfError = ssrfReject(host);
+    if (ssrfError) return reply.code(400).send({ error: `host blocked: ${ssrfError}` });
+
     try {
       const r = await fetch(`${host}/api/tags`, { signal: AbortSignal.timeout(8_000) });
       if (!r.ok) {

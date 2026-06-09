@@ -61,27 +61,43 @@ function generateSecureSecret(length = 64): string {
 const runtimeGeneratedSecrets: string[] = [];
 
 /**
- * Validates that a required secret is present.
+ * Validates that a required secret is present and strong.
  *
- * If a secret is missing or contains a placeholder value, this function:
- * - Logs a CRITICAL warning (never crashes)
- * - Generates a secure random value at runtime as a fallback
- *
- * This ensures the API server always starts, even if ESO/Vault is not configured.
+ * Posture (B2 / NIST IA-5, CM-6, SI-10):
+ *  - NODE_ENV=production: FAIL CLOSED. A missing or weak/placeholder secret
+ *    THROWS, aborting boot. A High system must never sign tokens with a
+ *    world-readable default (the documented `docker compose up` shipped
+ *    `openagentic-dev-jwt-secret-change-me`, which the old exact-only blocklist
+ *    let through).
+ *  - Any other env (development/test): for convenience, a missing/weak secret
+ *    is replaced by an ephemeral generated value with a CRITICAL log — never in
+ *    production.
  */
 function validateSecret(name: string, value: string | undefined, allowEmpty = false): string {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  const failOrGenerate = (reason: string): string => {
+    if (isProduction) {
+      // Fail closed — do not boot with a missing/weak secret in production.
+      throw new Error(
+        `[FATAL] Secret ${name} ${reason}. Refusing to start in production. ` +
+        `Set a strong value via .env / Helm values / Vault ESO.`,
+      );
+    }
+    const generated = generateSecureSecret();
+    runtimeGeneratedSecrets.push(name);
+    console.error(`[CRITICAL] Secret ${name} ${reason} — generated ephemeral runtime value (non-production). Configure it properly via Helm values or Vault ESO.`);
+    return generated;
+  };
+
   if (!value || value.trim() === '') {
     if (allowEmpty) {
       return '';
     }
-    // Generate a runtime secret instead of crashing
-    const generated = generateSecureSecret();
-    runtimeGeneratedSecrets.push(name);
-    console.error(`[CRITICAL] Missing required secret: ${name} — generated ephemeral runtime value. Configure this secret properly via Helm values or Vault ESO.`);
-    return generated;
+    return failOrGenerate('is missing');
   }
 
-  // Check for default/placeholder values that should not be in production
+  // Exact-match placeholder values that should never be a real secret.
   const exactPlaceholders = [
     'change_me',
     'change-me',
@@ -95,11 +111,19 @@ function validateSecret(name: string, value: string | undefined, allowEmpty = fa
     'dev-token'
   ];
 
-  // Substring placeholders that should never appear
+  // Substring placeholders that should never appear ANYWHERE in a secret.
+  // Includes the literal suffixes shipped in docker-compose.yml defaults
+  // (`...-change-me`) and the `dev-`/`dev_` weak-secret convention.
   const substringPlaceholders = [
     'your_secret_here',
     'replace_me',
-    'placeholder'
+    'placeholder',
+    'change-me',
+    'change_me',
+    'changeme',
+    'change-in-prod',
+    'dev-',
+    'dev_',
   ];
 
   const lowerValue = value.toLowerCase();
@@ -107,11 +131,7 @@ function validateSecret(name: string, value: string | undefined, allowEmpty = fa
   const isSubstringPlaceholder = substringPlaceholders.some(p => lowerValue.includes(p));
 
   if (isExactPlaceholder || isSubstringPlaceholder) {
-    // Generate a runtime secret instead of crashing
-    const generated = generateSecureSecret();
-    runtimeGeneratedSecrets.push(name);
-    console.error(`[CRITICAL] Secret ${name} contains placeholder value. Generated ephemeral runtime value. Configure this secret properly via Helm values or Vault ESO.`);
-    return generated;
+    return failOrGenerate('contains a weak/placeholder value');
   }
 
   return value;

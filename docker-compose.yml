@@ -273,14 +273,18 @@ services:
       AZURE_AD_CLIENT_ID: ${AZURE_AD_CLIENT_ID:-}
       AZURE_AD_CLIENT_SECRET: ${AZURE_AD_CLIENT_SECRET:-}
       # JWT signing (generated-random fallback is ephemeral; set once for stable sessions)
-      JWT_SECRET: ${JWT_SECRET:-openagentic-dev-jwt-secret-change-me}
-      SIGNING_SECRET: ${SIGNING_SECRET:-openagentic-dev-signing-secret-change-me}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env — generate with openssl rand -hex 32}
+      SIGNING_SECRET: ${SIGNING_SECRET:?set SIGNING_SECRET in .env — generate with openssl rand -hex 32}
       # Initial admin seed (written on first boot only)
       ADMIN_USER_EMAIL: ${ADMIN_USER_EMAIL:-admin@openagentic.local}
       ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:-changeme-on-first-login}
       LOCAL_ADMIN_USERNAME: ${LOCAL_ADMIN_USERNAME:-Admin}
       # Shared key for any internal service-to-service auth.
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in .env — generate with openssl rand -hex 32}
+      # The api MINTS the oa_sys_ inter-service token from this secret
+      # (mintInterServiceSystemToken); the mcp-proxy HMAC-verifies it with the
+      # SAME secret. Both services must share this value.
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET:?set INTERNAL_SERVICE_SECRET in .env — generate with openssl rand -hex 32}
       OPENAGENTIC_API_INTERNAL_URL: http://api:8000
       # The user already picked their password via ADMIN_SEED_PASSWORD in .env
       # before first boot, so don't force another change on first login.
@@ -336,7 +340,7 @@ services:
       MCP_PROXY_HOST: mcp-proxy
       MCP_PROXY_PORT: "8080"
       DNS_RESOLVER: 127.0.0.11
-      FRONTEND_SECRET: ${FRONTEND_SECRET:-dev-frontend-secret-change-in-prod}
+      FRONTEND_SECRET: ${FRONTEND_SECRET:?set FRONTEND_SECRET in .env — generate with openssl rand -hex 32}
       # Only local login by default; Microsoft/Google require credentials.
       AUTH_PROVIDER: ${AUTH_PROVIDER:-local}
       LOCAL_LOGIN_ENABLED: ${LOCAL_LOGIN_ENABLED:-true}
@@ -363,9 +367,9 @@ services:
       # api's `Bearer <internal-key>` calls to /execute-sync validate AND the
       # engine's callbacks to the api authenticate. Was missing → every flow
       # 503'd with "Service auth not configured".
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
-      JWT_SECRET: ${JWT_SECRET:-openagentic-dev-jwt-secret-change-me}
-      SIGNING_SECRET: ${SIGNING_SECRET:-openagentic-dev-signing-secret-change-me}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in .env — generate with openssl rand -hex 32}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env — generate with openssl rand -hex 32}
+      SIGNING_SECRET: ${SIGNING_SECRET:?set SIGNING_SECRET in .env — generate with openssl rand -hex 32}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -404,15 +408,20 @@ services:
       API_PORT: "8000"
       # Must match api's secrets so internal JWTs the api issues to reach
       # the proxy validate. Defaults here mirror the api service above.
-      JWT_SECRET: ${JWT_SECRET:-openagentic-dev-jwt-secret-change-me}
-      SIGNING_SECRET: ${SIGNING_SECRET:-openagentic-dev-signing-secret-change-me}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env — generate with openssl rand -hex 32}
+      SIGNING_SECRET: ${SIGNING_SECRET:?set SIGNING_SECRET in .env — generate with openssl rand -hex 32}
       # REQUIRED for System-Root tool calls: the workflows engine authenticates
       # to /call with `Bearer ${API_INTERNAL_KEY||INTERNAL_API_KEY}`, which the
       # proxy plain-matches against API_INTERNAL_KEY (main.py:716 — note the proxy
       # reads API_INTERNAL_KEY, the api/workflows set INTERNAL_API_KEY). Bind both
       # to the same value or every flow MCP-tool node 401s.
-      API_INTERNAL_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
+      API_INTERNAL_KEY: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in .env — generate with openssl rand -hex 32}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in .env — generate with openssl rand -hex 32}
+      # REQUIRED for the oa_sys_ inter-service token: the api mints it as
+      # oa_sys_<HMAC_SHA256(INTERNAL_SERVICE_SECRET, "openagentic-system-token")>
+      # and the proxy HMAC-verifies it (main.py verify_system_token). Both sides
+      # MUST share the same value or system-root MCP calls 401 (fail closed).
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET:?set INTERNAL_SERVICE_SECRET in .env — generate with openssl rand -hex 32}
       # NOTE: MCPS_ENABLED is documentary only — the mcp-proxy does NOT read it.
       # The actual per-MCP gate is the OpenAgentic_*_MCP_DISABLED flags below
       # (consumed by mcp_manager.initialize_servers). Keep this list in sync for

@@ -7,6 +7,8 @@ Hosts and manages ALL MCP servers for the OpenAgentic platform
 
 import asyncio
 import base64
+import hashlib
+import hmac
 import json
 import logging
 import os
@@ -84,6 +86,82 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://openagentic-api:8000")  # Inter
 # Azure AD users: Validated via Azure AD token, RBAC policies apply
 # Local admin users: No token = system admin role with full access
 ENABLE_AUTH = os.getenv("ENABLE_AUTH", "true").lower() in ("true", "1", "yes")
+
+
+# =============================================================================
+# B3 (FedRAMP P3) — fail-closed auth hardening (NIST AC-3, AC-6, IA-2, IA-5)
+# =============================================================================
+class BootError(RuntimeError):
+    """Raised at boot when a required signing key is missing or a known weak
+    placeholder. The proxy refuses to start rather than run with a forgeable
+    trust root."""
+
+
+def bootstrap_jwt_keys() -> Dict[str, Optional[str]]:
+    """Validate the internal JWT signing key at boot — FAIL CLOSED.
+
+    Accepts the key from any of the known env vars (new + legacy). Rejects a
+    missing key, and rejects any value beginning with the `dev-secret` weak
+    placeholder. Returns the resolved key material on success.
+    """
+    signing_key = (
+        os.getenv("JWT_SIGNING_KEY")
+        or os.getenv("OPENAGENTIC_JWT_KEY")
+        or os.getenv("JWT_SECRET")
+        or os.getenv("SIGNING_SECRET")
+        or os.getenv("INTERNAL_JWT_SECRET")
+    )
+    if not signing_key:
+        raise BootError(
+            "JWT signing key required: set JWT_SIGNING_KEY (or JWT_SECRET / "
+            "SIGNING_SECRET) to a strong random value. Refusing to start."
+        )
+    if signing_key.startswith("dev-secret"):
+        raise BootError(
+            "JWT signing key is a 'dev-secret' placeholder — refusing to start "
+            "with a forgeable trust root. Set a strong random value."
+        )
+    return {
+        "signing_key": signing_key,
+        "aad_public_key": os.getenv("AAD_PUBLIC_KEY"),
+    }
+
+
+# Label MUST match the api's mintInterServiceSystemToken (util/mintInterServiceSystemToken.ts).
+SYSTEM_TOKEN_LABEL = "openagentic-system-token"
+SYSTEM_TOKEN_PREFIX = "oa_sys_"
+
+
+def compute_system_token_suffix(secret: str) -> str:
+    """Reference HMAC suffix for the `oa_sys_` inter-service token.
+
+    Both the api (mintInterServiceSystemToken) and this proxy MUST compute it
+    identically: base64url(HMAC_SHA256(secret, SYSTEM_TOKEN_LABEL)) with '='
+    padding stripped (matching Node's `.digest('base64url')`).
+    """
+    digest = hmac.new(
+        secret.encode("utf-8"), SYSTEM_TOKEN_LABEL.encode("utf-8"), hashlib.sha256
+    ).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+
+
+def verify_system_token(token: str) -> bool:
+    """Constant-time HMAC verification of an `oa_sys_<hmac>` inter-service token.
+
+    The api mints it as `oa_sys_` + compute_system_token_suffix(INTERNAL_SERVICE_SECRET).
+    We recompute and compare_digest. The prefix alone is NEVER trusted (the
+    pre-B3 bypass trusted it blindly → system-root for any `Bearer oa_sys_<anything>`).
+    Returns False when the secret is unset/empty so a missing secret can never
+    authenticate a system caller.
+    """
+    if not token or not token.startswith(SYSTEM_TOKEN_PREFIX):
+        return False
+    secret = os.getenv("INTERNAL_SERVICE_SECRET", "")
+    if not secret:
+        logger.warning("INTERNAL_SERVICE_SECRET unset — rejecting system token (fail closed)")
+        return False
+    expected = SYSTEM_TOKEN_PREFIX + compute_system_token_suffix(secret)
+    return hmac.compare_digest(token, expected)
 
 # =============================================================================
 # MCP READ-ONLY MODE - Platform-level safety guardrail for CLOUD PROVIDERS ONLY
@@ -647,9 +725,16 @@ async def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(secu
     - Local admin users (no token): System admin role with full access
     """
     if not credentials:
-        # No credentials = internal/local admin user
-        # Return system admin context with full access
-        logger.info("No credentials provided - granting system admin access (local admin user)")
+        # B3 (NIST AC-3/IA-2): FAIL CLOSED. A request with no Authorization
+        # header must NEVER be granted system-admin. When auth is enabled,
+        # reject with 401. Only when auth is explicitly disabled (local dev,
+        # ENABLE_AUTH=false) do we fall back to a local-admin context.
+        if ENABLE_AUTH:
+            raise HTTPException(
+                status_code=401,
+                detail={"error": "missing_authorization", "message": "Authorization required"},
+            )
+        logger.info("No credentials + ENABLE_AUTH=false — local-dev system admin context")
         return {
             'token': None,
             'payload': {},
@@ -663,21 +748,29 @@ async def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(secu
 
     token = credentials.credentials
 
-    # Check if this is a system-level API token (special marker in token)
-    # System tokens bypass Azure AD validation and use SP credentials for all MCP calls
-    # Format: oa_sys_<base64url(randomBytes(32))>
-    if token and token.startswith('oa_sys_'):
-        logger.info("System-level API token detected - bypassing Azure AD validation, will use SP credentials")
-        return {
-            'token': 'SYSTEM_SP_AUTH',  # Special marker for SP credential usage
-            'payload': {},
-            'user_id': 'system-root',
-            'user_name': 'System Root',
-            'email': 'system@openagentic.io',
-            'upn': None,
-            'groups': ['system-admins'],
-            'is_admin': True
-        }
+    # System-level inter-service token. B3 (NIST IA-2/IA-5): the prefix alone is
+    # NOT trusted — we HMAC-verify the token against INTERNAL_SERVICE_SECRET
+    # (the api mints it via mintInterServiceSystemToken). A forged
+    # `Bearer oa_sys_<anything>` fails verify_system_token() and falls through
+    # to normal validation (and is ultimately rejected).
+    if token and token.startswith(SYSTEM_TOKEN_PREFIX):
+        if verify_system_token(token):
+            logger.info("System inter-service token HMAC-verified — using SP credentials")
+            return {
+                'token': 'SYSTEM_SP_AUTH',  # Special marker for SP credential usage
+                'payload': {},
+                'user_id': 'system-root',
+                'user_name': 'System Root',
+                'email': 'system@openagentic.io',
+                'upn': None,
+                'groups': ['system-admins'],
+                'is_admin': True
+            }
+        logger.warning("oa_sys_ token failed HMAC verification — rejecting (fail closed)")
+        raise HTTPException(
+            status_code=401,
+            detail={"error": "invalid_system_token", "message": "System token verification failed"},
+        )
 
     # Check for OpenAgentic user API key (oa_ prefix, not the oa_sys_ system key)
     # Format: oa_<base64url(randomBytes(32))>  (43-char base64url body)
@@ -958,6 +1051,70 @@ async def exchange_token_for_azure(original_token: str, scope: str = "https://ma
         logger.error(f"Unexpected error during token exchange: {e}")
         raise TokenExchangeError(f"Unexpected error: {str(e)}")
 
+
+async def require_obo_token(original_token: str, audience: str = "https://management.azure.com/.default") -> str:
+    """Fail-closed OBO exchange (B3 / NIST AC-3, SC-8).
+
+    Wraps exchange_token_for_azure and converts ANY exchange failure into a
+    structured HTTPException 401 (error=obo_failed). The proxy MUST NOT fall
+    back to passing the user's original AAD token to the upstream MCP — that
+    would grant the upstream the user's full delegated scope. On failure the
+    original token is NEVER returned and NEVER echoed in the error body.
+    """
+    try:
+        return await exchange_token_for_azure(original_token, scope=audience)
+    except TokenExchangeError as e:
+        logger.warning(f"OBO exchange failed for audience {audience}: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail={"error": "obo_failed", "audience": audience},
+        )
+
+
+async def acquire_azure_obo_tokens(
+    obo_token: str,
+    audiences: Dict[str, str],
+    user_name: Optional[str] = None,
+    skip: Optional[set] = None,
+) -> Dict[str, str]:
+    """Fail-closed multi-audience OBO exchange (B3 / NIST AC-3, SC-8).
+
+    Exchanges `obo_token` for every audience in `audiences` (a
+    {token_key: scope} mapping) IN PARALLEL, skipping any token_key in `skip`.
+    Returns {token_key: exchanged_token} for all requested (non-skipped)
+    audiences.
+
+    Fail-CLOSED: if ANY audience exchange fails, raises HTTPException(401,
+    error=obo_failed) with the failing audience attached. The proxy MUST NOT
+    silently fall back to passing the user's original AAD token to the
+    upstream MCP. The original obo_token is NEVER returned and NEVER echoed in
+    the error body.
+    """
+    skip = skip or set()
+    keys = [k for k in audiences if k not in skip]
+    if not keys:
+        return {}
+
+    tasks = [require_obo_token(obo_token, audience=audiences[k]) for k in keys]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    acquired: Dict[str, str] = {}
+    for token_key, result in zip(keys, results):
+        if isinstance(result, HTTPException):
+            # require_obo_token already converted the failure into a 401 with
+            # the audience attached and never leaks the original token.
+            raise result
+        if isinstance(result, BaseException):
+            raise HTTPException(
+                status_code=401,
+                detail={"error": "obo_failed", "audience": audiences[token_key]},
+            )
+        acquired[token_key] = result
+
+    if user_name:
+        logger.info(f"[OBO] Azure tokens acquired for {user_name}: {list(acquired.keys())}")
+    return acquired
+
 # === MAIN MCP ENDPOINTS ===
 
 @app.post("/mcp", response_model=MCPResponse)
@@ -1150,39 +1307,22 @@ async def proxy_mcp_request(
                         # Fallback: try using access token for OBO
                         obo_token = access_token
 
-                    # Helper function for parallel token exchange
-                    async def exchange_for_audience(token_key: str, scope: str) -> tuple:
-                        try:
-                            exchanged = await exchange_token_for_azure(obo_token, scope=scope)
-                            logger.info(f"[OBO] {token_key} SUCCESS for {user_name}")
-                            return (token_key, exchanged)
-                        except Exception as e:
-                            logger.warning(f"[OBO] {token_key} FAILED: {e}")
-                            return (token_key, None)
-
-                    # Exchange for all audiences in parallel (skip ones we already have)
-                    # Only if we have an OBO token with app audience
+                    # Exchange for all audiences in parallel (skip ones we already have).
+                    # Fail-CLOSED: any audience failure raises HTTPException(401);
+                    # we NEVER fall back to passing the original AAD token through.
                     if obo_token:
-                        exchange_tasks = []
-                        for token_key, scope in AZURE_AUDIENCES.items():
-                            if token_key not in azure_tokens:
-                                exchange_tasks.append(exchange_for_audience(token_key, scope))
-
-                        if exchange_tasks:
-                            results = await asyncio.gather(*exchange_tasks, return_exceptions=True)
-                            for result in results:
-                                if isinstance(result, tuple) and result[1]:
-                                    azure_tokens[result[0]] = result[1]
+                        acquired = await acquire_azure_obo_tokens(
+                            obo_token,
+                            AZURE_AUDIENCES,
+                            user_name=user_name,
+                            skip=set(azure_tokens.keys()),
+                        )
+                        azure_tokens.update(acquired)
                     else:
                         logger.warning(f"[OBO] No suitable token for OBO exchange - only ARM token available")
 
-                    # Set primary user_token to ARM token for backwards compatibility
-                    # CRITICAL FIX: If OBO exchange failed, fall back to the original Azure AD token
-                    # rather than setting user_token to None (which destroys the valid token)
-                    user_token = azure_tokens.get("userAccessToken") or access_token
-                    if not azure_tokens.get("userAccessToken") and access_token:
-                        azure_tokens["userAccessToken"] = access_token
-                        logger.warning(f"[OBO] All exchanges failed for {user_name} - passing original Azure AD token directly")
+                    # Set primary user_token to ARM token for backwards compatibility.
+                    user_token = azure_tokens.get("userAccessToken")
 
                     # Log summary
                     successful_tokens = [k for k, v in azure_tokens.items() if v]
@@ -2162,23 +2302,15 @@ async def batch_call_tools(
             except Exception:
                 pass
 
-            async def exchange_for_audience(token_key: str, scope: str) -> tuple:
-                try:
-                    exchanged = await exchange_token_for_azure(original_token, scope=scope)
-                    return (token_key, exchanged)
-                except Exception:
-                    return (token_key, None)
-
-            exchange_tasks = [
-                exchange_for_audience(tk, scope)
-                for tk, scope in AZURE_AUDIENCES.items()
-                if tk not in azure_tokens
-            ]
-            if exchange_tasks:
-                results = await asyncio.gather(*exchange_tasks, return_exceptions=True)
-                for result in results:
-                    if isinstance(result, tuple) and result[1]:
-                        azure_tokens[result[0]] = result[1]
+            # Fail-CLOSED: any audience failure raises HTTPException(401); we
+            # NEVER fall back to passing the original AAD token through.
+            acquired = await acquire_azure_obo_tokens(
+                original_token,
+                AZURE_AUDIENCES,
+                user_name=user_name,
+                skip=set(azure_tokens.keys()),
+            )
+            azure_tokens.update(acquired)
 
             user_token = azure_tokens.get("userAccessToken")
         else:
@@ -2410,16 +2542,6 @@ async def call_mcp_tool(
                     "logAnalyticsAccessToken": "https://api.loganalytics.io/.default", # Log Analytics
                 }
 
-                # Exchange tokens for ALL audiences in parallel for performance
-                async def exchange_for_audience(token_key: str, scope: str) -> tuple:
-                    try:
-                        exchanged = await exchange_token_for_azure(original_token, scope=scope)
-                        logger.info(f"[OBO] {token_key} SUCCESS for {user_name}")
-                        return (token_key, exchanged)
-                    except Exception as e:
-                        logger.warning(f"[OBO] {token_key} FAILED: {e}")
-                        return (token_key, None)
-
                 # Check if original token already has an Azure audience
                 try:
                     parts = original_token.split('.')
@@ -2435,24 +2557,19 @@ async def call_mcp_tool(
                 except Exception:
                     pass  # Will exchange below
 
-                # Exchange for all audiences (skip ARM if already have it)
-                exchange_tasks = []
-                for token_key, scope in AZURE_AUDIENCES.items():
-                    if token_key not in azure_tokens:  # Skip if already have this token
-                        exchange_tasks.append(exchange_for_audience(token_key, scope))
+                # Exchange for all audiences in parallel (skip ARM if already have it).
+                # Fail-CLOSED: any audience failure raises HTTPException(401); we
+                # NEVER fall back to passing the original AAD token through.
+                acquired = await acquire_azure_obo_tokens(
+                    original_token,
+                    AZURE_AUDIENCES,
+                    user_name=user_name,
+                    skip=set(azure_tokens.keys()),
+                )
+                azure_tokens.update(acquired)
 
-                if exchange_tasks:
-                    results = await asyncio.gather(*exchange_tasks, return_exceptions=True)
-                    for result in results:
-                        if isinstance(result, tuple) and result[1]:
-                            azure_tokens[result[0]] = result[1]
-
-                # Set primary user_token to ARM token for backwards compatibility
-                # CRITICAL FIX: If OBO exchange failed, fall back to the original Azure AD token
-                user_token = azure_tokens.get("userAccessToken") or user_info.get('token')
-                if not azure_tokens.get("userAccessToken") and user_info.get('token'):
-                    azure_tokens["userAccessToken"] = user_info['token']
-                    logger.warning(f"[OBO] All exchanges failed for {user_name} - passing original Azure AD token directly")
+                # Set primary user_token to ARM token for backwards compatibility.
+                user_token = azure_tokens.get("userAccessToken")
 
                 # Log summary
                 successful_tokens = [k for k, v in azure_tokens.items() if v]
