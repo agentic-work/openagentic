@@ -55,7 +55,9 @@ jobs:
           - service: openagentic-mcp-proxy
             dockerfile: services/openagentic-mcp-proxy/Dockerfile
             build_arg: SRC_PATH=services/openagentic-mcp-proxy
-            platforms: linux/amd64,linux/arm64
+            # amd64-only: the heavy CLI installs (helm/aws/azure curl) are flaky
+            # under QEMU arm64 network emulation. Cluster runs mcp-proxy on amd64.
+            platforms: linux/amd64
             no_cache: "true"
           - service: openagentic-proxy
             dockerfile: services/openagentic-proxy/Dockerfile
