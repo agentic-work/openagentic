@@ -57,11 +57,19 @@ jobs:
       # ── Wait for DinD daemon ──────────────────────────────────────────────────
       - name: Wait for DinD
         run: |
-          for i in $(seq 1 30); do
-            docker info >/dev/null 2>&1 && echo "Docker ready (${i}s)" && break
-            sleep 1
+          echo "Waiting for Docker daemon…"
+          for i in $(seq 1 60); do
+            if docker info >/dev/null 2>&1; then
+              echo "Docker ready after ${i}s"
+              docker version --format 'Server: {{.Server.Version}}'
+              exit 0
+            fi
+            sleep 2
           done
-          docker info
+          echo "Docker still not ready after 120s — showing socket state:"
+          ls -la /var/run/docker.sock 2>/dev/null || echo "no docker.sock"
+          docker info || true
+          exit 1
 
       - name: Checkout
         uses: actions/checkout@v4
