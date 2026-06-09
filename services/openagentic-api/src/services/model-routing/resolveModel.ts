@@ -44,6 +44,35 @@ export interface ResolvedModel {
 }
 
 /**
+ * Hydrate a registry row's provider. The `model_role_assignments.provider`
+ * column is a SCALAR provider NAME (e.g. "aws-bedrock") — NOT a Prisma relation
+ * — so we look the provider up in `llm_providers` by name and attach it as
+ * `row.provider` for the downstream guards / shaping to consume. Mirrors the
+ * scalar-name pattern already used by ModelConfigurationService.
+ *
+ * Throws PROVIDER_DELETED when the named provider doesn't exist at all (a row
+ * pointing at a missing provider is unusable).
+ */
+async function hydrateProvider(prisma: any, row: any): Promise<any> {
+  if (!row) return row;
+  // Already hydrated (provider is an object, not a scalar name)?
+  if (row.provider && typeof row.provider === 'object') return row;
+  const providerName = row.provider;
+  const provider = await prisma.lLMProvider.findFirst({
+    where: { name: providerName, deleted_at: null },
+    select: { id: true, name: true, provider_type: true, enabled: true, deleted_at: true },
+  });
+  if (!provider) {
+    throw new ResolveModelError(
+      'PROVIDER_DELETED',
+      `Registry row ${row.id} references provider '${providerName}' which is missing or deleted`,
+      { providerName, rowId: row.id },
+    );
+  }
+  return { ...row, provider };
+}
+
+/**
  * Validate a registry row against provider gates and role-match.
  * Guard order: REGISTRY_ROW_DISABLED → PROVIDER_DISABLED → PROVIDER_DELETED → ROLE_MISMATCH.
  * This ordering ensures a disabled row never silently passes through to a role check.
@@ -88,13 +117,12 @@ async function resolveRoleDefault(
   prisma: any,
   role: string,
 ): Promise<ResolvedModel> {
-  const row = await prisma.modelRoleAssignment.findFirst({
+  const raw = await prisma.modelRoleAssignment.findFirst({
     where: { role, enabled: true },
     orderBy: [{ priority: 'desc' }, { created_at: 'asc' }],
-    include: { provider: true },
   });
 
-  if (!row) {
+  if (!raw) {
     throw new ResolveModelError(
       'NO_MODEL_FOR_ROLE',
       `No enabled Registry rows for role='${role}'. Bootstrap a model in admin or check Registry filtering.`,
@@ -102,6 +130,7 @@ async function resolveRoleDefault(
     );
   }
 
+  const row = await hydrateProvider(prisma, raw);
   checkResolvedRow(row, role);
   return toResolvedModel(row);
 }
@@ -128,12 +157,11 @@ export async function resolveModel(
   const { prisma } = deps;
 
   if (explicitRowId !== undefined) {
-    const row = await prisma.modelRoleAssignment.findUnique({
+    const raw = await prisma.modelRoleAssignment.findUnique({
       where: { id: explicitRowId },
-      include: { provider: true },
     });
 
-    if (!row) {
+    if (!raw) {
       throw new ResolveModelError(
         'UNKNOWN_REGISTRY_ROW',
         `Registry row id ${explicitRowId} not found`,
@@ -141,14 +169,17 @@ export async function resolveModel(
       );
     }
 
+    const row = await hydrateProvider(prisma, raw);
     checkResolvedRow(row, args.role);
     return toResolvedModel(row);
   }
 
   if (flowNodeId !== undefined) {
+    // The flowNode → modelRoleAssignment FK IS a real relation; the assignment's
+    // `provider` is a scalar name, hydrated separately below.
     const node = await prisma.flowNode.findUnique({
       where: { id: flowNodeId },
-      include: { modelRoleAssignment: { include: { provider: true } } },
+      include: { modelRoleAssignment: true },
     });
 
     if (!node) {
@@ -160,8 +191,9 @@ export async function resolveModel(
     }
 
     if (node.modelRoleAssignment) {
-      checkResolvedRow(node.modelRoleAssignment, args.role);
-      return toResolvedModel(node.modelRoleAssignment);
+      const row = await hydrateProvider(prisma, node.modelRoleAssignment);
+      checkResolvedRow(row, args.role);
+      return toResolvedModel(row);
     }
 
     // FK is null → fall through to role-based default (F1.6).
@@ -171,7 +203,7 @@ export async function resolveModel(
   if (agentId !== undefined) {
     const agent = await prisma.agent.findUnique({
       where: { id: agentId },
-      include: { modelRoleAssignment: { include: { provider: true } } },
+      include: { modelRoleAssignment: true },
     });
 
     if (!agent) {
@@ -183,8 +215,9 @@ export async function resolveModel(
     }
 
     if (agent.modelRoleAssignment) {
-      checkResolvedRow(agent.modelRoleAssignment, args.role);
-      return toResolvedModel(agent.modelRoleAssignment);
+      const row = await hydrateProvider(prisma, agent.modelRoleAssignment);
+      checkResolvedRow(row, args.role);
+      return toResolvedModel(row);
     }
 
     // Agent has no override → fall through to role-based default (F1.6).
@@ -207,13 +240,14 @@ export async function resolveModel(
       );
     }
 
-    const picked = await deps.smartRouter.scoreAndPick(candidates, {
+    const pickedRaw = await deps.smartRouter.scoreAndPick(candidates, {
       taskComplexity,
       preferredTier,
     });
 
     // Defense-in-depth: even if the scorer somehow returns a wrong-role row,
     // checkResolvedRow rejects via ROLE_MISMATCH. Registry role column is SoT.
+    const picked = await hydrateProvider(prisma, pickedRaw);
     checkResolvedRow(picked, args.role);
     return toResolvedModel(picked);
   }
