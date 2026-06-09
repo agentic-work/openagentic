@@ -4,9 +4,8 @@
   "description": "HTTP routes registered across the API",
   "icon": "route",
   "category": "core",
-  "generatedAt": "2026-06-09T19:15:52.445Z",
+  "generatedAt": "2026-06-09T23:11:03.436Z",
   "sourceFiles": [
-    "services/openagentic-api/src/routes/account-linking.ts",
     "services/openagentic-api/src/routes/admin-agents.ts",
     "services/openagentic-api/src/routes/admin-aif-metrics.ts",
     "services/openagentic-api/src/routes/admin-analytics.ts",
@@ -56,7 +55,6 @@
     "services/openagentic-api/src/routes/memories.ts",
     "services/openagentic-api/src/routes/model-selector.ts",
     "services/openagentic-api/src/routes/monitoring-websocket.ts",
-    "services/openagentic-api/src/routes/obo.ts",
     "services/openagentic-api/src/routes/openai-compatible.ts",
     "services/openagentic-api/src/routes/orchestrate.ts",
     "services/openagentic-api/src/routes/prompt-templates.ts",
@@ -69,7 +67,6 @@
     "services/openagentic-api/src/routes/version.ts",
     "services/openagentic-api/src/routes/workflow-marketplace.ts",
     "services/openagentic-api/src/routes/workflows.ts",
-    "services/openagentic-api/src/routes/v1/credentials.ts",
     "services/openagentic-api/src/routes/v1/github.ts",
     "services/openagentic-api/src/routes/v1/index.ts",
     "services/openagentic-api/src/routes/v1/mcp.ts",
@@ -86,7 +83,6 @@
     "services/openagentic-api/src/routes/internal/refresh-models.ts",
     "services/openagentic-api/src/routes/internal/result-storage.ts",
     "services/openagentic-api/src/routes/internal/tool-search.ts",
-    "services/openagentic-api/src/routes/google-auth/index.ts",
     "services/openagentic-api/src/routes/file-attachment/uploads.ts",
     "services/openagentic-api/src/routes/docs/index.ts",
     "services/openagentic-api/src/routes/chat/index.ts",
@@ -94,7 +90,6 @@
     "services/openagentic-api/src/routes/chat/user-feedback.ts",
     "services/openagentic-api/src/routes/chat/handlers/title.handler.ts",
     "services/openagentic-api/src/routes/azure-integration/admin.ts",
-    "services/openagentic-api/src/routes/azure-integration/auth.ts",
     "services/openagentic-api/src/routes/azure-integration/events.ts",
     "services/openagentic-api/src/routes/analytics-monitoring/prompt-metrics.ts",
     "services/openagentic-api/src/routes/analytics-monitoring/usage.ts",
@@ -132,28 +127,6 @@
       "description": "Routes registered in src/routes",
       "adminOnly": false,
       "items": [
-        {
-          "id": "GET-_accounts_linked-azure",
-          "name": "GET /accounts/linked-azure",
-          "description": "GET /accounts/linked-azure",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/accounts/linked-azure"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/account-linking.ts"
-        },
-        {
-          "id": "DELETE-_accounts_unlink-azure",
-          "name": "DELETE /accounts/unlink-azure",
-          "description": "DELETE /accounts/unlink-azure",
-          "type": "http-route",
-          "properties": {
-            "method": "DELETE",
-            "path": "/accounts/unlink-azure"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/account-linking.ts"
-        },
         {
           "id": "GET-_",
           "name": "GET /",
@@ -1893,28 +1866,6 @@
           "sourceFile": "services/openagentic-api/src/routes/auth.ts"
         },
         {
-          "id": "GET-_api_auth_user-mcps",
-          "name": "GET /api/auth/user-mcps",
-          "description": "GET /api/auth/user-mcps",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/auth/user-mcps"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/auth.ts"
-        },
-        {
-          "id": "POST-_api_admin_validate-azure",
-          "name": "POST /api/admin/validate-azure",
-          "description": "POST /api/admin/validate-azure",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/api/admin/validate-azure"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/auth.ts"
-        },
-        {
           "id": "POST-_api_auth_validate-token",
           "name": "POST /api/auth/validate-token",
           "description": "POST /api/auth/validate-token",
@@ -1933,61 +1884,6 @@
           "properties": {
             "method": "GET",
             "path": "/user-info"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/auth.ts"
-        },
-        {
-          "id": "GET-_api_auth_login",
-          "name": "GET /api/auth/login",
-          "description": "GET /api/auth/login",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/auth/login"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/auth.ts"
-        },
-        {
-          "id": "GET-_api_auth_microsoft",
-          "name": "GET /api/auth/microsoft",
-          "description": "GET /api/auth/microsoft",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/auth/microsoft"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/auth.ts"
-        },
-        {
-          "id": "GET-_api_auth_microsoft_login",
-          "name": "GET /api/auth/microsoft/login",
-          "description": "GET /api/auth/microsoft/login",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/auth/microsoft/login"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/auth.ts"
-        },
-        {
-          "id": "GET-_api_auth_microsoft_logout",
-          "name": "GET /api/auth/microsoft/logout",
-          "description": "GET /api/auth/microsoft/logout",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/auth/microsoft/logout"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/auth.ts"
-        },
-        {
-          "id": "POST-_api_auth_microsoft_logout",
-          "name": "POST /api/auth/microsoft/logout",
-          "description": "POST /api/auth/microsoft/logout",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/api/auth/microsoft/logout"
           },
           "sourceFile": "services/openagentic-api/src/routes/auth.ts"
         },
@@ -2707,28 +2603,6 @@
           "sourceFile": "services/openagentic-api/src/routes/monitoring-websocket.ts"
         },
         {
-          "id": "GET-_api_auth_obo",
-          "name": "GET /api/auth/obo",
-          "description": "GET /api/auth/obo",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/api/auth/obo"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/obo.ts"
-        },
-        {
-          "id": "POST-_api_auth_obo_refresh",
-          "name": "POST /api/auth/obo/refresh",
-          "description": "POST /api/auth/obo/refresh",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/api/auth/obo/refresh"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/obo.ts"
-        },
-        {
           "id": "GET-_v1_health",
           "name": "GET /v1/health",
           "description": "GET /v1/health",
@@ -3408,39 +3282,6 @@
       "adminOnly": false,
       "items": [
         {
-          "id": "GET-_providers",
-          "name": "GET /providers",
-          "description": "GET /providers",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/providers"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/v1/credentials.ts"
-        },
-        {
-          "id": "GET-_me",
-          "name": "GET /me",
-          "description": "GET /me",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/me"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/v1/credentials.ts"
-        },
-        {
-          "id": "GET-_audit",
-          "name": "GET /audit",
-          "description": "GET /audit",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/audit"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/v1/credentials.ts"
-        },
-        {
           "id": "GET-_config",
           "name": "GET /config",
           "description": "GET /config",
@@ -4093,91 +3934,6 @@
             "path": "/api/internal/tool-search"
           },
           "sourceFile": "services/openagentic-api/src/routes/internal/tool-search.ts"
-        }
-      ]
-    },
-    {
-      "id": "routes_google-auth",
-      "title": "routes/google-auth",
-      "description": "Routes registered in routes/google-auth",
-      "adminOnly": false,
-      "items": [
-        {
-          "id": "GET-_",
-          "name": "GET /",
-          "description": "GET /",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/google-auth/index.ts"
-        },
-        {
-          "id": "GET-_login",
-          "name": "GET /login",
-          "description": "GET /login",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/login"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/google-auth/index.ts"
-        },
-        {
-          "id": "GET-_callback",
-          "name": "GET /callback",
-          "description": "GET /callback",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/callback"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/google-auth/index.ts"
-        },
-        {
-          "id": "POST-_token",
-          "name": "POST /token",
-          "description": "POST /token",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/token"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/google-auth/index.ts"
-        },
-        {
-          "id": "GET-_me",
-          "name": "GET /me",
-          "description": "GET /me",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/me"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/google-auth/index.ts"
-        },
-        {
-          "id": "POST-_logout",
-          "name": "POST /logout",
-          "description": "POST /logout",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/logout"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/google-auth/index.ts"
-        },
-        {
-          "id": "GET-_config",
-          "name": "GET /config",
-          "description": "GET /config",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/config"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/google-auth/index.ts"
         }
       ]
     },
@@ -4856,72 +4612,6 @@
             "path": "/quota"
           },
           "sourceFile": "services/openagentic-api/src/routes/azure-integration/admin.ts"
-        },
-        {
-          "id": "POST-_link",
-          "name": "POST /link",
-          "description": "POST /link",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/link"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/azure-integration/auth.ts"
-        },
-        {
-          "id": "GET-_status",
-          "name": "GET /status",
-          "description": "GET /status",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/status"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/azure-integration/auth.ts"
-        },
-        {
-          "id": "POST-_refresh",
-          "name": "POST /refresh",
-          "description": "POST /refresh",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/refresh"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/azure-integration/auth.ts"
-        },
-        {
-          "id": "DELETE-_unlink",
-          "name": "DELETE /unlink",
-          "description": "DELETE /unlink",
-          "type": "http-route",
-          "properties": {
-            "method": "DELETE",
-            "path": "/unlink"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/azure-integration/auth.ts"
-        },
-        {
-          "id": "GET-_permissions",
-          "name": "GET /permissions",
-          "description": "GET /permissions",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/permissions"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/azure-integration/auth.ts"
-        },
-        {
-          "id": "POST-_validate",
-          "name": "POST /validate",
-          "description": "POST /validate",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/validate"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/azure-integration/auth.ts"
         },
         {
           "id": "GET-_azure",

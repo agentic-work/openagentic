@@ -52,6 +52,25 @@ describe('secrets.config — fail-closed in production (B2)', () => {
     expect(() => loadSecrets()).toThrow(/JWT_SECRET/);
   });
 
+  it('throws in production when DATABASE_URL is missing', () => {
+    process.env.NODE_ENV = 'production';
+    setAll();
+    delete process.env.DATABASE_URL;
+    expect(() => loadSecrets()).toThrow(/DATABASE_URL/);
+  });
+
+  it('BLOCKER-1 regression: boots in production with ONLY the OSS-compose secrets (DATABASE_URL + JWT_SECRET)', () => {
+    // The default OSS docker-compose passes only DATABASE_URL, REDIS_URL, and
+    // JWT_SECRET. Azure/API_KEY/Milvus/Minio are NOT passed (local-auth-only,
+    // non-Azure LLM). loadSecrets() must NOT throw — those are optional.
+    process.env.NODE_ENV = 'production';
+    process.env.DATABASE_URL = REQUIRED.DATABASE_URL;
+    process.env.JWT_SECRET = REQUIRED.JWT_SECRET;
+    process.env.REDIS_URL = REQUIRED.REDIS_URL;
+    // deliberately leave AZURE_*, API_KEY, MILVUS_PASSWORD, MINIO_* unset
+    expect(() => loadSecrets()).not.toThrow();
+  });
+
   it('throws in production on the shipped *-change-me placeholder (substring match)', () => {
     process.env.NODE_ENV = 'production';
     setAll();

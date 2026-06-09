@@ -358,7 +358,8 @@ const adminMCPLogsRoutes: FastifyPluginAsync = async (fastify) => {
       const jwt = await import('jsonwebtoken');
       const decoded = jwt.default.verify(
         token,
-        process.env.JWT_SECRET || process.env.SIGNING_SECRET || (() => { throw new Error('JWT_SECRET must be set'); })()
+        process.env.JWT_SECRET || process.env.SIGNING_SECRET || (() => { throw new Error('JWT_SECRET must be set'); })(),
+        { algorithms: ['HS256'] }
       ) as any;
 
       if (!decoded.isAdmin && !decoded.is_admin) {

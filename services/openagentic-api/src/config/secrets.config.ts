@@ -148,28 +148,38 @@ export function loadSecrets(logger?: Logger): SecretsConfig {
     // In production, all secrets must be properly configured
     // In development, we allow some defaults for ease of development
     
+    // OSS local-auth-only REQUIRED set (must be present + strong in production):
+    //   DATABASE_URL — the app cannot run without its database.
+    //   JWT_SECRET   — the trust root for local + inter-service auth.
+    // EVERYTHING ELSE is allowEmpty (optional): absent ⇒ that feature is
+    // disabled or uses the service's own default. This matches what the OSS
+    // docker-compose actually provides (DATABASE_URL, REDIS_URL, JWT_SECRET) so
+    // a default `docker compose up` boots. The AZURE_* vars are ONLY for the
+    // optional Azure-OpenAI LLM provider (AAD identity was excised) — never
+    // required for a local-auth install.
     const secrets: SecretsConfig = {
       database: {
         url: validateSecret('DATABASE_URL', process.env.DATABASE_URL),
-        password: validateSecret('DB_PASSWORD', process.env.DB_PASSWORD || 
-          (isDevelopment ? 'dev_password_only' : undefined)),
+        password: validateSecret('DB_PASSWORD', process.env.DB_PASSWORD ||
+          (isDevelopment ? 'dev_password_only' : undefined), true),
         poolSize: parseInt(process.env.DB_POOL_SIZE || '10', 10)
       },
-      
+
       redis: {
-        url: validateSecret('REDIS_URL', process.env.REDIS_URL || 
-          (isDevelopment ? 'redis://localhost:6379' : undefined)),
+        url: validateSecret('REDIS_URL', process.env.REDIS_URL ||
+          (isDevelopment ? 'redis://localhost:6379' : undefined), true),
         password: validateSecret('REDIS_PASSWORD', process.env.REDIS_PASSWORD, true)
       },
-      
+
       auth: {
         jwtSecret: validateSecret('JWT_SECRET', process.env.JWT_SECRET ||
           (isDevelopment ? generateDevSecret('jwt') : undefined)),
-        azureClientId: validateSecret('AZURE_CLIENT_ID', process.env.AZURE_CLIENT_ID),
-        azureClientSecret: validateSecret('AZURE_CLIENT_SECRET', process.env.AZURE_CLIENT_SECRET, true), // Allow empty for public client
-        azureTenantId: validateSecret('AZURE_TENANT_ID', process.env.AZURE_TENANT_ID),
+        // Optional — only the Azure-OpenAI LLM provider uses these.
+        azureClientId: validateSecret('AZURE_CLIENT_ID', process.env.AZURE_CLIENT_ID, true),
+        azureClientSecret: validateSecret('AZURE_CLIENT_SECRET', process.env.AZURE_CLIENT_SECRET, true),
+        azureTenantId: validateSecret('AZURE_TENANT_ID', process.env.AZURE_TENANT_ID, true),
         apiKey: validateSecret('API_KEY', process.env.API_KEY ||
-          (isDevelopment ? generateDevSecret('api') : undefined))
+          (isDevelopment ? generateDevSecret('api') : undefined), true)
       },
       
       services: {
@@ -179,12 +189,14 @@ export function loadSecrets(logger?: Logger): SecretsConfig {
         vaultToken: validateSecret('VAULT_TOKEN', process.env.VAULT_TOKEN ||
           (isDevelopment ? 'dev-vault-token' : undefined), true),  // Optional: Vault may be disabled
         vaultAddress: process.env.VAULT_ADDRESS || 'http://vault:8200',
+        // Optional — Milvus/Minio use their own service-level credentials in
+        // the compose/helm stack; absent here ⇒ the service default is used.
         milvusPassword: validateSecret('MILVUS_PASSWORD', process.env.MILVUS_PASSWORD ||
-          (isDevelopment ? 'milvus_dev_password' : undefined)),
+          (isDevelopment ? 'milvus_dev_password' : undefined), true),
         minioAccessKey: validateSecret('MINIO_ACCESS_KEY', process.env.MINIO_ACCESS_KEY ||
-          (isDevelopment ? 'minioadmin' : undefined)),
+          (isDevelopment ? 'minioadmin' : undefined), true),
         minioSecretKey: validateSecret('MINIO_SECRET_KEY', process.env.MINIO_SECRET_KEY ||
-          (isDevelopment ? 'minioadmin' : undefined))
+          (isDevelopment ? 'minioadmin' : undefined), true)
       },
       
       monitoring: {

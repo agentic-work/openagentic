@@ -46,7 +46,14 @@ function unpinnedJwtVerifySites(): string[] {
       // real call site only (skip comments / prose mentions)
       const trimmed = line.trim();
       if (trimmed.startsWith('*') || trimmed.startsWith('//')) continue;
-      if (!/\bjwt\.verify\s*\(/.test(line)) continue;
+      // Match jwt.verify( AND aliased forms like jwt.default.verify( / x.verify(
+      // (the bare `jwt.verify` regex missed `jwt.default.verify` — caught by P4).
+      if (!/\.verify\s*\(/.test(line)) continue;
+      // Only treat it as a JWT verify if the line/window references a jwt secret
+      // or the call clearly comes from the jwt module (avoid matching unrelated
+      // .verify() like crypto.verify on signatures elsewhere).
+      const jwtWindow = lines.slice(Math.max(0, i - 2), i + 8).join('\n');
+      if (!/jwt/i.test(jwtWindow)) continue;
       const windowText = lines.slice(i, i + 8).join('\n');
       if (!/algorithms\s*:/.test(windowText)) {
         offenders.push(`${file.replace(SRC, 'src')}:${i + 1}  ${trimmed}`);

@@ -4,7 +4,7 @@
   "description": "Canonical headline counts and version, source-derived from the repo on every build.",
   "icon": "brain",
   "category": "core",
-  "generatedAt": "2026-06-09T19:15:52.464Z",
+  "generatedAt": "2026-06-09T23:11:03.455Z",
   "sourceFiles": [
     "version.json",
     "docker-compose.yml"

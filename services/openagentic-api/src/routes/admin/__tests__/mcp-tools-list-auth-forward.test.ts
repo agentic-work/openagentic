@@ -78,11 +78,11 @@ async function buildApp(opts: {
   app.addHook('preHandler', async (request: any) => {
     if (opts.user) {
       request.user = {
-        id: opts.user.id ?? 'azure_abc123',
-        email: 'admin@cdc.gov',
+        id: opts.user.id ?? 'local_abc123',
+        email: 'admin@example.com',
         isAdmin: opts.user.isAdmin ?? true,
         accessToken: opts.user.accessToken,
-        authMethod: 'azure-ad',
+        authMethod: 'local',
       };
     }
   });

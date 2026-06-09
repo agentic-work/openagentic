@@ -4,7 +4,7 @@
   "description": "Services deployed by the compose stack, source-derived from docker-compose.yml.",
   "icon": "infra",
   "category": "infrastructure",
-  "generatedAt": "2026-06-09T19:15:52.380Z",
+  "generatedAt": "2026-06-09T23:11:03.381Z",
   "sourceFiles": [
     "docker-compose.yml"
   ],
