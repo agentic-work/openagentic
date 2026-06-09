@@ -81,7 +81,7 @@ export const featureFlags = {
    * Kubernetes namespace for exec-pod address construction + cluster
    * queries. Helm sets this from `{{ .Release.Namespace }}` (api) or
    * downward API `fieldRef: metadata.namespace` (code-manager) in every
-   * fully-configured env. We log-loud-and-fall-back to 'agentic-dev'
+   * fully-configured env. We log-loud-and-fall-back to 'default'
    * here as a last-resort safety net — initial fail-fast (2026-04-27)
    * crashed the live api because the active helm chart hadn't been
    * audited; the right fix is to ensure helm sets K8S_NAMESPACE on
@@ -93,11 +93,11 @@ export const featureFlags = {
     if (!v) {
       // Loud one-line console.error so it lands in pod logs + Sentry.
       console.error(
-        '[featureFlags] K8S_NAMESPACE not set — defaulting to agentic-dev. ' +
+        '[featureFlags] K8S_NAMESPACE not set — defaulting to default. ' +
           'Fix helm: every Deployment must set K8S_NAMESPACE from `{{ .Release.Namespace }}`. ' +
           'See memory/feedback_no_hardcoded_namespaces.md.',
       );
-      return 'agentic-dev';
+      return 'default';
     }
     return v;
   })(),

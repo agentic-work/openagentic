@@ -2,7 +2,7 @@
 
 -- Documentation Assistant Agent: Seed Script
 -- Inserts the docs_assistant agent into the agentic_loops table
--- Run via: kubectl exec -n agentic-dev openagentic-postgresql-0 -- env PGPASSWORD=openagentic123 psql -U openagentic -d openagentic -f /dev/stdin < seed-docs-assistant.sql
+-- Run via: psql -h <host> -U <user> -d <db> -f <this-file>
 
 -- Delete existing docs_assistant if present (for idempotency)
 DELETE FROM agentic_loops WHERE name = 'docs_assistant';

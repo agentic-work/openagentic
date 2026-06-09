@@ -2,7 +2,7 @@
 
 -- Flows Agent: Seed Script
 -- Inserts the Flows Agent into the agentic_loops table
--- Run via: kubectl exec -n agentic-dev openagentic-postgresql-0 -- env PGPASSWORD=openagentic123 psql -U openagentic -d openagentic -f /dev/stdin < seed-flows-agent.sql
+-- Run via: psql -h <host> -U <user> -d <db> -f <this-file>
 
 -- Delete existing flows-agent if present (for idempotency)
 DELETE FROM agentic_loops WHERE name = 'flows-agent';

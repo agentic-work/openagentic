@@ -74,7 +74,7 @@ export default async function registryTombstonesRoutes(fastify: FastifyInstance)
     Body: { confirmation: string; reason: string };
   }>('/registry/tombstones/reset', async (request, reply) => {
     const { confirmation, reason } = request.body ?? {};
-    const clusterName = process.env.CLUSTER_NAME ?? 'agentic-dev';
+    const clusterName = process.env.CLUSTER_NAME ?? 'default';
     const expected = `RESET-TOMBSTONES-${clusterName}`;
 
     // 1. Validate confirmation token

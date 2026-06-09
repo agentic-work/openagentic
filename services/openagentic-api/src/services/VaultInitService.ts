@@ -22,8 +22,12 @@ export class VaultInitService {
   constructor(logger: Logger) {
     this.logger = logger;
     this.vaultAddr = process.env.VAULT_ADDR || 'http://vault:8200';
-    this.vaultToken = process.env.VAULT_TOKEN || 'vault-dev-token-change-me';
-    this.vaultEnabled = process.env.VAULT_ENABLED === 'true';
+    // Never default the Vault token to a placeholder (NIST IA-5, CM-6).
+    // An empty token means no real credential is available; treat Vault as
+    // disabled so the service falls back to env-secret mode instead of
+    // authenticating with a hardcoded default.
+    this.vaultToken = process.env.VAULT_TOKEN || '';
+    this.vaultEnabled = process.env.VAULT_ENABLED === 'true' && this.vaultToken !== '';
   }
 
   /**
@@ -32,7 +36,11 @@ export class VaultInitService {
   async initialize(): Promise<void> {
     try {
       if (!this.vaultEnabled) {
-        this.logger.info('🔐 Vault is disabled (VAULT_ENABLED=false), skipping Vault initialization');
+        if (process.env.VAULT_ENABLED === 'true' && this.vaultToken === '') {
+          this.logger.warn('🔐 Vault is enabled but VAULT_TOKEN is not set — treating Vault as disabled and falling back to environment secrets');
+        } else {
+          this.logger.info('🔐 Vault is disabled (VAULT_ENABLED=false), skipping Vault initialization');
+        }
         return;
       }
 

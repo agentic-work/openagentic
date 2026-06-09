@@ -87,6 +87,11 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://openagentic-api:8000")  # Inter
 # Local admin users: No token = system admin role with full access
 ENABLE_AUTH = os.getenv("ENABLE_AUTH", "true").lower() in ("true", "1", "yes")
 
+# FedRAMP CM-7 / SA-15 — the MCP Inspector is a dev-only debug surface (unauthenticated
+# UI + an unpinned npx fetch at runtime). It must be explicitly opted into and defaults OFF
+# so production images never expose it.
+ENABLE_MCP_INSPECTOR = os.getenv("ENABLE_MCP_INSPECTOR", "false").lower() in ("true", "1", "yes")
+
 
 # =============================================================================
 # B3 (FedRAMP P3) — fail-closed auth hardening (NIST AC-3, AC-6, IA-2, IA-5)
@@ -374,19 +379,24 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("⚠️ Auth disabled - skipping Azure OAuth service initialization")
 
-    # Start MCP Inspector subprocess
-    logger.info("Starting MCP Inspector UI...")
-    try:
-        inspector_process = subprocess.Popen(
-            ["npx", "@modelcontextprotocol/inspector", "--no-open"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env={**os.environ, "PORT": "6274", "MCPP_PORT": "6277"}
-        )
-        logger.info(f"✅ MCP Inspector started on ports 6274/6277 (PID: {inspector_process.pid})")
-    except Exception as e:
-        logger.error(f"⚠️ Failed to start MCP Inspector: {e}")
-        inspector_process = None
+    # Start MCP Inspector subprocess (dev-only, opt-in via ENABLE_MCP_INSPECTOR;
+    # defaults OFF so production images never expose this unauthenticated debug surface)
+    if ENABLE_MCP_INSPECTOR:
+        logger.warning("⚠️ MCP Inspector ENABLED (dev-only debug surface) — do not enable in production")
+        logger.info("Starting MCP Inspector UI...")
+        try:
+            inspector_process = subprocess.Popen(
+                ["npx", "@modelcontextprotocol/inspector", "--no-open"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env={**os.environ, "PORT": "6274", "MCPP_PORT": "6277"}
+            )
+            logger.info(f"✅ MCP Inspector started on ports 6274/6277 (PID: {inspector_process.pid})")
+        except Exception as e:
+            logger.error(f"⚠️ Failed to start MCP Inspector: {e}")
+            inspector_process = None
+    else:
+        logger.debug("MCP Inspector disabled (set ENABLE_MCP_INSPECTOR=true to enable; dev-only)")
 
     logger.info("Initializing MCP Manager...")
     mcp_manager = MCPManager(redis_client=redis_client)
@@ -838,7 +848,18 @@ async def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(secu
 
             # Get shared secret for internal token validation
             # MUST match API's JWT_SECRET/SIGNING_SECRET
-            internal_jwt_secret = os.environ.get('JWT_SECRET') or os.environ.get('SIGNING_SECRET') or os.environ.get('INTERNAL_JWT_SECRET', 'dev-secret-change-in-production')
+            internal_jwt_secret = os.environ.get('JWT_SECRET') or os.environ.get('SIGNING_SECRET') or os.environ.get('INTERNAL_JWT_SECRET')
+
+            # Fail closed: with no configured secret we cannot verify the HS256
+            # signature. Never decode with a placeholder/default secret, which
+            # would let an attacker who knows it forge internal tokens.
+            if not internal_jwt_secret:
+                logger.warning(
+                    "[JWT-DEBUG] No internal JWT secret configured "
+                    "(JWT_SECRET/SIGNING_SECRET/INTERNAL_JWT_SECRET); "
+                    "rejecting internal HS256 token"
+                )
+                raise HTTPException(status_code=401, detail="internal token verification unavailable")
 
             try:
                 # Validate and decode internal token
