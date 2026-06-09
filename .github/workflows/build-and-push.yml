@@ -117,6 +117,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: ${{ matrix.build_arg }}
+          # network=host lets RUN curl/pip/npm reach the internet during build layers.
+          # Required in DinD environments where the build container is otherwise isolated.
+          network: host
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache
           cache-to:   type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache,mode=max
           provenance: false

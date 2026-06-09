@@ -150,3 +150,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 
 ENTRYPOINT ["node"]
 CMD ["dist/index.js"]
+LABEL org.opencontainers.image.source="https://github.com/agentic-work/openagentic"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.vendor="AgenticWork LLC"

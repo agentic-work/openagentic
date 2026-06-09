@@ -165,3 +165,8 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
+LABEL org.opencontainers.image.title="openagentic-ui"
+LABEL org.opencontainers.image.description="OpenAgentic UI — the web interface for chat, flows, code mode and the admin console. Apache 2.0."
+LABEL org.opencontainers.image.source="https://github.com/agentic-work/openagentic"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.vendor="AgenticWork LLC"

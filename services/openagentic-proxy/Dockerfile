@@ -49,3 +49,6 @@ EXPOSE 3300
 USER 65532:65532
 ENTRYPOINT ["node"]
 CMD ["dist/index.js"]
+LABEL org.opencontainers.image.source="https://github.com/agentic-work/openagentic"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.vendor="AgenticWork LLC"

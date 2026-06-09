@@ -138,4 +138,10 @@ EXPOSE 8080
 # Pre-compile Python source to bytecode (keep .py files for MCP server stdio launch)
 RUN python -m compileall -b /app/src/ /app/mcp-servers/ 2>/dev/null || true
 
+LABEL org.opencontainers.image.title="openagentic-mcp-proxy"
+LABEL org.opencontainers.image.description="OpenAgentic MCP Proxy — 10 bundled MCP servers, 371 tools across web, k8s, AWS, Azure, GCP, GitHub, Prometheus, Loki. Apache 2.0."
+LABEL org.opencontainers.image.source="https://github.com/agentic-work/openagentic"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.vendor="AgenticWork LLC"
+
 CMD ["python", "src/main.py"]
