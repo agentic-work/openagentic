@@ -29,8 +29,18 @@
 #   --env PATH     Skip ALL prompts. Copy PATH to ./.env and bring up the
 #                  stack as-is. Useful for scripted installs / CI / 2nd
 #                  machines where you already have a known-good .env.
+#   --update       Update an existing install in place: pull the latest source,
+#                  rebuild, and restart (Docker), or `helm upgrade` (--helm).
+#                  Keeps your .env. Safe to re-run.
+#   --doctor       Diagnose only. Checks Docker/Compose, Node, helm/kubectl,
+#                  disk, ports, and an existing install — fixes nothing, just
+#                  reports what's wrong. Run this first when something breaks.
 #   --no-open      Don't auto-open the browser at the end.
 #   --ollama URL   Override the Ollama endpoint (default: localhost:11434).
+#   -h, --help     Show this help.
+#
+# Get help:  https://openagentics.io/docs/troubleshooting
+#            https://github.com/agentic-work/openagentic/issues
 set -euo pipefail
 
 # ─── Pretty output ──────────────────────────────────────────────────────────
@@ -64,8 +74,68 @@ banner() {
 info()  { printf '  %s·%s %s\n' "$C_BLUE"   "$C_RESET" "$*"; }
 ok()    { printf '  %s✓%s %s\n' "$C_GREEN"  "$C_RESET" "$*"; }
 warn()  { printf '  %s!%s %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
-fatal() { printf '  %s✗%s %s\n' "$C_RED"    "$C_RESET" "$*"; exit 1; }
 step()  { printf '\n  %s▸%s %s\n' "$C_PURPLE" "$C_RESET" "$*"; }
+# A hint line under a warning/error — the "here's how to fix it" follow-up.
+hint()  { printf '    %s↳%s %s\n' "$C_GRAY" "$C_RESET" "$*"; }
+
+# ─── Help / support surface ──────────────────────────────────────────────────
+readonly DOCS_URL="https://openagentics.io/docs"
+readonly QUICKSTART_URL="https://openagentics.io/docs/quickstart"
+readonly TROUBLESHOOT_URL="https://openagentics.io/docs/troubleshooting"
+readonly ISSUES_URL="https://github.com/agentic-work/openagentic/issues"
+readonly SUPPORT_EMAIL="support@agenticwork.io"
+# Set by the trap so the help block can name the phase that failed.
+CURRENT_STEP="starting up"
+
+# Printed whenever the installer dies — the single most useful thing for someone
+# who is stuck. Names what failed, the most likely fixes, and where to get help.
+need_help() {
+  printf '\n  %s%s───────────────────────────────────────────────────────────%s\n' "$C_BOLD" "$C_RED" "$C_RESET"
+  printf '  %s%sInstall failed during: %s%s\n' "$C_BOLD" "$C_RED" "$CURRENT_STEP" "$C_RESET"
+  printf '  %s───────────────────────────────────────────────────────────%s\n\n' "$C_RED" "$C_RESET"
+  printf '  %sFirst, try these:%s\n' "$C_BOLD" "$C_RESET"
+  printf '    1. Re-run the diagnostic:   %scurl -fsSL https://install.openagentics.io | bash -s -- --doctor%s\n' "$C_BOLD" "$C_RESET"
+  printf '    2. Read the error above — it usually says exactly what to fix.\n'
+  if [[ "${MODE:-}" == "helm" ]]; then
+    printf '    3. Inspect the cluster:     %skubectl -n %s get pods%s   and   %skubectl -n %s describe pod <name>%s\n' \
+      "$C_BOLD" "${OPENAGENTIC_NAMESPACE:-openagentic}" "$C_RESET" "$C_BOLD" "${OPENAGENTIC_NAMESPACE:-openagentic}" "$C_RESET"
+    printf '    4. Tail a crashing pod:     %skubectl -n %s logs deploy/api --tail=100%s\n' "$C_BOLD" "${OPENAGENTIC_NAMESPACE:-openagentic}" "$C_RESET"
+  else
+    printf '    3. Check the API logs:      %sdocker logs openagentic-api-1 --tail=100%s\n' "$C_BOLD" "$C_RESET"
+    printf '    4. Check what is running:   %sdocker compose ps%s\n' "$C_BOLD" "$C_RESET"
+  fi
+  printf '\n  %sStill stuck?%s\n' "$C_BOLD" "$C_RESET"
+  printf '    Troubleshooting guide: %s%s%s\n' "$C_BLUE" "$TROUBLESHOOT_URL" "$C_RESET"
+  printf '    Open an issue (paste the error + the --doctor output): %s%s%s\n' "$C_BLUE" "$ISSUES_URL" "$C_RESET"
+  printf '    Email: %s%s%s\n\n' "$C_BLUE" "$SUPPORT_EMAIL" "$C_RESET"
+}
+
+# fatal: print the message + remediation hints, then exit. The EXIT trap prints
+# the full help block, so fatal stays terse.
+fatal() {
+  printf '  %s✗%s %s\n' "$C_RED" "$C_RESET" "$1"
+  shift || true
+  while [[ $# -gt 0 ]]; do hint "$1"; shift; done
+  exit 1
+}
+
+# On ANY non-zero exit (set -e tripping, or an explicit fatal), surface the help
+# block — unless we exited cleanly (EXIT_OK=1 set right before a successful exit).
+EXIT_OK=0
+on_exit() { local code=$?; [[ "$code" -ne 0 && "$EXIT_OK" -ne 1 ]] && need_help; }
+trap on_exit EXIT
+trap 'CURRENT_STEP="line $LINENO"' ERR
+
+# ─── Resource preflight helpers ──────────────────────────────────────────────
+# Free disk (GB) on the install volume. Best-effort; 0 if it can't be read.
+free_disk_gb() { df -Pg "$1" 2>/dev/null | awk 'NR==2{print $4+0}' || echo 0; }
+# Is a TCP port already bound on the host? (used to catch UI port clashes early)
+port_in_use() {
+  local p="$1"
+  if command -v lsof >/dev/null 2>&1; then lsof -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1
+  elif command -v nc >/dev/null 2>&1; then nc -z localhost "$p" >/dev/null 2>&1
+  else return 1; fi
+}
 
 # ─── Args ───────────────────────────────────────────────────────────────────
 # Default is the interactive Ink-TUI wizard: it lets the user pick Docker (compose)
@@ -80,37 +150,90 @@ while [[ $# -gt 0 ]]; do
     --wizard)  MODE=wizard;     shift ;;
     --quick)   MODE=quick;      shift ;;
     --helm)    MODE=helm;       shift ;;
-    --env)     MODE=env-file; ENV_FILE_OVERRIDE="$2"; shift 2 ;;
+    --update)  MODE=update;     shift ;;
+    --doctor)  MODE=doctor;     shift ;;
+    --env)     MODE=env-file; ENV_FILE_OVERRIDE="${2:-}"; shift 2 ;;
     --no-open) OPEN_BROWSER=0;  shift ;;
-    --ollama)  OLLAMA_HOST_OVERRIDE="$2"; shift 2 ;;
+    --ollama)  OLLAMA_HOST_OVERRIDE="${2:-}"; shift 2 ;;
     -h|--help)
-      sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//;s/^#//'
-      exit 0 ;;
-    *) shift ;;
+      sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//;s/^#//'
+      EXIT_OK=1; exit 0 ;;
+    *) warn "Unknown option: $1 (ignoring). Run with --help to see valid flags."; shift ;;
   esac
 done
 
 banner
 
+# ─── Doctor: diagnose-only, fixes nothing ────────────────────────────────────
+# Run first when something is broken. Reports environment + an existing install.
+if [[ "$MODE" == "doctor" ]]; then
+  CURRENT_STEP="diagnostics"
+  step "Diagnostics"
+  problems=0
+  chk() { if eval "$2" >/dev/null 2>&1; then ok "$1"; else warn "$1 — MISSING/FAILED"; [[ -n "${3:-}" ]] && hint "$3"; problems=$((problems+1)); fi; }
+  printf '  %sCore%s\n' "$C_BOLD" "$C_RESET"
+  chk 'git' 'command -v git' 'Install git, then re-run.'
+  chk 'curl' 'command -v curl'
+  printf '\n  %sDocker path%s\n' "$C_BOLD" "$C_RESET"
+  chk 'docker CLI' 'command -v docker' 'Install Docker Desktop: https://docs.docker.com/get-docker/'
+  chk 'docker daemon running' 'docker info' 'Start Docker Desktop / the docker service.'
+  chk 'compose v2 plugin' 'docker compose version' 'Update Docker Desktop, or install the compose v2 plugin.'
+  printf '\n  %sKubernetes path (for --helm)%s\n' "$C_BOLD" "$C_RESET"
+  chk 'helm' 'command -v helm' 'Install: https://helm.sh/docs/intro/install/'
+  chk 'kubectl' 'command -v kubectl' 'Install: https://kubernetes.io/docs/tasks/tools/'
+  chk 'reachable cluster' 'kubectl cluster-info' 'Check your kube-context: kubectl config current-context'
+  chk 'cert-manager present' 'kubectl get crd certificates.cert-manager.io' 'Needed only for ingress TLS — see the Kubernetes deploy doc.'
+  printf '\n  %sWizard path%s\n' "$C_BOLD" "$C_RESET"
+  if command -v node >/dev/null 2>&1; then
+    NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)
+    if [[ "$NODE_MAJOR" -ge 20 ]]; then ok "Node $(node --version)"; else warn "Node 20+ required (found $(node --version 2>/dev/null))"; hint 'Install Node 20+: https://nodejs.org'; problems=$((problems+1)); fi
+  else warn 'node — MISSING'; hint 'The TUI wizard needs Node 20+. The --quick and --env paths do not.'; problems=$((problems+1)); fi
+  printf '\n  %sResources%s\n' "$C_BOLD" "$C_RESET"
+  DGB=$(free_disk_gb "$HOME")
+  if [[ "$DGB" -ge 10 ]]; then ok "Disk: ${DGB}GB free in \$HOME"; else warn "Only ${DGB}GB free in \$HOME — the images need ~8-10GB"; problems=$((problems+1)); fi
+  if port_in_use 8080; then warn 'Port 8080 is already in use'; hint 'Set UI_HOST_PORT in .env to a free port (e.g. 8088), or stop whatever holds 8080.'; else ok 'Port 8080 free'; fi
+  printf '\n  %sExisting install%s\n' "$C_BOLD" "$C_RESET"
+  if [[ -d "${OPENAGENTIC_HOME:-$HOME/.openagentic}/.git" ]]; then
+    ok "Found install at ${OPENAGENTIC_HOME:-$HOME/.openagentic}"
+    if command -v docker >/dev/null 2>&1; then
+      running=$(docker ps --filter 'name=openagentic-' --format '{{.Names}}' 2>/dev/null | wc -l | tr -d ' ')
+      info "openagentic containers running: ${running:-0}"
+    fi
+  else info 'No existing install in ~/.openagentic (a fresh install will create it).'; fi
+  printf '\n'
+  if [[ "$problems" -eq 0 ]]; then ok 'No blocking problems found. You should be good to install.'
+  else warn "$problems issue(s) above. Fix the MISSING/FAILED items, then run the installer."; fi
+  printf '  Docs: %s%s%s   ·   Issues: %s%s%s\n\n' "$C_BLUE" "$TROUBLESHOOT_URL" "$C_RESET" "$C_BLUE" "$ISSUES_URL" "$C_RESET"
+  EXIT_OK=1; exit 0
+fi
+
 # ─── Pre-flight ─────────────────────────────────────────────────────────────
+CURRENT_STEP="pre-flight checks"
 step "Pre-flight"
-command -v git >/dev/null 2>&1    || fatal 'git is required.'
+command -v git >/dev/null 2>&1    || fatal 'git is required.' 'macOS: xcode-select --install   ·   Debian/Ubuntu: sudo apt-get install git'
 if [[ "$MODE" == "helm" ]]; then
-  command -v helm    >/dev/null 2>&1 || fatal 'helm is required for --helm. Install: https://helm.sh/docs/intro/install/'
-  command -v kubectl >/dev/null 2>&1 || fatal 'kubectl is required for --helm.'
-  kubectl cluster-info >/dev/null 2>&1 || fatal 'No reachable Kubernetes cluster (check your kube-context).'
+  command -v helm    >/dev/null 2>&1 || fatal 'helm is required for --helm.' 'Install: https://helm.sh/docs/intro/install/'
+  command -v kubectl >/dev/null 2>&1 || fatal 'kubectl is required for --helm.' 'Install: https://kubernetes.io/docs/tasks/tools/'
+  kubectl cluster-info >/dev/null 2>&1 || fatal 'No reachable Kubernetes cluster.' 'Check your context: kubectl config current-context' 'For a local cluster try Docker Desktop Kubernetes, OrbStack, kind, or minikube.'
   ok 'helm, kubectl, cluster, git'
-else
-  command -v docker >/dev/null 2>&1 || fatal 'Docker is required. Install from https://docs.docker.com/get-docker/'
-  docker info >/dev/null 2>&1       || fatal 'Docker daemon not running. Start Docker Desktop / the docker service and re-run.'
-  docker compose version >/dev/null 2>&1 || fatal 'Docker Compose v2 plugin is required.'
+elif [[ "$MODE" != "update" ]]; then
+  command -v docker >/dev/null 2>&1 || fatal 'Docker is required.' 'Install Docker Desktop: https://docs.docker.com/get-docker/'
+  docker info >/dev/null 2>&1       || fatal 'The Docker daemon is not running.' 'Start Docker Desktop (or: sudo systemctl start docker) and re-run.'
+  docker compose version >/dev/null 2>&1 || fatal 'Docker Compose v2 is required.' 'Update Docker Desktop, or install the compose v2 plugin.'
   ok 'Docker, Compose v2, git'
+  # Resource sanity — catch the two most common silent failures up front.
+  DGB=$(free_disk_gb "$HOME")
+  [[ "$DGB" -ge 6 ]] || warn "Low disk: ~${DGB}GB free in \$HOME (images need ~8-10GB). The pull may fail partway."
+  if port_in_use 8080; then
+    warn 'Port 8080 is already in use — the UI may not be reachable there.'
+    hint 'Set UI_HOST_PORT=8088 (or another free port) in your .env, or stop whatever holds 8080.'
+  fi
 fi
 
 if [[ "$MODE" == "wizard" ]]; then
-  command -v node >/dev/null 2>&1 || fatal 'Node.js 20+ is required for the wizard.'
+  command -v node >/dev/null 2>&1 || fatal 'Node.js 20+ is required for the wizard.' 'Install Node 20+: https://nodejs.org   ·   Or skip the wizard with --quick (Ollama) or --env PATH.'
   NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]')
-  [[ "$NODE_MAJOR" -ge 20 ]] || fatal "Node.js 20+ required (found $(node --version))."
+  [[ "$NODE_MAJOR" -ge 20 ]] || fatal "Node.js 20+ required (found $(node --version))." 'Upgrade Node (https://nodejs.org), or use --quick / --env to skip the TUI wizard.'
   ok "Node $(node --version) (wizard mode)"
 fi
 
@@ -136,25 +259,72 @@ else
 fi
 cd "$INSTALL_DIR"
 
+# ─── Update path ──────────────────────────────────────────────────────────────
+# Pull latest (done above for a cloned install) + rebuild + restart in place,
+# keeping the existing .env. Auto-detects an existing Helm release vs Docker.
+if [[ "$MODE" == "update" ]]; then
+  CURRENT_STEP="update"
+  HELM_NS="${OPENAGENTIC_NAMESPACE:-openagentic}"
+  if command -v helm >/dev/null 2>&1 && helm status openagentic -n "$HELM_NS" >/dev/null 2>&1; then
+    step "Updating the Helm release (namespace: ${HELM_NS})"
+    VALUES="helm/openagentic/values-local-k8s.yaml"; [[ -f "$VALUES" ]] || VALUES="helm/openagentic/values.yaml"
+    helm upgrade openagentic ./helm/openagentic -n "$HELM_NS" -f "$VALUES" --wait --timeout 10m 2>&1 | tail -12 \
+      || fatal 'helm upgrade failed.' "Inspect: kubectl -n $HELM_NS get pods" "Roll back: helm rollback openagentic -n $HELM_NS"
+    ok 'Helm release updated'
+    printf '\n  %sUpdated.%s  Pods: %skubectl -n %s get pods%s\n\n' "$C_GREEN$C_BOLD" "$C_RESET" "$C_BOLD" "$HELM_NS" "$C_RESET"
+    EXIT_OK=1; exit 0
+  fi
+  command -v docker >/dev/null 2>&1 || fatal 'Docker is required to update a Docker install.' 'Start Docker and re-run, or for a Kubernetes install run with --helm.'
+  docker info >/dev/null 2>&1 || fatal 'The Docker daemon is not running.' 'Start Docker Desktop and re-run.'
+  [[ -f .env ]] || warn 'No .env found in the install dir — a rebuild will use defaults.'
+  step "Rebuilding + restarting (Docker Compose)"
+  info 'Pulling base images, rebuilding changed services…'
+  docker compose --profile milvus up -d --build 2>&1 | tail -10 \
+    || fatal 'docker compose up failed during update.' 'Check: docker compose ps   and   docker logs openagentic-api-1 --tail=100'
+  info 'Waiting for api healthy (~90s)…'
+  s=unknown
+  for _ in $(seq 1 90); do
+    s=$(docker inspect --format '{{.State.Health.Status}}' openagentic-api-1 2>/dev/null || echo unknown)
+    [[ "$s" == "healthy" ]] && { ok 'api is healthy'; break; }
+    sleep 2
+  done
+  [[ "$s" == "healthy" ]] || fatal 'api did not return to healthy after the update.' 'Check: docker logs openagentic-api-1 --tail=120'
+  printf '\n  %sUpdated and healthy.%s\n\n' "$C_GREEN$C_BOLD" "$C_RESET"
+  EXIT_OK=1; exit 0
+fi
+
 # ─── Helm path ──────────────────────────────────────────────────────────────
 # One-line Kubernetes install: helm upgrade --install the chart, wait for the
 # rollout, print the WOW banner. Values: values-local-k8s.yaml if present,
 # else the chart defaults.
 if [[ "$MODE" == "helm" ]]; then
+  CURRENT_STEP="helm install"
   NS="${OPENAGENTIC_NAMESPACE:-openagentic}"
-  VALUES="helm/openagentic/values-local-k8s.yaml"
-  [[ -f "$VALUES" ]] || VALUES="helm/openagentic/values.yaml"
-  step "helm upgrade --install openagentic (namespace: ${NS})"
+  RELEASE="${OPENAGENTIC_RELEASE:-openagentic}"
+  # Values precedence: OPENAGENTIC_VALUES override > local-k8s overlay > chart defaults.
+  if [[ -n "${OPENAGENTIC_VALUES:-}" ]]; then
+    VALUES="$OPENAGENTIC_VALUES"
+    [[ -f "$VALUES" ]] || fatal "OPENAGENTIC_VALUES points to a missing file: $VALUES"
+  else
+    VALUES="helm/openagentic/values-local-k8s.yaml"
+    [[ -f "$VALUES" ]] || VALUES="helm/openagentic/values.yaml"
+  fi
+  step "helm upgrade --install ${RELEASE} (namespace: ${NS})"
   info "values: ${C_BOLD}${VALUES}${C_RESET}"
-  helm upgrade --install openagentic ./helm/openagentic \
+  helm upgrade --install "$RELEASE" ./helm/openagentic \
     --namespace "$NS" --create-namespace \
-    -f "$VALUES" --wait --timeout 10m 2>&1 | tail -12
+    -f "$VALUES" --wait --timeout 10m 2>&1 | tail -12 \
+    || fatal 'helm install did not complete (rollout timed out or a pod is failing).' \
+        "See which pods are unhealthy:  kubectl -n $NS get pods" \
+        "Describe a stuck pod:           kubectl -n $NS describe pod <name>" \
+        "Common causes: image pull, pending PVC (no storage class), or a missing secret."
   ok 'Helm release deployed'
   printf '\n  %sOpenAgentic is up on Kubernetes.%s\n\n' "$C_GREEN$C_BOLD" "$C_RESET"
   printf '  Namespace:  %s%s%s\n' "$C_BOLD" "$NS" "$C_RESET"
   printf '  Open UI:    %skubectl -n %s port-forward svc/ui 8080:80%s  →  %shttp://localhost:8080%s\n' "$C_BOLD" "$NS" "$C_RESET" "$C_BOLD" "$C_RESET"
-  printf '  Pods:       %skubectl -n %s get pods%s\n\n' "$C_BOLD" "$NS" "$C_RESET"
-  exit 0
+  printf '  Pods:       %skubectl -n %s get pods%s\n' "$C_BOLD" "$NS" "$C_RESET"
+  printf '  Logs:       %skubectl -n %s logs deploy/api -f%s\n\n' "$C_BOLD" "$NS" "$C_RESET"
+  EXIT_OK=1; exit 0
 fi
 
 # Cloud-secret stub files — mcp-proxy mounts these as env_file unconditionally.
