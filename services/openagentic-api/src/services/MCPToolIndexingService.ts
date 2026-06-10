@@ -799,12 +799,28 @@ export class MCPToolIndexingService {
       }, '[MCP_INDEXING] 🎉 Successfully indexed tools in Milvus for semantic search');
 
     } catch (error: any) {
-      this.logger.error({
-        error: error.message,
-        stack: error.stack
-      }, '[MCP_INDEXING] ❌ Failed to index tools in Milvus');
-      // Don't throw - allow tools to still be available via Redis
+      // Milvus is the SECONDARY vector store — pgvector is primary for tool
+      // semantic search and is indexed separately above. A Milvus failure here
+      // (almost always "not ready yet" during first boot) is non-fatal and must
+      // not look alarming in the logs: tool search works without it.
+      if (MCPToolIndexingService.isMilvusUnavailable(error)) {
+        this.logger.warn(
+          '[MCP_INDEXING] Milvus not ready — skipping secondary vector index (pgvector is primary; this is expected on a fresh boot)',
+        );
+      } else {
+        this.logger.error({ error: error.message, stack: error.stack },
+          '[MCP_INDEXING] Milvus secondary index failed (non-fatal — pgvector remains primary)');
+      }
     }
+  }
+
+  /**
+   * True when an error indicates Milvus is simply unreachable / not booted yet
+   * (vs a genuine logic error). Used to keep first-boot logs calm.
+   */
+  private static isMilvusUnavailable(error: any): boolean {
+    const msg = String(error?.message || error || '').toLowerCase();
+    return /connect|unavailable|deadline|timeout|econnrefused|not ready|no connection|channel|grpc|unimplemented|loadcollection|collection not/.test(msg);
   }
 
   /**
@@ -1015,9 +1031,12 @@ export class MCPToolIndexingService {
       this.logger.info('[MCP_INDEXING] ✅ Milvus collection created and indexed');
 
     } catch (error: any) {
-      this.logger.error({
-        error: error.message
-      }, '[MCP_INDEXING] Failed to ensure Milvus collection');
+      // Caller's catch downgrades "Milvus unavailable" to a calm warn; only log
+      // at error here for genuine (non-connectivity) failures so first-boot logs
+      // stay clean when Milvus simply isn't ready yet.
+      if (!MCPToolIndexingService.isMilvusUnavailable(error)) {
+        this.logger.error({ error: error.message }, '[MCP_INDEXING] Failed to ensure Milvus collection');
+      }
       throw error;
     }
   }
