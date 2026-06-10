@@ -11,6 +11,7 @@ import { FastifyRequest, FastifyReply, FastifyPluginAsync } from 'fastify';
 import { validateAnyToken, extractBearerToken } from '../auth/tokenValidator.js';
 import { prisma } from '../utils/prisma.js';
 import { loggers } from '../utils/logger.js';
+import { createChainedAdminAudit } from '../services/audit/adminAuditChain.js';
 
 /**
  * Extended request type with authenticated user
@@ -310,7 +311,7 @@ export async function unifiedAuthHook(request: FastifyRequest): Promise<void> {
 
       // Log API key usage to AdminAuditLog for metrics
       // This is done async to not block the request
-      prisma.adminAuditLog.create({
+      createChainedAdminAudit({
         data: {
           admin_user_id: (request as any).user.id,
           action: 'api_request',

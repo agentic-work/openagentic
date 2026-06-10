@@ -748,6 +748,17 @@ PRESERVE = {
     # mcp-proxy HMAC auth, SSRF gate, CORS, etc.). The deleted AAD/OBO/SSO files
     # are in SKIP (above) so they never re-appear. Generated docs manifests are
     # intentionally NOT here — they rebuild from source at build time.
+    #
+    # AU-10 admin-audit hash-chain wiring (every admin_audit_log writer routed
+    # through the single chained writer services/audit/adminAuditChain.ts, which
+    # lives under the PRESERVE'd audit/ prefix):
+    'services/openagentic-api/src/__tests__/architecture/admin-audit-chained-writes.source-regression.test.ts',
+    'services/openagentic-api/src/routes/admin/permissions.ts',
+    'services/openagentic-api/src/routes/admin/v3-extras.ts',
+    'services/openagentic-api/src/routes/chat/user-data-management.ts',
+    'services/openagentic-api/src/services/AuditLogger.ts',
+    'services/openagentic-api/src/services/DatabaseService.ts',
+    'services/openagentic-api/src/utils/auditTrail.ts',
     '.githooks/pre-commit',
     'CONTRIBUTING.md',
     'docs/enterprise-setup/README.md',

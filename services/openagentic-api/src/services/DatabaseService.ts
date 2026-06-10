@@ -22,6 +22,7 @@ import { promisify } from 'util';
 import { prisma } from '../utils/prisma.js';
 import { autoMigrationService } from './AutoMigrationService.js';
 import { capEmbeddingDimForHnsw, HALFVEC_HNSW_MAX_DIM } from './halfvecHnswCap.js';
+import { createChainedAdminAudit } from './audit/adminAuditChain.js';
 
 const logger: Logger = (pino as any).default ? (pino as any).default({ name: 'database-service' }) : (pino as any)({ name: 'database-service' });
 const execAsync = promisify(exec);
@@ -1488,7 +1489,7 @@ export class DatabaseService {
     userAgent?: string;
   }) {
     try {
-      const logEntry = await prisma.adminAuditLog.create({
+      const logEntry = await createChainedAdminAudit({
         data: {
           admin_user_id: data.adminUserId,
           admin_email: data.adminEmail,

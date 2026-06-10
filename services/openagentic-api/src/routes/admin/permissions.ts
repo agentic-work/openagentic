@@ -23,6 +23,7 @@ import {
   type PermissionRule,
   type PermissionBehavior,
 } from '../../services/PermissionService.js';
+import { createChainedAdminAudit } from '../../services/audit/adminAuditChain.js';
 
 const VALID_BEHAVIORS: ReadonlySet<PermissionBehavior> = new Set(['allow', 'deny', 'ask']);
 const VALID_SOURCES = new Set([
@@ -63,7 +64,7 @@ async function writeAudit(opts: {
 }): Promise<void> {
   const meta = adminUserMeta(opts.req);
   try {
-    await prisma.adminAuditLog.create({
+    await createChainedAdminAudit({
       data: {
         ...meta,
         action: opts.action,

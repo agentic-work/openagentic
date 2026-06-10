@@ -14,6 +14,7 @@ import { prisma } from '../../utils/prisma.js';
 
 // Import the proper AuthenticatedRequest interface
 import { AuthenticatedRequest } from '../../middleware/unifiedAuth.js';
+import { createChainedAdminAudit } from '../../services/audit/adminAuditChain.js';
 
 const logger = pino({ name: 'user-data-management' });
 
@@ -99,7 +100,7 @@ export async function softDeleteUserChatsHandler(
     // Log the admin action if admin deleted someone else's data
     if (targetUserId && currentUser.isAdmin && targetUserId !== currentUser.id) {
       // Create admin audit log entry in database
-      await prisma.adminAuditLog.create({
+      await createChainedAdminAudit({
         data: {
           admin_user_id: currentUser.id,
           admin_email: currentUser.email || '',
@@ -306,7 +307,7 @@ export async function permanentDeleteOldMessagesHandler(
     });
 
     // Create admin audit log entry in database
-    await prisma.adminAuditLog.create({
+    await createChainedAdminAudit({
       data: {
         admin_user_id: currentUser.id,
         admin_email: currentUser.email || '',

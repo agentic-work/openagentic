@@ -7,6 +7,7 @@ import { FastifyRequest } from 'fastify';
 import { pino } from 'pino';
 import crypto from 'crypto';
 import { prisma } from './prisma.js';
+import { createChainedAdminAudit } from '../services/audit/adminAuditChain.js';
 
 const logger: any = pino({
   name: 'audit-trail',
@@ -140,7 +141,7 @@ export class AuditTrail {
     try {
       const checksum = this.generateChecksum(event);
       
-      await prisma.adminAuditLog.create({
+      await createChainedAdminAudit({
         data: {
           id: event.id || crypto.randomUUID(),
           admin_user_id: event.userId,

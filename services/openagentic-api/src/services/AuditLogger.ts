@@ -11,6 +11,7 @@
 import { prisma } from '../utils/prisma.js';
 import type { Logger } from 'pino';
 import { createHash } from 'crypto';
+import { createChainedAdminAudit } from './audit/adminAuditChain.js';
 
 export interface AuditLogEntry {
   userId: string;
@@ -321,7 +322,7 @@ export class AuditLogger {
         // Columns may not exist yet
       }
 
-      await prisma.adminAuditLog.create({ data });
+      await createChainedAdminAudit({ data });
 
       // Update cached hash
       this.lastAdminAuditHash = chainHash;

@@ -27,6 +27,7 @@ import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import { randomBytes } from 'crypto';
 import { prisma } from '../../utils/prisma.js';
 import { loggers } from '../../utils/logger.js';
+import { createChainedAdminAudit } from '../../services/audit/adminAuditChain.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -59,7 +60,7 @@ async function writeAudit(opts: {
 }): Promise<void> {
   const meta = adminUserMeta(opts.req);
   try {
-    await prisma.adminAuditLog.create({
+    await createChainedAdminAudit({
       data: {
         ...meta,
         action: opts.action,

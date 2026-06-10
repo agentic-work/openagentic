@@ -35,6 +35,7 @@ import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../utils/prisma.js';
 import { loggers } from '../../utils/logger.js';
+import { createChainedAdminAudit } from '../../services/audit/adminAuditChain.js';
 
 const logger = loggers.routes.child({ component: 'AdminV3Extras' });
 
@@ -115,7 +116,7 @@ async function writePermissionAudit(
 ): Promise<void> {
   const user = (req as any).user ?? {};
   try {
-    await prisma.adminAuditLog.create({
+    await createChainedAdminAudit({
       data: {
         admin_user_id: typeof user.id === 'string' ? user.id : null,
         admin_email: typeof user.email === 'string' ? user.email : null,
