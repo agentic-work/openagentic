@@ -119,6 +119,9 @@ export class WorkflowScheduler {
   private sweepHandle: ReturnType<typeof setInterval> | null = null;
   private running = false;
   private processing = false;
+  // True once we've logged the "tables not present yet" warning, so the
+  // fresh-install migration race only warns once instead of every poll cycle.
+  private warnedMigrationPending = false;
 
   private constructor() {}
 
@@ -307,7 +310,25 @@ export class WorkflowScheduler {
         await this.executeSchedule(schedule);
       }
     } catch (err) {
-      logger.error({ err }, '[WorkflowScheduler] Poll cycle failed');
+      // P2021 = "table does not exist". On a fresh install the workflows pod
+      // can start polling BEFORE the api service has finished running DB
+      // migrations. That's a transient startup race, not a fault — the next
+      // poll succeeds once the tables exist. Log it quietly (warn, no stack)
+      // and back off so we don't spam scary errors during the first ~1-2 min.
+      const code = (err as { code?: string } | undefined)?.code;
+      if (code === 'P2021' || code === 'P2022') {
+        if (!this.warnedMigrationPending) {
+          logger.warn(
+            '[WorkflowScheduler] workflow tables not present yet — waiting for migrations to finish (this is normal on a fresh install)',
+          );
+          this.warnedMigrationPending = true;
+        }
+      } else {
+        // A real error: log it (and clear the migration-pending flag so a
+        // genuine recurrence of P2021 later would warn again).
+        this.warnedMigrationPending = false;
+        logger.error({ err }, '[WorkflowScheduler] Poll cycle failed');
+      }
     } finally {
       this.processing = false;
     }
