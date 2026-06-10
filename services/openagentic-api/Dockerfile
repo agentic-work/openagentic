@@ -224,3 +224,8 @@ HEALTHCHECK --interval=15s --timeout=10s --start-period=600s --retries=5 \
 
 # Use entrypoint script
 ENTRYPOINT ["./docker-entrypoint.sh"]
+LABEL org.opencontainers.image.title="openagentic-api"
+LABEL org.opencontainers.image.description="OpenAgentic API — orchestrator, chat, flows, code mode, MCP routing, RBAC, audit. Apache 2.0."
+LABEL org.opencontainers.image.source="https://github.com/agentic-work/openagentic"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.vendor="AgenticWork LLC"

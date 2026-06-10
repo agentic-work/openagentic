@@ -126,6 +126,12 @@ on_exit() { local code=$?; [[ "$code" -ne 0 && "$EXIT_OK" -ne 1 ]] && need_help;
 trap on_exit EXIT
 trap 'CURRENT_STEP="line $LINENO"' ERR
 
+# NOTE: install analytics are captured SERVER-SIDE by the install server
+# (install-openagentics / server.mjs) — it sees the real client IP, does geo +
+# network enrichment, parses the UA, and beacons to admin.agenticwork.io with the
+# real INSTALL_BEACON_SECRET. No client-side beacon here: it would leak the secret
+# in this public script and can't reach the IP-gated admin anyway.
+
 # ─── Resource preflight helpers ──────────────────────────────────────────────
 # Free disk (GB) on the install volume. Best-effort; 0 if it can't be read.
 free_disk_gb() { df -Pg "$1" 2>/dev/null | awk 'NR==2{print $4+0}' || echo 0; }
@@ -237,24 +243,58 @@ if [[ "$MODE" == "wizard" ]]; then
   ok "Node $(node --version) (wizard mode)"
 fi
 
-# ─── Source: use local checkout if present, otherwise clone ────────────────
+# ─── Compose bundle: download only the files needed to run, no source ─────
+# Images are pulled from GHCR at `docker compose up` time — nothing is compiled
+# locally. If running from a developer checkout (docker-compose.yml + services/
+# both present) the local tree is used as-is so devs can test changes.
 INSTALL_DIR="${OPENAGENTIC_HOME:-$HOME/.openagentic}"
-REPO_URL="${OPENAGENTIC_REPO:-https://github.com/agentic-work/openagentic.git}"
-BRANCH="${OPENAGENTIC_BRANCH:-main}"
+VERSION="${OPENAGENTIC_VERSION:-latest}"
+GHCR_ORG="${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}"
+RELEASES_BASE="https://github.com/agentic-work/openagentic/releases"
 
 if [[ -f "./docker-compose.yml" && -d "./services/openagentic-api" ]]; then
+  # Developer local checkout — use it directly (build: stanzas still present)
   INSTALL_DIR="$(pwd)"
-  info "Using current checkout at ${C_BOLD}${INSTALL_DIR}${C_RESET}"
+  info "Using local checkout at ${C_BOLD}${INSTALL_DIR}${C_RESET}"
 else
-  step "Source"
+  step "Downloading compose bundle"
   info "Install location: ${C_BOLD}${INSTALL_DIR}${C_RESET}"
-  if [[ -d "$INSTALL_DIR/.git" ]]; then
-    git -C "$INSTALL_DIR" fetch --quiet origin "$BRANCH"
-    git -C "$INSTALL_DIR" reset --quiet --hard "origin/$BRANCH"
-    ok 'Repo updated'
+  mkdir -p "$INSTALL_DIR"
+
+  # Resolve the exact version tag to download
+  if [[ "$VERSION" == "latest" ]]; then
+    VERSION="$(curl -fsSL --max-time 10 \
+      "https://api.github.com/repos/agentic-work/openagentic/releases/latest" \
+      | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])" 2>/dev/null \
+      || echo "latest")"
+  fi
+
+  BUNDLE_URL="${RELEASES_BASE}/download/${VERSION}/openagentic-compose-${VERSION}.tar.gz"
+  info "Fetching ${C_BOLD}${VERSION}${C_RESET} compose bundle…"
+
+  if curl -fsSL --max-time 60 "$BUNDLE_URL" | tar -xz -C "$INSTALL_DIR"; then
+    ok "Bundle downloaded (${VERSION})"
   else
-    git clone --quiet --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
-    ok 'Repo cloned'
+    # Fallback: if the tag-specific URL fails (pre-release build), try /latest/download/
+    FALLBACK_URL="${RELEASES_BASE}/latest/download/openagentic-compose-latest.tar.gz"
+    warn "Tagged bundle not found; trying latest release…"
+    curl -fsSL --max-time 60 "$FALLBACK_URL" | tar -xz -C "$INSTALL_DIR" \
+      || fatal "Could not download the compose bundle." \
+               "Check your network, or set OPENAGENTIC_VERSION to a published tag." \
+               "Releases: ${RELEASES_BASE}"
+    ok "Bundle downloaded (latest)"
+  fi
+
+  # Write the resolved version so update/doctor can verify it
+  echo "$VERSION" > "$INSTALL_DIR/VERSION"
+
+  # Stamp the registry so compose uses pre-built GHCR images, not local builds
+  # (the compose file defaults to ghcr.io/agentic-work already, but be explicit)
+  if [[ ! -f "$INSTALL_DIR/.env" ]]; then
+    {
+      echo "OPENAGENTIC_REGISTRY=${GHCR_ORG}"
+      echo "OPENAGENTIC_TAG=${VERSION}"
+    } > "$INSTALL_DIR/.env.registry"
   fi
 fi
 cd "$INSTALL_DIR"
@@ -268,7 +308,8 @@ if [[ "$MODE" == "update" ]]; then
   if command -v helm >/dev/null 2>&1 && helm status openagentic -n "$HELM_NS" >/dev/null 2>&1; then
     step "Updating the Helm release (namespace: ${HELM_NS})"
     VALUES="helm/openagentic/values-local-k8s.yaml"; [[ -f "$VALUES" ]] || VALUES="helm/openagentic/values.yaml"
-    helm upgrade openagentic ./helm/openagentic -n "$HELM_NS" -f "$VALUES" --wait --timeout 10m 2>&1 | tail -12 \
+    UPD_CHART="./helm/openagentic"; [[ ! -d "$UPD_CHART" ]] && UPD_CHART="oci://ghcr.io/agentic-work/charts/openagentic"
+    helm upgrade openagentic $UPD_CHART -n "$HELM_NS" -f "$VALUES" --wait --timeout 10m 2>&1 | tail -12 \
       || fatal 'helm upgrade failed.' "Inspect: kubectl -n $HELM_NS get pods" "Roll back: helm rollback openagentic -n $HELM_NS"
     ok 'Helm release updated'
     printf '\n  %sUpdated.%s  Pods: %skubectl -n %s get pods%s\n\n' "$C_GREEN$C_BOLD" "$C_RESET" "$C_BOLD" "$HELM_NS" "$C_RESET"
@@ -311,7 +352,21 @@ if [[ "$MODE" == "helm" ]]; then
   fi
   step "helm upgrade --install ${RELEASE} (namespace: ${NS})"
   info "values: ${C_BOLD}${VALUES}${C_RESET}"
-  helm upgrade --install "$RELEASE" ./helm/openagentic \
+
+  # Use local chart if running from a developer checkout, otherwise pull OCI from GHCR.
+  if [[ -d "./helm/openagentic" ]]; then
+    HELM_TARGET="./helm/openagentic"
+  else
+    CHART_VERSION="${VERSION#v}"   # strip leading 'v' — helm semver has no prefix
+    [[ "$CHART_VERSION" == "latest" || -z "$CHART_VERSION" ]] && CHART_VERSION=""
+    HELM_TARGET="oci://ghcr.io/agentic-work/charts/openagentic"
+    info "Pulling chart from GHCR${CHART_VERSION:+ (version: ${C_BOLD}${CHART_VERSION}${C_RESET})}"
+  fi
+  HELM_VER_FLAG="${CHART_VERSION:+--version $CHART_VERSION}"
+
+  # shellcheck disable=SC2086
+  helm upgrade --install "$RELEASE" $HELM_TARGET \
+    $HELM_VER_FLAG \
     --namespace "$NS" --create-namespace \
     -f "$VALUES" --wait --timeout 10m 2>&1 | tail -12 \
     || fatal 'helm install did not complete (rollout timed out or a pod is failing).' \
@@ -388,22 +443,46 @@ fi
 
 # ─── Wizard path ────────────────────────────────────────────────────────────
 if [[ "$MODE" == "wizard" ]]; then
-  cd tools/setup
-  if [[ ! -d node_modules ]]; then
-    info 'Installing wizard dependencies (first run only)…'
-    if command -v pnpm >/dev/null 2>&1; then pnpm install --silent --prod=false
-    else npm install --silent --no-fund --no-audit; fi
-    ok 'Wizard dependencies installed'
-  fi
   info 'Launching the setup wizard…'
   printf '\n'
-  # When invoked via `curl … | bash`, the shell's stdin is the download pipe, not
-  # the keyboard — the Ink TUI needs a real TTY for raw-mode input. Re-attach stdin
-  # to the controlling terminal so the wizard is interactive in the one-line install.
-  if [[ -e /dev/tty ]]; then
-    exec ./node_modules/.bin/tsx src/index.tsx < /dev/tty
+
+  # Two launch strategies:
+  #   1. Developer checkout (tools/setup/ present): run tsx from source — fastest
+  #      for dev iteration, picks up local changes immediately.
+  #   2. End-user install (no source): run the published npm package via npx.
+  #      npx caches it in ~/.npm/_npx/ — no source cloned, no permanent install.
+  #
+  # When invoked via `curl … | bash`, stdin is the download pipe, not the
+  # keyboard — re-attach to the controlling terminal for raw-mode TUI input.
+  TTY_REDIRECT=""
+  [[ -e /dev/tty ]] && TTY_REDIRECT="< /dev/tty"
+
+  if [[ -f "$INSTALL_DIR/tools/setup/src/index.tsx" ]]; then
+    # Developer path: tsx from source
+    cd "$INSTALL_DIR/tools/setup"
+    if [[ ! -d node_modules ]]; then
+      info 'Installing wizard dependencies (first run only)…'
+      if command -v pnpm >/dev/null 2>&1; then pnpm install --silent --prod=false
+      else npm install --silent --no-fund --no-audit; fi
+      ok 'Wizard dependencies installed'
+    fi
+    if [[ -e /dev/tty ]]; then
+      exec ./node_modules/.bin/tsx src/index.tsx < /dev/tty
+    else
+      exec ./node_modules/.bin/tsx src/index.tsx
+    fi
   else
-    exec ./node_modules/.bin/tsx src/index.tsx
+    # End-user path: run from the published npm package — no source on disk
+    WIZARD_PKG="@openagentic/setup"
+    WIZARD_VERSION="${VERSION#v}"
+    [[ "$WIZARD_VERSION" == "latest" || -z "$WIZARD_VERSION" ]] && WIZARD_VERSION=""
+    PKG_REF="${WIZARD_PKG}${WIZARD_VERSION:+@${WIZARD_VERSION}}"
+    info "Running wizard from ${C_BOLD}${PKG_REF}${C_RESET} (cached in ~/.npm/_npx)"
+    if [[ -e /dev/tty ]]; then
+      exec npx --yes "$PKG_REF" < /dev/tty
+    else
+      exec npx --yes "$PKG_REF"
+    fi
   fi
 fi
 

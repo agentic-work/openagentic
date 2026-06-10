@@ -1,0 +1,204 @@
+name: Build & Push to GHCR
+
+# Triggers:
+#   - push to main  → :latest + :sha-XXXXXXX
+#   - version tag   → :vX.Y.Z + :X.Y + :latest
+#   - manual        → optional tag override
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag_override:
+        description: 'Extra image tag (optional)'
+        required: false
+        default: ''
+
+env:
+  REGISTRY: ghcr.io
+  ORG: agentic-work
+
+jobs:
+  build:
+    name: Build & push (${{ matrix.service }})
+    runs-on: openagentic-runners
+
+    permissions:
+      contents: read
+      packages: write
+
+    # DinD sidecar shares /var/run/docker.sock via an emptyDir volume.
+    # Runner connects via the standard Unix socket — no TLS needed (in-pod only).
+    env:
+      DOCKER_HOST: unix:///var/run/docker.sock
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Node.js images: amd64-only — tsc segfaults under QEMU arm64 emulation.
+          # Add arm64 later by wiring native RPi runners with a separate job.
+          - service: openagentic-api
+            dockerfile: services/openagentic-api/Dockerfile
+            build_arg: SRC_PATH=services/openagentic-api
+            platforms: linux/amd64
+          - service: openagentic-ui
+            dockerfile: services/openagentic-ui/Dockerfile
+            build_arg: SRC_PATH=services/openagentic-ui
+            platforms: linux/amd64
+          - service: openagentic-workflows
+            dockerfile: services/openagentic-workflows/Dockerfile
+            build_arg: ''
+            platforms: linux/amd64
+          # Python/light images: multi-arch fine under QEMU
+          - service: openagentic-mcp-proxy
+            dockerfile: services/openagentic-mcp-proxy/Dockerfile
+            build_arg: SRC_PATH=services/openagentic-mcp-proxy
+            # amd64-only: the heavy CLI installs (helm/aws/azure curl) are flaky
+            # under QEMU arm64 network emulation. Cluster runs mcp-proxy on amd64.
+            platforms: linux/amd64
+            no_cache: "true"
+          - service: openagentic-proxy
+            dockerfile: services/openagentic-proxy/Dockerfile
+            build_arg: ''
+            platforms: linux/amd64,linux/arm64
+
+    steps:
+      # ── Wait for DinD daemon ──────────────────────────────────────────────────
+      - name: Wait for DinD
+        run: |
+          echo "Waiting for Docker daemon…"
+          for i in $(seq 1 60); do
+            if docker info >/dev/null 2>&1; then
+              echo "Docker ready after ${i}s"
+              docker version --format 'Server: {{.Server.Version}}'
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Docker still not ready after 120s — showing socket state:"
+          ls -la /var/run/docker.sock 2>/dev/null || echo "no docker.sock"
+          docker info || true
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Auth ──────────────────────────────────────────────────────────────────
+      - name: Log in to GHCR
+        uses: docker/login-action@v3.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── QEMU + buildx ─────────────────────────────────────────────────────────
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3.6.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.10.0
+        with:
+          driver: docker-container
+          driver-opts: |
+            env.BUILDKIT_STEP_LOG_MAX_SIZE=10485760
+
+      # ── Tags ──────────────────────────────────────────────────────────────────
+      - name: Compute image tags
+        id: meta
+        uses: docker/metadata-action@v5.7.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-,format=short
+            type=raw,value=${{ github.event.inputs.tag_override }},enable=${{ github.event.inputs.tag_override != '' }}
+
+      # ── Build & push ─────────────────────────────────────────────────────────
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build_arg }}
+          # network=host lets RUN curl/pip/npm reach the internet during build layers.
+          # Required in DinD environments where the build container is otherwise isolated.
+          network: host
+          # Skip corrupt cache on mcp-proxy first build; all others use GHCR layer cache.
+          cache-from: ${{ matrix.no_cache == 'true' && '' || format('type=registry,ref={0}/{1}/{2}:buildcache', env.REGISTRY, env.ORG, matrix.service) }}
+          cache-to:   type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache,mode=max
+          provenance: false
+
+  # ── On version tags: compose tarball + OCI helm chart + npm wizard ──────────
+  release-artifacts:
+    name: Package release artifacts
+    needs: build
+    runs-on: openagentic-runners
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Compose-only tarball — no source code ────────────────────────────────
+      - name: Package compose bundle
+        run: |
+          V="${GITHUB_REF_NAME}"
+          mkdir -p /tmp/oa-bundle
+          cp docker-compose.yml /tmp/oa-bundle/
+          [[ -f docker-compose.gpu-nvidia.yml ]] && cp docker-compose.gpu-nvidia.yml /tmp/oa-bundle/
+          [[ -f docker-compose.gpu-wsl.yml    ]] && cp docker-compose.gpu-wsl.yml    /tmp/oa-bundle/
+          [[ -f .env.example                  ]] && cp .env.example                  /tmp/oa-bundle/
+          echo "$V" > /tmp/oa-bundle/VERSION
+          tar -czf "openagentic-compose-${V}.tar.gz" -C /tmp/oa-bundle .
+          echo "BUNDLE=openagentic-compose-${V}.tar.gz" >> "$GITHUB_ENV"
+
+      - name: Upload compose bundle to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.BUNDLE }}
+          fail_on_unmatched_files: true
+
+      # ── Helm OCI chart ────────────────────────────────────────────────────────
+      - name: Install Helm
+        run: |
+          command -v helm || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Push Helm chart to GHCR
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          helm package helm/openagentic --version "$V" --app-version "$V"
+          helm push "openagentic-${V}.tgz" oci://ghcr.io/${{ env.ORG }}/charts
+
+      # ── npm wizard ────────────────────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Build and publish @openagentic/setup
+        working-directory: tools/setup
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          npm ci --silent
+          npm version "$V" --no-git-tag-version
+          npm run build
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

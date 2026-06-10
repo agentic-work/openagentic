@@ -17,8 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Azure CLI (used by official Azure MCP)
-RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+# Install Azure CLI via pip3 — cross-platform (amd64 + arm64) and works on
+# Debian Trixie where the aka.ms/InstallAzureCLIDeb script fails (no trixie support).
+RUN pip3 install --no-cache-dir --break-system-packages azure-cli \
+    || pip3 install --no-cache-dir azure-cli
 
 # Install AWS CLI v2 (required by OpenAgentic AWS MCP for CLI command execution, architecture-aware)
 RUN ARCH=$(dpkg --print-architecture) && \
@@ -32,8 +34,12 @@ RUN ARCH=$(dpkg --print-architecture) && \
     && rm -rf awscliv2.zip aws \
     && aws --version
 
-# Install Helm v3 (required by OpenAgentic Kubernetes MCP for Helm operations)
-RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash \
+# Install Helm v3 — direct binary download, arch-aware (avoids get-helm-3 script
+# which fails on Debian Trixie and under QEMU arm64 emulation)
+RUN ARCH=$(dpkg --print-architecture) \
+    && HELM_VER="v3.17.3" \
+    && curl -fsSL "https://get.helm.sh/helm-${HELM_VER}-linux-${ARCH}.tar.gz" \
+       | tar -xz -C /usr/local/bin --strip-components=1 "linux-${ARCH}/helm" \
     && helm version
 
 # Install global Node.js dependencies for MCP servers
@@ -131,5 +137,11 @@ EXPOSE 8080
 
 # Pre-compile Python source to bytecode (keep .py files for MCP server stdio launch)
 RUN python -m compileall -b /app/src/ /app/mcp-servers/ 2>/dev/null || true
+
+LABEL org.opencontainers.image.title="openagentic-mcp-proxy"
+LABEL org.opencontainers.image.description="OpenAgentic MCP Proxy — 10 bundled MCP servers, 371 tools across web, k8s, AWS, Azure, GCP, GitHub, Prometheus, Loki. Apache 2.0."
+LABEL org.opencontainers.image.source="https://github.com/agentic-work/openagentic"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.vendor="AgenticWork LLC"
 
 CMD ["python", "src/main.py"]
