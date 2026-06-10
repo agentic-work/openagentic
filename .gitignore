@@ -398,3 +398,4 @@ releases
 tests/demos-pw/node_modules/
 tests/demos-pw/videos/
 tests/demos-pw/package-lock.json
+services/openagentic-mcp-proxy/vendor/helm

@@ -117,6 +117,18 @@ jobs:
             type=sha,prefix=sha-,format=short
             type=raw,value=${{ github.event.inputs.tag_override }},enable=${{ github.event.inputs.tag_override != '' }}
 
+      # ── Pre-fetch vendored binaries (runner network is reliable; DinD's isn't) ──
+      # mcp-proxy needs helm; get.helm.sh resets connections inside the DinD build,
+      # so fetch it here on the runner and let the Dockerfile COPY it in.
+      - name: Pre-fetch helm for mcp-proxy
+        if: matrix.service == 'openagentic-mcp-proxy'
+        run: |
+          mkdir -p services/openagentic-mcp-proxy/vendor
+          curl -fsSL "https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz" \
+            | tar -xz -C services/openagentic-mcp-proxy/vendor --strip-components=1 linux-amd64/helm
+          chmod +x services/openagentic-mcp-proxy/vendor/helm
+          ls -la services/openagentic-mcp-proxy/vendor/
+
       # ── Build & push ─────────────────────────────────────────────────────────
       - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v6.18.0
