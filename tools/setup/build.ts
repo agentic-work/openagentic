@@ -26,9 +26,13 @@ await build({
   external: ['ink', 'react', 'react-dom', 'execa', 'open', 'figures', 'react-devtools-core'],
   // Keep the shebang so the compiled file is directly executable
   banner: { js: '#!/usr/bin/env node' },
+  // Ship a COMPILED, MINIFIED bundle — like the container images, the published
+  // npm package must not contain readable first-party source. sourcemaps off and
+  // minify on so dist/index.js is the built artifact, not our .tsx source.
   sourcemap: false,
-  minify: false,   // readable output for debugging install issues
+  minify: true,
+  legalComments: 'none',
   logLevel: 'info',
 });
 
-console.log('✓ dist/index.js built');
+console.log('✓ dist/index.js built (minified, no source/sourcemaps)');
