@@ -18,22 +18,22 @@ else
 
   echo "  Checking Milvus gRPC at: $MILVUS_HOST:$MILVUS_PORT"
   MILVUS_READY=false
+  echo -n "  Waiting for Milvus to accept connections "
   for i in $(seq 1 60); do
-    echo -n "  Attempt $i/60: "
     if nc -z -w 2 "$MILVUS_HOST" "$MILVUS_PORT" 2>/dev/null; then
-      echo "✅ Milvus gRPC port is accepting connections"
-      echo "  Waiting 5 seconds for Milvus to stabilize..."
+      echo " ready ✓"
+      echo "  Stabilizing (5s)…"
       sleep 5
       echo "✅ Milvus is ready"
       MILVUS_READY=true
       break
-    else
-      echo "❌ Milvus not ready yet"
-      sleep 5
     fi
+    echo -n "."
+    sleep 5
   done
 
   if [ "$MILVUS_READY" = "false" ]; then
+    echo ""
     echo "🚨 FATAL: Milvus not ready after 5 minutes — cannot start without vector search"
     exit 1
   fi
@@ -45,19 +45,20 @@ REDIS_HOST=${REDIS_HOST:-redis}
 REDIS_PORT=${REDIS_PORT:-6379}
 
 echo "  Checking Redis at: $REDIS_HOST:$REDIS_PORT"
+echo -n "  Waiting for Redis "
 for i in $(seq 1 12); do
-  echo -n "  Attempt $i/12: "
   if nc -z -w 2 "$REDIS_HOST" "$REDIS_PORT" 2>/dev/null; then
+    echo " ready ✓"
     echo "✅ Redis is ready"
     break
-  else
-    echo "❌ Redis not ready yet"
-    if [ $i -eq 12 ]; then
-      echo "🚨 FATAL: Redis not ready after 60 seconds"
-      exit 1
-    fi
-    sleep 5
   fi
+  if [ $i -eq 12 ]; then
+    echo ""
+    echo "🚨 FATAL: Redis not ready after 60 seconds"
+    exit 1
+  fi
+  echo -n "."
+  sleep 5
 done
 
 # Step 3: Wait for MCP Proxy to be ready
@@ -66,22 +67,22 @@ MCP_PROXY_URL="${MCP_PROXY_URL:-http://mcp-proxy:8080}"
 MCP_HEALTH_URL="${MCP_PROXY_URL}/health"
 
 echo "  Checking MCP Proxy health at: $MCP_HEALTH_URL"
+echo -n "  Waiting for MCP Proxy "
 for i in $(seq 1 30); do
-  echo -n "  Attempt $i/30: "
   if curl -f -s "$MCP_HEALTH_URL" >/dev/null 2>&1; then
-    echo "✅ MCP Proxy health check passed"
-    echo "  Waiting 5 seconds for MCP servers to fully initialize..."
+    echo " ready ✓"
+    echo "  MCP servers initializing (5s)…"
     sleep 5
     echo "✅ MCP Proxy is ready"
     break
-  else
-    echo "❌ MCP Proxy not ready yet"
-    if [ $i -eq 30 ]; then
-      echo "🚨 FATAL: MCP Proxy not ready after 150 seconds — tools cannot be indexed"
-      exit 1
-    fi
-    sleep 5
   fi
+  if [ $i -eq 30 ]; then
+    echo ""
+    echo "🚨 FATAL: MCP Proxy not ready after 150 seconds — tools cannot be indexed"
+    exit 1
+  fi
+  echo -n "."
+  sleep 5
 done
 
 # Step 4: Wait for embedding model to be available
@@ -93,22 +94,23 @@ case "$EMBEDDING_PROVIDER" in
     EMBEDDING_OLLAMA_BASE_URL="${EMBEDDING_OLLAMA_BASE_URL:-${OLLAMA_BASE_URL:-http://ollama:11434}}"
     EMBEDDING_MODEL="${EMBEDDING_MODEL:-embeddinggemma}"
     echo "  Testing Ollama embedding at: $EMBEDDING_OLLAMA_BASE_URL with model: $EMBEDDING_MODEL"
+    echo -n "  Waiting for Ollama embedding model "
     for i in $(seq 1 12); do
-      echo -n "  Attempt $i/12: "
       EMBED_RESULT=$(curl -s -w "%{http_code}" -o /dev/null -X POST "$EMBEDDING_OLLAMA_BASE_URL/api/embed" \
         -H "Content-Type: application/json" \
         -d "{\"model\":\"$EMBEDDING_MODEL\",\"input\":\"test\"}" 2>/dev/null)
       if [ "$EMBED_RESULT" = "200" ]; then
+        echo " ready ✓"
         echo "✅ Ollama embedding model is available"
         break
-      else
-        echo "❌ Ollama embedding not ready (HTTP $EMBED_RESULT)"
-        if [ $i -eq 12 ]; then
-          echo "🚨 FATAL: Ollama embedding model not available"
-          exit 1
-        fi
-        sleep 5
       fi
+      if [ $i -eq 12 ]; then
+        echo ""
+        echo "🚨 FATAL: Ollama embedding model not available"
+        exit 1
+      fi
+      echo -n "."
+      sleep 5
     done
     ;;
   vertex-ai|vertex|gcp)
