@@ -1,9 +1,9 @@
 {
-  "name": "@openagentic/setup",
+  "name": "@agenticwork/setup",
   "version": "1.0.0",
   "type": "module",
   "bin": {
-    "openagentic-setup": "./dist/index.js"
+    "openagentic-setup": "dist/index.js"
   },
   "files": [
     "dist"

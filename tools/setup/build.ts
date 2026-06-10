@@ -1,8 +1,8 @@
 /**
- * Build script for @openagentic/setup wizard.
+ * Build script for @agenticwork/setup wizard.
  * Bundles src/index.tsx + all imports into dist/index.js using esbuild.
  * The output runs with plain `node dist/index.js` — no tsx, no TypeScript
- * compiler needed at runtime, so `npx @openagentic/setup` works with any
+ * compiler needed at runtime, so `npx @agenticwork/setup` works with any
  * Node 20+ installation.
  */
 import { build } from 'esbuild';

@@ -460,10 +460,27 @@ if [[ "$MODE" == "wizard" ]]; then
   if [[ -f "$INSTALL_DIR/tools/setup/src/index.tsx" ]]; then
     # Developer path: tsx from source
     cd "$INSTALL_DIR/tools/setup"
-    if [[ ! -d node_modules ]]; then
+    # Install (or repair) deps if the tsx binary isn't actually present — not just
+    # if node_modules exists. A half/skipped install (see the workspace note below)
+    # can leave node_modules without .bin/tsx, which used to fail cryptically.
+    if [[ ! -x node_modules/.bin/tsx ]]; then
       info 'Installing wizard dependencies (first run only)…'
-      if command -v pnpm >/dev/null 2>&1; then pnpm install --silent --prod=false
-      else npm install --silent --no-fund --no-audit; fi
+      # CRITICAL: tools/setup is NOT a member of the repo's root pnpm-workspace.yaml.
+      # Without --ignore-workspace, pnpm >=10 detects the parent workspace, decides
+      # this package isn't part of it, prints "No projects found", and installs
+      # NOTHING — leaving .bin/tsx absent. --ignore-workspace forces a standalone
+      # install. (npm has no workspace here, so it just works.)
+      # NOTE: don't treat the installer's exit code as fatal on its own — pnpm
+      # returns non-zero for the harmless ERR_PNPM_IGNORED_BUILDS warning (e.g.
+      # esbuild's postinstall) even when tsx installed fine. The real gate is the
+      # tsx-binary check below.
+      if command -v pnpm >/dev/null 2>&1; then
+        pnpm install --silent --prod=false --ignore-workspace || true
+      else
+        npm install --silent --no-fund --no-audit || true
+      fi
+      # Verify the binary actually landed before we claim success or try to exec it.
+      [[ -x node_modules/.bin/tsx ]] || fatal 'Could not install the setup wizard (tsx is missing after install).' 'Re-run manually: cd '"$INSTALL_DIR"'/tools/setup && pnpm install --ignore-workspace --prod=false' 'If you have npm but not pnpm, that works too: npm install'
       ok 'Wizard dependencies installed'
     fi
     if [[ -e /dev/tty ]]; then
@@ -473,7 +490,7 @@ if [[ "$MODE" == "wizard" ]]; then
     fi
   else
     # End-user path: run from the published npm package — no source on disk
-    WIZARD_PKG="@openagentic/setup"
+    WIZARD_PKG="@agenticwork/setup"
     WIZARD_VERSION="${VERSION#v}"
     [[ "$WIZARD_VERSION" == "latest" || -z "$WIZARD_VERSION" ]] && WIZARD_VERSION=""
     PKG_REF="${WIZARD_PKG}${WIZARD_VERSION:+@${WIZARD_VERSION}}"

@@ -204,7 +204,7 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Build and publish @openagentic/setup
+      - name: Build and publish @agenticwork/setup
         working-directory: tools/setup
         run: |
           V="${GITHUB_REF_NAME#v}"
