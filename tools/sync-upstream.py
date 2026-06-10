@@ -115,6 +115,11 @@ SKIP_PREFIXES = (
     'services/openagentic-api/src/services/coding-adapters/',
     'services/openagentic-api/src/services/code/',
     'services/openagentic-api/src/tests/codemode/',
+    # Code Mode "production exec daemon" deps upstream added 2026-06-10 (#1095 /
+    # AC-CAP-3) under core/capabilities — a NEW codemode path the older SKIP
+    # globs missed; a sync would otherwise leak codemodeJobDepsProd into OSS.
+    'services/openagentic-api/src/core/capabilities/codemodeJobDepsProd',
+    'services/openagentic-api/src/core/capabilities/__tests__/codemodeJobDepsProd',
     'services/openagentic-ui/src/features/code/',
     'services/openagentic-ui/src/features/admin/components/CodeMode/',
     'services/openagentic-ui/src/features/admin/components/Code/',
