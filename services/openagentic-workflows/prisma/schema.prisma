@@ -4,11 +4,11 @@
 generator client {
   provider        = "prisma-client-js"
   binaryTargets   = ["native", "linux-musl", "debian-openssl-3.0.x"]
-  previewFeatures = ["multiSchema"]
+  // multiSchema is GA since Prisma 6.7 — schemas/@@schema work without the
+  // preview flag. Removed to silence the deprecation warning.
   // Pin output so api + workflows don't clobber each other's generated
   // client at the hoisted .pnpm/.prisma location (different schemas →
   // different model delegates).
-
 }
 
 datasource db {
