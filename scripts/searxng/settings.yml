@@ -20,3 +20,10 @@ engines:
     disabled: false
   - name: duckduckgo
     disabled: false
+  # Tor-only engines from the SearXNG defaults: they require a Tor proxy that this
+  # bundle does not ship, so they log a noisy "loading engine ... failed" ERROR on
+  # boot. Disable them explicitly — the web MCP never uses them.
+  - name: ahmia
+    disabled: true
+  - name: torch
+    disabled: true

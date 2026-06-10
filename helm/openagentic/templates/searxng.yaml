@@ -22,6 +22,12 @@ data:
         disabled: false
       - name: duckduckgo
         disabled: false
+      # Tor-only defaults that need a Tor proxy this bundle doesn't ship — disable
+      # them so they don't log "loading engine ... failed" ERRORs on boot.
+      - name: ahmia
+        disabled: true
+      - name: torch
+        disabled: true
 ---
 apiVersion: v1
 kind: Service

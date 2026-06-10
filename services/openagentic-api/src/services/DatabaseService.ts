@@ -84,18 +84,23 @@ export class DatabaseService {
    * Setup MCP Proxy database - just create the database, MCP Proxy handles its own schema
    */
   private static async setupMCPProxyDatabase(): Promise<void> {
+    // Connection details come from the environment. When the deployment wires
+    // Postgres via DATABASE_URL only (the common Helm/Compose case), the discrete
+    // POSTGRES_* vars are absent — the MCP Proxy then manages its own schema on
+    // the shared database and there is nothing to provision here. Treat that as a
+    // normal, expected path (calm info log, no error/stack on a fresh install).
+    const host = process.env.POSTGRES_HOST;
+    const port = process.env.POSTGRES_PORT;
+    const user = process.env.POSTGRES_USER;
+    const password = process.env.POSTGRES_PASSWORD;
+
+    if (!host || !port || !user || !password) {
+      logger.info('ℹ️  MCP Proxy database provisioning skipped — POSTGRES_* not set; the proxy manages its own schema on the shared database');
+      return;
+    }
+
     logger.info('🗄️ Creating MCP Proxy database...');
     try {
-      // Get connection details from environment - all required
-      const host = process.env.POSTGRES_HOST;
-      const port = process.env.POSTGRES_PORT;
-      const user = process.env.POSTGRES_USER;
-      const password = process.env.POSTGRES_PASSWORD;
-
-      if (!host || !port || !user || !password) {
-        throw new Error('Database configuration required: POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSWORD');
-      }
-
       // Connect to postgres database to create mcp_proxy database
       const adminDbUrl = `postgresql://${user}:${password}@${host}:${port}/postgres`;
 
