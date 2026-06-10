@@ -34,12 +34,18 @@ RUN ARCH=$(dpkg --print-architecture) && \
     && rm -rf awscliv2.zip aws \
     && aws --version
 
-# Install Helm v3 — direct binary download, arch-aware (avoids get-helm-3 script
-# which fails on Debian Trixie and under QEMU arm64 emulation)
-RUN ARCH=$(dpkg --print-architecture) \
-    && HELM_VER="v3.17.3" \
-    && curl -fsSL "https://get.helm.sh/helm-${HELM_VER}-linux-${ARCH}.tar.gz" \
-       | tar -xz -C /usr/local/bin --strip-components=1 "linux-${ARCH}/helm" \
+# Install Helm v3. External CDNs (get.helm.sh, baltocdn) get their TLS
+# connection reset under the DinD build network, so the binary is pre-fetched
+# by CI into vendor/helm and COPYed in. Falls back to curl for local builds
+# where vendor/helm isn't present.
+COPY services/openagentic-mcp-proxy/vendor/ /tmp/vendor/
+RUN if [ -f /tmp/vendor/helm ]; then \
+      install -m 0755 /tmp/vendor/helm /usr/local/bin/helm && rm -rf /tmp/vendor; \
+    else \
+      ARCH=$(dpkg --print-architecture) && \
+      curl -fsSL "https://get.helm.sh/helm-v3.17.3-linux-${ARCH}.tar.gz" \
+        | tar -xz -C /usr/local/bin --strip-components=1 "linux-${ARCH}/helm"; \
+    fi \
     && helm version
 
 # Install global Node.js dependencies for MCP servers

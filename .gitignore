@@ -403,3 +403,6 @@ tests/demos-pw/package-lock.json
 # Screenshot/mockup image dumps (test artifacts)
 *.jpeg
 *.jpg
+
+# CI-prefetched helm binary (vendored at build time, never committed)
+services/openagentic-mcp-proxy/vendor/helm
