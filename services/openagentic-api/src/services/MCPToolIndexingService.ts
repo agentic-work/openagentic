@@ -820,7 +820,7 @@ export class MCPToolIndexingService {
    */
   private static isMilvusUnavailable(error: any): boolean {
     const msg = String(error?.message || error || '').toLowerCase();
-    return /connect|unavailable|deadline|timeout|econnrefused|not ready|no connection|channel|grpc|unimplemented|loadcollection|collection not/.test(msg);
+    return /connect|unavailable|deadline|timeout|econnrefused|not ready|no connection|channel|grpc|unimplemented|loadcollection|collection not|pool is draining|draining|pool/.test(msg);
   }
 
   /**

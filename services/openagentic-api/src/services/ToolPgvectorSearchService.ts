@@ -77,9 +77,12 @@ export class ToolPgvectorSearchService {
       // Initialize the vector client
       await this.vectorClient.initialize();
 
-      // Detect embedding dimensions from first non-null embedding
+      // Detect embedding dimensions from first non-null embedding.
+      // Use pgvector's native vector_dims() — the old `::text::float[]` cast
+      // threw "malformed array literal" because pgvector serializes vectors as
+      // [a,b,c] while Postgres float[] wants {a,b,c}. vector_dims() is exact.
       const dimResult = await this.prisma.$queryRawUnsafe<any[]>(
-        `SELECT array_length(search_embedding::text::float[], 1) as dim
+        `SELECT vector_dims(search_embedding) as dim
          FROM mcp_tools
          WHERE search_embedding IS NOT NULL
          LIMIT 1`

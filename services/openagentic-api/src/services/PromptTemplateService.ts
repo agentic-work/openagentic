@@ -134,7 +134,7 @@ export class PromptTemplateService {
     } catch (error) {
       // Non-fatal on fresh boot when Milvus isn't ready yet — keep logs calm.
       const msg = String((error as any)?.message || error || '').toLowerCase();
-      if (/connect|unavailable|deadline|timeout|econnrefused|not ready|grpc|channel/.test(msg)) {
+      if (/connect|unavailable|deadline|timeout|econnrefused|not ready|grpc|channel|draining|pool/.test(msg)) {
         this.logger.warn('Milvus not ready — prompt-template collection deferred (non-fatal)');
       } else {
         this.logger.error({ error }, 'Failed to ensure Milvus collection');

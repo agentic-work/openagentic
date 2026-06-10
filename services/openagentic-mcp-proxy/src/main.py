@@ -553,7 +553,10 @@ async def fetch_user_mcp_access_policies(user_groups: List[str]) -> Dict[str, st
                                 access_map[server_name] = access_type
 
                 except Exception as e:
-                    logger.warning(f"Failed to fetch access policies for group {group_id}: {e}")
+                    # On a fresh install the api hasn't seeded RBAC groups yet when
+                    # mcp-proxy first queries them — transient, self-heals on the next
+                    # request. Log calm so first-boot logs don't look broken.
+                    logger.info(f"Access policies for group {group_id} not available yet (will retry): {e}")
                     continue
 
         logger.info(f"Fetched MCP access policies: {access_map}")
