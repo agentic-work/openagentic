@@ -394,56 +394,73 @@ async function initializeServices() {
     // Embedding models are discovered dynamically from providers
     loggers.services.info('🔄 Embedding models will be discovered from configured providers...');
 
-    // Milvus is MANDATORY: connect with retry, and exit(1) after 10 failed
-    // attempts (below). There is no skip flag — the api cannot run without a
-    // reachable vector store. Start the stack with `--profile milvus`.
-    loggers.services.info('🔄 Connecting to Milvus vector database (MANDATORY)...');
-    let milvusConnectAttempt = 0;
-    while (true) {
-      try {
-        milvusConnectAttempt++;
-        milvusClient = await connectToMilvus();
-        loggers.services.info(`✅ Milvus connected (attempt ${milvusConnectAttempt})`);
-        break;
-      } catch (error: any) {
-        if (milvusConnectAttempt >= 10) {
-          loggers.services.fatal({ error: error.message }, '🚨 FATAL: Cannot connect to Milvus after 10 attempts');
-          process.exit(1);
+    // Milvus is the default vector store for the heavy embedding workloads
+    // (large user-memory + document/artifact collections). It can be turned OFF
+    // for a lighter, single-datastore deployment: set MILVUS_ENABLED=false (or
+    // SKIP_TOOL_SEMANTIC_CACHE=true) and the api runs pgvector-only — MCP tool
+    // search falls back to ToolPgvectorSearchService (initialized below), and the
+    // Milvus-backed RAG/artifact features stay dormant. This matches the
+    // pgvector-only path the docker entrypoint already supports.
+    const milvusEnabled = process.env.MILVUS_ENABLED !== 'false'
+      && process.env.SKIP_TOOL_SEMANTIC_CACHE !== 'true';
+
+    if (milvusEnabled) {
+      // Milvus ON: connect with retry, exit(1) after 10 failed attempts — when
+      // it's enabled it's required, so a misconfigured vector store fails loud
+      // rather than silently degrading. Start the stack with `--profile milvus`.
+      loggers.services.info('🔄 Connecting to Milvus vector database...');
+      let milvusConnectAttempt = 0;
+      while (true) {
+        try {
+          milvusConnectAttempt++;
+          milvusClient = await connectToMilvus();
+          loggers.services.info(`✅ Milvus connected (attempt ${milvusConnectAttempt})`);
+          break;
+        } catch (error: any) {
+          if (milvusConnectAttempt >= 10) {
+            loggers.services.fatal({ error: error.message }, '🚨 FATAL: Cannot connect to Milvus after 10 attempts (set MILVUS_ENABLED=false for pgvector-only mode)');
+            process.exit(1);
+          }
+          loggers.services.warn({ error: error.message, attempt: milvusConnectAttempt },
+            `⚠️ Milvus connection attempt ${milvusConnectAttempt}/10 failed — retrying in ${milvusConnectAttempt * 3}s`);
+          await new Promise(resolve => setTimeout(resolve, milvusConnectAttempt * 3000));
         }
-        loggers.services.warn({ error: error.message, attempt: milvusConnectAttempt },
-          `⚠️ Milvus connection attempt ${milvusConnectAttempt}/10 failed — retrying in ${milvusConnectAttempt * 3}s`);
-        await new Promise(resolve => setTimeout(resolve, milvusConnectAttempt * 3000));
       }
-    }
 
-    // Initialize RAG service for prompt template semantic search
-    ragService = new RAGService(milvusClient, loggers.services);
-    const initResult = await ragService.initializeCollection();
-    if (initResult.success) {
-      // syncAllTemplates was removed in the OSS edition — templates index
-      // via the per-template upsert path on first read instead.
-      const syncFn = (ragService as any).syncAllTemplates;
-      if (typeof syncFn === 'function') {
-        const syncResult = await syncFn.call(ragService);
-        loggers.services.info(`✅ RAG collection initialized, ${syncResult.synced || 0} templates synced`);
-      } else {
-        loggers.services.info('✅ RAG collection initialized (lazy template sync)');
+      // Initialize RAG service for prompt template semantic search
+      ragService = new RAGService(milvusClient, loggers.services);
+      const initResult = await ragService.initializeCollection();
+      if (initResult.success) {
+        // syncAllTemplates was removed in the OSS edition — templates index
+        // via the per-template upsert path on first read instead.
+        const syncFn = (ragService as any).syncAllTemplates;
+        if (typeof syncFn === 'function') {
+          const syncResult = await syncFn.call(ragService);
+          loggers.services.info(`✅ RAG collection initialized, ${syncResult.synced || 0} templates synced`);
+        } else {
+          loggers.services.info('✅ RAG collection initialized (lazy template sync)');
+        }
       }
+
+      // Initialize MilvusVectorService for user artifacts and embeddings
+      milvusVectorService = new MilvusVectorService(providerManager);
+      await milvusVectorService.initialize();
+      loggers.services.info('✅ MilvusVectorService initialized');
+
+      // Re-initialize CachedPromptService with Milvus semantic search
+      promptService = new CachedPromptService(loggers.services, {
+        enableCache: true,
+        cacheTTL: 1800,
+        cacheUserAssignments: true,
+        cacheTemplates: true,
+        milvusService: milvusVectorService
+      });
+    } else {
+      // pgvector-only mode: skip Milvus entirely. Tool search uses pgvector
+      // (ToolPgvectorSearchService, below); Milvus-backed RAG/artifact features
+      // stay off. Lower footprint, one fewer datastore to operate.
+      loggers.services.info('ℹ️ MILVUS_ENABLED=false — running pgvector-only. Skipping Milvus connect; MCP tool search uses pgvector. (Enable Milvus for large embedding/RAG workloads.)');
     }
-
-    // Initialize MilvusVectorService for user artifacts and embeddings
-    milvusVectorService = new MilvusVectorService(providerManager);
-    await milvusVectorService.initialize();
-    loggers.services.info('✅ MilvusVectorService initialized');
-
-    // Re-initialize CachedPromptService with Milvus semantic search
-    promptService = new CachedPromptService(loggers.services, {
-      enableCache: true,
-      cacheTTL: 1800,
-      cacheUserAssignments: true,
-      cacheTemplates: true,
-      milvusService: milvusVectorService
-    });
 
     // Document Indexing Service (non-critical)
     try {
