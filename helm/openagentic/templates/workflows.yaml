@@ -36,6 +36,30 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      # Gate startup on the api being healthy. The api entrypoint runs
+      # `prisma db push` which creates ALL tables (including workflow_*). The
+      # workflows template-seeder + scheduler poll the workflow tables on boot,
+      # so they MUST not start until that push has completed — otherwise the
+      # fresh-install logs fill with transient "table does not exist" errors.
+      # (Compose handles this via `depends_on: api: service_healthy`; this init
+      # container is the Helm equivalent.)
+      initContainers:
+        - name: wait-for-api-migrations
+          image: curlimages/curl:8.11.0
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for api (prisma db push) to be healthy…"
+              for i in $(seq 1 120); do
+                if curl -fsS --max-time 4 http://api:8000/api/health >/dev/null 2>&1; then
+                  echo "api healthy after ${i} tries — migrations done, starting workflows"
+                  exit 0
+                fi
+                sleep 5
+              done
+              echo "api did not become healthy in ~10m; starting anyway (will self-heal)"
+              exit 0
       containers:
         - name: workflows
           image: {{ .Values.image.registry }}/openagentic-workflows:{{ .Values.image.tag }}

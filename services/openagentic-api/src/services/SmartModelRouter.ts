@@ -857,7 +857,14 @@ export class SmartModelRouter {
         this.logger.info({ collectionName: this.collectionName }, 'Created Milvus collection for model capabilities');
       }
     } catch (error) {
-      this.logger.error({ error }, 'Failed to ensure Milvus collection');
+      // Milvus is optional here (model-capability cache). "Not ready yet" on a
+      // fresh boot is non-fatal — keep it a calm warn so logs don't look broken.
+      const msg = String((error as any)?.message || error || '').toLowerCase();
+      if (/connect|unavailable|deadline|timeout|econnrefused|not ready|grpc|channel|draining|pool/.test(msg)) {
+        this.logger.warn('Milvus not ready — skipping model-capability collection (non-fatal, retried later)');
+      } else {
+        this.logger.error({ error }, 'Failed to ensure Milvus collection');
+      }
     }
   }
 

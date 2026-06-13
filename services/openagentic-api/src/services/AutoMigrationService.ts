@@ -714,6 +714,17 @@ export class AutoMigrationService {
   private async recordMigration(result: MigrationResult): Promise<void> {
     try {
       if (result.backupName) {
+        // On a fresh install the _migration_history table may not exist yet
+        // (it's created lazily by createBackupCheckpoint). Probe with to_regclass
+        // first so Postgres never logs a "relation does not exist" ERROR — that
+        // line reads as a failure to anyone tailing the database logs on day one.
+        const reg = await prisma.$queryRaw<Array<{ exists: string | null }>>`
+          SELECT to_regclass('public._migration_history')::text AS exists
+        `;
+        if (!reg[0]?.exists) {
+          logger.info('Migration history table not present yet — skipping record (normal on a fresh install)');
+          return;
+        }
         await prisma.$executeRaw`
           UPDATE _migration_history
           SET

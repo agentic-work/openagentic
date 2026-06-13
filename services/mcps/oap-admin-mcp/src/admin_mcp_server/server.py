@@ -185,7 +185,14 @@ def _init_connections_blocking():
         )
         logger.info("✅ Milvus connected successfully")
     except Exception as e:
-        logger.warning(f"⚠️ Milvus connection failed: {e} - continuing without Milvus")
+        # On a fresh install Milvus often isn't accepting connections yet when the
+        # admin MCP starts. This is non-fatal: vector tools degrade gracefully and
+        # reconnect on first use. Log it calmly so it doesn't read as a failure.
+        msg = str(e).lower()
+        if any(k in msg for k in ("unavailable", "connect", "refused", "timeout", "deadline", "not ready", "19530")):
+            logger.info("ℹ️ Milvus not ready yet — vector tools will connect on first use (normal on a fresh install)")
+        else:
+            logger.warning(f"⚠️ Milvus connection issue: {e} - continuing without Milvus")
 
     # Initialize PostgreSQL via psycopg2 (direct driver, no Prisma dependency)
     try:

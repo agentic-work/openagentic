@@ -4,7 +4,8 @@
 generator client {
   provider        = "prisma-client-js"
   binaryTargets   = ["native", "linux-musl", "debian-openssl-3.0.x"]
-  previewFeatures = ["multiSchema"]
+  // multiSchema is GA since Prisma 6.7 — the schemas/@@schema directives below
+  // work without the preview flag. Removed to silence the deprecation warning.
 }
 
 datasource db {

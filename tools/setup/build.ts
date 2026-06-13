@@ -1,12 +1,12 @@
 /**
- * Build script for @openagentic/setup wizard.
+ * Build script for @agenticwork/setup wizard.
  * Bundles src/index.tsx + all imports into dist/index.js using esbuild.
  * The output runs with plain `node dist/index.js` — no tsx, no TypeScript
- * compiler needed at runtime, so `npx @openagentic/setup` works with any
+ * compiler needed at runtime, so `npx @agenticwork/setup` works with any
  * Node 20+ installation.
  */
 import { build } from 'esbuild';
-import { mkdirSync } from 'fs';
+import { mkdirSync, chmodSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -26,9 +26,18 @@ await build({
   external: ['ink', 'react', 'react-dom', 'execa', 'open', 'figures', 'react-devtools-core'],
   // Keep the shebang so the compiled file is directly executable
   banner: { js: '#!/usr/bin/env node' },
+  // Ship a COMPILED, MINIFIED bundle — like the container images, the published
+  // npm package must not contain readable first-party source. sourcemaps off and
+  // minify on so dist/index.js is the built artifact, not our .tsx source.
   sourcemap: false,
-  minify: false,   // readable output for debugging install issues
+  minify: true,
+  legalComments: 'none',
   logLevel: 'info',
 });
 
-console.log('✓ dist/index.js built');
+// Mark the bundle executable so the npm `bin` shim can exec it directly. esbuild
+// writes mode 0644, which made `npx @agenticwork/setup` fail with
+// "openagentic-setup: command not found" — the bin couldn't be executed.
+chmodSync(join(__dirname, 'dist/index.js'), 0o755);
+
+console.log('✓ dist/index.js built (minified, executable, no source/sourcemaps)');

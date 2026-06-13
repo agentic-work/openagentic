@@ -1,6 +1,13 @@
 # Minimal SearXNG config for the openagentic web MCP.
 # The web MCP queries SearXNG's JSON API, so `json` must be in search.formats.
-use_default_settings: true
+# REMOVE the Tor-only default engines (ahmia/torch): `disabled: true` still
+# initializes them, which throws without a Tor proxy and logs "loading engine
+# ... failed" on boot. `engines.remove` excludes them so they never load.
+use_default_settings:
+  engines:
+    remove:
+      - ahmia
+      - torch
 
 server:
   # Local-only search instance behind the docker network. Rotate this if you

@@ -248,9 +248,12 @@ fi
 # locally. If running from a developer checkout (docker-compose.yml + services/
 # both present) the local tree is used as-is so devs can test changes.
 INSTALL_DIR="${OPENAGENTIC_HOME:-$HOME/.openagentic}"
-VERSION="${OPENAGENTIC_VERSION:-latest}"
+VERSION="${OPENAGENTIC_VERSION:-1.0.0}"
 GHCR_ORG="${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}"
-RELEASES_BASE="https://github.com/agentic-work/openagentic/releases"
+# The pull-only compose bundle (no source) is hosted on the install server itself,
+# so a public install needs no access to the source repo. Images come from the
+# public GHCR registry at `docker compose up` time.
+DIST_BASE="${OPENAGENTIC_DIST_BASE:-https://install.openagentics.io}"
 
 if [[ -f "./docker-compose.yml" && -d "./services/openagentic-api" ]]; then
   # Developer local checkout — use it directly (build: stanzas still present)
@@ -261,35 +264,17 @@ else
   info "Install location: ${C_BOLD}${INSTALL_DIR}${C_RESET}"
   mkdir -p "$INSTALL_DIR"
 
-  # Resolve the exact version tag to download
-  if [[ "$VERSION" == "latest" ]]; then
-    VERSION="$(curl -fsSL --max-time 10 \
-      "https://api.github.com/repos/agentic-work/openagentic/releases/latest" \
-      | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])" 2>/dev/null \
-      || echo "latest")"
-  fi
+  BUNDLE_URL="${DIST_BASE}/openagentic-compose.tgz"
+  info "Fetching the compose bundle from ${C_BOLD}${DIST_BASE}${C_RESET}…"
 
-  BUNDLE_URL="${RELEASES_BASE}/download/${VERSION}/openagentic-compose-${VERSION}.tar.gz"
-  info "Fetching ${C_BOLD}${VERSION}${C_RESET} compose bundle…"
+  curl -fsSL --max-time 60 "$BUNDLE_URL" | tar -xz -C "$INSTALL_DIR" \
+    || fatal "Could not download the compose bundle from ${DIST_BASE}." \
+             "Check your network and try again." \
+             "You can mirror the bundle and set OPENAGENTIC_DIST_BASE to its host."
+  ok "Bundle downloaded"
 
-  if curl -fsSL --max-time 60 "$BUNDLE_URL" | tar -xz -C "$INSTALL_DIR"; then
-    ok "Bundle downloaded (${VERSION})"
-  else
-    # Fallback: if the tag-specific URL fails (pre-release build), try /latest/download/
-    FALLBACK_URL="${RELEASES_BASE}/latest/download/openagentic-compose-latest.tar.gz"
-    warn "Tagged bundle not found; trying latest release…"
-    curl -fsSL --max-time 60 "$FALLBACK_URL" | tar -xz -C "$INSTALL_DIR" \
-      || fatal "Could not download the compose bundle." \
-               "Check your network, or set OPENAGENTIC_VERSION to a published tag." \
-               "Releases: ${RELEASES_BASE}"
-    ok "Bundle downloaded (latest)"
-  fi
-
-  # Write the resolved version so update/doctor can verify it
+  # Record version + pin the public registry so compose pulls pre-built images.
   echo "$VERSION" > "$INSTALL_DIR/VERSION"
-
-  # Stamp the registry so compose uses pre-built GHCR images, not local builds
-  # (the compose file defaults to ghcr.io/agentic-work already, but be explicit)
   if [[ ! -f "$INSTALL_DIR/.env" ]]; then
     {
       echo "OPENAGENTIC_REGISTRY=${GHCR_ORG}"
@@ -460,10 +445,27 @@ if [[ "$MODE" == "wizard" ]]; then
   if [[ -f "$INSTALL_DIR/tools/setup/src/index.tsx" ]]; then
     # Developer path: tsx from source
     cd "$INSTALL_DIR/tools/setup"
-    if [[ ! -d node_modules ]]; then
+    # Install (or repair) deps if the tsx binary isn't actually present — not just
+    # if node_modules exists. A half/skipped install (see the workspace note below)
+    # can leave node_modules without .bin/tsx, which used to fail cryptically.
+    if [[ ! -x node_modules/.bin/tsx ]]; then
       info 'Installing wizard dependencies (first run only)…'
-      if command -v pnpm >/dev/null 2>&1; then pnpm install --silent --prod=false
-      else npm install --silent --no-fund --no-audit; fi
+      # CRITICAL: tools/setup is NOT a member of the repo's root pnpm-workspace.yaml.
+      # Without --ignore-workspace, pnpm >=10 detects the parent workspace, decides
+      # this package isn't part of it, prints "No projects found", and installs
+      # NOTHING — leaving .bin/tsx absent. --ignore-workspace forces a standalone
+      # install. (npm has no workspace here, so it just works.)
+      # NOTE: don't treat the installer's exit code as fatal on its own — pnpm
+      # returns non-zero for the harmless ERR_PNPM_IGNORED_BUILDS warning (e.g.
+      # esbuild's postinstall) even when tsx installed fine. The real gate is the
+      # tsx-binary check below.
+      if command -v pnpm >/dev/null 2>&1; then
+        pnpm install --silent --prod=false --ignore-workspace || true
+      else
+        npm install --silent --no-fund --no-audit || true
+      fi
+      # Verify the binary actually landed before we claim success or try to exec it.
+      [[ -x node_modules/.bin/tsx ]] || fatal 'Could not install the setup wizard (tsx is missing after install).' 'Re-run manually: cd '"$INSTALL_DIR"'/tools/setup && pnpm install --ignore-workspace --prod=false' 'If you have npm but not pnpm, that works too: npm install'
       ok 'Wizard dependencies installed'
     fi
     if [[ -e /dev/tty ]]; then
@@ -473,7 +475,7 @@ if [[ "$MODE" == "wizard" ]]; then
     fi
   else
     # End-user path: run from the published npm package — no source on disk
-    WIZARD_PKG="@openagentic/setup"
+    WIZARD_PKG="@agenticwork/setup"
     WIZARD_VERSION="${VERSION#v}"
     [[ "$WIZARD_VERSION" == "latest" || -z "$WIZARD_VERSION" ]] && WIZARD_VERSION=""
     PKG_REF="${WIZARD_PKG}${WIZARD_VERSION:+@${WIZARD_VERSION}}"

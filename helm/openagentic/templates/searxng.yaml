@@ -7,7 +7,15 @@ metadata:
 data:
   # The web MCP queries SearXNG's JSON API, so `json` must be in formats.
   settings.yml: |
-    use_default_settings: true
+    # REMOVE (not just disable) the Tor-only default engines: `disabled: true`
+    # still initializes them, which throws (no Tor proxy shipped) and logs
+    # "loading engine ... failed" on boot. `engines.remove` excludes them from
+    # the default set entirely, so they're never loaded — no boot ERROR.
+    use_default_settings:
+      engines:
+        remove:
+          - ahmia
+          - torch
     server:
       secret_key: {{ .Values.secrets.signingSecret | quote }}
       limiter: false
@@ -84,6 +92,13 @@ spec:
             httpGet:
               path: /
               port: 8080
+              # SearXNG's botdetection logs an ERROR when a request arrives with
+              # neither X-Forwarded-For nor X-Real-IP. The kubelet probe has no
+              # such header, so it tripped that line every 10s. Send a loopback
+              # XFF on the probe to keep botdetection quiet (probe only).
+              httpHeaders:
+                - name: X-Forwarded-For
+                  value: 127.0.0.1
             initialDelaySeconds: 10
             periodSeconds: 10
           resources:

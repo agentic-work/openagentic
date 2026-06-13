@@ -214,6 +214,20 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      # Milvus standalone aborts (SIGABRT / exit 134) if it starts before etcd +
+      # minio are accepting connections, which showed as 'RESTARTS 1 / Error' on
+      # a fresh cold boot. Gate startup on both deps so milvus comes up clean.
+      initContainers:
+        - name: wait-for-deps
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "waiting for etcd:2379 and minio:9000 ..."
+              until nc -z etcd 2379; do sleep 2; done
+              until nc -z minio 9000; do sleep 2; done
+              echo "deps ready"
       containers:
         - name: milvus
           image: {{ .Values.milvus.image }}

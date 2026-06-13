@@ -361,7 +361,23 @@ async def lifespan(app: FastAPI):
         password=redis_password,
         decode_responses=False
     )
-    redis_client.ping()  # Test connection
+    # On a fresh install Redis often isn't accepting connections yet when the
+    # proxy starts. Retry with backoff instead of crashing the whole process
+    # (which previously caused 1-2 restarts + a stack trace on every cold boot).
+    _redis_deadline = 120  # seconds
+    _waited = 0
+    while True:
+        try:
+            redis_client.ping()
+            break
+        except redis.exceptions.RedisError as e:
+            if _waited >= _redis_deadline:
+                logger.error(f"❌ Redis not reachable after {_redis_deadline}s at {redis_host}:{redis_port}: {e}")
+                raise
+            if _waited == 0:
+                logger.info(f"⏳ Waiting for Redis at {redis_host}:{redis_port} (normal on a fresh install)...")
+            time.sleep(2)
+            _waited += 2
     logger.info(f"✅ Redis connected at {redis_host}:{redis_port}")
 
     # Start MCP Inspector subprocess (dev-only, opt-in via ENABLE_MCP_INSPECTOR;
@@ -553,7 +569,10 @@ async def fetch_user_mcp_access_policies(user_groups: List[str]) -> Dict[str, st
                                 access_map[server_name] = access_type
 
                 except Exception as e:
-                    logger.warning(f"Failed to fetch access policies for group {group_id}: {e}")
+                    # On a fresh install the api hasn't seeded RBAC groups yet when
+                    # mcp-proxy first queries them — transient, self-heals on the next
+                    # request. Log calm so first-boot logs don't look broken.
+                    logger.info(f"Access policies for group {group_id} not available yet (will retry): {e}")
                     continue
 
         logger.info(f"Fetched MCP access policies: {access_map}")

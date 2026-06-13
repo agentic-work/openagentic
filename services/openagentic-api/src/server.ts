@@ -394,56 +394,73 @@ async function initializeServices() {
     // Embedding models are discovered dynamically from providers
     loggers.services.info('🔄 Embedding models will be discovered from configured providers...');
 
-    // Milvus is MANDATORY: connect with retry, and exit(1) after 10 failed
-    // attempts (below). There is no skip flag — the api cannot run without a
-    // reachable vector store. Start the stack with `--profile milvus`.
-    loggers.services.info('🔄 Connecting to Milvus vector database (MANDATORY)...');
-    let milvusConnectAttempt = 0;
-    while (true) {
-      try {
-        milvusConnectAttempt++;
-        milvusClient = await connectToMilvus();
-        loggers.services.info(`✅ Milvus connected (attempt ${milvusConnectAttempt})`);
-        break;
-      } catch (error: any) {
-        if (milvusConnectAttempt >= 10) {
-          loggers.services.fatal({ error: error.message }, '🚨 FATAL: Cannot connect to Milvus after 10 attempts');
-          process.exit(1);
+    // Milvus is the default vector store for the heavy embedding workloads
+    // (large user-memory + document/artifact collections). It can be turned OFF
+    // for a lighter, single-datastore deployment: set MILVUS_ENABLED=false (or
+    // SKIP_TOOL_SEMANTIC_CACHE=true) and the api runs pgvector-only — MCP tool
+    // search falls back to ToolPgvectorSearchService (initialized below), and the
+    // Milvus-backed RAG/artifact features stay dormant. This matches the
+    // pgvector-only path the docker entrypoint already supports.
+    const milvusEnabled = process.env.MILVUS_ENABLED !== 'false'
+      && process.env.SKIP_TOOL_SEMANTIC_CACHE !== 'true';
+
+    if (milvusEnabled) {
+      // Milvus ON: connect with retry, exit(1) after 10 failed attempts — when
+      // it's enabled it's required, so a misconfigured vector store fails loud
+      // rather than silently degrading. Start the stack with `--profile milvus`.
+      loggers.services.info('🔄 Connecting to Milvus vector database...');
+      let milvusConnectAttempt = 0;
+      while (true) {
+        try {
+          milvusConnectAttempt++;
+          milvusClient = await connectToMilvus();
+          loggers.services.info(`✅ Milvus connected (attempt ${milvusConnectAttempt})`);
+          break;
+        } catch (error: any) {
+          if (milvusConnectAttempt >= 10) {
+            loggers.services.fatal({ error: error.message }, '🚨 FATAL: Cannot connect to Milvus after 10 attempts (set MILVUS_ENABLED=false for pgvector-only mode)');
+            process.exit(1);
+          }
+          loggers.services.warn({ error: error.message, attempt: milvusConnectAttempt },
+            `⚠️ Milvus connection attempt ${milvusConnectAttempt}/10 failed — retrying in ${milvusConnectAttempt * 3}s`);
+          await new Promise(resolve => setTimeout(resolve, milvusConnectAttempt * 3000));
         }
-        loggers.services.warn({ error: error.message, attempt: milvusConnectAttempt },
-          `⚠️ Milvus connection attempt ${milvusConnectAttempt}/10 failed — retrying in ${milvusConnectAttempt * 3}s`);
-        await new Promise(resolve => setTimeout(resolve, milvusConnectAttempt * 3000));
       }
-    }
 
-    // Initialize RAG service for prompt template semantic search
-    ragService = new RAGService(milvusClient, loggers.services);
-    const initResult = await ragService.initializeCollection();
-    if (initResult.success) {
-      // syncAllTemplates was removed in the OSS edition — templates index
-      // via the per-template upsert path on first read instead.
-      const syncFn = (ragService as any).syncAllTemplates;
-      if (typeof syncFn === 'function') {
-        const syncResult = await syncFn.call(ragService);
-        loggers.services.info(`✅ RAG collection initialized, ${syncResult.synced || 0} templates synced`);
-      } else {
-        loggers.services.info('✅ RAG collection initialized (lazy template sync)');
+      // Initialize RAG service for prompt template semantic search
+      ragService = new RAGService(milvusClient, loggers.services);
+      const initResult = await ragService.initializeCollection();
+      if (initResult.success) {
+        // syncAllTemplates was removed in the OSS edition — templates index
+        // via the per-template upsert path on first read instead.
+        const syncFn = (ragService as any).syncAllTemplates;
+        if (typeof syncFn === 'function') {
+          const syncResult = await syncFn.call(ragService);
+          loggers.services.info(`✅ RAG collection initialized, ${syncResult.synced || 0} templates synced`);
+        } else {
+          loggers.services.info('✅ RAG collection initialized (lazy template sync)');
+        }
       }
+
+      // Initialize MilvusVectorService for user artifacts and embeddings
+      milvusVectorService = new MilvusVectorService(providerManager);
+      await milvusVectorService.initialize();
+      loggers.services.info('✅ MilvusVectorService initialized');
+
+      // Re-initialize CachedPromptService with Milvus semantic search
+      promptService = new CachedPromptService(loggers.services, {
+        enableCache: true,
+        cacheTTL: 1800,
+        cacheUserAssignments: true,
+        cacheTemplates: true,
+        milvusService: milvusVectorService
+      });
+    } else {
+      // pgvector-only mode: skip Milvus entirely. Tool search uses pgvector
+      // (ToolPgvectorSearchService, below); Milvus-backed RAG/artifact features
+      // stay off. Lower footprint, one fewer datastore to operate.
+      loggers.services.info('ℹ️ MILVUS_ENABLED=false — running pgvector-only. Skipping Milvus connect; MCP tool search uses pgvector. (Enable Milvus for large embedding/RAG workloads.)');
     }
-
-    // Initialize MilvusVectorService for user artifacts and embeddings
-    milvusVectorService = new MilvusVectorService(providerManager);
-    await milvusVectorService.initialize();
-    loggers.services.info('✅ MilvusVectorService initialized');
-
-    // Re-initialize CachedPromptService with Milvus semantic search
-    promptService = new CachedPromptService(loggers.services, {
-      enableCache: true,
-      cacheTTL: 1800,
-      cacheUserAssignments: true,
-      cacheTemplates: true,
-      milvusService: milvusVectorService
-    });
 
     // Document Indexing Service (non-critical)
     try {
@@ -2050,54 +2067,54 @@ const start = async () => {
   // OSS deploys don't have a second replica to pick up the slack. Don't kill
   // the API if we end up with 0 tools — background re-index fires on the first
   // chat and the UI works fine with a shrinking tool set in the meantime.
-  loggers.services.info('🔄 Indexing ALL MCP tools into Milvus…');
-  try {
-    await toolSemanticCache.autoIndexToolsWhenReady();
-    loggers.services.info('✅ MCP tools indexed in Milvus');
-  } catch (error: any) {
-    loggers.services.warn({ error: error.message }, '⚠️ MCP tool indexing failed (non-fatal) — first request will re-trigger indexing');
-  }
-
-  try {
-    const testResults = await toolSemanticCache.searchToolsAsOpenAIFunctions('kubernetes pods logs', 5);
-    if (!testResults || testResults.length === 0) {
-      loggers.services.warn('⚠️ Post-indexing verification: 0 tools found — will reindex on first chat request');
-    } else {
-      const stats = await toolSemanticCache.getCacheStats?.() || {} as any;
-      loggers.services.info({
-        verificationResults: testResults.length,
-        sampleTools: testResults.slice(0, 3).map((t: any) => t.function?.name || t.name),
-        totalIndexed: (stats as any).totalTools || 'unknown'
-      }, '✅ POST-INDEX VERIFICATION: Semantic search returning results');
+  // FULLY DETACHED tool indexing. A Milvus op here (notably indexToolTags) can
+  // block the event loop / never settle on a fresh boot — and a setTimeout-based
+  // Promise.race CANNOT rescue a synchronously-blocked loop, so awaiting it here
+  // (even "non-fatal") wedges server.listen() forever. The pgvector index (the
+  // source of truth for tool search) is already written above, so this whole
+  // block — the Milvus resilience replica + pg sync + verification — is best
+  // effort and runs in the BACKGROUND. The server starts listening immediately;
+  // the first-chat + periodic re-index finish the replica. (Fixes the boot hang
+  // at "tool_tags collection already at correct dimension".)
+  loggers.services.info('🔄 Indexing ALL MCP tools into Milvus… (background — not blocking boot)');
+  void (async () => {
+    try {
+      await toolSemanticCache.autoIndexToolsWhenReady();
+      loggers.services.info('✅ MCP tools indexed in Milvus (background)');
+    } catch (error: any) {
+      loggers.services.warn({ error: error?.message }, '⚠️ background Milvus tool indexing incomplete (non-fatal)');
     }
-  } catch (verifyError: any) {
-    loggers.services.warn({ error: verifyError.message }, '⚠️ Post-indexing verification failed (non-fatal)');
-  }
-
-  // Also index to PostgreSQL with pgvector for hybrid search
-  try {
-    const { MilvusClient } = await import('@zilliz/milvus2-sdk-node');
-    const { getRedisClient } = await import('./utils/redis-client.js');
-    const milvusAddress = process.env.MILVUS_ADDRESS ||
-      `${process.env.MILVUS_HOST || 'milvus'}:${process.env.MILVUS_PORT || '19530'}`;
-    const milvus = new MilvusClient({ address: milvusAddress });
-    const redis = getRedisClient();
-
-    const pgIndexingService = new MCPToolIndexingService(
-      loggers.services as any,
-      milvus,
-      redis,
-      prisma
-    );
-    await pgIndexingService.indexAllMCPTools(false);
-    loggers.services.info('✅ MCP tools synced to PostgreSQL with pgvector embeddings');
-
-    // Start periodic re-indexing (every 30 min) to catch MCP server changes
-    pgIndexingService.startPeriodicIndexing?.();
-    loggers.services.info('🔄 Periodic MCP tool re-indexing started (30-min interval)');
-  } catch (pgError: any) {
-    loggers.services.warn({ error: pgError.message }, '⚠️ PostgreSQL tool indexing failed (Milvus primary is OK)');
-  }
+    try {
+      const testResults = await toolSemanticCache.searchToolsAsOpenAIFunctions('kubernetes pods logs', 5);
+      if (!testResults || testResults.length === 0) {
+        loggers.services.warn('⚠️ Post-indexing verification: 0 tools found — will reindex on first chat request');
+      } else {
+        const stats = await toolSemanticCache.getCacheStats?.() || {} as any;
+        loggers.services.info({
+          verificationResults: testResults.length,
+          sampleTools: testResults.slice(0, 3).map((t: any) => t.function?.name || t.name),
+          totalIndexed: (stats as any).totalTools || 'unknown'
+        }, '✅ POST-INDEX VERIFICATION: Semantic search returning results');
+      }
+    } catch (verifyError: any) {
+      loggers.services.warn({ error: verifyError?.message }, '⚠️ Post-indexing verification failed (non-fatal)');
+    }
+    try {
+      const { MilvusClient } = await import('@zilliz/milvus2-sdk-node');
+      const { getRedisClient } = await import('./utils/redis-client.js');
+      const milvusAddress = process.env.MILVUS_ADDRESS ||
+        `${process.env.MILVUS_HOST || 'milvus'}:${process.env.MILVUS_PORT || '19530'}`;
+      const milvus = new MilvusClient({ address: milvusAddress });
+      const redis = getRedisClient();
+      const pgIndexingService = new MCPToolIndexingService(loggers.services as any, milvus, redis, prisma);
+      await pgIndexingService.indexAllMCPTools(false);
+      loggers.services.info('✅ MCP tools synced to PostgreSQL with pgvector embeddings (background)');
+      pgIndexingService.startPeriodicIndexing?.();
+      loggers.services.info('🔄 Periodic MCP tool re-indexing started (30-min interval)');
+    } catch (pgError: any) {
+      loggers.services.warn({ error: pgError?.message }, '⚠️ background PostgreSQL tool indexing failed (Milvus primary is OK)');
+    }
+  })();
 
   // Initialize ToolPgvectorSearchService for pgvector-first tool search
   try {
@@ -2200,35 +2217,38 @@ const start = async () => {
     console.log('-'.repeat(80));
     
     if (systemPrompts.length === 0) {
-      console.log('❌ NO SYSTEM PROMPTS FOUND IN DATABASE!');
+      console.log('⏳ No system prompts yet — defaults will be seeded during initialization (normal on a fresh install).');
     } else {
       systemPrompts.forEach((prompt, index) => {
         console.log(`  ${index + 1}. [${prompt.id}] ${prompt.name} (Default: ${prompt.is_default}, Active: ${prompt.is_active})`);
       });
     }
-    
+
     console.log('\n🎯 PROMPT TEMPLATES FROM DATABASE:');
     console.log('-'.repeat(80));
-    
+
     if (promptTemplates.length === 0) {
-      console.log('❌ NO PROMPT TEMPLATES FOUND IN DATABASE!');
+      console.log('⏳ No prompt templates yet — defaults will be seeded during initialization (normal on a fresh install).');
     } else {
       promptTemplates.forEach((template, index) => {
         console.log(`  ${index + 1}. [${template.id}] ${template.name} (Category: ${template.category || 'N/A'}, Default: ${template.is_default}, Active: ${template.is_active})`);
       });
     }
-    
+
     // Summary
     const defaultSystemPrompt = systemPrompts.find(p => p.is_default);
     const defaultTemplate = promptTemplates.find(t => t.is_default);
-    
+    const seedPending = systemPrompts.length === 0 || promptTemplates.length === 0;
+
     console.log('\n📋 PROMPT HEALTH SUMMARY:');
     console.log('-'.repeat(40));
     console.log(`✅ System Prompts: ${systemPrompts.length} found`);
     console.log(`✅ Prompt Templates: ${promptTemplates.length} found`);
-    console.log(`${defaultSystemPrompt ? '✅' : '❌'} Default System Prompt: ${defaultSystemPrompt ? defaultSystemPrompt.name : 'MISSING'}`);
-    console.log(`${defaultTemplate ? '✅' : '❌'} Default Template: ${defaultTemplate ? defaultTemplate.name : 'MISSING'}`);
-    console.log('✨ PROMPT_HEALTHCHECK COMPLETED - Database content verified!\n');
+    console.log(`${defaultSystemPrompt ? '✅' : '⏳'} Default System Prompt: ${defaultSystemPrompt ? defaultSystemPrompt.name : 'pending seed'}`);
+    console.log(`${defaultTemplate ? '✅' : '⏳'} Default Template: ${defaultTemplate ? defaultTemplate.name : 'pending seed'}`);
+    console.log(seedPending
+      ? '✨ PROMPT_HEALTHCHECK COMPLETED — defaults will be seeded during initialization.\n'
+      : '✨ PROMPT_HEALTHCHECK COMPLETED - Database content verified!\n');
     console.log('='.repeat(80) + '\n');
     
     loggers.services.info({

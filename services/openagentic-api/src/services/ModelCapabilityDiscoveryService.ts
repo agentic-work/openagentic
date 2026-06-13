@@ -351,7 +351,14 @@ export class ModelCapabilityDiscoveryService {
         this.logger.info({ collectionName }, 'Created Milvus collection for model capabilities');
       }
     } catch (error) {
-      this.logger.error({ error, collectionName }, 'Failed to ensure Milvus collection');
+      // "Not ready yet" on a fresh boot is non-fatal — log calm, still rethrow
+      // so the caller can decide (it retries). Keeps first-boot logs clean.
+      const msg = String((error as any)?.message || error || '').toLowerCase();
+      if (/connect|unavailable|deadline|timeout|econnrefused|not ready|grpc|channel|draining|pool/.test(msg)) {
+        this.logger.warn({ collectionName }, 'Milvus not ready — model-capability collection deferred (non-fatal)');
+      } else {
+        this.logger.error({ error, collectionName }, 'Failed to ensure Milvus collection');
+      }
       throw error;
     }
   }
