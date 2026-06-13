@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { render, Box, Text } from 'ink';
 import { Banner, COLORS } from './ui/Theme.tsx';
+import { WizardErrorBoundary } from './ui/ErrorScreen.tsx';
 import { DeployTargetStep } from './steps/DeployTarget.tsx';
 import { HelmPreflightStep } from './steps/HelmPreflight.tsx';
 import { AdminUserStep } from './steps/AdminUser.tsx';
@@ -19,7 +20,7 @@ import { readCurrent } from './lib/env.ts';
 
 type Screen = 'target' | 'helm-preflight' | 'admin' | 'llm-strategy' | 'ollama' | 'providers' | 'vertex' | 'mcps' | 'mcp-auth' | 'review' | 'launch' | 'done';
 
-const App: React.FC = () => {
+export const App: React.FC = () => {
   // Seed from any existing .env so re-running the wizard is non-destructive.
   const existing = readCurrent();
   const [config, setConfig] = useState<WizardConfig>(() => ({
@@ -265,7 +266,38 @@ const App: React.FC = () => {
   );
 };
 
-// Start in a clean terminal — wipe the screen + scrollback so the wizard owns
-// the view and renders fresh from the top, not appended below earlier output.
-if (process.stdout.isTTY) process.stdout.write('\x1b[2J\x1b[3J\x1b[H');
-render(<App />);
+// Only run the wizard when this file is the entry point (tsx src/index.tsx).
+// When imported by a test (ink-testing-library drives <App/> directly), skip all
+// of these module side effects so importing is pure.
+// Match BOTH the dev entry (src/index.tsx, run via tsx) and the built/published
+// entry (dist/index.js, run via `node dist/index.js` or the npx bin). The earlier
+// `.tsx`-only check meant the published bundle never matched → render() never ran
+// → the wizard exited silently with a blank screen. Tests import <App/> directly
+// (argv[1] is the test runner, not index.*), so they still skip these side effects.
+const isEntry = !!process.argv[1] && /(^|\/)index\.(tsx|js)$/.test(process.argv[1]);
+if (isEntry) {
+  // Start in a clean terminal — wipe the screen + scrollback so the wizard owns
+  // the view and renders fresh from the top, not appended below earlier output.
+  if (process.stdout.isTTY) process.stdout.write('\x1b[2J\x1b[3J\x1b[H');
+
+  // Last-resort guards: an async throw outside React (e.g. a backend spawn) would
+  // otherwise dump a raw stack trace. Point users at help instead, then exit non-zero.
+  const bail = (err: unknown) => {
+    const msg = err instanceof Error ? (err.stack || err.message) : String(err);
+    process.stderr.write(
+      `\n  ✗ The setup wizard hit an unexpected error.\n  ${msg}\n\n` +
+      `  Diagnose:  curl -fsSL https://install.openagentics.io | bash -s -- --doctor\n` +
+      `  Help:      https://openagentics.io/docs/troubleshooting\n` +
+      `  Issues:    https://github.com/agentic-work/openagentic/issues\n\n`,
+    );
+    process.exit(1);
+  };
+  process.on('uncaughtException', bail);
+  process.on('unhandledRejection', bail);
+
+  render(
+    <WizardErrorBoundary>
+      <App />
+    </WizardErrorBoundary>,
+  );
+}

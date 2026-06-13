@@ -6,7 +6,7 @@
  * Node 20+ installation.
  */
 import { build } from 'esbuild';
-import { mkdirSync } from 'fs';
+import { mkdirSync, chmodSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -35,4 +35,9 @@ await build({
   logLevel: 'info',
 });
 
-console.log('✓ dist/index.js built (minified, no source/sourcemaps)');
+// Mark the bundle executable so the npm `bin` shim can exec it directly. esbuild
+// writes mode 0644, which made `npx @agenticwork/setup` fail with
+// "openagentic-setup: command not found" — the bin couldn't be executed.
+chmodSync(join(__dirname, 'dist/index.js'), 0o755);
+
+console.log('✓ dist/index.js built (minified, executable, no source/sourcemaps)');
