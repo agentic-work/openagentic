@@ -378,6 +378,19 @@ SKIP_PREFIXES = (
     'services/openagentic-mcp-proxy/src/user_session_manager.py',
     'services/openagentic-mcp-proxy/src/azure_obo_strategy.py',
     'services/openagentic-mcp-proxy/tests/test_azure_obo_strategy.py',
+    #   "Run-as-user" per-user OAuth credential brokering (upstream 2026-06-10,
+    #   synth-identity / Connect-GCP). SKIP for OSS: this is the same federated
+    #   run-as-user model excised with OBO — OSS cloud access is Service-Account
+    #   only. The Connect-GCP route mirrors the deleted google-auth/ OAuth route.
+    #   (All upstream-only, unreferenced in OSS — SKIP just blocks future writes.)
+    'services/openagentic-api/src/routes/gcp-auth/',
+    'services/openagentic-api/src/routes/__tests__/gcp-auth.route.test.ts',
+    'services/openagentic-api/src/services/CredentialBroker.ts',
+    'services/openagentic-api/src/services/GCPCredentialService.ts',
+    'services/openagentic-api/src/services/__tests__/CredentialBroker.test.ts',
+    'services/openagentic-api/src/services/__tests__/GCPCredentialService.test.ts',
+    'services/openagentic-api/src/services/__tests__/GCPCredentialService.getValidAccessToken.test.ts',
+    'services/openagentic-api/src/routes/__tests__/synth.brokeredCredentials.test.ts',
     #   UI — Azure-AD login button + OAuth redirect callback + token client:
     'services/openagentic-ui/src/features/auth/components/AADLogin.tsx',
     'services/openagentic-ui/src/features/auth/components/AuthCallback.tsx',
