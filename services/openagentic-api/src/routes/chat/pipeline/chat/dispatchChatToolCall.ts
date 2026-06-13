@@ -28,6 +28,8 @@ import {
   type RenderArtifactInput,
   type RenderArtifactResult,
 } from '../../../../services/RenderArtifactTool.js';
+import { randomUUID } from 'node:crypto';
+import { getLocalExecutorRegistry } from '../../../../services/local-executor/LocalExecutorRegistry.js';
 import {
   isComposeVisualTool,
   executeComposeVisual,
@@ -256,6 +258,27 @@ export async function dispatchChatToolCall(
       ...(deps.traceStore ? { traceStore: deps.traceStore } : {}),
     };
     return deps.executeTask(ctx, input as TaskInput, taskDeps);
+  }
+
+  // Local-executor (VS Code extension): workspace_* tools execute on the USER's
+  // machine via their connected extension, not on the server. Routed here (above
+  // the MCP fall-through) and awaited via the in-process LocalExecutorRegistry;
+  // run_command HITL approval is enforced client-side in the editor.
+  if (name.startsWith('workspace_')) {
+    const userId = ctx?.userId ?? ctx?.user?.userId ?? ctx?.user?.id ?? 'anonymous';
+    const reg = getLocalExecutorRegistry();
+    if (!reg.isConnected(userId)) {
+      return {
+        ok: false,
+        error: `No local executor connected. Install the OpenAgentic VS Code extension and run "OpenAgentic: Connect" to use ${name}.`,
+      };
+    }
+    const r = await reg.dispatch(
+      userId,
+      { name, tool_use_id: randomUUID(), input },
+      Number(process.env.LOCAL_EXECUTOR_TIMEOUT_MS ?? 120_000),
+    );
+    return r.isError ? { ok: false, error: r.content } : { ok: true, output: r.content };
   }
 
   if (isRequestClarificationTool(name)) {

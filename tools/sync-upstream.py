@@ -644,6 +644,13 @@ PRESERVE = {
     # Approval-gate + audit seam (mutating-tool gate, append-only audit).
     'services/openagentic-api/src/routes/chat/approval-gate.routes.ts',
     'services/openagentic-api/src/pipeline/built-in-hooks.ts',
+    # Local-executor bridge route (VS Code "local executor" extension companion).
+    'services/openagentic-api/src/routes/chat/local-executor.routes.ts',
+    # chat.plugin.ts is hand-maintained in OSS: it mounts approval-gate (OSS-only,
+    # absent upstream) AND the local-executor bridge. WITHOUT this PRESERVE a sync
+    # would overwrite it with upstream's copy and silently DROP the approval-gate
+    # mount (latent bug found 2026-06-13) — so it must never be clobbered.
+    'services/openagentic-api/src/plugins/chat.plugin.ts',
 
     # Dead-admin-endpoints build — every admin route the UI called but the API
     # never served, now implemented against real data, plus the plugin mounts.
@@ -824,6 +831,10 @@ PRESERVE = {
 PRESERVE_PREFIXES = (
     'services/openagentic-api/src/services/approval/',
     'services/openagentic-api/src/services/audit/',
+    # Local-executor bridge (VS Code "local executor" extension companion).
+    # Brand-neutral + identical upstream, but hand-maintained in both so a sync
+    # never alters the dispatch/timeout semantics out from under the routing arm.
+    'services/openagentic-api/src/services/local-executor/',
 )
 
 # Content-level brand rewrite

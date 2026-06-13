@@ -60,6 +60,7 @@ import { makeDispatch, type V3DispatchDeps } from './dispatchTool.js';
 import { computeConcurrencySafeNames, type RiskClassifier } from './toolRegistry.js';
 import { extractUserJwt } from './extractUserJwt.js';
 import { buildChatToolArray } from './toolRegistry.js';
+import { getLocalExecutorRegistry } from '../../../../services/local-executor/LocalExecutorRegistry.js';
 import type { ChatPipelineDeps } from './dispatchChatToolCall.js';
 // Phase E.3 + E.7 (2026-05-10) — legacy static + sidecar composer path
 // ripped and the `PromptModuleAudience` union dropped alongside the
@@ -531,8 +532,16 @@ export async function runChat(
   // getSystemPromptForRole(deps.tools). The dynamic <tool-catalog>
   // section + the static discovery-flow bullets read enabledTools off
   // that array; without the wire-in the catalog section renders empty.
+  // Local-executor (VS Code extension): advertise the connected user's
+  // workspace_* tools as always-present at turn 1, normalized to the catalog's
+  // {type:'function',function:{...}} shape. Empty when no executor is connected.
+  const wsUserId = ctx.userId ?? 'anonymous';
+  const workspaceTools = (getLocalExecutorRegistry().getTools(wsUserId) ?? []).map((t) => ({
+    type: 'function' as const,
+    function: { name: t.name, description: t.description ?? '', parameters: t.input_schema },
+  }));
   const tools = await buildChatToolArray({
-    mcpTools: [],
+    mcpTools: workspaceTools,
     taskToolDescription,
     // #843 (2026-05-14) — gate the Task sub-agent dispatcher on the
     // dispatching model's structural capability. Small/cheap models
