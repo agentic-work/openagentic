@@ -35,6 +35,7 @@ import { featureFlags } from '../config/featureFlags.js';
 import { chatPlugin } from '../routes/chat/index.js';
 import { approvalsRoutes, permissionsApprovalsRoutes } from '../routes/chat/approvals.js';
 import { approvalGateRoutes } from '../routes/chat/approval-gate.routes.js';
+import { localExecutorRoutes } from '../routes/chat/local-executor.routes.js';
 import { authMiddleware } from '../middleware/unifiedAuth.js';
 import { sandboxResultRoute } from '../routes/chat/sandbox-result.route.js';
 import type { ChatStorageService } from '../services/ChatStorageService.js';
@@ -157,6 +158,21 @@ const chatRoutesPlugin: FastifyPluginAsync<ChatRoutesPluginOptions> = async (
     loggers.routes.info('Approval-gate routes registered at /api/approvals/:auditId/{approve,deny} (authMiddleware)');
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register approval-gate routes');
+  }
+
+  // ── 2d. Local-executor bridge (VS Code "local executor" extension) ─────
+  // POST /api/chat/local-executor/{subscribe,tool-result}. The external client
+  // holds an NDJSON dispatch stream + registers its workspace_* tools; the chat
+  // dispatch arm pushes tool_executing frames and awaits results via the
+  // LocalExecutorRegistry. Mirrors the approval-gate registration shape.
+  try {
+    await fastify.register(async (instance) => {
+      instance.addHook('onRequest', authMiddleware);
+      await instance.register(localExecutorRoutes);
+    }, { prefix: '/api/chat' });
+    loggers.routes.info('Local-executor routes registered at /api/chat/local-executor/{subscribe,tool-result} (authMiddleware)');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register local-executor routes');
   }
 
   // ── 3. Browser-sandbox result receiver ─────────────────────────────────
