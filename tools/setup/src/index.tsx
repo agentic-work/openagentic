@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { realpathSync } from 'fs';
+import { fileURLToPath } from 'url';
 import { render, Box, Text } from 'ink';
 import { Banner, COLORS } from './ui/Theme.tsx';
 import { WizardErrorBoundary } from './ui/ErrorScreen.tsx';
@@ -269,12 +271,18 @@ export const App: React.FC = () => {
 // Only run the wizard when this file is the entry point (tsx src/index.tsx).
 // When imported by a test (ink-testing-library drives <App/> directly), skip all
 // of these module side effects so importing is pure.
-// Match BOTH the dev entry (src/index.tsx, run via tsx) and the built/published
-// entry (dist/index.js, run via `node dist/index.js` or the npx bin). The earlier
-// `.tsx`-only check meant the published bundle never matched → render() never ran
-// → the wizard exited silently with a blank screen. Tests import <App/> directly
-// (argv[1] is the test runner, not index.*), so they still skip these side effects.
-const isEntry = !!process.argv[1] && /(^|\/)index\.(tsx|js)$/.test(process.argv[1]);
+// Are we the executed entry (vs imported by a test)? Compare the real path of the
+// invoked file to THIS module's path. realpath is essential: the npm `bin` runs us
+// through a symlink (`node_modules/.bin/openagentic-setup`), so process.argv[1] is
+// the symlink name — a filename-regex check misses it and render() never fires
+// (the blank-wizard bug). realpath resolves the symlink to dist/index.js, which
+// matches import.meta.url for: `node dist/index.js`, the bin symlink, npx, AND
+// `tsx src/index.tsx`. Tests import <App/> (argv[1] = the test runner) → no match → pure.
+let isEntry = false;
+try {
+  isEntry = !!process.argv[1] &&
+    realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+} catch { /* argv[1] missing/unreadable → treat as imported, stay pure */ }
 if (isEntry) {
   // Start in a clean terminal — wipe the screen + scrollback so the wizard owns
   // the view and renders fresh from the top, not appended below earlier output.
