@@ -72,6 +72,7 @@ export const InlineAppBadge: React.FC<InlineAppBadgeProps> = ({ block }) => {
         title={title}
         pyodideRequired={block.pyodideRequired === true}
         nonce={typeof block.nonce === 'string' ? block.nonce : undefined}
+        kind={typeof block.kind === 'string' ? block.kind : undefined}
       />
     </div>
   );

@@ -49,6 +49,53 @@ export interface AppRendererProps {
   /** Optional max-height cap (default 90vh). */
   maxHeight?: string;
   className?: string;
+  /**
+   * Artifact kind. When 'react', `html` is raw JSX/TSX source (NOT a full HTML
+   * doc) — we wrap it in a babel-transpiling HTML shell that loads
+   * react/react-dom/@babel-standalone from the same-origin /artifact-runtime/
+   * dir (the synth-cdn /api/cdn path is not deployed in OSS). Other kinds
+   * ('html'/'python_plot') are already full HTML and pass through unchanged.
+   */
+  kind?: string;
+}
+
+/**
+ * Wrap raw JSX/TSX (a kind:'react' artifact) in an HTML document that loads
+ * React 18 + ReactDOM + @babel/standalone from the same-origin
+ * /artifact-runtime/ dir and mounts the component. The model authors either a
+ * `export default function Widget(){…}` (esbuild-style) or a bare component +
+ * createRoot; we normalize both: strip ES import/export lines (no module
+ * resolver in the iframe), then render the default export if present, else let
+ * the author's own createRoot run.
+ */
+function wrapReactArtifact(jsx: string): string {
+  // Strip ES import lines (libs are globals) and `export default`/`export`
+  // keywords — Babel-in-browser has no module system here.
+  const cleaned = jsx
+    .replace(/^\s*import\s.+?;?\s*$/gm, '')
+    .replace(/export\s+default\s+function/g, 'function')
+    .replace(/export\s+default\s+/g, 'const __default__ = ')
+    .replace(/^\s*export\s+/gm, '');
+  return [
+    '<!doctype html><html><head><meta charset="utf-8">',
+    '<script src="/artifact-runtime/react.production.min.js"></script>',
+    '<script src="/artifact-runtime/react-dom.production.min.js"></script>',
+    '<script src="/artifact-runtime/babel.min.js"></script>',
+    '<style>html,body{margin:0;background:var(--cm-bg-0,#0d1117);color:var(--cm-fg-0,#e6edf3);font-family:var(--cm-font-ui,system-ui,sans-serif)}#root{padding:0}</style>',
+    '</head><body><div id="root"></div>',
+    '<script type="text/babel" data-presets="react,typescript">',
+    'const { useState, useMemo, useEffect, useRef, useCallback } = React;',
+    cleaned,
+    // Mount: prefer an explicit default export, else a top-level component
+    // named Widget/App/Dashboard/Component, else the last-defined function.
+    'try {',
+    '  const __pick = (typeof __default__!=="undefined" && __default__) ||',
+    '    (typeof Widget!=="undefined" && Widget) || (typeof App!=="undefined" && App) ||',
+    '    (typeof Dashboard!=="undefined" && Dashboard) || (typeof Component!=="undefined" && Component) || null;',
+    '  if (__pick) { ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(__pick)); }',
+    '} catch (e) { document.getElementById("root").textContent = "Artifact error: " + e.message; }',
+    '</script></body></html>',
+  ].join('\n');
 }
 
 /**
@@ -82,7 +129,10 @@ function buildCspMeta(pyodideRequired: boolean, origin: string, nonce?: string |
   // the payload, so any model-injected script without the nonce is
   // refused by the browser. Without nonce, fall back to legacy
   // `'unsafe-inline'` for back-compat.
-  const scriptSrcParts = [`'self'`, `${origin}/api/cdn/lib/`];
+  // /artifact-runtime/ serves the same-origin react/react-dom/babel + d3/plotly
+  // bundles (kind:'react' artifacts load react+babel from here, since the
+  // synth-cdn /api/cdn path is not deployed in OSS).
+  const scriptSrcParts = [`'self'`, `${origin}/api/cdn/lib/`, `${origin}/artifact-runtime/`];
   if (nonce) {
     scriptSrcParts.push(`'nonce-${nonce}'`);
   } else {
@@ -229,6 +279,7 @@ export function AppRenderer({
   nonce,
   maxHeight,
   className,
+  kind,
 }: AppRendererProps) {
   const srcdoc = useMemo(
     () => {
@@ -239,9 +290,19 @@ export function AppRenderer({
         typeof window !== 'undefined' && window.location?.origin
           ? window.location.origin
           : 'about:srcdoc';
+      // kind:'react' arrives as raw JSX (not a full HTML doc) — wrap it so the
+      // babel-in-iframe shell transpiles + mounts it. A react payload that
+      // already looks like a full HTML doc (legacy) passes through. The
+      // wrapper's own <script src="/artifact-runtime/*"> is dropped from
+      // nonce-gating since those are trusted same-origin libs, so force the
+      // legacy unsafe-inline CSP path (nonce=null) for wrapped react.
+      const looksLikeHtml = /^\s*<!doctype|^\s*<html/i.test(html);
+      if (kind === 'react' && !looksLikeHtml) {
+        return buildSrcdoc(wrapReactArtifact(html), false, origin, null);
+      }
       return buildSrcdoc(html, pyodideRequired, origin, nonce);
     },
-    [html, pyodideRequired, nonce],
+    [html, pyodideRequired, nonce, kind],
   );
 
   if (!html) return null;
