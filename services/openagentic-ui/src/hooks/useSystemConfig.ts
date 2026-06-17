@@ -16,6 +16,9 @@ export interface WorkflowEngineConfig {
 
 export interface SystemConfig {
   workflowEngine: WorkflowEngineConfig;
+  /** How the platform was deployed — drives deploy-specific help (e.g. the
+   *  login credential-help modal). Defaults to 'compose' when unknown. */
+  deploymentMode: 'compose' | 'kubernetes';
   features: {
     // Core features - default enabled
     openagentic: boolean;
@@ -24,6 +27,8 @@ export interface SystemConfig {
     // Optional services - require explicit enabling
     ollama: boolean;
     multiModel: boolean;
+    // Login "Need help signing in?" modal (set LOGIN_HELP_MODAL=false to hide).
+    loginHelp: boolean;
     // 2026-04-19 — `slider` feature flag removed (task #144, slider rip).
   };
   version: string;
@@ -36,6 +41,7 @@ const DEFAULT_CONFIG: SystemConfig = {
     available: true,
     url: null
   },
+  deploymentMode: 'compose',
   features: {
     // Core features - default enabled
     openagentic: true,
@@ -44,6 +50,8 @@ const DEFAULT_CONFIG: SystemConfig = {
     // Optional services - default to enabled for development
     ollama: false,
     multiModel: true,
+    // Login help modal default-on (matches the API default).
+    loginHelp: true,
   },
   version: '1.0.0'
 };

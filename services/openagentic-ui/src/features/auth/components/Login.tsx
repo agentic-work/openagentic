@@ -14,15 +14,19 @@ import {
   Sparkles
 } from 'lucide-react';
 import { DisclaimerModal } from './DisclaimerModal';
+import { HelpModal } from './HelpModal';
+import { useSystemConfig } from '@/hooks/useSystemConfig';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { config } = useSystemConfig();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [pendingToken, setPendingToken] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -196,17 +200,20 @@ const Login: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Help Link */}
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          onClick={() => {}}
-          className="btn-label w-full mt-6 py-3 px-4 rounded-none flex items-center justify-center gap-2 text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors text-xs"
-        >
-          <HelpCircle className="w-4 h-4" />
-          <span>Need help signing in?</span>
-        </motion.button>
+        {/* Help Link — opens the deploy-aware credential-help modal.
+            Hidden entirely when LOGIN_HELP_MODAL=false (config.features.loginHelp). */}
+        {config.features.loginHelp && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            onClick={() => setShowHelp(true)}
+            className="btn-label w-full mt-6 py-3 px-4 rounded-none flex items-center justify-center gap-2 text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors text-xs"
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span>Need help signing in?</span>
+          </motion.button>
+        )}
 
         {/* Footer */}
         <motion.div
@@ -220,6 +227,13 @@ const Login: React.FC = () => {
           </p>
         </motion.div>
       </div>
+
+      {/* Help Modal — deploy-aware (compose vs helm) admin-credential help */}
+      <HelpModal
+        isOpen={showHelp}
+        onClose={() => setShowHelp(false)}
+        deploymentMode={config.deploymentMode}
+      />
 
       {/* Disclaimer Modal */}
       {showDisclaimer && (
