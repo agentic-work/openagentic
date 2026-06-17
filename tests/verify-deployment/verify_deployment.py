@@ -727,6 +727,17 @@ def phase_flows(http: Http, kube: Kube, cfg: Cfg, rows: list[Row]) -> None:
                            {"input": defaults, "trigger_type": "api"},
                            timeout=cfg.chat_timeout)
         out_text = json.dumps(eb) if not isinstance(eb, str) else eb
+        # A template that references a node type the OSS workflow engine doesn't
+        # ship (e.g. the RAG `multi_query`/`rerank` nodes) can't run here — that's
+        # an unsupported-feature SKIP (like the missing-MCP gate above), not a
+        # platform failure. Distinct from a genuine execution error.
+        if ec == 400 and "UNKNOWN_NODE_TYPE" in out_text:
+            m = re.search(r'Unknown node type:\s*([a-zA-Z0-9_]+)', out_text)
+            node = m.group(1) if m else "?"
+            rows.append(Row(check, Status.SKIP,
+                            f"template uses node type not in the OSS engine: {node}"))
+            warn(f"{slug}: SKIP — unsupported node type '{node}' (not shipped in OSS engine)")
+            continue
         produced = ec in (200, 201) and bool(out_text) and len(out_text.strip()) > 2 \
             and '"error"' not in out_text.lower()[:200]
         if produced:
