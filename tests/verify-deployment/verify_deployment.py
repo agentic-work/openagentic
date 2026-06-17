@@ -94,8 +94,17 @@ def fail(msg: str) -> None:   print(f"  {_c(RED, '✗')} {msg}")
 # ─── config ──────────────────────────────────────────────────────────────────
 class Cfg:
     def __init__(self, args: argparse.Namespace):
-        self.url = (args.url or os.environ.get("DEPLOY_URL")
-                    or "https://open-dev.agenticwork.io").rstrip("/")
+        # mode: "helm" (kubectl/ingress, the default) or "compose" (docker
+        # compose on localhost). Compose mode flips the URL default to the
+        # local UI port and swaps cluster detection for `docker compose`.
+        self.mode = (args.mode or os.environ.get("DEPLOY_MODE") or "helm").lower()
+        _default_url = ("http://localhost:8080" if self.mode == "compose"
+                        else "https://open-dev.agenticwork.io")
+        self.url = (args.url or os.environ.get("DEPLOY_URL") or _default_url).rstrip("/")
+        # compose project dir (where docker-compose.yml lives) — repo root by default.
+        self.compose_dir = (args.compose_dir or os.environ.get("DEPLOY_COMPOSE_DIR")
+                            or os.path.dirname(os.path.dirname(os.path.dirname(
+                                os.path.abspath(__file__)))))
         self.namespace = args.namespace or os.environ.get("DEPLOY_NAMESPACE") or "open-dev"
         self.release = args.release or os.environ.get("DEPLOY_RELEASE") or "open-dev"
         self.context = args.context or os.environ.get("DEPLOY_KUBE_CONTEXT") or None
@@ -317,6 +326,123 @@ class Kube:
             blob = " ".join(env.keys()).upper()
             creds = any(h.upper() in blob for h in hints) or any(
                 any(h.upper() in sk for sk in secret_keys) for h in hints
+            )
+        else:
+            creds = True  # credential-free
+
+        tl = None
+        if tools_by_server is not None:
+            tl = tools_by_server.get(probe.server, 0) > 0
+        return McpClusterState(enabled=enabled, creds_present=creds, tools_listed=tl)
+
+
+# ─── docker compose detection (compose-mode counterpart to Kube) ─────────────
+class Compose(Kube):
+    """
+    Compose-mode detector. Same interface as Kube (pod_readiness / _mcp_proxy_env
+    / _secret_keys) so every phase works unchanged — but backed by `docker compose`
+    instead of `kubectl`. The mcp-proxy container carries the SAME
+    OpenAgentic_<MCP>_MCP_DISABLED / MCPS_ENABLED / cred-hint env the helm path
+    reads, so MCP enablement + credential detection are identical signals.
+    """
+
+    def __init__(self, cfg: Cfg):
+        # NB: do NOT call super().__init__ (it probes kubectl). We define our own.
+        self.cfg = cfg
+        self.available = bool(shutil.which("docker"))
+        self._pods_cache: Optional[list[dict]] = None
+        self._proxy_env_cache: Optional[dict[str, str]] = None
+        self._secret_keys_cache: Optional[set[str]] = None
+
+    def _compose(self, args: list[str], timeout: int = 30) -> tuple[int, str]:
+        cmd = ["docker", "compose", *args]
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True,
+                               timeout=timeout, cwd=self.cfg.compose_dir)
+            return r.returncode, (r.stdout if r.returncode == 0 else r.stdout + r.stderr)
+        except Exception as e:  # noqa: BLE001
+            return 1, f"{type(e).__name__}: {e}"
+
+    def pod_readiness(self) -> tuple[int, int, list[str]]:
+        """(ready, total, not_ready) from `docker compose ps` — health=healthy or
+        running (services with no healthcheck) count as ready."""
+        rc, out = self._compose(["ps", "--format", "json"])
+        if rc != 0 or not out.strip():
+            return 0, 0, []
+        services = []
+        for line in out.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                services.append(json.loads(line))
+            except Exception:
+                # older compose emits a single JSON array
+                try:
+                    services.extend(json.loads(line))
+                except Exception:
+                    pass
+        ready, not_ready = 0, []
+        for s in services:
+            name = s.get("Service") or s.get("Name") or "?"
+            state = (s.get("State") or "").lower()
+            health = (s.get("Health") or "").lower()
+            # ready iff running AND (healthy OR no healthcheck declared)
+            if state == "running" and health in ("", "healthy"):
+                ready += 1
+            else:
+                not_ready.append(f"{name}({state}{'/' + health if health else ''})")
+        return ready, len(services), not_ready
+
+    def _mcp_proxy_env(self) -> dict[str, str]:
+        if self._proxy_env_cache is not None:
+            return self._proxy_env_cache
+        env: dict[str, str] = {}
+        rc, out = self._compose(["exec", "-T", "mcp-proxy", "env"], timeout=25)
+        if rc == 0:
+            for line in out.splitlines():
+                if "=" in line:
+                    k, _, v = line.partition("=")
+                    env[k.strip()] = v.strip()
+        self._proxy_env_cache = env
+        return env
+
+    def _secret_keys(self) -> set[str]:
+        """Credential signal = the cred-hint env keys that are present AND non-empty
+        in the mcp-proxy container (compose has no k8s secrets; env IS the source)."""
+        if self._secret_keys_cache is not None:
+            return self._secret_keys_cache
+        keys = {k.upper() for k, v in self._mcp_proxy_env().items() if v}
+        self._secret_keys_cache = keys
+        return keys
+
+    def mcp_state(self, probe: McpProbe, tools_by_server: Optional[dict[str, int]]) -> McpClusterState:
+        """Compose override of the enablement/cred signal.
+
+        The base impl treats a cred hint as present if the KEY merely appears in
+        the proxy env — but a compose mcp-proxy DECLARES every cred env key (often
+        empty, e.g. GITHUB_TOKEN=). So a needed-but-unset cred would falsely read
+        as 'present' and the MCP would be PROBED (and FAIL) instead of SKIP'd.
+        Here the signal is the key being present AND NON-EMPTY (via _secret_keys)."""
+        env = self._mcp_proxy_env()
+        enabled: Optional[bool] = None
+        disabled_key = f"OpenAgentic_{probe.mcp.replace('-', '_').upper()}_MCP_DISABLED"
+        for k, v in env.items():
+            if k.upper() == disabled_key.upper():
+                enabled = not (v.strip().lower() == "true")
+                break
+        if enabled is None:
+            allow = env.get("MCPS_ENABLED", "")
+            if allow:
+                ids = {x.strip().lower() for x in re.split(r"[,\s]+", allow) if x.strip()}
+                if ids:
+                    enabled = probe.mcp.lower() in ids or probe.server.lower() in ids
+
+        if probe.needs_creds:
+            hints = self._CRED_HINTS.get(probe.mcp, ())
+            nonempty = self._secret_keys()  # already non-empty-only
+            creds: Optional[bool] = any(
+                any(h.upper() in sk for sk in nonempty) for h in hints
             )
         else:
             creds = True  # credential-free
@@ -764,7 +890,14 @@ def _want(cfg: Cfg, phase: str) -> bool:
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--url", help="ingress base URL (default https://open-dev.agenticwork.io)")
+    ap.add_argument("--mode", choices=["helm", "compose"],
+                    help="deploy target: helm (kubectl/ingress, default) or compose "
+                         "(docker compose on localhost). Compose mode defaults --url "
+                         "to http://localhost:8080 and uses `docker compose` for detection.")
+    ap.add_argument("--compose-dir", dest="compose_dir",
+                    help="dir containing docker-compose.yml (compose mode; default repo root)")
+    ap.add_argument("--url", help="ingress base URL (default https://open-dev.agenticwork.io; "
+                    "http://localhost:8080 in compose mode)")
     ap.add_argument("--namespace", help="k8s namespace (default open-dev)")
     ap.add_argument("--release", help="helm release (default open-dev)")
     ap.add_argument("--context", help="kubectl context")
@@ -781,14 +914,22 @@ def main(argv: list[str]) -> int:
 
     cfg = Cfg(args)
     http = Http(cfg)
-    kube = Kube(cfg)
+    # Compose mode swaps the cluster detector for `docker compose`; the variable
+    # stays named `kube` so every phase signature is unchanged (Compose is a Kube).
+    kube = Compose(cfg) if cfg.mode == "compose" else Kube(cfg)
     rows: list[Row] = []
 
-    banner("verify-deployment — HELM acceptance harness")
-    info(f"ingress     {cfg.url}")
-    info(f"namespace   {cfg.namespace}   release {cfg.release}"
-         + (f"   context {cfg.context}" if cfg.context else ""))
-    info(f"kubectl     {'available' if kube.available else 'unavailable (HTTP-only detection)'}")
+    if cfg.mode == "compose":
+        banner("verify-deployment — COMPOSE acceptance harness")
+        info(f"url         {cfg.url}")
+        info(f"compose-dir {cfg.compose_dir}")
+        info(f"docker      {'available' if kube.available else 'unavailable (HTTP-only detection)'}")
+    else:
+        banner("verify-deployment — HELM acceptance harness")
+        info(f"ingress     {cfg.url}")
+        info(f"namespace   {cfg.namespace}   release {cfg.release}"
+             + (f"   context {cfg.context}" if cfg.context else ""))
+        info(f"kubectl     {'available' if kube.available else 'unavailable (HTTP-only detection)'}")
     if cfg.only:
         info(f"phases      {', '.join(sorted(cfg.only))}")
 
