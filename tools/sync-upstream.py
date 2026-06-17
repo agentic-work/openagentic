@@ -391,10 +391,57 @@ SKIP_PREFIXES = (
     'services/openagentic-api/src/services/__tests__/GCPCredentialService.test.ts',
     'services/openagentic-api/src/services/__tests__/GCPCredentialService.getValidAccessToken.test.ts',
     'services/openagentic-api/src/routes/__tests__/synth.brokeredCredentials.test.ts',
+    #   Synth OBO dispatcher + capability→credential map (upstream 2026-06-14,
+    #   #1180 exec batch) — the SAME federated run-as-user model as the GCP
+    #   credential broker above (synth tools executing under the user's brokered
+    #   cloud token). SKIP for OSS: synth/exec cloud access is Service-Account
+    #   only. The rest of the exec/synth tier (synth-executor sandbox, exec
+    #   downloads, workflow nodes) IS brought in — only the OBO/run-as-user
+    #   dispatch is excised, mirroring the OBO removal.
+    'services/openagentic-api/src/services/SynthOBODispatcher.ts',
+    'services/openagentic-api/src/services/SynthCapCredentialMap.ts',
+    'services/openagentic-api/src/services/__tests__/SynthOBODispatcher.test.ts',
+    'services/openagentic-api/src/services/__tests__/SynthOBODispatcher.codeImports.test.ts',
+    #   Federated run-as-user / synth-exec credential tier (upstream 2026-06-14
+    #   #1180 batch). These NEW files transitively need the excised CredentialBroker
+    #   / SynthOBODispatcher / AzureTokenService infra (run-as-user OBO) OSS does
+    #   NOT ship — they'd land with dangling imports and break the api build. SKIP
+    #   the whole tier: the connect-capability broker, the per-session credential
+    #   vault, the synth route + its OBO flow-token helper. (Found 2026-06-15: a
+    #   path-clean dry-run can't see these code couplings — only a tsc gate does.
+    #   The synth-executor SANDBOX + exec downloads still come in; only the
+    #   credential-brokering identity tier is excised, mirroring the OBO removal.)
+    'services/openagentic-api/src/core/capabilities/connect/',
+    'services/openagentic-api/src/core/session/',
+    'services/openagentic-api/src/routes/synth.ts',
+    'services/openagentic-api/src/routes/admin-synth.ts',
+    'services/openagentic-api/src/routes/helpers/resolveFlowExecuteOboToken.ts',
+    'services/openagentic-api/src/routes/helpers/resolveFlowExecuteOboToken.test.ts',
+    #   Tests for the excised run-as-user/OBO/synth-exec credential tier — they
+    #   import CredentialBroker / SynthOBODispatcher / AzureTokenService / the
+    #   synth+exec dispatch (all SKIP'd above), so they'd fail at test-run on a
+    #   module OSS doesn't ship. SKIP the tests alongside their subjects.
+    'services/openagentic-api/src/routes/__tests__/local-auth.failed-login-lockout.test.ts',
+    'services/openagentic-api/src/routes/__tests__/auth-banner.test.ts',
+    'services/openagentic-api/src/__tests__/architecture/no-cloud-identifier-leak-in-prompt.source-regression.test.ts',
+    'services/openagentic-api/src/__tests__/architecture/manual-jwt-verify-routes-use-authmiddleware.source-regression.test.ts',
+    'services/openagentic-api/src/services/__tests__/SynthTool.test.ts',
+    'services/openagentic-api/src/routes/chat/pipeline/chat/__tests__/t2CloudDispatch.realmodel.harness.test.ts',
+    'services/openagentic-api/src/routes/chat/pipeline/chat/__tests__/dispatchSynth.test.ts',
+    'services/openagentic-api/src/routes/chat/pipeline/chat/__tests__/dispatchSynth.artifact.test.ts',
+    'services/openagentic-api/src/routes/chat/pipeline/chat/__tests__/analyzeExecCapabilityNeed.test.ts',
+    'services/openagentic-api/src/routes/chat/pipeline/chat/__tests__/dispatchExec.test.ts',
     #   UI — Azure-AD login button + OAuth redirect callback + token client:
     'services/openagentic-ui/src/features/auth/components/AADLogin.tsx',
     'services/openagentic-ui/src/features/auth/components/AuthCallback.tsx',
     'services/openagentic-ui/src/services/AzureTokenService.ts',
+    #   local-dev/ — upstream developer scaffolding (mock-lab galleries,
+    #   admin-tools mockups, gap-audit notes). NOT OSS product code; dev-only.
+    'local-dev/',
+    #   Playwright test-results / trace artifacts — generated junk (.webm/.trace/
+    #   .network + hashed resources). Should be gitignored, never synced.
+    'services/openagentic-ui/test-results/',
+    'services/openagentic-ui/tests/e2e/test-results/',
 )
 
 # Exact filename bans (anywhere in tree)
@@ -404,6 +451,11 @@ SKIP_NAMES = {
     '.env.helm', '.DS_Store', 'CODEOWNERS', 'dependabot.yml',
     '.gitbook.yaml', '.gitlab-ci.yml', 'pull_request_template.md',
     # Internal artifacts seen in upstream
+    # 'releases' — a 78KB PROPRIETARY helm values dump for the AKS dev env
+    # ("Proprietary and confidential … AGENTICWORK HELM VALUES") carrying real
+    # cloud creds. Gitignored in OSS, but the sync would still WRITE it to disk;
+    # block by name so it never lands in the tree.
+    'releases',
     'admin-dom.yml', 'network_log.json', 'TASK_PROGRESS.md',
     'SECURITY_VULNERABILITIES_REPORT.md',
     'ai_provider_data_privacy_report.html',
@@ -516,6 +568,19 @@ SKIP_PATH_HINTS = (
     'doc-generators/code-mode.gen.ts',
     '/codemode-', '/code-mode-', '/codemode.', '/code-mode.',
     'codemode.plugin', 'codemode.test', 'codemode-test', 'code-mode-test',
+    # Code Mode / AgenticCode / AWCode / GhostPilot — upstream (2026-06-14, #1193/
+    # #1180 batch) added NEW files in NEW locations the old globs missed
+    # (CodeModeSessionService, codemodeJob, AWCodeSessionIndexer, routes/agenticode.ts,
+    # workflow-engine nodes/agenticode/, chatmode-codemode-parity/, tui-vs-codemode
+    # artifacts, e2e code-mode/awcode specs). Substring-block every marker so a sync
+    # can never re-leak the excised coding-agent product into OSS.
+    'codemode', 'CodeMode', 'code-mode', 'codeMode', 'Codemode',
+    'agenticode', 'Agenticode', 'AgenticCode', '.agenticode',
+    'awcode', 'AWCode', 'AwCode',
+    'ghostpilot', 'GhostPilot', 'Ghostpilot',
+    # Generated test-results / trace artifacts anywhere in the tree (not just the
+    # two UI dirs handled by SKIP_PREFIXES) — e.g. tests/e2e/test-results/.
+    '/test-results/', '.playwright-artifacts',
     # Enterprise monetization surfaces — OSS has NO paywall / 402 / upsell /
     # license lock-screen. Block by path so a sync can never re-add the gate UI
     # or its routes/services anywhere in the tree.
@@ -718,6 +783,24 @@ PRESERVE = {
     # model's tool call through the approval/audit seam (and carries the OSS
     # auto-resolve-unknown-tool fix); ILLMProvider.ts already preserved above.
     'services/openagentic-api/src/routes/chat/pipeline/chat/dispatchTool.ts',
+    # Local-executor splice (VS Code extension companion). dispatchChatToolCall.ts
+    # carries the workspace_* routing arm; runChat.ts injects the connected user's
+    # workspace_* tools into the turn's tool array. WITHOUT these two PRESERVE
+    # entries a sync clobbers the splice (it did, 2026-06-15 — re-applied). NOTE:
+    # this also freezes these two files vs upstream — re-port upstream chat-pipeline
+    # improvements (artifacts/LLM-judge) into them by hand at sync time.
+    'services/openagentic-api/src/routes/chat/pipeline/chat/dispatchChatToolCall.ts',
+    'services/openagentic-api/src/routes/chat/pipeline/chat/runChat.ts',
+    # OSS-forked chat/prompt helpers whose upstream versions got coupled to the
+    # excised run-as-user/OBO credential tier (CredentialBroker / SynthOBODispatcher
+    # / AzureTokenService). The OSS HEAD versions are CLEAN (verified 2026-06-15 —
+    # zero refs to that infra); PRESERVE keeps the working OSS forks instead of
+    # taking the enterprise-coupled upstream edits that wouldn't compile here.
+    'services/openagentic-api/src/routes/chat/pipeline/chat/artifactVerbDetector.ts',
+    'services/openagentic-api/src/routes/chat/pipeline/chat/extractUserJwt.ts',
+    'services/openagentic-api/src/routes/chat/pipeline/chat/types.ts',
+    'services/openagentic-api/src/services/prompt/dynamicSections.ts',
+    'services/openagentic-api/src/services/prompt/getSystemPromptForRole.ts',
 
     # Docs Code-Mode scrub — the in-app Changelog prose page (Code-Mode
     # highlights removed) + the docs sync-guard that now scans it (allowlist
