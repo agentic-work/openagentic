@@ -29,7 +29,6 @@ const MIDDLEWARE_DIR = join(REPO_ROOT, 'services/openagentic-api/src/middleware'
 const FILES = [
   'authenticate.ts',
   'authorization.ts',
-  'fastify-auth.ts',
   'mcp-auth.ts',
   'rateLimiter.ts',
   'security.ts',
