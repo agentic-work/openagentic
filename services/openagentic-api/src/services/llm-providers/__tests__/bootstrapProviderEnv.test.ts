@@ -57,9 +57,34 @@ describe('parseBootstrapProviderEnv', () => {
     expect(r!.defaults).toEqual({
       chat: 'gpt-oss:20b',
       codemode: 'gpt-oss:20b',
+      vision: null,
+      imageGen: null,
       embedding: 'nomic-embed-text',
       embeddingDimension: 768,
     });
+  });
+
+  it('parses the imageGen default (operator-supplied image model id, no literal in source)', () => {
+    const r = parseBootstrapProviderEnv({
+      BOOTSTRAP_PROVIDER_NAME: 'bedrock-ops',
+      BOOTSTRAP_PROVIDER_TYPE: 'aws-bedrock',
+      BOOTSTRAP_PROVIDER_CONFIG: JSON.stringify({ region: 'us-east-1' }),
+      BOOTSTRAP_PROVIDER_DEFAULTS: JSON.stringify({
+        chat: 'gpt-oss:20b',
+        imageGen: 'amazon.nova-canvas-v1:0',
+      }),
+    });
+    expect(r).not.toBeNull();
+    expect((r!.defaults as any).imageGen).toBe('amazon.nova-canvas-v1:0');
+  });
+
+  it('imageGen is null when the operator omits it', () => {
+    const r = parseBootstrapProviderEnv({
+      BOOTSTRAP_PROVIDER_NAME: 'ollama-hal',
+      BOOTSTRAP_PROVIDER_TYPE: 'ollama',
+      BOOTSTRAP_PROVIDER_DEFAULTS: JSON.stringify({ chat: 'gpt-oss:20b' }),
+    });
+    expect((r!.defaults as any).imageGen).toBeNull();
   });
 
   it('parses an AIF bootstrap block', () => {
@@ -133,6 +158,8 @@ describe('parseBootstrapProviderEnv', () => {
     expect(r!.defaults).toEqual({
       chat: null,
       codemode: null,
+      vision: null,
+      imageGen: null,
       embedding: null,
       embeddingDimension: null,
     });

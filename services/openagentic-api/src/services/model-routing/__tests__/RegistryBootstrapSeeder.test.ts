@@ -522,6 +522,86 @@ describe('RegistryBootstrapSeeder — no bootstrap configured', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Image-gen role seeding (sev0 gap): generate_image dead on fresh install
+// because no imageGen role row + no default_models.imageGen is ever written.
+// ---------------------------------------------------------------------------
+describe('RegistryBootstrapSeeder — imageGen role + default_models.imageGen', () => {
+  // A bootstrap env that ALSO ships an imageGen default model id (operator sets
+  // this in helm values; NOT a literal in business logic). The Bedrock provider
+  // implements generateImage(); the seeded role row is what feeds
+  // ProviderManager.modelToProviderMap so the registry short-circuit resolves.
+  const IMG_ENV = {
+    BOOTSTRAP_PROVIDER_NAME: 'bedrock-bootstrap',
+    BOOTSTRAP_PROVIDER_DISPLAY_NAME: 'AWS Bedrock (Bootstrap)',
+    BOOTSTRAP_PROVIDER_TYPE: 'aws-bedrock',
+    BOOTSTRAP_PROVIDER_CONFIG: JSON.stringify({ region: 'us-east-1' }),
+    BOOTSTRAP_PROVIDER_DEFAULTS: JSON.stringify({
+      chat: 'gpt-oss:20b',
+      codemode: 'gpt-oss:20b',
+      embedding: 'nomic-embed-text',
+      embeddingDimension: 768,
+      imageGen: 'amazon.nova-canvas-v1:0',
+    }),
+    SEEDER_VERSION: '75',
+    ADMIN_USER_EMAIL: 'admin@openagentic.io',
+  };
+
+  it('cold start with imageGen default → creates an imageGen role row with imageGeneration capability', async () => {
+    const deps = makeDeps();
+    (deps as any).env = { ...IMG_ENV };
+    // Bedrock provider, so the bootstrap provider row exists.
+    (deps.prisma as PrismaMock).lLMProvider.findUnique.mockResolvedValue({
+      id: 'provider-uuid-bedrock', name: 'bedrock-bootstrap', enabled: true,
+    });
+
+    const result = await seedRegistryFromHelm(deps);
+
+    expect(result.versionBumped).toBe(true);
+
+    const { create: mraCreate } = (deps.prisma as PrismaMock).modelRoleAssignment;
+    const createCalls: any[] = mraCreate.mock.calls;
+    const imageRow = createCalls
+      .map(([args]) => args.data)
+      .find((d) => d.role === 'imageGen' && d.model === 'amazon.nova-canvas-v1:0');
+
+    expect(imageRow).toBeDefined();
+    expect(imageRow.capabilities.imageGeneration).toBe(true);
+    expect(imageRow.provider).toBe('bedrock-bootstrap');
+  });
+
+  it('cold start with imageGen default → writes default_models.imageGen so getDefaults().imageGen resolves', async () => {
+    const deps = makeDeps();
+    (deps as any).env = { ...IMG_ENV };
+    (deps.prisma as PrismaMock).lLMProvider.findUnique.mockResolvedValue({
+      id: 'provider-uuid-bedrock', name: 'bedrock-bootstrap', enabled: true,
+    });
+
+    await seedRegistryFromHelm(deps);
+
+    const { upsert } = (deps.prisma as PrismaMock).systemConfiguration;
+    const defaultModelsUpsert = (upsert.mock.calls as any[]).find(
+      ([args]) => args.where.key === 'default_models',
+    );
+
+    expect(defaultModelsUpsert).toBeDefined();
+    const written = defaultModelsUpsert[0].create?.value ?? defaultModelsUpsert[0].update?.value;
+    expect(written.imageGen).toBe('amazon.nova-canvas-v1:0');
+  });
+
+  it('no imageGen default → does NOT create an imageGen role row (behaviour-neutral for non-image deployments)', async () => {
+    const deps = makeDeps(); // BOOTSTRAP_ENV has no imageGen
+
+    await seedRegistryFromHelm(deps);
+
+    const { create: mraCreate } = (deps.prisma as PrismaMock).modelRoleAssignment;
+    const imageCreated = (mraCreate.mock.calls as any[]).some(
+      ([args]) => args.data.role === 'imageGen',
+    );
+    expect(imageCreated).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // F2 C-1 regression — `provider_name` field MUST NOT appear in create payload
 // ---------------------------------------------------------------------------
 describe('RegistryBootstrapSeeder — F2 C-1 regression (provider_name field absent)', () => {

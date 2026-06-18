@@ -275,6 +275,73 @@ describe('resolveChatModel — SmartModelRouter consultation', () => {
     expect(ModelConfigurationService.getDefaultChatModel).not.toHaveBeenCalled();
   });
 
+  // ──────────────────────────────────────────────────────────────────────
+  // VISION ROUTING (sev1): an image-bearing turn MUST steer the router to a
+  // vision-capable model. The router keys vision detection on an ARRAY
+  // content block with `type:'image_url'` (SmartModelRouter.analyzeRequest).
+  // resolveChatModel previously sent `content: params.message` as a plain
+  // STRING, so analyzeRequest computed requiresVision=false on every turn and
+  // the vision candidate filter was dead code on the chat path — an image-
+  // only prompt routed by FCA/cost to the default chat model (no vision).
+  it('image turn (hasVision) → router request content is an array WITH an image_url block', async () => {
+    (ModelConfigurationService.getDefaultChatModel as any).mockResolvedValue('sonnet-from-db');
+
+    const smartRouter = {
+      routeRequest: vi.fn().mockResolvedValue({
+        selectedModel: { modelId: 'vision-model-from-router' },
+        escalated: false,
+        resolvedBy: 'cost_quality_score',
+      }),
+    };
+
+    const m = await resolveChatModel({
+      message: 'what is in this image?',
+      hasVision: true,
+      smartRouter: smartRouter as any,
+    });
+
+    expect(m).toBe('vision-model-from-router');
+    expect(smartRouter.routeRequest).toHaveBeenCalledOnce();
+
+    const reqArg = (smartRouter.routeRequest as any).mock.calls[0][0];
+    const userMsg = reqArg.messages.find((x: any) => x.role === 'user');
+    expect(userMsg).toBeDefined();
+    // The content MUST be an array (not a plain string) so the router's
+    // analyzeRequest vision detector sees it.
+    expect(Array.isArray(userMsg.content)).toBe(true);
+    // And it MUST contain an image_url part — that is the EXACT shape
+    // analyzeRequest keys requiresVision on.
+    expect(
+      (userMsg.content as any[]).some((c: any) => c.type === 'image_url'),
+    ).toBe(true);
+    // The text is preserved alongside the image so length/intent analysis
+    // still works.
+    expect(
+      (userMsg.content as any[]).some(
+        (c: any) => c.type === 'text' && c.text === 'what is in this image?',
+      ),
+    ).toBe(true);
+  });
+
+  it('text-only turn (no hasVision) → router request content stays a plain string (no regression)', async () => {
+    (ModelConfigurationService.getDefaultChatModel as any).mockResolvedValue('sonnet-from-db');
+
+    const smartRouter = {
+      routeRequest: vi.fn().mockResolvedValue({
+        selectedModel: { modelId: 'gpt-oss:20b' },
+      }),
+    };
+
+    await resolveChatModel({
+      message: 'what is 2+2?',
+      smartRouter: smartRouter as any,
+    });
+
+    const reqArg = (smartRouter.routeRequest as any).mock.calls[0][0];
+    const userMsg = reqArg.messages.find((x: any) => x.role === 'user');
+    expect(userMsg.content).toBe('what is 2+2?');
+  });
+
   it('still falls through to DB default on a TRANSIENT router outage (not a refusal)', async () => {
     // A generic router error (timeout / Milvus blip / unexpected throw) is
     // NOT a deliberate capability-refusal — chat must never crash on it.

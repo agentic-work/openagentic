@@ -426,6 +426,11 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
         explicitModel: isSentinel ? null : explicit,
         sessionModel,
         message: input.message,
+        // VISION (sev1): forward the image-bearing-turn signal so the router
+        // request content is shaped as an image_url array → requiresVision=true
+        // → vision-capable candidate filter fires (steers to Sonnet/Opus/
+        // Gemini/gpt-4o instead of the vision:false default chat model).
+        hasVision: input.hasVision,
         smartRouter,
         priorClassification,
       });

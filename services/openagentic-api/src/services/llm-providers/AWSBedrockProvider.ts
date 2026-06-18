@@ -2882,34 +2882,21 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     }
 
     const startTime = Date.now();
-    const model = request.model || process.env.AWS_IMAGE_MODEL || 'amazon.nova-canvas-v1:0';
-    const [width, height] = (request.size || '1024x1024').split('x').map(Number);
-
-    // Detect request format from model ID
-    const modelLower = model.toLowerCase();
-    let body: Record<string, unknown>;
-    if (modelLower.includes('stability') || modelLower.includes('stable-diffusion')) {
-      body = {
-        text_prompts: [{ text: request.prompt, weight: 1.0 }],
-        cfg_scale: 7,
-        steps: 50,
-        width: width || 1024,
-        height: height || 1024,
-        samples: request.n || 1,
-      };
-    } else {
-      // Amazon format (Nova Canvas, Titan Image)
-      body = {
-        taskType: 'TEXT_IMAGE',
-        textToImageParams: { text: request.prompt },
-        imageGenerationConfig: {
-          numberOfImages: request.n || 1,
-          quality: 'standard',
-          width: width || 1024,
-          height: height || 1024,
-        },
-      };
+    // Model id is registry-sourced: ProviderManager resolves request.model from
+    // model_role_assignments / default_models.imageGen (the imageGen role) before
+    // dispatch. AWS_IMAGE_MODEL is an ops escape hatch. NO hardcoded model literal
+    // here — fail loud if neither is set rather than silently pin a model.
+    const model = request.model || process.env.AWS_IMAGE_MODEL;
+    if (!model) {
+      throw new Error(
+        '[AWSBedrockProvider] No image model resolved — set the imageGen role in the registry (default_models.imageGen) or AWS_IMAGE_MODEL',
+      );
     }
+
+    // Body shape (request envelope), valid dimensions, and the style→cfgScale
+    // mapping are all built by the pure, unit-tested buildBedrockImageBody
+    // helper — no shape decisions live in the I/O method.
+    const body = buildBedrockImageBody(model, request);
 
     const command = new InvokeModelCommand({
       modelId: model,
@@ -2948,4 +2935,221 @@ export class AWSBedrockProvider extends BaseLLMProvider {
 // ---------------------------------------------------------------------------
 // Exported normalizer — testable without instantiating the provider
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Image generation — pure, testable Bedrock request-body builder + helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Derive a Stability `aspect_ratio` string from the request `size`.
+ * Modern Stability models on Bedrock take an aspect_ratio enum, not
+ * pixel width/height. Defaults to square.
+ */
+function deriveAspectRatio(size?: string): string {
+  switch (size) {
+    case '1792x1024':
+      return '16:9';
+    case '1024x1792':
+      return '9:16';
+    case '1024x1024':
+    default:
+      return '1:1';
+  }
+}
+
+/**
+ * Map the GenerateImageInput.style aesthetic hint to a Bedrock cfgScale.
+ *
+ * cfgScale (classifier-free guidance) controls how tightly the model
+ * adheres to the prompt. Nova Canvas / Titan accept 1.1–10 (default ~6.5);
+ * Stability SDXL accepts a similar guidance range. The tool's `style`
+ * enum previously mapped to NO Bedrock param at all — it was dropped.
+ *
+ *   - vivid   → higher cfgScale (8.0): stronger prompt adherence, more
+ *               saturated / dramatic output.
+ *   - natural → lower cfgScale (5.0): looser guidance, more photoreal /
+ *               organic output.
+ *   - unset   → 6.5 (Bedrock's documented default), so behavior is
+ *               unchanged for callers that don't pass a style.
+ */
+function styleToCfgScale(style?: 'vivid' | 'natural'): number {
+  if (style === 'vivid') return 8.0;
+  if (style === 'natural') return 5.0;
+  return 6.5;
+}
+
+/**
+ * Bedrock image-model dimension allow-lists.
+ *
+ * The chat `generate_image` tool exposes a DALL-E-shaped `size` enum
+ * (`1024x1024 | 1792x1024 | 1024x1792`). Those wide/tall sizes are NOT valid
+ * Amazon Nova Canvas / Titan dimensions — Bedrock rejects an unsupported
+ * width/height combination with a `ValidationException`. We therefore map the
+ * requested size to the NEAREST model-valid combination, preserving the user's
+ * aspect intent (square→square, wide→wide, tall→tall), instead of passing the
+ * raw DALL-E size straight through.
+ *
+ * Sources: AWS Bedrock user guide — "Amazon Nova Canvas" supported resolutions
+ * and "Stability AI Diffusion" allowed dimensions.
+ */
+const NOVA_CANVAS_DIMS: ReadonlyArray<readonly [number, number]> = [
+  [1024, 1024], // 1:1 square (default)
+  [2048, 2048], // 1:1 large square
+  [1280, 720], // 16:9 wide
+  [1280, 768], // wide
+  [768, 1280], // tall
+  [1024, 576], // 16:9 wide (smaller)
+  [576, 1024], // tall
+  [1024, 768], // 4:3 wide
+  [768, 1024], // 3:4 tall
+];
+
+// SDXL on Bedrock accepts a documented preset list; these cover square + the
+// landscape/portrait the tool enum can request.
+const SDXL_DIMS: ReadonlyArray<readonly [number, number]> = [
+  [1024, 1024], // square (default)
+  [1152, 896], // landscape
+  [896, 1152], // portrait
+  [1216, 832], // landscape
+  [832, 1216], // portrait
+  [1344, 768], // landscape (16:9-ish)
+  [768, 1344], // portrait
+];
+
+/**
+ * Resolve a requested `size` string to a Bedrock-valid (width, height) for the
+ * given image model. Pure + exported so it is unit-testable without
+ * instantiating the provider or hitting Bedrock.
+ *
+ * - Parses `"WxH"`; on NaN / malformed input, falls back to the 1024x1024
+ *   square default (never leaks NaN into the request body).
+ * - Picks the candidate from the model's allow-list that best matches the
+ *   requested aspect ratio (and, as a tie-breaker, total area), so a wide
+ *   request stays wide and a tall request stays tall.
+ */
+export function resolveBedrockImageDimensions(
+  model: string,
+  size: string | undefined,
+): { width: number; height: number } {
+  const modelLower = (model || '').toLowerCase();
+  const allow =
+    modelLower.includes('stability') || modelLower.includes('stable-diffusion')
+      ? SDXL_DIMS
+      : NOVA_CANVAS_DIMS;
+
+  const parts = typeof size === 'string' ? size.toLowerCase().split('x') : [];
+  const reqW = Number(parts[0]);
+  const reqH = Number(parts[1]);
+
+  // Malformed / NaN / missing → square default. Default is always allow[0].
+  if (
+    parts.length !== 2 ||
+    !Number.isFinite(reqW) ||
+    !Number.isFinite(reqH) ||
+    reqW <= 0 ||
+    reqH <= 0
+  ) {
+    const [w, h] = allow[0];
+    return { width: w, height: h };
+  }
+
+  // If the requested combo is already a valid model dimension, keep it exactly.
+  const exact = allow.find(([w, h]) => w === reqW && h === reqH);
+  if (exact) return { width: exact[0], height: exact[1] };
+
+  // Otherwise pick the allow-list entry whose aspect ratio is closest to the
+  // request (area as tie-breaker), preserving wide/tall/square intent.
+  const reqAspect = reqW / reqH;
+  let best = allow[0];
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (const cand of allow) {
+    const [w, h] = cand;
+    const aspectDelta = Math.abs(w / h - reqAspect);
+    const areaDelta = Math.abs(w * h - reqW * reqH) / 1_000_000; // small tie-breaker
+    const score = aspectDelta + areaDelta * 0.001;
+    if (score < bestScore) {
+      bestScore = score;
+      best = cand;
+    }
+  }
+  return { width: best[0], height: best[1] };
+}
+
+/**
+ * Build the Bedrock InvokeModel request body for image generation,
+ * auto-detecting the wire shape from the model family.
+ *
+ * Pure function — no client, no I/O — so the body shape (incl. resolved
+ * dimensions, cfgScale, and the style→cfgScale mapping) is testable without
+ * instantiating the provider or mocking the Bedrock runtime client.
+ *
+ * Three wire families exist on Bedrock:
+ *  1. Modern Stability (`stability.sd3-*`, `stability.stable-image-*`):
+ *     `{ prompt, aspect_ratio, output_format, mode }`, returns
+ *     `{ images: [base64] }`. These are the currently-invokable
+ *     Stability models — SDXL is being retired. (Modern Stability takes an
+ *     aspect_ratio enum, not pixel dimensions, so cfgScale/dimensions don't
+ *     apply to this envelope.)
+ *  2. Legacy Stability SDXL (`stability.stable-diffusion-xl-*`):
+ *     `{ text_prompts, cfg_scale, steps, samples }`, returns
+ *     `{ artifacts: [{ base64 }] }`. `cfg_scale` honors the style hint.
+ *  3. Amazon (Nova Canvas / Titan Image): `{ taskType: 'TEXT_IMAGE', … }`
+ *     with `imageGenerationConfig.cfgScale`, returns `{ images: [base64] }`.
+ *
+ * Sending shape (2) to a shape-(1) model → 400 ValidationException, so the
+ * family detection here is required wire-protocol dispatch (it selects an API
+ * request envelope, not a model capability). Dimensions for shapes (2) and (3)
+ * are clamped to a model-valid allow-list via resolveBedrockImageDimensions so
+ * a DALL-E-shaped size never yields a ValidationException or a NaN.
+ */
+export function buildBedrockImageBody(
+  model: string,
+  request: import('./ILLMProvider.js').ImageGenerationRequest,
+): Record<string, unknown> {
+  const modelLower = model.toLowerCase();
+  const isStability = modelLower.includes('stability') || modelLower.includes('stable-diffusion');
+  // Legacy SDXL is the ONLY Stability family that uses the text_prompts shape.
+  const isLegacySdxl = modelLower.includes('stable-diffusion-xl');
+  const cfgScale = styleToCfgScale(request.style);
+
+  if (isStability && !isLegacySdxl) {
+    // Modern Stability (sd3.5, stable-image-core/ultra) — aspect_ratio enum,
+    // no pixel dimensions, no cfg_scale on this envelope.
+    return {
+      prompt: request.prompt,
+      aspect_ratio: deriveAspectRatio(request.size),
+      output_format: 'png',
+      mode: 'text-to-image',
+    };
+  }
+
+  // Shapes (2) and (3) take pixel dimensions — resolve to a model-valid combo.
+  const { width, height } = resolveBedrockImageDimensions(model, request.size);
+
+  if (isStability) {
+    // Legacy SDXL — cfg_scale honors the style hint (was a fixed 7).
+    return {
+      text_prompts: [{ text: request.prompt, weight: 1.0 }],
+      cfg_scale: cfgScale,
+      steps: 50,
+      width,
+      height,
+      samples: request.n || 1,
+    };
+  }
+
+  // Amazon format (Nova Canvas, Titan Image) — cfgScale was previously omitted,
+  // so the style hint was a no-op; it now maps through.
+  return {
+    taskType: 'TEXT_IMAGE',
+    textToImageParams: { text: request.prompt },
+    imageGenerationConfig: {
+      numberOfImages: request.n || 1,
+      quality: 'standard',
+      cfgScale,
+      width,
+      height,
+    },
+  };
+}
 

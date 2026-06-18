@@ -1247,12 +1247,37 @@ export class SmartModelRouter {
       }
     }
 
-    // Filter by vision if needed
+    // Filter by vision if needed — HARD GUARD (Chat VISION path, sev1).
+    // A vision-required prompt is a STRUCTURAL capability gate, exactly like
+    // the T3 / agentic-profile gates: the pick is forced by the prompt's
+    // modality, not by cost scoring. analysis.requiresVision derives
+    // structurally from an `image_url` content part. Two behaviours:
+    //   (1) flag `visionGated` so the resolvedBy derivation below labels it
+    //       `vision_capability_gate` and `escalated=true` — otherwise the
+    //       default-first contract in resolveChatModel could revert a vision
+    //       pick back to the configured, possibly non-vision, DB default.
+    //   (2) when NO vision-capable candidate is registered/enabled, FAIL LOUD.
+    //       A non-vision model handed an image silently ignores it and
+    //       confidently hallucinates — strictly worse than surfacing the
+    //       misconfiguration. The error propagates through resolveChatModel →
+    //       stream.handler pickModel as a user-facing message, not a blind turn.
+    let visionGated = false;
     if (analysis.requiresVision) {
       const visionCandidates = candidates.filter(m => m.capabilities.vision);
       if (visionCandidates.length > 0) {
         candidates = visionCandidates;
         reason += ' (with vision capability)';
+        visionGated = true;
+      } else {
+        try { routerEscalationCounter.inc({ type: 'no_vision_model_surface' }); } catch { /* metrics — non-fatal */ }
+        this.logger.warn(
+          { availableCount: availableModels.length },
+          '[router] image turn but NO vision-capable model is registered/enabled — surfacing NO_VISION_MODEL (never routes an image to a blind model)',
+        );
+        try { routerRouteRequestDurationMs.observe(Date.now() - __t0); } catch { /* metrics — non-fatal */ }
+        throw new Error(
+          'NO_VISION_MODEL: this turn includes an image but no vision-capable model is configured or enabled. Ask an admin to register/enable a vision-capable model, or remove the image.',
+        );
       }
     }
 
@@ -1292,6 +1317,25 @@ export class SmartModelRouter {
     const selected = scoredCandidates[0].model;
     const alternatives = scoredCandidates.slice(1, 4).map(s => s.model);
 
+    // VISION POST-SELECTION ASSERTION (Chat VISION path, sev1). The vision
+    // filter above narrows to vision-capable candidates, but later floors
+    // (context-length) and the empty-pool guard can REPLACE `candidates` with
+    // the full available pool — which may re-introduce a blind model on an
+    // image turn. This assertion is the definitive belt: when the turn carries
+    // an image, the FINAL pick MUST be vision-capable or we surface, never
+    // return a model that would silently ignore the image.
+    if (analysis.requiresVision && !selected.capabilities.vision) {
+      try { routerEscalationCounter.inc({ type: 'no_vision_model_surface' }); } catch { /* metrics — non-fatal */ }
+      this.logger.warn(
+        { selectedModelId: selected.modelId, availableCount: availableModels.length },
+        '[router] post-selection vision assertion failed — selected model lacks vision on an image turn; surfacing NO_VISION_MODEL',
+      );
+      try { routerRouteRequestDurationMs.observe(Date.now() - __t0); } catch { /* metrics — non-fatal */ }
+      throw new Error(
+        'NO_VISION_MODEL: this turn includes an image but no vision-capable model is configured or enabled. Ask an admin to register/enable a vision-capable model, or remove the image.',
+      );
+    }
+
     // Build detailed reason
     if (!reason) {
       if (analysis.hasTools) {
@@ -1328,6 +1372,12 @@ export class SmartModelRouter {
     let resolvedBy = 'cost_quality_score';
     if (reason.startsWith('T3 gate')) resolvedBy = 't3_capability_gate';
     else if (classifiedAgentic) resolvedBy = 'capability_profile';
+    // Vision capability gate — a vision-required prompt forced the pick to a
+    // vision-capable model. STRUCTURAL escalation: it must outrank the cost-
+    // score / chat-pool / tool-floor labels so `escalated` below is true and
+    // the default-first contract in resolveChatModel cannot revert the pick to
+    // the (possibly non-vision) configured default.
+    else if (visionGated) resolvedBy = 'vision_capability_gate';
     else if (reason.startsWith('Pure chat')) resolvedBy = 'chat_pool_floor';
     else if (reason.startsWith('Tool request')) resolvedBy = 'tool_floor';
 
@@ -1412,7 +1462,13 @@ export class SmartModelRouter {
       // profile). For ordinary prompts (cost_quality_score / chat_pool_floor
       // / tool_floor) escalated=false → the configured DB default wins, so a
       // cheap model is never silently substituted for the operator's default.
-      escalated: resolvedBy === 't3_capability_gate' || resolvedBy === 'capability_profile',
+      // The vision gate is included because a vision-required pick is
+      // structurally forced by the prompt's modality — reverting it to a
+      // non-vision default would break the turn.
+      escalated:
+        resolvedBy === 't3_capability_gate' ||
+        resolvedBy === 'capability_profile' ||
+        resolvedBy === 'vision_capability_gate',
       resolvedBy,
       alternativeModels: alternatives,
       analysisResults: analysis,
