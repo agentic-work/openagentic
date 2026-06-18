@@ -238,6 +238,12 @@ services:
       # Without this, every flow run fails with "WORKFLOW_SERVICE_URL is not set".
       WORKFLOW_SERVICE_URL: ${WORKFLOW_SERVICE_URL:-http://workflows:3400}
       OPENAGENTIC_PROXY_URL: http://proxy:3300
+      # Shared service-to-service key for api→openagentic-proxy sub-agent dispatch.
+      # agent_list / agent_send FAIL-CLOSED without it (they refuse to call the
+      # proxy). Both sides read this exact env name; reuse INTERNAL_API_KEY so the
+      # api + proxy trust roots match — mirrors the helm chart, where every
+      # internal key equals internalApiKey.
+      OPENAGENTIC_PROXY_INTERNAL_KEY: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in .env — generate with openssl rand -hex 32}
       # LLM provider keys (passed through if set)
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -479,6 +485,10 @@ services:
       dockerfile: services/openagentic-proxy/Dockerfile
     environment:
       API_URL: http://api:8000
+      # Must equal the api service's OPENAGENTIC_PROXY_INTERNAL_KEY (both read this
+      # exact env name; the proxy authMiddleware compares Bearer + X-Agent-Proxy
+      # against it). Reuses INTERNAL_API_KEY — the shared internal-service trust root.
+      OPENAGENTIC_PROXY_INTERNAL_KEY: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in .env — generate with openssl rand -hex 32}
       REDIS_URL: redis://redis:6379
       REDIS_HOST: redis
       REDIS_PORT: "6379"
