@@ -239,7 +239,7 @@ export function Line({ data, title, height = 400, disableFrame, wheelZoom, onExp
             <g pointerEvents="none">
               <rect x={tipX} y={tipY} width={190} height={20 + normalized.length * 16} rx={4} fill={tokens.bg1} stroke={tokens.line2} />
               <text x={tipX + 10} y={tipY + 16} style={{ fill: tokens.fg0, fontSize: 11, fontFamily: tokens.fontMono, fontWeight: 600 }}>
-                {utcFormat('%H:%M UTC')(pt.t)}
+                {utcFormat('%H:%M UTC')(new Date(pt.t))}
               </text>
               {normalized.map((s, i) => {
                 const p = s.data[hoverIdx.i];

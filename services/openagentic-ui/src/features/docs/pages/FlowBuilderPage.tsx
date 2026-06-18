@@ -2,7 +2,7 @@
 // workflow node-CATEGORY identity color scale (the same node-TYPE palette carve-out
 // as the workflow canvas) — categorical/illustration values, not themeable surfaces.
 import React, { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';
 import { useDocsStore } from '@/stores/useDocsStore';
 
@@ -80,7 +80,7 @@ const flowExecutionDiagram: DiagramDefinition = {
 // ANIMATION VARIANTS
 // ============================================================================
 
-const sectionVariants = {
+const sectionVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: (i: number) => ({
     opacity: 1,

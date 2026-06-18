@@ -80,7 +80,7 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ chartSpec, height = 360 }
   const chrome: React.CSSProperties = {
     padding: 16,
     borderRadius: 8,
-    border: `1px solid ${tokens.line}`,
+    border: `1px solid ${tokens.line1}`,
     background: tokens.bg1,
   };
   const titleStyle: React.CSSProperties = {

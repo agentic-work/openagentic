@@ -2495,7 +2495,9 @@ const CollapsedToolRow: React.FC<CollapsedToolRowProps> = memo(({ block, toolCal
   const isErr = block.isComplete && (block.error || (tc && detectErrorInOutput(tc.output)));
   const inlineChips = extractInlineChips(name, tc, block);
 
-  const toolInput = tc?.input || tc?.arguments;
+  // `arguments` is a legacy wire field not on the ToolCall type (owned by
+  // activity.types in another shard) — cast locally to read the fallback.
+  const toolInput = tc?.input || (tc as { arguments?: unknown } | undefined)?.arguments;
   const toolOutput = tc?.output;
   const inputStr = toolInput
     ? (typeof toolInput === 'string' ? toolInput : JSON.stringify(toolInput, null, 2))
@@ -3081,7 +3083,9 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
     // F1-6 (2026-05-17) — follow_up chip row counts as interleaved content
     // so a turn with ONLY a follow_up block (degenerate, but possible on
     // session reload) still mounts AAS.
-    const hasFollowUp = contentBlocks.some(b => b.type === 'follow_up');
+    // 'follow_up' is a runtime block type not yet in ContentBlockType (owned by
+    // activity.types in another shard) — compare via string cast.
+    const hasFollowUp = contentBlocks.some(b => (b.type as string) === 'follow_up');
     return hasThinking || hasText || hasToolUse || hasArtifact || hasFollowUp;
   }, [contentBlocks]);
 
@@ -3312,7 +3316,7 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
           ) : null}
         </div>
       );
-    } else if (block.type === 'follow_up') {
+    } else if ((block.type as string) === 'follow_up') {
       // Sev-0 F1-6 (2026-05-17) — end-of-turn follow-up chip row. Mirrors
       // the `.followups` block from all 17 northstar mocks
       // (`mocks/UX/AI/Chatmode/end-state-{01..17}.html`). Theme tokens only
@@ -3322,7 +3326,10 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
       // toolbar's "Follow-up suggestions" pill is OFF, this branch returns
       // null so chips disappear platform-wide (not just from ChipsRow).
       if (!followupChipsEnabled) return null;
-      const items = Array.isArray(block.items) ? block.items : [];
+      // follow_up blocks carry a string[] `items` field not on ContentBlock
+      // (owned by activity.types in another shard) — cast locally to read it.
+      const followUpItems = (block as { items?: unknown }).items;
+      const items: string[] = Array.isArray(followUpItems) ? (followUpItems as string[]) : [];
       if (items.length === 0) return null;
       return (
         <div

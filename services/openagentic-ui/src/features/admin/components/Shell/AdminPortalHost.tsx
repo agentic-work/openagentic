@@ -10,6 +10,19 @@ import AdminPortalHostV3 from './AdminPortalHostV3';
  * Removing the AdminShellV2 import lets Rollup eliminate the whole legacy
  * tree from the chunk graph.
  */
-export default function AdminPortalHost() {
+/**
+ * Props are accepted for back-compat with callers (e.g. ChatContainer) that
+ * still pass `theme` / `embedded` / `onClose`. The v3 shell sources its theme
+ * from context and drives its own close via the UI store, so these are
+ * intentionally ignored here — typing them keeps the call sites correct
+ * without changing runtime behavior.
+ */
+export interface AdminPortalHostProps {
+  theme?: 'dark' | 'light';
+  embedded?: boolean;
+  onClose?: () => void;
+}
+
+export default function AdminPortalHost(_props: AdminPortalHostProps = {}) {
   return <AdminPortalHostV3 />;
 }

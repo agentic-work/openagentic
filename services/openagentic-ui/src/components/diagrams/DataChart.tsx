@@ -22,7 +22,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  TooltipProps,
+  TooltipContentProps,
 } from 'recharts';
 
 // Chart types supported
@@ -90,8 +90,12 @@ const getAccentColor = (): string => {
   );
 };
 
-// Custom tooltip styling
-const CustomTooltip: React.FC<TooltipProps<number, string>> = ({
+// Custom tooltip styling.
+// recharts v3 injects `TooltipContentProps` (payload/label/active) into the
+// content render-prop at runtime — `TooltipProps` Omits those context-read
+// fields. We use `Partial<>` because the props are supplied by <Tooltip
+// content={<CustomTooltip />}>, not at the JSX call site.
+const CustomTooltip: React.FC<Partial<TooltipContentProps<number, string>>> = ({
   active,
   payload,
   label,

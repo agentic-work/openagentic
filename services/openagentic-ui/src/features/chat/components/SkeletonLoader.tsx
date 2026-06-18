@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Transition, type TargetAndTransition } from 'framer-motion';
 
 interface SkeletonLoaderProps {
   type?: 'text' | 'code' | 'table' | 'image' | 'chart';
@@ -40,7 +40,7 @@ const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
   const highlightColor = 'color-mix(in srgb, var(--color-text) 10%, transparent)';
   const borderColor = 'color-mix(in srgb, var(--color-text) 10%, transparent)';
 
-  const shimmerAnimation = {
+  const shimmerAnimation: { animate: TargetAndTransition; transition: Transition } = {
     animate: {
       backgroundPosition: ['200% 0', '-200% 0'],
     },

@@ -1,6 +1,6 @@
 // theme-allow: decorative gradient SVG illustration icons (multi-stop art glyphs).
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 
 // ============================================================================
 // INLINE SVG ICONS
@@ -38,7 +38,7 @@ const WebhookIcon: React.FC<{ size?: number }> = ({ size = 24 }) => (
 // ANIMATION VARIANTS
 // ============================================================================
 
-const sectionVariants = {
+const sectionVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: (i: number) => ({
     opacity: 1,

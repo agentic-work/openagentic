@@ -47,7 +47,7 @@ function parseContent(content: string): { ok: true; data: ParsedFlow } | { ok: f
 }
 
 export function ReactFlowArchWidget({ template, content, title, className }: ReactFlowArchWidgetProps) {
-  const parsed = useMemo(() => parseContent(content), [content]);
+  const parsed = useMemo<ReturnType<typeof parseContent>>(() => parseContent(content), [content]);
 
   return (
     <div
@@ -134,7 +134,9 @@ export function ReactFlowArchWidget({ template, content, title, className }: Rea
             margin: 12,
           }}
         >
-          reactflow_arch render failed — {parsed.error}
+          {/* `in`-operator narrows the union to the error arm; this branch
+              only renders when parsed.ok === false, so output is unchanged. */}
+          reactflow_arch render failed — {'error' in parsed ? parsed.error : ''}
           {title ? <div style={{ opacity: 0.6, marginTop: 6 }}>title: {title}</div> : null}
         </div>
       )}

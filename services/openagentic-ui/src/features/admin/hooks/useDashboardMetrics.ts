@@ -1192,6 +1192,7 @@ export interface OllamaHostRow {
   displayName?: string
   endpoint?: string
   host?: string
+  enabled?: boolean
   status?: string
   modelCount?: number
   runningCount?: number

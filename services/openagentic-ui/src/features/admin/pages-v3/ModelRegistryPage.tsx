@@ -389,7 +389,7 @@ export const ModelRegistryPage: React.FC = () => {
         open={browseOpen}
         onClose={() => setBrowseOpen(false)}
         providers={providersQ.data?.providers}
-        existingModels={rows.map((r) => ({ model: r.model, providerName: r.providerName }))}
+        existingModels={rows.map((r) => ({ model: r.model, provider: r.provider }))}
         toast={toast}
       />
     </>

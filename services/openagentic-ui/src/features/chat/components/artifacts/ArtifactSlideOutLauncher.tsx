@@ -49,10 +49,14 @@ function renderBody(kind: ArtifactKind, payload: any): React.ReactNode {
         />
       );
     case 'react-app':
+      // ReactApp's props are `artifactId` / `html` (the old `appId` / `src`
+      // names were never on ReactAppProps, so nothing was reaching the
+      // renderer). Prefer the canonical fields, fall back to the legacy
+      // payload field names so existing payloads keep working.
       return (
         <ReactApp
-          appId={payload?.appId ?? ''}
-          src={payload?.src}
+          artifactId={payload?.artifactId ?? payload?.appId ?? ''}
+          html={payload?.html ?? payload?.src ?? ''}
           title={payload?.title}
         />
       );

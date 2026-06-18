@@ -6,7 +6,7 @@ import { remarkCiteMarker } from './remarkCiteMarker';
 import { rehypeSemanticTokens } from '@/features/shared/markdown/rehypeSemanticTokens';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+import rehypeSanitize, { defaultSchema, type Options as SanitizeSchema } from 'rehype-sanitize';
 import 'katex/dist/katex.min.css';
 
 import ShikiCodeBlock from './ShikiCodeBlock';
@@ -36,7 +36,7 @@ import type {
 // rehype-sanitize's default schema would strip the data: URI → image
 // tag becomes invalid → empty <p></p>. Adding `data` here is safe for
 // images specifically (rendered via <img src>, no script execution).
-export const sanitizeSchema = {
+export const sanitizeSchema: SanitizeSchema = {
   ...defaultSchema,
   tagNames: [
     ...(defaultSchema.tagNames || []),

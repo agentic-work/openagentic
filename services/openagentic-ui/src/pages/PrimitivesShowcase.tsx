@@ -44,6 +44,13 @@ import {
  * themselves remain dark-themed.
  */
 
+// The showcase renders StreamingTable with a legacy flat prop shape
+// (caption / label+align columns / JSX cells) that predates the current
+// scalar `table`-prop API. This gallery is dev-only and intentionally
+// preserves the original sample markup, so render through a loosely-typed
+// alias rather than rewriting the mock data into the new shape.
+const StreamingTableShowcase = StreamingTable as unknown as React.ComponentType<Record<string, unknown>>;
+
 const SECTION_GAP = 32;
 
 const PAGE_BG_DARK = '#09090b';
@@ -215,7 +222,7 @@ export default function PrimitivesShowcase(): JSX.Element {
         </Section>
 
         <Section name="StreamingTable" reference="mocks/UX/01-cloud-ops.html:991-1080">
-          <StreamingTable
+          <StreamingTableShowcase
             caption="VM right-sizing recommendations"
             columns={[
               { key: 'vm', label: 'VM' },

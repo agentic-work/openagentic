@@ -131,7 +131,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({ data, onRefresh }
     padding: 16,
     borderRadius: 12,
     background: tokens.bg1,
-    border: `1px solid ${tokens.line}`,
+    border: `1px solid ${tokens.line1}`,
     fontFamily: tokens.fontUi,
   };
   const head: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 };
@@ -188,7 +188,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({ data, onRefresh }
               onClick={(e) => e.stopPropagation()}
               style={{
                 background: tokens.bg0,
-                border: `1px solid ${tokens.line}`,
+                border: `1px solid ${tokens.line1}`,
                 borderRadius: 12,
                 padding: 24,
                 width: 'min(1100px, 96vw)',

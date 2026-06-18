@@ -226,4 +226,31 @@ export const ReactFlowDiagram: React.FC<ReactFlowDiagramProps> = ({
   )
 }
 
+/**
+ * Parse diagram JSON from LLM / MCP tool output into a `DiagramDefinition`.
+ * Mirrors `parseChartJson` / `parseVennJson` — returns `null` on malformed
+ * input or a missing `nodes` array rather than throwing.
+ */
+export const parseDiagramJson = (json: string): DiagramDefinition | null => {
+  try {
+    const parsed = JSON.parse(json)
+
+    if (!parsed.nodes || !Array.isArray(parsed.nodes)) {
+      return null
+    }
+
+    return {
+      type: parsed.type || 'flowchart',
+      title: parsed.title,
+      description: parsed.description,
+      nodes: parsed.nodes,
+      edges: Array.isArray(parsed.edges) ? parsed.edges : [],
+      layout: parsed.layout,
+      theme: parsed.theme,
+    }
+  } catch {
+    return null
+  }
+}
+
 export default ReactFlowDiagram

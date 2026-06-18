@@ -492,8 +492,9 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
               WebkitBackdropFilter: 'var(--glass-blur)',
               border: '1px solid var(--glass-border)',
               borderRadius: 'var(--glass-radius)',
-              boxShadow: 'var(--glass-shadow)',
               overflow: 'hidden',
+              // last-wins in JS, so this override was already the effective value;
+              // the duplicate 'var(--glass-shadow)' boxShadow above was dead.
               boxShadow: '0 20px 60px color-mix(in srgb, var(--cm-text) 40%, transparent)',
             }}
           >

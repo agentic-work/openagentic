@@ -40,7 +40,10 @@ export function useAdminQuery<T = any>(
   options?: {
     staleTime?: number;
     enabled?: boolean;
-    refetchInterval?: number;
+    // react-query accepts `false` to disable polling; callers pass
+    // `cond ? ms : false`, so the type must allow it (the underlying
+    // useQuery already does).
+    refetchInterval?: number | false;
   }
 ) {
   return useQuery<T>({

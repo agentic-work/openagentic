@@ -21,7 +21,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { parseNDJSONStream } from '@/utils/ndjsonStream';
+import { parseNDJSONStream, type NDJSONEvent } from '@/utils/ndjsonStream';
 import type { AgenticStreamEvent } from '@/types/AnthropicStreamEvent';
 import { workflowEndpoint } from '@/utils/api';
 
@@ -146,7 +146,12 @@ export function useWorkflowStream(opts: UseWorkflowStreamOpts): UseWorkflowStrea
         });
         setIsConnected(true);
 
-        for await (const ev of parseNDJSONStream<WorkflowStreamEvent>(resp, {
+        // `AgenticStreamEvent` (one arm of WorkflowStreamEvent) is a closed
+        // discriminated union with no index signature, so it doesn't satisfy
+        // parseNDJSONStream's `T extends NDJSONEvent` constraint on its own.
+        // Intersecting with NDJSONEvent adds the index signature per-arm while
+        // preserving each arm's `type` literal — type-only, no runtime change.
+        for await (const ev of parseNDJSONStream<WorkflowStreamEvent & NDJSONEvent>(resp, {
           onParseError: (err, line) => {
             console.warn('[useWorkflowStream] parse error', err, line.slice(0, 80));
           },

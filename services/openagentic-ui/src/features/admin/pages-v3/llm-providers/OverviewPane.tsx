@@ -256,7 +256,6 @@ export const OverviewPane: React.FC<OverviewPaneProps> = ({
               'provider-type': (r.type || '').toLowerCase(),
               status: r.status === 'healthy' ? 'ok'
                 : r.status === 'degraded' ? 'warn'
-                : r.status === 'down' || r.status === 'error' ? 'err'
                 : 'idle',
             })}
             selection={(onBulkSetEnabled || onBulkDelete) ? {

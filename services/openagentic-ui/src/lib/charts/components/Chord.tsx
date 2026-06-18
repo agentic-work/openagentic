@@ -100,7 +100,7 @@ export function Chord({ data, title, height = 620, disableFrame, wheelZoom, onEx
                 return (
                   <path
                     key={i}
-                    d={layout.ribbon(c as any) ?? ''}
+                    d={(layout.ribbon(c as any) as unknown as string | undefined) ?? ''}
                     fill={colorOf(c.source.index)}
                     fillOpacity={dim ? 0.05 : 0.7}
                     stroke={colorOf(c.source.index)}

@@ -3982,6 +3982,9 @@ export const useChatStream = ({
                     type: 'follow_up',
                     timestamp: Date.now(),
                     isComplete: true,
+                    // `content` is required on UIContentBlock; follow_up chips
+                    // render from `items`, so the empty string is a no-op here.
+                    content: '',
                     items,
                   };
                   setContentBlocks((prev) => {

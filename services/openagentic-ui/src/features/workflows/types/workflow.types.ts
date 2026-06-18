@@ -22,6 +22,7 @@ export type NodeType =
   | 'agent_supervisor'
   | 'a2a'
   | 'synth'
+  | 'openagentic'
   | 'openagentic_llm'
   | 'multi_agent'
   | 'slack_message'

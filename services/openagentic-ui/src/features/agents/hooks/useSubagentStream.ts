@@ -20,7 +20,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { parseNDJSONStream } from '@/utils/ndjsonStream';
+import { parseNDJSONStream, type NDJSONEvent } from '@/utils/ndjsonStream';
 import type { AgenticStreamEvent } from '@/types/AnthropicStreamEvent';
 
 /** Event with the server-added sequencer metadata. */
@@ -105,7 +105,12 @@ export function useSubagentStream(opts: UseSubagentStreamOpts): UseSubagentStrea
         });
         setIsConnected(true);
 
-        for await (const ev of parseNDJSONStream<SubagentStreamEvent>(resp, {
+        // SubagentStreamEvent = AgenticStreamEvent & {…} — the AgenticStreamEvent
+        // base is a closed discriminated union with no index signature, so it
+        // doesn't satisfy parseNDJSONStream's `T extends NDJSONEvent` constraint.
+        // Intersecting with NDJSONEvent adds the index signature — type-only, no
+        // runtime change.
+        for await (const ev of parseNDJSONStream<SubagentStreamEvent & NDJSONEvent>(resp, {
           onParseError: (err, line) => {
             console.warn('[useSubagentStream] parse error', err, line.slice(0, 80));
           },

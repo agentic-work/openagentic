@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 
 export type OrbState = 'idle' | 'thinking' | 'streaming' | 'tools' | 'error';
 
@@ -76,7 +76,7 @@ export const ActivityOrb: React.FC<ActivityOrbProps> = ({
   const { orb, container } = sizeConfig[size];
 
   // Animation variants
-  const pulseVariants = useMemo(() => ({
+  const pulseVariants = useMemo((): Variants => ({
     idle: {
       scale: 1,
       opacity: 0.5
@@ -92,7 +92,7 @@ export const ActivityOrb: React.FC<ActivityOrbProps> = ({
     }
   }), []);
 
-  const glowVariants = useMemo(() => ({
+  const glowVariants = useMemo((): Variants => ({
     idle: {
       scale: 1,
       opacity: 0

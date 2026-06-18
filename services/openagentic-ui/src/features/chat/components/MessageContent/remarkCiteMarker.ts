@@ -9,7 +9,7 @@
  * inside backticks remain literal.
  */
 
-import { visit } from 'unist-util-visit';
+import { visit, SKIP } from 'unist-util-visit';
 import type { Plugin } from 'unified';
 import type { Root, Text, Parent } from 'mdast';
 
@@ -59,7 +59,7 @@ export const remarkCiteMarker: Plugin<[], Root> = () => {
       // Replace the original text node with the new sequence.
       // unsafe cast: the mdast types don't have a great union for this.
       parent.children.splice(index, 1, ...(out as unknown as typeof parent.children));
-      return [visit.SKIP, index + out.length];
+      return [SKIP, index + out.length];
     });
   };
 };

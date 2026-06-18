@@ -511,7 +511,11 @@ export function WidgetRenderer({
               // chart-kind widgets (which carry structured JSON data
               // server-side). SVG/HTML kinds have no tabular SoT to
               // export, so the item stays hidden for them.
-              kind === 'chart' || kind === 'arch_diagram' || kind === 'reactflow_arch'
+              // `kind` is narrowed to 'svg' | 'html' by this point (chart /
+              // arch_diagram / reactflow_arch branches return earlier), so this
+              // guard is effectively dead here; cast to string to keep the
+              // export-affordance condition intact without a TS2367 overlap error.
+              (kind as string) === 'chart' || (kind as string) === 'arch_diagram' || (kind as string) === 'reactflow_arch'
                 ? async () => {
                     try {
                       const parsed = JSON.parse(content);

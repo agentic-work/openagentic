@@ -27,7 +27,7 @@ export interface ModelBrowseModalProps {
   onClose: () => void
   providers: LlmProviderRow[] | undefined
   /** Existing registry rows — used to disable already-added entries. */
-  existingModels: ReadonlyArray<Pick<ModelRow, 'model' | 'providerName'>>
+  existingModels: ReadonlyArray<Pick<ModelRow, 'model' | 'provider'>>
   toast: ToastApi
 }
 
@@ -201,7 +201,7 @@ export const ModelBrowseModal: React.FC<ModelBrowseModalProps> = ({
   const existingKeys = React.useMemo(() => {
     const s = new Set<string>()
     for (const m of existingModels) {
-      if (m.providerName === providerName) s.add(m.model)
+      if (m.provider === providerName) s.add(m.model)
     }
     for (const id of justAdded) s.add(id)
     return s

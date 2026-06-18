@@ -122,11 +122,12 @@ export const CatalogPane: React.FC<CatalogPaneProps> = ({
         // B'-21: dense single-cell with model id + role + cost-per-1M
         // (when available) so operators can compare sticker prices
         // without opening the detail pane.
-        const inP = r.costPerToken?.prompt
-        const outP = r.costPerToken?.completion
+        // ModelRow carries cost as USD / 1k tokens; render as USD / 1M.
+        const inP = r.inputCostPer1k
+        const outP = r.outputCostPer1k
         const priceLine =
           typeof inP === 'number' && typeof outP === 'number'
-            ? `$${(inP * 1_000_000).toFixed(2)} in · $${(outP * 1_000_000).toFixed(2)} out per 1M`
+            ? `$${(inP * 1000).toFixed(2)} in · $${(outP * 1000).toFixed(2)} out per 1M`
             : null
         return (
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>

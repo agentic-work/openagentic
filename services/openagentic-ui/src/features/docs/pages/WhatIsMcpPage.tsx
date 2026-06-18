@@ -1,6 +1,6 @@
 // theme-allow: decorative gradient SVG illustration icons (multi-stop art glyphs).
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';
 
 // ============================================================================
@@ -92,7 +92,7 @@ const selectionDiagram: DiagramDefinition = {
 // ANIMATION VARIANTS
 // ============================================================================
 
-const sectionVariants = {
+const sectionVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: (i: number) => ({
     opacity: 1,

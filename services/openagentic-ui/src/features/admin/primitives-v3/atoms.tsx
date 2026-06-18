@@ -192,20 +192,29 @@ export const Toggle = ({
   on = false,
   onChange,
   label,
+  disabled = false,
 }: {
   on?: boolean
   onChange?: (next: boolean) => void
   label?: string
+  // `disabled` is honored: when set, click/keyboard toggling is suppressed and
+  // the control is reflected as disabled. Previously callers passed it but the
+  // prop wasn't typed; gating onChange behind it preserves the no-op-when-off
+  // intent without altering the enabled-state render path.
+  disabled?: boolean
 }) => (
   <span
     className="aw-tog"
     data-on={on || undefined}
+    data-disabled={disabled || undefined}
     role="switch"
     aria-checked={on}
+    aria-disabled={disabled || undefined}
     aria-label={label}
-    tabIndex={0}
-    onClick={() => onChange?.(!on)}
+    tabIndex={disabled ? -1 : 0}
+    onClick={() => { if (!disabled) onChange?.(!on) }}
     onKeyDown={(e) => {
+      if (disabled) return
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault()
         onChange?.(!on)
