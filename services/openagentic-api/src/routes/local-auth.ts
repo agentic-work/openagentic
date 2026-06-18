@@ -649,6 +649,20 @@ export const localAuthRoutes: FastifyPluginAsync = async (fastify) => {
 
       logger.info({ userId: user.id, email: user.email }, 'Password changed successfully');
 
+      // AU-2: audit the password change (best-effort; logAuthEvent swallows
+      // its own errors so it can't break the handler — and it NEVER records the
+      // password or hash, only that a change occurred + by whom).
+      await logAuthEvent({
+        event: 'password_change',
+        provider: 'local',
+        success: true,
+        userId: user.id,
+        userEmail: user.email,
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
+        detail: { isForcedChange: !!email },
+      });
+
       // If this was a forced password change, generate a token now
       if (email && !request.headers.authorization) {
         const token = jwt.sign(

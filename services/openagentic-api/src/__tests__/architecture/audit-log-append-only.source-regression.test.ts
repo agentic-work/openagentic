@@ -78,3 +78,37 @@ describe('arch: tool_call_audit_log is append-only', () => {
     expect(text).not.toMatch(/export\s+(async\s+)?function\s+delete/i);
   });
 });
+
+/**
+ * Source-regression: the SECONDARY audit trails are append-only too (FedRAMP
+ * AU-9, app-enforced). The boot path is `prisma db push`, which runs no DB
+ * triggers, so immutability is enforced by the ABSENCE of any update/delete
+ * code path — not by a trigger. These tables have zero mutation callsites
+ * today; this cage pins that so a future change can't silently make an audit
+ * record mutable or deletable. (DB-trigger migrations are intentionally NOT
+ * used — they would be inert under db push.)
+ */
+describe('arch: secondary audit logs are append-only (AU-9, app-enforced)', () => {
+  const SECONDARY_AUDIT_MODELS = [
+    'authAuditLog',       // auth_audit_log — login/logout/password_change/token
+    'flowAuditLog',       // flow_audit_log — workflow/flow governance
+    'credentialAuditLog', // credential_audit_log — provider/MCP/credential CRUD
+    'agentAuditLog',      // agent_audit_log — agent execution/actions
+    'webhookAuditLog',    // webhook_audit_logs — inbound webhook req/resp
+  ] as const;
+
+  for (const model of SECONDARY_AUDIT_MODELS) {
+    it(`${model} has NO .delete/.deleteMany/.update/.updateMany anywhere under src/`, () => {
+      const re = new RegExp(`\\b${model}\\.(delete|deleteMany|update|updateMany)\\b`);
+      const offenders: string[] = [];
+      for (const file of ALL_TS) {
+        if (file === __filename) continue; // this file names the patterns
+        if (re.test(readFileSync(file, 'utf8'))) offenders.push(relative(SRC_ROOT, file));
+      }
+      expect(
+        offenders,
+        `mutation of append-only audit table ${model} found in: ${offenders.join(', ')}`,
+      ).toEqual([]);
+    });
+  }
+});

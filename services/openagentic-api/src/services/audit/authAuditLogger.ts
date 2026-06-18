@@ -23,7 +23,8 @@ export type AuthEvent =
   | 'logout'
   | 'login_failed'
   | 'token_refresh'
-  | 'sso_login';
+  | 'sso_login'
+  | 'password_change';
 
 export interface AuthAuditEntry {
   /** The kind of auth event. */
