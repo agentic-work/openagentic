@@ -1,9 +1,9 @@
 # OpenAgentic — single-user OSS stack
 #
 # Quick start:
-#   cp .env.example .env
-#   docker compose up -d
-#   open http://localhost:3000
+#   cp .env.example .env   # then set the required secrets (or just run ./install.sh)
+#   docker compose --profile milvus up -d   # bare `up` crashes the api — Milvus is required at boot
+#   open http://localhost:8080
 #
 # First boot pulls the embedding model into Ollama (~270MB) before the API
 # becomes healthy. Plan ~3–5 min on first start; <30s thereafter.
