@@ -43,10 +43,12 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "mcpProxy") | nindent 6 }}
       containers:
         - name: mcp-proxy
           image: {{ .Values.image.registry }}/openagentic-mcp-proxy:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "mcpProxy") | nindent 10 }}
           ports:
             - containerPort: 8080
           envFrom:

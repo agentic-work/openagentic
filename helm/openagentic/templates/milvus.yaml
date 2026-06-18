@@ -49,10 +49,12 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "etcd") | nindent 6 }}
       containers:
         - name: etcd
           image: quay.io/coreos/etcd:v3.5.18
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "etcd") | nindent 10 }}
           command:
             - etcd
             - -advertise-client-urls=http://etcd:2379
@@ -133,10 +135,12 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "minio") | nindent 6 }}
       containers:
         - name: minio
           image: minio/minio:RELEASE.2024-12-18T13-15-44Z
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "minio") | nindent 10 }}
           args: ["server", "/data", "--console-address", ":9001"]
           env:
             - name: MINIO_ROOT_USER
@@ -214,6 +218,7 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "milvus") | nindent 6 }}
       # Milvus standalone aborts (SIGABRT / exit 134) if it starts before etcd +
       # minio are accepting connections, which showed as 'RESTARTS 1 / Error' on
       # a fresh cold boot. Gate startup on both deps so milvus comes up clean.
@@ -232,6 +237,7 @@ spec:
         - name: milvus
           image: {{ .Values.milvus.image }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "milvus") | nindent 10 }}
           args: ["milvus", "run", "standalone"]
           env:
             - name: ETCD_ENDPOINTS

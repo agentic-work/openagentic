@@ -61,6 +61,7 @@ spec:
         app: searxng
     spec:
       enableServiceLinks: false
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "searxng") | nindent 6 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -80,6 +81,7 @@ spec:
         - name: searxng
           image: {{ .Values.searxng.image }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "searxng") | nindent 10 }}
           ports:
             - containerPort: 8080
           env:

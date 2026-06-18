@@ -53,6 +53,7 @@ spec:
         app: postgres
     spec:
       enableServiceLinks: false
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "postgres") | nindent 6 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -61,6 +62,7 @@ spec:
         - name: postgres
           image: {{ .Values.postgres.image }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "postgres") | nindent 10 }}
           ports:
             - containerPort: 5432
           env:

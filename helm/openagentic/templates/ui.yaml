@@ -28,6 +28,7 @@ spec:
         app: ui
     spec:
       enableServiceLinks: false
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "ui") | nindent 6 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -40,6 +41,7 @@ spec:
         - name: ui
           image: {{ .Values.image.registry }}/openagentic-ui:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "ui") | nindent 10 }}
           ports:
             - containerPort: 80
           envFrom:

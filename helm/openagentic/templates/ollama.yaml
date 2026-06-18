@@ -42,6 +42,7 @@ spec:
         app: ollama
     spec:
       enableServiceLinks: false
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "ollama") | nindent 6 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -50,6 +51,7 @@ spec:
         - name: ollama
           image: ollama/ollama:latest
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "ollama") | nindent 10 }}
           ports:
             - containerPort: 11434
           env:

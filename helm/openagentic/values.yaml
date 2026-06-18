@@ -142,6 +142,61 @@ prometheus:
   persistence: false   # set true (+ storageSize) for a durable TSDB PVC
   storageSize: 8Gi
 
+# Container-level securityContext (CM-7 / AC-3 hardening baseline). Default =
+# maximally hardened; safe for ALL workloads because every override that must
+# run as root flips ONLY runAsNonRoot (the drop-ALL / noPrivEsc / seccomp trio
+# is always kept). Set securityContext: null (and podSecurityContext: null) to
+# fully disable — the templates then emit zero securityContext keys.
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false   # opt a workload INTO true via its override
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+  # Per-workload deltas (deep-merged OVER the defaults above).
+  overrides:
+    # --- app-node group ---
+    proxy:
+      readOnlyRootFilesystem: true   # distroless chainguard/node 65532, stateless
+    workflows:
+      runAsNonRoot: false            # image has no USER directive (root)
+    mcpProxy:
+      runAsNonRoot: false            # USER directive commented out (root)
+    ollama:
+      runAsNonRoot: false            # ollama/ollama:latest no USER directive (root)
+    # --- infra group ---
+    redis:
+      readOnlyRootFilesystem: true   # redis:7-alpine stateless here, no rootfs writes
+    etcd:
+      runAsNonRoot: false            # statically-linked, no USER directive (root)
+
+# Pod-level securityContext. Default carries seccomp + runAsNonRoot so the pod
+# admits under restricted PSA; overrides pin each image's real uid/gid and set
+# fsGroup so PVC-mounted data dirs are writable by that uid.
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+  overrides:
+    # --- app-node group ---
+    api:        { runAsUser: 1000, runAsGroup: 1000 }                 # node uid 1000 (chowned dirs)
+    ui:         { runAsUser: 1001, runAsGroup: 1001 }                 # agentic uid 1001
+    proxy:      { runAsUser: 65532, runAsGroup: 65532 }               # distroless nonroot
+    workflows:  { runAsNonRoot: false }                              # must agree w/ container-level
+    mcpProxy:   { runAsNonRoot: false }
+    ollama:     { runAsNonRoot: false }
+    # --- infra group ---
+    postgres:   { runAsUser: 999, runAsGroup: 999, fsGroup: 999 }     # postgres uid 999 + PVC
+    redis:      { runAsUser: 999, runAsGroup: 999 }                   # redis uid 999, no PVC
+    searxng:    { runAsUser: 977, runAsGroup: 977, fsGroup: 977 }     # searxng image uid 977
+    etcd:       { runAsNonRoot: false }                              # root by default; relax pod-level too
+    minio:      { runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000 }  # minio uid 1000 + PVC
+    milvus:     { runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000 }  # milvus runtime uid + PVC
+    prometheus: { runAsUser: 65534, runAsGroup: 65534, fsGroup: 65534 } # nobody uid 65534 + TSDB PVC
+
 # Node placement. Empty = schedule anywhere. Set kubernetes.io/arch when
 # your images are single-arch and the cluster is mixed amd64/arm64.
 nodeSelector: {}

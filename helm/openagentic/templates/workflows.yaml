@@ -28,6 +28,7 @@ spec:
         app: workflows
     spec:
       enableServiceLinks: false
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "workflows") | nindent 6 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -64,6 +65,7 @@ spec:
         - name: workflows
           image: {{ .Values.image.registry }}/openagentic-workflows:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "workflows") | nindent 10 }}
           ports:
             - containerPort: 3400
           envFrom:

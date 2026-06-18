@@ -59,6 +59,7 @@ spec:
         app: prometheus
     spec:
       enableServiceLinks: false
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "prometheus") | nindent 6 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -66,6 +67,7 @@ spec:
       containers:
         - name: prometheus
           image: prom/prometheus:v2.54.1
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "prometheus") | nindent 10 }}
           args:
             - --config.file=/etc/prometheus/prometheus.yml
             - --storage.tsdb.path=/prometheus

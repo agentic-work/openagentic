@@ -22,3 +22,37 @@ imagePullSecrets:
 {{ toYaml . | indent 8 }}
 {{- end }}
 {{- end -}}
+
+{{/* POD-level securityContext for spec.template.spec. dict: root, name */}}
+{{- define "openagentic.podSecurityContext" -}}
+{{- $base := .root.Values.podSecurityContext | default dict -}}
+{{- $ovr := dict -}}
+{{- with .root.Values.podSecurityContext -}}
+{{- with .overrides -}}
+{{- $ovr = (index . $.name | default dict) -}}
+{{- end -}}
+{{- end -}}
+{{- $defaults := omit $base "overrides" -}}
+{{- $merged := mustMergeOverwrite (deepCopy $defaults) $ovr -}}
+{{- if $merged -}}
+securityContext:
+{{- toYaml $merged | nindent 2 }}
+{{- end -}}
+{{- end -}}
+
+{{/* CONTAINER-level securityContext for a container. dict: root, name */}}
+{{- define "openagentic.securityContext" -}}
+{{- $base := .root.Values.securityContext | default dict -}}
+{{- $ovr := dict -}}
+{{- with .root.Values.securityContext -}}
+{{- with .overrides -}}
+{{- $ovr = (index . $.name | default dict) -}}
+{{- end -}}
+{{- end -}}
+{{- $defaults := omit $base "overrides" -}}
+{{- $merged := mustMergeOverwrite (deepCopy $defaults) $ovr -}}
+{{- if $merged -}}
+securityContext:
+{{- toYaml $merged | nindent 2 }}
+{{- end -}}
+{{- end -}}

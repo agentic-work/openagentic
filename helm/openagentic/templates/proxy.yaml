@@ -29,6 +29,7 @@ spec:
         app: proxy
     spec:
       enableServiceLinks: false
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "proxy") | nindent 6 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -41,6 +42,7 @@ spec:
         - name: proxy
           image: {{ .Values.image.registry }}/openagentic-proxy:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "proxy") | nindent 10 }}
           ports:
             - containerPort: 3300
           envFrom:
