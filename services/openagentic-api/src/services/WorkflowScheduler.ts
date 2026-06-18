@@ -288,6 +288,7 @@ export class WorkflowScheduler {
               is_active: true,
               created_by: true,
               definition: true,
+              tenant_id: true,
               deleted_at: true,
               versions: {
                 where: { is_active: true },
@@ -422,11 +423,14 @@ export class WorkflowScheduler {
     }, '[WorkflowScheduler] Triggering scheduled workflow execution');
 
     // Execute workflow (fire-and-forget).
-    // Task 1.3 (V3 Enterprise Chatmode S5): no JWT here (scheduler runs out
-    // of band), so tenantId comes from the workflow row's tenant_id. The
-    // wrapper fail-CLOSES if the column is null/empty — surfaces as a
-    // schedule-level error rather than a silent cross-tenant write.
-    const tenantId = (workflow as any).tenant_id || null;
+    // No JWT here (the scheduler runs out of band), so tenantId comes from the
+    // workflow row's tenant_id. executeViaWorkflowsService fail-CLOSES on a
+    // null/empty tenantId — but a chat-authored workflow persists tenant_id=null,
+    // which made every scheduler tick error (0 nodes run). OSS is single-tenant
+    // (local-auth), so fall back to the implicit 'default' tenant (the same
+    // pattern tool-execution.helper uses) instead of the upstream's
+    // owner.azure_tenant_id (enterprise multi-tenant — stripped here).
+    const tenantId = (workflow as any).tenant_id || 'default';
 
     // Scheduled runs have no inbound user token (the scheduler runs out of
     // band). CSP MCP tools invoked by the flow authenticate to the cloud via
