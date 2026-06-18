@@ -17,7 +17,7 @@ data:
           - ahmia
           - torch
     server:
-      secret_key: {{ .Values.secrets.signingSecret | quote }}
+      secret_key: {{ required "secrets.signingSecret is required — run `./install.sh --helm` or pass -f with an `openssl rand -hex 32` value" .Values.secrets.signingSecret | quote }}
       limiter: false
       image_proxy: false
     search:

@@ -22,16 +22,22 @@ image:
 imagePullSecrets: []
 #  - name: harbor-creds
 
-# Shared secrets. CHANGE THESE for any non-demo deployment.
+# Shared secrets. These MUST be set for ANY install — NO weak defaults ship
+# here. The chart templates `required`-guard each one, so an unset value fails
+# `helm install` fast (mirroring docker-compose's ${VAR:?...} fail-fast). Either:
+#   • run  ./install.sh --helm   — generates strong random secrets, persists
+#     them to ~/.openagentic/helm-secrets.yaml, and reuses them on upgrade; or
+#   • supply your own overlay:   helm install ... -f my-secrets.yaml
+#     (generate each value with:  openssl rand -hex 32).
 secrets:
-  postgresPassword: openagentic-dev-pg-pass
-  jwtSecret: openagentic-dev-jwt-secret-change-me
-  signingSecret: openagentic-dev-signing-secret-change-me
-  internalApiKey: openagentic-dev-internal-key-change-me
-  frontendSecret: dev-frontend-secret-change-me
-  # First-boot admin seed (created once).
+  postgresPassword: ""
+  jwtSecret: ""
+  signingSecret: ""
+  internalApiKey: ""
+  frontendSecret: ""
+  # First-boot admin seed (created once). Email may stay; password MUST be set.
   adminEmail: admin@openagentic.local
-  adminPassword: changeme-on-first-login
+  adminPassword: ""
   # Optional AWS creds for a Bedrock provider (Claude on Bedrock). Leave empty
   # to skip; set in your overlay to enable Sonnet/Opus via Bedrock.
   awsAccessKeyId: ""
