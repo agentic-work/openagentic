@@ -38,6 +38,9 @@ export interface BuildBedrockClaudeBodyOptions {
    * profiles (Sonnet 4.x family). Provider-config decision. */
   supportsThinking?: boolean;
   thinkingBudgetTokens?: number;
+  /** #cap-sync — thinking wire shape: 'adaptive' (Opus 4.7/4.8, no budget) vs
+   *  'enabled' (≤ Opus 4.6, fixed budget). Threaded to buildAnthropicWireBody. */
+  thinkingMode?: 'enabled' | 'adaptive';
   /**
    * Sev-1 #794 — model's real output ceiling (registry-row or
    * inferMaxOutputTokens). Threaded through to
@@ -59,6 +62,7 @@ export function buildBedrockClaudeBody(
     model: 'bedrock-placeholder', // stripped below
     parallelOn: opts.parallelOn,
     supportsThinking: opts.supportsThinking,
+    thinkingMode: opts.thinkingMode,
     thinkingBudgetTokens: opts.thinkingBudgetTokens,
     modelOutputCap: opts.modelOutputCap,
   }) as Record<string, unknown>;

@@ -55,6 +55,10 @@ import {
 // route through this helper now; non-Claude branches (Llama/Nova/Titan)
 // still use the in-class converter (separate Phase 0.4 commit).
 import { buildBedrockClaudeBody } from './aws/buildBedrockClaudeBody.js';
+// #cap-sync (2026-06-16) — the registry is the single source of truth for the
+// thinking wire shape (adaptive vs enabled+budget). The provider reads it
+// instead of a second inline model regex.
+import { getModelCapabilityRegistry } from '../ModelCapabilityRegistry.js';
 
 /**
  * Per-call caller context used for user-scoped credential resolution.
@@ -766,7 +770,23 @@ export class AWSBedrockProvider extends BaseLLMProvider {
           /claude-(opus|sonnet|haiku)-4-/.test(currentModelId.toLowerCase()) ||
           currentModelId.toLowerCase().includes('claude-3-7-sonnet')
         );
-      const thinkingBudget = supportsThinking
+      // #cap-sync (2026-06-16) — the registry is the SINGLE source of truth for
+      // the thinking WIRE shape. Opus 4.7/4.8 + Fable 5 are adaptive-only
+      // (`{type:'enabled', budget_tokens}` 400s); ≤ Opus 4.6 / Sonnet 4.6 use
+      // the legacy fixed budget. Read `thinkingCapabilities.thinkingMode` off
+      // the resolved registry row instead of a second inline regex.
+      const thinkingMode: 'enabled' | 'adaptive' = (() => {
+        try {
+          const reg = getModelCapabilityRegistry();
+          const mode = reg?.getCapabilities(currentModelId)?.thinkingCapabilities?.thinkingMode;
+          return mode === 'adaptive' ? 'adaptive' : 'enabled';
+        } catch {
+          return 'enabled';
+        }
+      })();
+      // Adaptive mode carries no budget — leave it undefined so the wire helper
+      // skips the budget-floor on max_tokens.
+      const thinkingBudget = supportsThinking && thinkingMode === 'enabled'
         ? parseInt(process.env.BEDROCK_THINKING_BUDGET_TOKENS || '4096', 10)
         : undefined;
       // Sev-1 #794 (2026-05-13) — model's real output-token ceiling.
@@ -786,6 +806,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
         ? buildBedrockClaudeBody(request, {
             parallelOn: true, // Bedrock-Claude defaults to parallel-on
             supportsThinking,
+            thinkingMode,            // #cap-sync — adaptive for Opus 4.7/4.8
             thinkingBudgetTokens: thinkingBudget,
             modelOutputCap,
           })
@@ -2817,6 +2838,14 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     if (modelId.includes('claude-opus-4-6') || modelId.includes('claude-sonnet-4-6')) return 128000;
     if (modelId.includes('claude') && modelId.includes('4-5')) return 128000;
     if (modelId.includes('claude') && (modelId.includes('4-1') || modelId.includes('4-20'))) return 128000;
+    // Opus 4.7 / 4.8 (and any future 4.7+/4.8+) — 128K output, matching the
+    // ModelCapabilityRegistry rows for these ids. Without this they fell
+    // through to the 8192 catch-all below, became the wire modelOutputCap
+    // floor, and TRUNCATED large artifacts (Bedrock stop_reason:max_tokens).
+    // #cap-sync 2026-06-16. (Upstream additionally consults the registry first;
+    // we keep this pattern table authoritative — the registry row and this line
+    // both return 128000, so they agree, and the table needs no live registry.)
+    if (modelId.includes('claude') && (modelId.includes('4-7') || modelId.includes('4-8'))) return 128000;
     if (modelId.includes('claude-3-7')) return 128000;
     if (modelId.includes('claude-3-5')) return 8192;
     if (modelId.includes('claude-3')) return 4096;

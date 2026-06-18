@@ -48,6 +48,18 @@ export interface BuildAnthropicWireBodyOptions {
   supportsThinking?: boolean;
   thinkingBudgetTokens?: number;
   /**
+   * #cap-sync (2026-06-16) — the Anthropic thinking WIRE shape this model
+   * accepts. Opus 4.7/4.8 + Fable 5 REJECT `{type:'enabled', budget_tokens}`
+   * with a 400 and require `{type:'adaptive'}` (depth via `effort`, no budget).
+   * Sourced from the ModelCapabilityRegistry row's
+   * `thinkingCapabilities.thinkingMode`. Defaults to `'enabled'` (legacy
+   * fixed-budget) when unset, so ≤ Opus 4.6 / Sonnet 4.6 are unchanged.
+   * When `'adaptive'`, `thinkingBudgetTokens` is ignored (there is no budget),
+   * the budget-floor on `max_tokens` is NOT applied, and the wire emits
+   * `thinking: { type: 'adaptive' }`.
+   */
+  thinkingMode?: 'enabled' | 'adaptive';
+  /**
    * Sev-1 #794 (2026-05-13) — model's real output-token ceiling (per the
    * registry row's `max_tokens` column OR the provider's
    * inferMaxOutputTokens helper). When the caller did NOT supply
@@ -123,8 +135,14 @@ export function buildAnthropicWireBody(
   // Compute a floor that guarantees strict inequality plus reserved output
   // headroom. Caller-supplied max_tokens is honored only when already above
   // the floor.
-  const thinkingWillBeAttached = !!(opts.supportsThinking && opts.thinkingBudgetTokens);
-  const thinkingFloor = thinkingWillBeAttached
+  // #cap-sync — adaptive mode has NO budget_tokens, so the budget-floor on
+  // max_tokens does not apply (it exists only to keep max_tokens strictly
+  // above the fixed budget). The temperature=1 constraint still applies to
+  // both modes (any thinking on Anthropic requires temperature 1).
+  const adaptiveThinking = opts.thinkingMode === 'adaptive';
+  const enabledBudgetThinking = !adaptiveThinking && !!(opts.supportsThinking && opts.thinkingBudgetTokens);
+  const thinkingWillBeAttached = !!(opts.supportsThinking && (adaptiveThinking || opts.thinkingBudgetTokens));
+  const thinkingFloor = enabledBudgetThinking
     ? (opts.thinkingBudgetTokens as number) + RESERVED_OUTPUT_TOKENS_WHEN_THINKING
     : 0;
 
@@ -206,12 +224,18 @@ export function buildAnthropicWireBody(
   //         §"Forcing tool use" — extended thinking note.
   const forcedToolChoice =
     wire.tool_choice?.type === 'any' || wire.tool_choice?.type === 'tool';
-  if (opts.supportsThinking && opts.thinkingBudgetTokens && !forcedToolChoice) {
+  if (adaptiveThinking && opts.supportsThinking && !forcedToolChoice) {
+    // #cap-sync — Opus 4.7/4.8 + Fable 5: adaptive thinking is the ONLY
+    // accepted on-mode. `{type:'enabled', budget_tokens}` 400s here. No
+    // budget_tokens field — depth is controlled by `effort` (set elsewhere).
+    body.thinking = { type: 'adaptive' as const };
+  } else if (enabledBudgetThinking && !forcedToolChoice) {
+    // ≤ Opus 4.6 / Sonnet 4.6: legacy fixed-budget extended thinking.
     body.thinking = {
       type: 'enabled' as const,
-      budget_tokens: opts.thinkingBudgetTokens,
+      budget_tokens: opts.thinkingBudgetTokens as number,
     };
-  } else if (opts.supportsThinking && opts.thinkingBudgetTokens && forcedToolChoice) {
+  } else if (opts.supportsThinking && (adaptiveThinking || opts.thinkingBudgetTokens) && forcedToolChoice) {
     // Log the strip for observability (matches SDK adapter debug line).
     // eslint-disable-next-line no-console
     console.debug(
