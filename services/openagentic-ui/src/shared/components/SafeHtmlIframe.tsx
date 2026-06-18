@@ -11,8 +11,8 @@
  *   - Inline CSP <meta http-equiv="Content-Security-Policy"> caps script
  *     execution to a per-render nonce so injected <script> tags without
  *     the nonce are blocked at the parser layer.
- *   - connect-src is locked to the chat-dev origin so a malicious
- *     payload can't exfiltrate via fetch/XHR/WebSocket.
+ *   - connect-src 'none' — untrusted rendered HTML gets NO outbound network
+ *     (fetch/XHR/WebSocket), so a malicious payload can't exfiltrate.
  *
  * Used by S6 to replace the previous `dangerouslySetInnerHTML={{ __html:
  * envelope.content }}` in ExecutionResultsPanel — workflow tool outputs
@@ -105,7 +105,7 @@ export function SafeHtmlIframe({
       `style-src 'nonce-${effectiveNonce}' 'unsafe-inline'`,
       "img-src data: https:",
       "font-src data:",
-      "connect-src https://chat.example.com",
+      "connect-src 'none'",
     ].join('; ');
 
     // Inject the nonce into every <script> tag so legitimate inline JS

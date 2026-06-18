@@ -1,7 +1,7 @@
 header:
   license:
     spdx-id: Apache-2.0
-    copyright-owner: Gnomus.ai
+    copyright-owner: Agenticwork™ LLC
     copyright-year: 2026
     content: |
       Copyright {{.Year}} {{.Holder}}
