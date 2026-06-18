@@ -207,9 +207,9 @@ jobs:
       # Publish via npm Trusted Publishing (OIDC) — no long-lived token. The job's
       # id-token: write permission (above) lets npm authenticate from this workflow;
       # provenance is attached automatically. Requires a Trusted Publisher to be
-      # configured on the @agenticwork/setup package settings on npmjs.com pointing
+      # configured on the @openagentic/setup package settings on npmjs.com pointing
       # at agentic-work/openagentic · build-and-push.yml. Needs npm >= 11.5.1.
-      - name: Build and publish @agenticwork/setup (Trusted Publishing / OIDC)
+      - name: Build and publish @openagentic/setup (Trusted Publishing / OIDC)
         working-directory: tools/setup
         run: |
           npm install -g npm@latest           # node 22 ships npm 10.x; OIDC needs >= 11.5.1

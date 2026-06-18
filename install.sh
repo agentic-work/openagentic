@@ -516,7 +516,7 @@ if [[ "$MODE" == "wizard" ]]; then
     fi
   else
     # End-user path: run from the published npm package — no source on disk
-    WIZARD_PKG="@agenticwork/setup"
+    WIZARD_PKG="@openagentic/setup"
     WIZARD_VERSION="${VERSION#v}"
     [[ "$WIZARD_VERSION" == "latest" || -z "$WIZARD_VERSION" ]] && WIZARD_VERSION=""
     PKG_REF="${WIZARD_PKG}${WIZARD_VERSION:+@${WIZARD_VERSION}}"
