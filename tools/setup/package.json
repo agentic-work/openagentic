@@ -1,6 +1,6 @@
 {
   "name": "@agenticwork/openagentic",
-  "version": "1.0.2",
+  "version": "1.0.0",
   "type": "module",
   "bin": {
     "openagentic-setup": "dist/index.js"

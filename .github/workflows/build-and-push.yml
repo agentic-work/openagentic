@@ -14,6 +14,15 @@ on:
         description: 'Extra image tag (optional)'
         required: false
         default: ''
+      wizard_version:
+        description: 'Publish the wizard at this npm version without a git tag (e.g. 1.0.0-rc.0). Empty = skip.'
+        required: false
+        default: ''
+      wizard_dry_run:
+        description: 'Validate the wizard publish without actually publishing'
+        type: boolean
+        required: false
+        default: true
 
 env:
   REGISTRY: ghcr.io
@@ -218,6 +227,41 @@ jobs:
         run: |
           V="${GITHUB_REF_NAME#v}"
           npm ci --silent
-          npm version "$V" --no-git-tag-version
+          npm version "$V" --no-git-tag-version --allow-same-version
           npm run build
           npm publish --access public
+
+  # ── Manual wizard publish (no git tag needed) ───────────────────────────────
+  # Test or hand-publish @agenticwork/openagentic from the Actions tab WITHOUT
+  # cutting a release tag. Run the workflow (Run workflow ▸) with wizard_version
+  # set (e.g. 1.0.0-rc.0). wizard_dry_run=true (the default) VALIDATES the publish
+  # without pushing — use it to prove the token + scope + build before a real cut.
+  # Set wizard_dry_run=false to actually publish that version.
+  manual-wizard-publish:
+    name: Manual wizard publish (@agenticwork/openagentic)
+    runs-on: openagentic-runners
+    if: github.event_name == 'workflow_dispatch' && inputs.wizard_version != ''
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Build + (dry-run) publish
+        working-directory: tools/setup
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm ci --silent
+          npm version "${{ inputs.wizard_version }}" --no-git-tag-version --allow-same-version
+          npm run build
+          if [ "${{ inputs.wizard_dry_run }}" = "true" ]; then
+            echo "DRY RUN — validating publish of @agenticwork/openagentic@${{ inputs.wizard_version }} (not pushing)"
+            npm publish --access public --dry-run
+          else
+            npm publish --access public
+          fi
