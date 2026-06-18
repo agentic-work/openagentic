@@ -209,9 +209,9 @@ jobs:
       # with ${NODE_AUTH_TOKEN}. The @openagentic scope must exist on npmjs and
       # the token must hold publish rights to it. (Trusted Publishing / OIDC is
       # the token-less alternative, but it needs a per-package Trusted Publisher
-      # configured on npmjs.com for @openagentic/setup; the token path works
+      # configured on npmjs.com for @agenticwork/openagentic; the token path works
       # without that per-package setup.)
-      - name: Build and publish @openagentic/setup (npm token)
+      - name: Build and publish @agenticwork/openagentic (npm token)
         working-directory: tools/setup
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

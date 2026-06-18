@@ -1,5 +1,5 @@
 {
-  "name": "@openagentic/setup",
+  "name": "@agenticwork/openagentic",
   "version": "1.0.2",
   "type": "module",
   "bin": {
