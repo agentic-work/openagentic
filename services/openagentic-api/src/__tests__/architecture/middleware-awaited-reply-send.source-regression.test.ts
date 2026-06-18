@@ -8,14 +8,15 @@
  * Fix: every `reply.code(N).send(...)` and `reply.status(N).send(...)` call
  * inside a preHandler / auth hook MUST be preceded by `await`.
  *
- * This test reads each of the 6 affected middleware files as text and
- * asserts zero unawaited occurrences.
+ * This test reads EVERY middleware file in src/middleware as text and
+ * asserts zero unawaited occurrences (the file list is scanned dynamically
+ * so a renamed/added middleware can never silently escape the guard).
  *
  * Run from any CWD; paths are resolved relative to this file's __dirname.
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 
@@ -26,13 +27,12 @@ const __dirname = dirname(__filename);
 const REPO_ROOT = resolve(__dirname, '../../../../..');
 const MIDDLEWARE_DIR = join(REPO_ROOT, 'services/openagentic-api/src/middleware');
 
-const FILES = [
-  'authenticate.ts',
-  'authorization.ts',
-  'mcp-auth.ts',
-  'rateLimiter.ts',
-  'security.ts',
-] as const;
+// Scan EVERY middleware file dynamically rather than a hardcoded list — a stale
+// list silently rots (a renamed/removed file either ENOENT-fails the test or, worse,
+// stops being scanned) and a newly-added middleware would escape the guard entirely.
+const FILES = readdirSync(MIDDLEWARE_DIR)
+  .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts') && !f.endsWith('.d.ts'))
+  .sort();
 
 /**
  * Detect violations: `reply.code(N).send(...)` or `reply.status(N).send(...)`
