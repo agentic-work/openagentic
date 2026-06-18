@@ -46,8 +46,10 @@ export interface ChatModelRouter {
  *                         step 4 is the FALLBACK (router produced no valid
  *                         pick / errored / absent), not an override.
  *                         A deliberate capability REFUSAL the router throws
- *                         (NO_T3_MODEL_IN_REGISTRY / No models available) is
- *                         propagated — never downgraded to the cheap default.
+ *                         (NO_T3_MODEL_IN_REGISTRY / No models available /
+ *                         NO_VISION_MODEL on an image turn with no vision
+ *                         model) is propagated — never downgraded to the
+ *                         cheap default.
  *   4. ModelConfigurationService.getDefaultChatModel() — DB-backed default
  *                         (fallback when the router yields no valid pick)
  *   5. 'default'        — emergency sentinel if all the above fail
@@ -59,6 +61,20 @@ export async function resolveChatModel(params: {
   message?: string;
   /** Tools array — passed to SmartModelRouter so analysis.hasTools is set. */
   tools?: any[];
+  /**
+   * VISION (sev1): true when THIS turn carries an image/* attachment. The
+   * SmartModelRouter keys vision detection (`analyzeRequest`) on an ARRAY
+   * content block with `type:'image_url'`. The synthetic router request we
+   * build below otherwise sends `content` as a plain STRING, so the router
+   * computes requiresVision=false on every turn and its vision candidate
+   * filter is dead code on the chat path — an image-only prompt routes by
+   * FCA/cost to the default chat model (which may be vision:false). When this
+   * is set, we shape the user content as an array including an image_url part
+   * so the router narrows candidates to vision-capable models. We do NOT pass
+   * the raw bytes here (the router only needs the SHAPE for analysis); the
+   * actual image bytes flow to the provider via runChat's `attachments`.
+   */
+  hasVision?: boolean;
   /** Optional SmartModelRouter dep. When absent, falls back to DB default. */
   smartRouter?: ChatModelRouter | null;
   /**
@@ -80,9 +96,29 @@ export async function resolveChatModel(params: {
   // winner) is intentionally discarded so the DB default in step 4 wins.
   if (params.smartRouter) {
     try {
+      // VISION (sev1): when the turn carries an image attachment, the user
+      // content MUST be an ARRAY containing an `image_url` part so
+      // SmartModelRouter.analyzeRequest sets requiresVision=true and its
+      // vision candidate filter narrows to vision-capable models. A plain
+      // string (the prior shape) made requiresVision=false on every turn.
+      // The bytes aren't needed for routing — only the structural shape — so
+      // we use a tiny placeholder data URL. The real image bytes are attached
+      // to the provider call downstream via runChat's `attachments`.
+      const userContent: any = params.hasVision
+        ? [
+            ...(params.message ? [{ type: 'text', text: params.message }] : []),
+            {
+              type: 'image_url',
+              image_url: { url: 'data:image/*;routing-shape-only' },
+            },
+          ]
+        : params.message;
       const decision = await params.smartRouter.routeRequest(
         {
-          messages: params.message ? [{ role: 'user', content: params.message }] : [],
+          messages:
+            params.hasVision || params.message
+              ? [{ role: 'user', content: userContent }]
+              : [],
           tools: params.tools ?? [],
         },
         undefined,
@@ -106,7 +142,10 @@ export async function resolveChatModel(params: {
       // used to swallow this and re-admit the very gpt-oss:20b the T3 gate
       // refused, then the turn died on a doomed cheap-model dispatch).
       const msg = err instanceof Error ? err.message : String(err);
-      if (/NO_T3_MODEL_IN_REGISTRY|No models available for routing/i.test(msg)) {
+      // NO_VISION_MODEL (image turn, no vision model) MUST also surface rather
+      // than degrade to the DB chat default — falling through would route the
+      // image to a BLIND model that silently ignores it and hallucinates.
+      if (/NO_T3_MODEL_IN_REGISTRY|No models available for routing/i.test(msg) || /NO_VISION_MODEL/.test(msg)) {
         throw err;
       }
       // Transient failure (timeout / Milvus blip / unexpected throw) — fall

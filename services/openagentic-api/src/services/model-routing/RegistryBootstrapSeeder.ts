@@ -222,6 +222,15 @@ export async function seedRegistryFromHelm(
   if (seed.defaults.vision) {
     roleEntries.push({ role: 'vision', model: seed.defaults.vision });
   }
+  // 'imageGen' ← seed.defaults.imageGen (added 2026-06-17 — sev0: without an
+  // imageGen role row + default_models.imageGen, the chat generate_image tool
+  // resolves request.model=undefined → ProviderManager skips the registry
+  // short-circuit and the legacy capability scan finds no image model → throws
+  // before any provider call). The role spelling 'imageGen' matches
+  // ProviderManager's imageGeneration capability filter.
+  if (seed.defaults.imageGen) {
+    roleEntries.push({ role: 'imageGen', model: seed.defaults.imageGen });
+  }
   if (seed.defaults.embedding) {
     roleEntries.push({ role: 'embedding', model: seed.defaults.embedding });
   }
@@ -345,6 +354,27 @@ export async function seedRegistryFromHelm(
     prevHash = (eventResult as any)?.hash ?? newHash;
   }
 
+  // ── 6b. Seed default_models.imageGen ───────────────────────────────────
+  // The chat generate_image path resolves its model id ONLY from the
+  // system_configuration['default_models'].imageGen field (runChat.ts via
+  // defaultModelsAdmin.getDefaults) — NOT from a role row. Unlike
+  // chat/code/embedding (which the Smart Router resolves via the role rows we
+  // just seeded), image-gen has no router; without this entry request.model is
+  // undefined and ProviderManager's registry short-circuit is skipped. Write
+  // it here, preserving any admin-set value (admin wins) and only filling the
+  // imageGen slot the bootstrap owns. Best-effort: a failure here is non-fatal
+  // (the role row above is still written; admin can wire the default via UI).
+  if (seed.defaults.imageGen) {
+    try {
+      await ensureDefaultImageModel(prisma, seed.defaults.imageGen, log);
+    } catch (dmErr) {
+      log.warn(
+        { error: dmErr instanceof Error ? dmErr.message : dmErr, model: seed.defaults.imageGen },
+        '[RegistryBootstrapSeeder] default_models.imageGen seed failed (non-fatal) — admin can set via UI',
+      );
+    }
+  }
+
   // ── 7. Mark version as applied ─────────────────────────────────────────
   await markSeederVersion(prisma, currentVersion);
 
@@ -354,6 +384,61 @@ export async function seedRegistryFromHelm(
   );
 
   return { applied, skipped, versionBumped: true };
+}
+
+/**
+ * Upsert system_configuration['default_models'].imageGen to the bootstrap
+ * image model id, WITHOUT clobbering any admin-set imageGen or sibling
+ * (chat/code/embedding/vision) fields. The chat generate_image path reads this
+ * row directly (defaultModelsAdmin.getDefaults) to populate request.model, so
+ * it must exist for the ProviderManager registry short-circuit to fire.
+ *
+ * Bootstrap ownership rule: only fill the imageGen slot when it's currently
+ * unset (null/empty) — an admin who already chose an image model wins. All
+ * other fields are passed through untouched.
+ */
+async function ensureDefaultImageModel(
+  prisma: any,
+  imageModelId: string,
+  log: { info(o: any, m?: string): void; warn(o: any, m?: string): void },
+): Promise<void> {
+  const existing = await prisma.systemConfiguration.findUnique({
+    where: { key: 'default_models' },
+  });
+  const current = (existing?.value && typeof existing.value === 'object'
+    ? existing.value
+    : {}) as Record<string, unknown>;
+
+  const adminImageGen =
+    typeof current.imageGen === 'string' && current.imageGen.trim() !== ''
+      ? (current.imageGen as string)
+      : null;
+
+  if (adminImageGen) {
+    log.info(
+      { existing: adminImageGen, bootstrap: imageModelId },
+      '[RegistryBootstrapSeeder] default_models.imageGen already set (admin wins) — leaving untouched',
+    );
+    return;
+  }
+
+  const next = { ...current, imageGen: imageModelId };
+
+  await prisma.systemConfiguration.upsert({
+    where: { key: 'default_models' },
+    create: {
+      key: 'default_models',
+      value: next,
+      description: 'Tenant-default model per mode. imageGen seeded by RegistryBootstrapSeeder; editable via admin UI.',
+      is_active: true,
+    },
+    update: { value: next, is_active: true },
+  });
+
+  log.info(
+    { model: imageModelId },
+    '[RegistryBootstrapSeeder] default_models.imageGen seeded — chat generate_image can now resolve request.model',
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -382,6 +467,13 @@ function buildCapabilities(role: string, isEmbedding: boolean): Record<string, b
     // Ollama; admins point this at a different multimodal tag via the helm
     // values if they prefer (e.g. llama3.2-vision:11b).
     return normalizeAddModelCapabilities({ chat: true, vision: true, tools: true, streaming: true }) as unknown as Record<string, boolean | undefined>;
+  }
+  if (role === 'imageGen') {
+    // Image-generation role is image-OUT only (text-to-image): chat=false so
+    // normalizeAddModelCapabilities classifies it image-only and pins
+    // imageGeneration=true. This is the capability ProviderManager.generateImage
+    // filters on and what feeds modelToProviderMap for the registry short-circuit.
+    return normalizeAddModelCapabilities({ chat: false, imageGeneration: true }) as unknown as Record<string, boolean | undefined>;
   }
   return normalizeAddModelCapabilities({ chat: true }) as unknown as Record<string, boolean | undefined>;
 }

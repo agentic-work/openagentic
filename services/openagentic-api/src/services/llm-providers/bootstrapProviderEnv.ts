@@ -33,6 +33,18 @@ export interface BootstrapProviderDefaults {
    * vision-capable entry without a manual Add-Model step post-deploy.
    */
   vision: string | null;
+  /**
+   * Image-generation model id. Operator sets this in helm values when the
+   * bootstrap provider ships an image-capable model (e.g. an AWS Bedrock
+   * Nova/Titan image model, or a Vertex Imagen model). RegistryBootstrapSeeder
+   * writes a role='imageGen' row (capabilities.imageGeneration=true) AND the
+   * default_models.imageGen entry when this is non-null — without it the chat
+   * `generate_image` tool has no model to resolve and ProviderManager throws
+   * "No providers with image generation capability are configured" before any
+   * provider call. NO literal model id lives in business logic — the id is
+   * operator-supplied here.
+   */
+  imageGen: string | null;
   embedding: string | null;
   embeddingDimension: number | null;
 }
@@ -49,6 +61,7 @@ const EMPTY_DEFAULTS: BootstrapProviderDefaults = {
   chat: null,
   codemode: null,
   vision: null,
+  imageGen: null,
   embedding: null,
   embeddingDimension: null,
 };
@@ -85,6 +98,7 @@ function parseDefaults(input: string | undefined): BootstrapProviderDefaults {
     chat: pickStr('chat'),
     codemode: pickStr('codemode'),
     vision: pickStr('vision'),
+    imageGen: pickStr('imageGen'),
     embedding: pickStr('embedding'),
     embeddingDimension,
   };

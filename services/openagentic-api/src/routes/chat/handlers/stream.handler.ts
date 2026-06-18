@@ -448,6 +448,12 @@ export interface ChatStreamHandlerDeps {
     message: string;
     user: any;
     requestedModel?: string;
+    // VISION (sev1): true when THIS turn carries an image/* attachment. Lets
+    // resolveChatModel shape the synthetic router request as an array with an
+    // image_url block so SmartModelRouter.analyzeRequest sets
+    // requiresVision=true and narrows to vision-capable models. Without it an
+    // image turn routes by FCA/cost to a (possibly vision:false) default.
+    hasVision?: boolean;
   }) => Promise<string>;
   /**
    * Optional: load prior conversation turns for this session so the model
@@ -1436,11 +1442,21 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
         // Resolve model id via Smart Router (or admin override).
         let v2Model: string;
         try {
+          // VISION (sev1): detect an image-bearing turn so pickModel can steer
+          // the router to a vision-capable model. Keys on attachment mimeType
+          // (the hydrated shape sets `mimeType`); `image/*` ⇒ vision.
+          const turnHasVision =
+            Array.isArray(chatRequest.attachments) &&
+            chatRequest.attachments.some((att: any) =>
+              typeof att?.mimeType === 'string' &&
+              att.mimeType.toLowerCase().startsWith('image/'),
+            );
           v2Model = await deps.pickModel({
             sessionId: chatRequest.sessionId,
             message: chatRequest.message,
             user: request.user,
             requestedModel: chatRequest.model,
+            hasVision: turnHasVision,
           });
         } catch (modelErr: any) {
           logger.error(

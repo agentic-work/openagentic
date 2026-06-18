@@ -281,6 +281,51 @@ interface RenderArtifactContext {
 }
 
 /**
+ * Infer the artifact kind from the content SHAPE when the model omits or
+ * malforms the `kind` field. This is the floor-model-robustness salvage:
+ * a live capture (2026-06-16, Bedrock Opus 4.8, forced render_artifact on an
+ * ~8 KB react artifact) showed the streamed tool input losing the required
+ * `kind`. A strong model self-heals on the hard-reject; a weaker FLOOR model
+ * dead-turns. Inference removes the dead-turn — the content is the ground
+ * truth for what kind it is.
+ *
+ * Heuristics (first match wins), checked against the leading non-whitespace:
+ *   - `export default` / `import ... from 'react'` / JSX-with-hooks → react
+ *   - `<svg`                                                        → svg
+ *   - `<!doctype` / `<html`                                         → html
+ *   - bare base64 (PNG/JPEG/GIF data, no markup)                    → python_plot
+ * Returns null when nothing matches (caller keeps the hard-reject).
+ */
+function inferArtifactKind(content: string): RenderArtifactKind | null {
+  const head = content.slice(0, 4096);
+  const trimmed = head.replace(/^﻿?\s+/, '');
+  const lower = trimmed.toLowerCase();
+
+  // react: a component module. `export default` is the mount contract; an
+  // `import ... 'react'` or a hooks call paired with JSX also signals react.
+  if (
+    /\bexport\s+default\b/.test(trimmed) ||
+    /\bimport\b[^\n]*\bfrom\s+['"]react['"]/.test(trimmed) ||
+    (/\buse(State|Effect|Memo|Ref|Callback|Reducer)\s*\(/.test(trimmed) && /<[A-Za-z]/.test(trimmed))
+  ) {
+    return 'react';
+  }
+  // svg: a leading <svg ...> root.
+  if (lower.startsWith('<svg') || /^<\?xml[^>]*\?>\s*<svg/.test(lower)) {
+    return 'svg';
+  }
+  // html: a full document.
+  if (lower.startsWith('<!doctype') || lower.startsWith('<html')) {
+    return 'html';
+  }
+  // python_plot: a bare base64 PNG/JPEG/GIF payload (no markup, base64 alphabet).
+  if (!trimmed.includes('<') && /^[A-Za-z0-9+/]{32,}={0,2}$/.test(trimmed.replace(/\s+/g, ''))) {
+    return 'python_plot';
+  }
+  return null;
+}
+
+/**
  * Handle a `render_artifact` tool call. Validates the input, emits one
  * `artifact_render` NDJSON frame, returns a structured tool-result the
  * model can read back to confirm the artifact was rendered.
@@ -289,19 +334,37 @@ export async function executeRenderArtifact(
   ctx: RenderArtifactContext,
   input: RenderArtifactInput,
 ): Promise<RenderArtifactResult> {
-  // Validate kind.
-  if (!RENDER_ARTIFACT_KINDS.includes(input?.kind as RenderArtifactKind)) {
-    return {
-      ok: false,
-      error: `Invalid kind "${String(input?.kind)}". Must be one of: ${RENDER_ARTIFACT_KINDS.join(', ')}.`,
-    };
-  }
-  // Validate content.
+  // Validate content FIRST — it is the ground truth for the salvage below and
+  // there is nothing to render without it.
   if (typeof input?.content !== 'string' || input.content.length === 0) {
     return {
       ok: false,
       error: 'content is required and must be a non-empty string.',
     };
+  }
+
+  // Resolve kind: honor an explicitly VALID kind; otherwise INFER from content
+  // shape (floor-model robustness — see inferArtifactKind). Only hard-reject
+  // when the content shape is also unrecognizable.
+  let kind = input.kind;
+  if (!RENDER_ARTIFACT_KINDS.includes(kind as RenderArtifactKind)) {
+    const inferred = inferArtifactKind(input.content);
+    if (inferred) {
+      ctx.logger.warn(
+        {
+          suppliedKind: input?.kind ?? null,
+          inferredKind: inferred,
+          contentHead: input.content.slice(0, 80),
+        },
+        '[render_artifact] kind missing/invalid — inferred from content shape (floor-model salvage)',
+      );
+      kind = inferred;
+    } else {
+      return {
+        ok: false,
+        error: `Invalid kind "${String(input?.kind)}". Must be one of: ${RENDER_ARTIFACT_KINDS.join(', ')}.`,
+      };
+    }
   }
 
   const artifact_id =
@@ -311,7 +374,7 @@ export async function executeRenderArtifact(
 
   const payload = {
     artifact_id,
-    kind: input.kind,
+    kind,
     content: input.content,
     title: input.title ?? null,
     group_id: input.group_id ?? null,
@@ -321,16 +384,17 @@ export async function executeRenderArtifact(
     // binds the frame to the correct tool card.
     tool_use_id: ctx.toolUseId ?? null,
     // A3 (2026-05-12) — kind slug under _meta so the UI's
-    // FrameRendererRegistry can route by slug, not shape-guess.
+    // FrameRendererRegistry can route by slug, not shape-guess. Uses the
+    // RESOLVED kind (post-inference) so a salvaged artifact routes correctly.
     _meta: {
-      outputTemplate: input.kind,
+      outputTemplate: kind,
     },
   };
 
   ctx.emit('artifact_render', payload);
   ctx.logger.info({
     artifact_id,
-    kind: input.kind,
+    kind,
     group_id: input.group_id ?? null,
     title: input.title ?? null,
     bytes: input.content.length,

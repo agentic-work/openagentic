@@ -32,6 +32,17 @@ export interface ThinkingCapabilities {
   defaultBudgetTokens: number;   // Default tokens for thinking
   supportsReasoningEffort: boolean;  // Gemini-style low/medium/high
   defaultReasoningEffort?: ReasoningEffort;
+  /**
+   * #cap-sync (2026-06-16) — the Anthropic thinking WIRE shape this model
+   * accepts. `'enabled'` = legacy fixed-budget `{type:'enabled', budget_tokens}`
+   * (≤ Opus 4.6 / Sonnet 4.6, still functional). `'adaptive'` = Opus 4.7/4.8 +
+   * Fable 5, which REJECT `budget_tokens` with a 400 and require
+   * `{type:'adaptive'}`; depth is set via `effort`, not a budget. Undefined is
+   * treated as `'enabled'` so existing rows keep their current behavior.
+   * Verified against the claude-api skill (authoritative): Opus 4.8 is
+   * adaptive-only, 1M context, 128K output, $5/$25 per 1M.
+   */
+  thinkingMode?: 'enabled' | 'adaptive';
 }
 
 export interface ModelCapabilities {
@@ -356,6 +367,65 @@ const MODEL_PATTERNS: ModelPattern[] = [
       },
       inputCostPer1k: 0.0066,    // $6.60/1M - Long context pricing
       outputCostPer1k: 0.02475,  // $24.75/1M - Long context pricing
+    }
+  },
+  // Claude Opus 4.8 (current flagship) — #cap-sync 2026-06-16.
+  // MUST precede the Opus-4.0 catch-all `/claude-opus-4(?!\.)/` below: that
+  // pattern matches `claude-opus-4-8` (hyphen, not dot → negative-lookahead
+  // passes), so without this entry a pinned 4.8 mis-resolved to Opus-4.0's
+  // maxOutput:4096 + Opus-3 cost AND emitted the wrong (enabled) thinking
+  // shape → Bedrock 400 → "thinking not supported". Adaptive-only, 1M ctx,
+  // 128K out, $5/$25 — verified against the claude-api skill.
+  {
+    pattern: /anthropic\.claude-opus-4-8|claude-opus-4-8|claude-opus-4\.8|opus-4-8|opus-4\.8/i,
+    capabilities: {
+      family: 'claude',
+      providerType: 'aws-bedrock',
+      maxContextTokens: 1000000,
+      maxOutputTokens: 128000,
+      functionCalling: true,
+      functionCallingAccuracy: 0.98,
+      vision: true,
+      thinking: true,
+      jsonMode: true,
+      thinkingCapabilities: {
+        enabled: true,
+        type: 'native',
+        // adaptive-only: budget_tokens is REJECTED with a 400 on 4.8. The
+        // budget fields are advisory; the wire must send {type:'adaptive'} and
+        // control depth via effort. thinkingMode drives the SDK wire branch.
+        maxBudgetTokens: 0,
+        defaultBudgetTokens: 0,
+        supportsReasoningEffort: true,
+        thinkingMode: 'adaptive',
+      },
+      inputCostPer1k: 0.005,   // $5/1M
+      outputCostPer1k: 0.025,  // $25/1M
+    }
+  },
+  // Claude Opus 4.7 (previous flagship — same adaptive-only surface as 4.8).
+  {
+    pattern: /anthropic\.claude-opus-4-7|claude-opus-4-7|claude-opus-4\.7|opus-4-7|opus-4\.7/i,
+    capabilities: {
+      family: 'claude',
+      providerType: 'aws-bedrock',
+      maxContextTokens: 1000000,
+      maxOutputTokens: 128000,
+      functionCalling: true,
+      functionCallingAccuracy: 0.98,
+      vision: true,
+      thinking: true,
+      jsonMode: true,
+      thinkingCapabilities: {
+        enabled: true,
+        type: 'native',
+        maxBudgetTokens: 0,
+        defaultBudgetTokens: 0,
+        supportsReasoningEffort: true,
+        thinkingMode: 'adaptive',
+      },
+      inputCostPer1k: 0.005,   // $5/1M
+      outputCostPer1k: 0.025,  // $25/1M
     }
   },
   // Claude Opus 4.5 (newest)
@@ -1176,6 +1246,28 @@ function inferProviderType(provider: string): ProviderType {
   return 'unknown';
 }
 
+/**
+ * #cap-sync (2026-06-16) — guard for the cache partial-match in
+ * getCapabilities(). Two model ids may safely share a cached capability row
+ * only if they don't carry DIFFERENT version tokens. A version token is the
+ * `N-M` / `N.M` suffix in `...-4-8`, `...-4.6`, etc. If both ids carry a
+ * version and the versions differ, the partial match is a hijack (e.g.
+ * `claude-opus-4` cache row vs `claude-opus-4-8` lookup) → reject, fall
+ * through to the ordered pattern table. If at most one side carries a version,
+ * the `includes` overlap is just provider-prefix / suffix noise → accept.
+ */
+function sameModelVersion(a: string, b: string): boolean {
+  const ver = (s: string): string | null => {
+    // Capture the family+version core, e.g. "opus-4-8" / "sonnet-4.6".
+    const m = s.match(/(opus|sonnet|haiku|fable|mythos|gpt|gemini|claude)[-.]?(\d+(?:[-.]\d+)*)/i);
+    return m ? m[2].replace(/-/g, '.') : null;
+  };
+  const va = ver(a);
+  const vb = ver(b);
+  if (va === null || vb === null) return true; // at most one versioned → noise overlap, safe
+  return va === vb;                            // both versioned → must match exactly
+}
+
 // ============================================================================
 // MODEL CAPABILITY REGISTRY
 // ============================================================================
@@ -1369,14 +1461,25 @@ export class ModelCapabilityRegistry {
   getCapabilities(modelId: string): ModelCapabilities {
     const normalized = modelId.toLowerCase();
 
-    // Check cache first
+    // Check cache first (exact hit only).
     if (this.cache.has(normalized)) {
       return this.cache.get(normalized)!;
     }
 
-    // Check for partial matches in cache
+    // #cap-sync (2026-06-16) — the previous bidirectional `includes` partial
+    // match was a version hijack: a cached `claude-opus-4` / `opus-4` row
+    // substring-matches `claude-opus-4-8` and short-circuited BEFORE the regex
+    // pattern table, so a pinned 4.8 inherited the wrong (4.0) capabilities
+    // even after the explicit 4.8 pattern was added. Only accept a partial
+    // match when neither side carries a DIFFERENT version token — i.e. the
+    // strings differ only by provider prefix / suffix noise, not by version.
+    // Otherwise fall through to the authoritative first-match-wins pattern
+    // table (getDefaultCapabilities), which has explicit, ordered entries.
     for (const [cachedId, caps] of this.cache) {
-      if (normalized.includes(cachedId) || cachedId.includes(normalized)) {
+      if (
+        (normalized.includes(cachedId) || cachedId.includes(normalized)) &&
+        sameModelVersion(normalized, cachedId)
+      ) {
         return caps;
       }
     }
