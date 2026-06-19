@@ -317,6 +317,11 @@ services:
       # GOOGLE_APPLICATION_CREDENTIALS points the adapter here. Defaults to an
       # empty device when Vertex isn't used (mounted but never read).
       - ${GCP_SA_KEY_FILE:-/dev/null}:/var/secrets/gcp/key.json:ro
+      # agenticode desktop installers, served read-only by Code Mode at
+      # /api/agenticode/download/<platform>. Point AGENTICODE_BUNDLE_DIR at a host
+      # dir holding agenticode-windows-x64.exe / agenticode-macos.dmg; an absent
+      # dir just makes the download page show "coming soon".
+      - ${AGENTICODE_BUNDLE_DIR:-${HOME}/.openagentic/agenticode-bundles}:/app/agenticode-bundles:ro
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }

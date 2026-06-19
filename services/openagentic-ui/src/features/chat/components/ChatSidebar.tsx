@@ -9,7 +9,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, Edit3, MoreHorizontal, Trash2, Settings, User, LogOut, HelpCircle, Shield, PanelLeft, PanelRight, Search, Sun, Moon, MessageSquare, Workflow } from '@/shared/icons';
+import { Menu, Edit3, MoreHorizontal, Trash2, Settings, User, LogOut, HelpCircle, Shield, PanelLeft, PanelRight, Search, Sun, Moon, MessageSquare, Workflow, Terminal } from '@/shared/icons';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/app/providers/AuthContext';
@@ -59,7 +59,7 @@ interface ChatSession {
 }
 
 // App mode type for Chat/Flows switching
-type AppMode = 'chat' | 'flows';
+type AppMode = 'chat' | 'flows' | 'codemode';
 
 interface ChatSidebarProps {
   currentTheme?: 'light' | 'dark';
@@ -290,11 +290,12 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Mode Toggle (Chat/Flows) - Show if user can use flows */}
-        {canUseFlows && onAppModeChange && (() => {
+        {/* Mode Toggle (Chat / Flows / Code Mode) */}
+        {onAppModeChange && (() => {
           // Calculate available modes for dynamic slider positioning
           const modes: AppMode[] = ['chat'];
           if (canUseFlows) modes.push('flows');
+          modes.push('codemode');
           const modeCount = modes.length;
           const activeIndex = modes.indexOf(appMode);
           const widthPercent = 100 / modeCount;
@@ -363,6 +364,23 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     {isExpanded && <span className="text-xs font-semibold">Flows</span>}
                   </button>
                 )}
+
+                {/* Code Mode button — always shown (agenticode desktop download) */}
+                <button
+                  onClick={() => onAppModeChange('codemode')}
+                  className={`
+                    relative z-10 flex items-center gap-1.5 rounded-[var(--ctl-radius-sm)] transition-colors duration-200
+                    ${isExpanded ? 'flex-1 px-3 py-1.5 justify-center' : 'p-2'}
+                    ${appMode === 'codemode'
+                      ? 'text-fg'
+                      : 'text-fg-subtle hover:text-fg-muted'
+                    }
+                  `}
+                  title="Code Mode — download the agenticode desktop app"
+                >
+                  <Terminal size={isExpanded ? 14 : 16} />
+                  {isExpanded && <span className="text-xs font-semibold">Code</span>}
+                </button>
               </div>
             </div>
           );

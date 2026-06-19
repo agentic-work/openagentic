@@ -72,6 +72,7 @@ import BackgroundJobsPanel from './BackgroundJobsPanel';
 // ExportButton removed - not working
 import { WorkflowsPage } from '@/features/workflows';
 import ErrorBoundary from '@/shared/components/ErrorBoundary';
+import CodemodeDownloadPage from '@/features/codemode/CodemodeDownloadPage';
 import HITLPanel, { type HITLMode, type HITLLogEntry } from './HITLPanel';
 import ToolApprovalDialog from '@/shared/components/Dialogs/ToolApprovalDialog';
 import ApprovalModal, { type AuditApprovalRequest } from './ApprovalModal';
@@ -79,7 +80,7 @@ import AdminToolInspector from './AdminToolInspector';
 import type { McpApprovalRequest } from '../hooks/useChatStream';
 
 // App mode type.
-type AppMode = 'chat' | 'flows';
+type AppMode = 'chat' | 'flows' | 'codemode';
 
 // Personality type for AI response styling
 interface Personality {
@@ -2099,8 +2100,13 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
         }}
       >
         <div className="glass rise rise-d2 flex flex-col h-full w-full overflow-hidden">
-          {/* Conditional rendering: Chat Mode vs Flows Mode */}
-          {appMode === 'flows' ? (
+          {/* Conditional rendering: Chat Mode vs Flows Mode vs Code Mode */}
+          {appMode === 'codemode' ? (
+            /* Code Mode — agenticode desktop download page (OSS ships the links, not the IDE) */
+            <ErrorBoundary>
+              <CodemodeDownloadPage />
+            </ErrorBoundary>
+          ) : appMode === 'flows' ? (
             /* Flows Mode - OpenAgenticflow Builder (embedded=true: sidebar managed by ChatSidebar) */
             <ErrorBoundary>
               <WorkflowsPage embedded onWorkflowStateChange={(ws) => { currentWorkflowRef.current = ws; }} />

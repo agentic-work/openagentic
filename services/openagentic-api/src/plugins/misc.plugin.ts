@@ -19,6 +19,7 @@ import formattingRoutes from '../routes/formatting.js';
 import renderRoutes from '../routes/render.js';
 import agentAdminRoutes from '../routes/admin/agentic-loops.js';
 import { embedRoutes } from '../routes/embed.js';
+import { agenticodeRoutes } from '../routes/agenticode.js';
 
 // ---------------------------------------------------------------------------
 // Plugin options (lesson 3: strongly typed, lesson 6: exported)
@@ -63,6 +64,16 @@ const miscRoutesPluginImpl: FastifyPluginAsync<MiscRoutesPluginOptions> = async 
     loggers.routes.info('Internal refresh routes registered at /api/internal/* (Bearer internal-key)');
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register internal refresh routes');
+  }
+
+  // ── 2c: Agenticode provider routes ────────────────────────────────────────
+  // Lets the agenticode desktop app use this instance as its LLM provider
+  // (Anthropic Messages shim over the OSS LLM layer). NOT the code-mode IDE.
+  try {
+    await fastify.register(agenticodeRoutes, { prefix: '/api/agenticode' });
+    loggers.routes.info('Agenticode provider routes registered at /api/agenticode/* (config, health, v1/messages)');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register agenticode routes');
   }
 
   // ── 3: Feedback routes (thumbs up/down, copy tracking) ────────────────────
