@@ -1022,6 +1022,22 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register agenticode routes');
   }
 
+  // Register Entra OBO routes — ONLY when AUTH_PROVIDER selects azure/hybrid.
+  // The default local edition has no Entra token to broker, so they are not
+  // registered at all (keeps the local-auth surface unchanged).
+  {
+    const oboAuthProvider = (process.env.AUTH_PROVIDER || 'local').toLowerCase();
+    if (['azure-ad', 'azure', 'hybrid', 'both', 'all'].includes(oboAuthProvider)) {
+      try {
+        const { oboRoutes } = await import('./routes/obo.js');
+        await server.register(oboRoutes);
+        loggers.routes.info(`Entra OBO routes registered at /api/auth/obo* (AUTH_PROVIDER=${oboAuthProvider})`);
+      } catch (error) {
+        loggers.routes.error({ err: error }, 'Failed to register OBO routes');
+      }
+    }
+  }
+
   // Register Feedback routes (thumbs up/down, copy tracking)
   try {
     const { feedbackRoutes } = await import('./routes/feedback.js');
