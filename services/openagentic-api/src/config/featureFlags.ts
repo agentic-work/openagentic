@@ -63,8 +63,11 @@ export const featureFlags = {
   /** Ollama local-model provider enabled (OLLAMA_ENABLED=true). */
   ollamaEnabled: bool('OLLAMA_ENABLED', false),
 
-  /** Auth provider type ('azure-ad' | 'local'). */
-  authProvider: process.env.AUTH_PROVIDER || 'azure-ad',
+  /** Auth provider type ('azure-ad' | 'local'). Default 'local' for the OSS
+   * edition (matches tokenValidator.ts + server.ts OBO gate); Entra activates
+   * only when AUTH_PROVIDER is explicitly set. An unset deploy must NOT silently
+   * enable the Entra/OBO path. */
+  authProvider: process.env.AUTH_PROVIDER || 'local',
 
   /** MCP proxy sidecar enabled (MCP_PROXY_ENABLED=true, default on). */
   mcpProxyEnabled: bool('MCP_PROXY_ENABLED', true),
