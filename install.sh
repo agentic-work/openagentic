@@ -535,12 +535,21 @@ step "Quick install"
 # 1. Resolve Ollama endpoint and probe it from the host.
 OLLAMA_HOST="${OLLAMA_HOST_OVERRIDE:-${OLLAMA_HOST:-}}"
 if [[ -z "$OLLAMA_HOST" ]]; then
+  # Default-route gateway — how a WSL2 distro (and Linux containers) reach an
+  # Ollama bound on the Windows/host network when it is NOT on this box's
+  # localhost. Reachable from both the host shell and the containers.
+  OLLAMA_GW="$(ip route show default 2>/dev/null | awk '/default/{print $3; exit}')"
   if curl -fsS --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1; then
     OLLAMA_HOST="http://host.docker.internal:11434"
     ok 'Found Ollama on localhost:11434 — containers will reach it via host.docker.internal'
+  elif [[ -n "$OLLAMA_GW" ]] && curl -fsS --max-time 2 "http://$OLLAMA_GW:11434/api/tags" >/dev/null 2>&1; then
+    # e.g. WSL2 with Ollama on the Windows host, exposed on the network.
+    OLLAMA_HOST="http://$OLLAMA_GW:11434"
+    ok "Found Ollama on the host network at $OLLAMA_GW:11434 — using it directly (works from host + containers)"
   else
-    warn 'No Ollama detected on localhost:11434.'
+    warn "No Ollama detected on localhost:11434${OLLAMA_GW:+ or the host gateway $OLLAMA_GW:11434}."
     warn 'Install Ollama (https://ollama.com/download) and re-run, or pass --ollama URL.'
+    warn 'On WSL2, make sure Ollama is started with OLLAMA_HOST=0.0.0.0 so the network can reach it.'
     fatal 'Ollama is required for the quick install path. Use --wizard for cloud-LLM-only setups.'
   fi
 fi
