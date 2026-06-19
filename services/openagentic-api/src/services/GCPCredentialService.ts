@@ -30,7 +30,7 @@
  */
 
 import crypto from 'crypto';
-import { OAuth2Client } from 'google-auth-library';
+import { OAuth2Client, ExternalAccountClient } from 'google-auth-library';
 import type { FastifyBaseLogger } from 'fastify';
 import { prisma } from '../utils/prisma.js';
 
@@ -47,6 +47,21 @@ const GCP_REDIRECT_URI =
 // The GCP RESOURCE scope — grants the access token exactly the caller's IAM
 // permissions. This is the scope that makes "run as them" work.
 const GCP_CLOUD_PLATFORM_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
+
+// ---------------------------------------------------------------------------
+// Phase-1c Entra→GCP Workload Identity Federation (WIF) — OFF by default.
+// Active ONLY when both GCP_WORKLOAD_IDENTITY_AUDIENCE and
+// GCP_WORKLOAD_IDENTITY_SA_EMAIL are set. When unset, getFederatedAccessToken()
+// early-returns null and brokerGcp's per-user OAuth path is unchanged.
+// ---------------------------------------------------------------------------
+const WIF_AUDIENCE = process.env.GCP_WORKLOAD_IDENTITY_AUDIENCE || '';
+const WIF_SA_EMAIL = process.env.GCP_WORKLOAD_IDENTITY_SA_EMAIL || '';
+const WIF_SUBJECT_TOKEN_TYPE =
+  process.env.GCP_WORKLOAD_IDENTITY_SUBJECT_TOKEN_TYPE || 'urn:ietf:params:oauth:token-type:jwt';
+const WIF_SCOPE =
+  process.env.GCP_WORKLOAD_IDENTITY_SCOPE ||
+  'https://www.googleapis.com/auth/cloud-platform.read-only';
+const WIF_STS_TOKEN_URL = process.env.GCP_STS_TOKEN_URL || 'https://sts.googleapis.com/v1/token';
 
 // Encryption key for token storage (32 bytes for AES-256). Reuses the shared
 // LOCAL_ENCRYPTION_KEY fallback so a single deployment secret covers both the
@@ -332,6 +347,46 @@ export class GCPCredentialService {
       }
       throw err;
     }
+  }
+
+  /**
+   * Phase-1c: true only when BOTH GCP WIF envs are set
+   * (GCP_WORKLOAD_IDENTITY_AUDIENCE + GCP_WORKLOAD_IDENTITY_SA_EMAIL). When
+   * false the Entra→GCP WIF branch in CredentialBroker.brokerGcp never runs and
+   * the existing per-user OAuth path is unchanged.
+   */
+  isWorkloadIdentityConfigured(): boolean {
+    return !!(WIF_AUDIENCE && WIF_SA_EMAIL);
+  }
+
+  /**
+   * Entra→GCP federated, impersonated, READ-scoped access token (run-as-user
+   * via Workload Identity Federation). OFF unless both WIF envs are set —
+   * returns null in that case. When configured but the STS/impersonation
+   * exchange fails it THROWS (never falls back to a shared SA).
+   *
+   * Uses ExternalAccountClient directly (BaseExternalAccountClient declares
+   * `scopes` + `getAccessToken()`), so NO `as OAuth2Client` cast is needed.
+   */
+  async getFederatedAccessToken(entraSubjectToken: string): Promise<string | null> {
+    if (!this.isWorkloadIdentityConfigured()) return null;
+    if (!entraSubjectToken) {
+      throw new GcpNotConnectedError('GCP WIF: no Entra subject token — sign in with Entra.');
+    }
+    const client = ExternalAccountClient.fromJSON({
+      type: 'external_account',
+      audience: WIF_AUDIENCE,
+      subject_token_type: WIF_SUBJECT_TOKEN_TYPE,
+      token_url: WIF_STS_TOKEN_URL,
+      service_account_impersonation_url:
+        `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${WIF_SA_EMAIL}:generateAccessToken`,
+      scopes: [WIF_SCOPE],
+      subject_token_supplier: { getSubjectToken: async () => entraSubjectToken },
+    } as Parameters<typeof ExternalAccountClient.fromJSON>[0]);
+    if (!client) throw new Error('GCP WIF: ExternalAccountClient.fromJSON returned null');
+    const { token } = await client.getAccessToken();
+    if (!token) throw new Error('GCP WIF: STS/impersonation returned no access token');
+    return token;
   }
 
   /**

@@ -334,7 +334,11 @@ async def gcp_api_execute(
         # Extract user token from meta if provided by MCP proxy
         # This enables OBO (On-Behalf-Of) authentication so operations run as the user
         if meta and isinstance(meta, dict):
-            user_token = meta.get("userAccessToken")
+            # Phase-1c: when the API brokered a per-user Google OAuth/WIF token
+            # for the signed-in user it rides in meta.brokeredGcp. Prefer it,
+            # else fall back to the existing meta.userAccessToken OBO path.
+            brokered = (meta.get("brokeredGcp") or {}) if isinstance(meta, dict) else {}
+            user_token = brokered.get("GOOGLE_OAUTH_ACCESS_TOKEN") or meta.get("userAccessToken")
             user_email = meta.get("userEmail")
             if user_token:
                 logger.info(f"OBO: Using user token from meta for {user_email or 'unknown user'}")

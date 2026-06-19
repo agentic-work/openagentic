@@ -786,7 +786,20 @@ async def call_aws(
         # User info for executed_as badge
         user_info = None
 
-        if meta and isinstance(meta, dict):
+        # Phase-1c: when the API brokered per-user STS creds for the signed-in
+        # user they ride in meta.brokeredAws. Use them directly (no OBO
+        # exchange). Otherwise the existing OBO/keypair path is unchanged.
+        brokered = meta.get("brokeredAws") if isinstance(meta, dict) else None
+        if brokered and brokered.get("AWS_ACCESS_KEY_ID"):
+            credentials = Credentials(
+                access_key_id=brokered["AWS_ACCESS_KEY_ID"],
+                secret_access_key=brokered["AWS_SECRET_ACCESS_KEY"],
+                session_token=brokered.get("AWS_SESSION_TOKEN"),
+            )
+            user_token_provided = True
+            user_info = _get_user_info_from_token(meta.get("userAccessToken") or "")
+            logger.info("Phase-1c: using brokered per-user AWS credentials from meta.brokeredAws")
+        elif meta and isinstance(meta, dict):
             user_token = meta.get("userAccessToken")
             if user_token:
                 user_token_provided = True
@@ -1117,7 +1130,19 @@ async def _execute_aws_command(
         user_token_provided = False
         user_info = None
 
-        if meta and isinstance(meta, dict):
+        # Phase-1c: prefer brokered per-user STS creds from meta.brokeredAws
+        # (the API resolved them); otherwise the existing OBO/keypair path runs.
+        brokered = meta.get("brokeredAws") if isinstance(meta, dict) else None
+        if brokered and brokered.get("AWS_ACCESS_KEY_ID"):
+            credentials = Credentials(
+                access_key_id=brokered["AWS_ACCESS_KEY_ID"],
+                secret_access_key=brokered["AWS_SECRET_ACCESS_KEY"],
+                session_token=brokered.get("AWS_SESSION_TOKEN"),
+            )
+            user_token_provided = True
+            user_info = _get_user_info_from_token(meta.get("userAccessToken") or "")
+            logger.info("Phase-1c: using brokered per-user AWS credentials from meta.brokeredAws")
+        elif meta and isinstance(meta, dict):
             user_token = meta.get("userAccessToken")
             if user_token:
                 user_token_provided = True

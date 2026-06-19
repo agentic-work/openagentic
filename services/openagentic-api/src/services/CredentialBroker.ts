@@ -131,6 +131,11 @@ export interface GitHubCredentialServiceLike {
  */
 export interface GCPCredentialServiceLike {
   getValidAccessToken(userId: string): Promise<string | null>;
+  /** Phase-1c (off by default): true only when both GCP WIF envs are set. */
+  isWorkloadIdentityConfigured?(): boolean;
+  /** Phase-1c (off by default): Entra→GCP federated, impersonated, read-scoped
+   *  token. Returns null when WIF isn't configured. */
+  getFederatedAccessToken?(entraSubjectToken: string): Promise<string | null>;
 }
 
 export interface CredentialBrokerOptions {
@@ -252,6 +257,7 @@ export class CredentialBroker {
     userJwt: string,
     targets: BrokerTarget[],
     platformUserId?: string,
+    entraSubjectToken?: string,
   ): Promise<BrokeredCredentials> {
     const claims = parseJwtClaims(userJwt);
     this.assertNotExpired(claims);
@@ -262,6 +268,11 @@ export class CredentialBroker {
         throw new UnknownCloudError(`unknown cloud target: ${t}`);
       }
     }
+    // ARM-audience is required ONLY for the azure target (the user JWT is the
+    // ARM bearer). The Phase-1c AWS path feeds the Entra id_token here, whose
+    // audience is the app clientId (validated by the IAM OIDC provider), NOT
+    // ARM — so a pure ['aws'] request must SKIP the ARM assertion or it would
+    // throw InvalidJwtError before assume-role-with-web-identity ever runs.
     if (targets.includes('azure')) {
       this.assertArmAudience(claims);
     }
@@ -280,7 +291,7 @@ export class CredentialBroker {
         } else if (target === 'azure') {
           out.azure = this.brokerAzure(userJwt, claims);
         } else if (target === 'gcp') {
-          out.gcp = await this.brokerGcp(claims, platformUserId);
+          out.gcp = await this.brokerGcp(claims, platformUserId, entraSubjectToken);
         } else if (target === 'github') {
           out.github = await this.brokerGithub(claims, platformUserId);
         }
@@ -418,19 +429,41 @@ export class CredentialBroker {
   private async brokerGcp(
     claims: JwtClaims,
     platformUserId?: string,
+    entraSubjectToken?: string,
   ): Promise<GCPCredentialEnv> {
     if (this.gcpCredentialService) {
-      // Prefer the explicit platform userId (the key the token is stored
-      // under). Fall back to the JWT-derived id only if none was passed; in
-      // practice the dispatcher always passes ctx.userId.
+      // Branch 1 (preferred) — per-user OAuth (the user's OWN GCP IAM). Prefer
+      // the explicit platform userId (the key the token is stored under). Fall
+      // back to the JWT-derived id only if none was passed; in practice the
+      // dispatcher always passes ctx.userId.
       const lookupId = platformUserId ?? userIdFromClaims(claims);
       const token = await this.gcpCredentialService.getValidAccessToken(lookupId);
-      if (!token) {
+      if (token) {
+        return { GOOGLE_OAUTH_ACCESS_TOKEN: token };
+      }
+
+      // Branch 2 — Entra→GCP WIF (Phase-1c, OFF unless both
+      // GCP_WORKLOAD_IDENTITY_AUDIENCE + SA-email envs are set). Coarser than
+      // Branch 1: it runs as an impersonated read-scoped SA with the Entra
+      // subject recorded as the federation principal, not the user's own IAM.
+      if (
+        this.gcpCredentialService.isWorkloadIdentityConfigured?.() &&
+        this.gcpCredentialService.getFederatedAccessToken &&
+        entraSubjectToken
+      ) {
+        const wifToken = await this.gcpCredentialService.getFederatedAccessToken(entraSubjectToken);
+        if (wifToken) {
+          return { GOOGLE_OAUTH_ACCESS_TOKEN: wifToken };
+        }
         throw new GcpNotConnectedError(
-          'GCP not connected — Connect GCP in settings to run tools as your GCP user.',
+          'GCP WIF configured but exchange returned nothing — check provider + SA impersonation binding.',
         );
       }
-      return { GOOGLE_OAUTH_ACCESS_TOKEN: token };
+
+      // Branch 3 — neither connected.
+      throw new GcpNotConnectedError(
+        'GCP not connected — Connect GCP in settings to run tools as your GCP user.',
+      );
     }
 
     // Legacy shared-SA path (no per-user OAuth service wired). This is NOT
@@ -563,6 +596,10 @@ export function getCredentialBroker(logger?: unknown): CredentialBroker {
             throw e;
           }
         },
+        // Phase-1c (off by default): forward the WIF methods so production can
+        // take Branch 2 when both GCP WIF envs are set.
+        isWorkloadIdentityConfigured: () => svc.isWorkloadIdentityConfigured(),
+        getFederatedAccessToken: (t: string) => svc.getFederatedAccessToken(t),
       };
     } catch {
       // If the gcp service can't construct (no prisma in a unit ctx), leave it

@@ -230,7 +230,14 @@ def require_user_token(meta: Optional[Dict[str, Any]], token_key: str = "userAcc
             "User must be logged in via Azure AD SSO."
         )
 
-    token = meta.get(token_key)
+    # Phase-1c: when the API brokered an ARM-audience OBO token for the
+    # signed-in user it rides in meta.brokeredAzure. Prefer it; otherwise the
+    # existing behavior is unchanged.
+    brokered = meta.get("brokeredAzure") if isinstance(meta, dict) else None
+    if brokered and brokered.get("AZURE_ACCESS_TOKEN"):
+        token = brokered["AZURE_ACCESS_TOKEN"]
+    else:
+        token = meta.get(token_key)
     if not token:
         # Try fallback to primary token
         token = meta.get("userAccessToken")
