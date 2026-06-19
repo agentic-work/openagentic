@@ -491,17 +491,22 @@ export const agenticodeRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
   // app binds to. Public (the binaries aren't secret; the bind key is minted
   // separately by the codemode page's Connect action).
   const BUNDLE_DIR = process.env.AGENTICODE_BUNDLE_DIR || '/app/agenticode-bundles';
+  // PLACEHOLDER GATE: downloads stay "coming soon" until signed + notarized
+  // builds exist — an unsigned .exe/.dmg trips Windows SmartScreen / macOS
+  // Gatekeeper "unknown developer". Flip CODEMODE_DOWNLOADS_PUBLISHED=true (and
+  // drop the signed installers in AGENTICODE_BUNDLE_DIR) to publish them.
+  const DOWNLOADS_PUBLISHED = process.env.CODEMODE_DOWNLOADS_PUBLISHED === 'true';
   const PLATFORM_FILES: Record<string, { file: string; mime: string }> = {
     windows: { file: 'agenticode-windows-x64.exe', mime: 'application/vnd.microsoft.portable-executable' },
     macos: { file: 'agenticode-macos.dmg', mime: 'application/x-apple-diskimage' },
   };
 
-  // GET /api/agenticode/downloads — manifest of which platform builds exist.
+  // GET /api/agenticode/downloads — manifest. `published:false` => placeholder.
   fastify.get('/downloads', async (_request, reply) => {
-    const out: Record<string, { available: boolean; filename?: string; size?: string; bytes?: number }> = {};
+    const out: Record<string, any> = { published: DOWNLOADS_PUBLISHED };
     for (const [platform, meta] of Object.entries(PLATFORM_FILES)) {
       const p = join(BUNDLE_DIR, meta.file);
-      if (existsSync(p)) {
+      if (DOWNLOADS_PUBLISHED && existsSync(p)) {
         const st = statSync(p);
         out[platform] = { available: true, filename: meta.file, size: humanSize(st.size), bytes: st.size };
       } else {
@@ -511,8 +516,9 @@ export const agenticodeRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
     return reply.send(out);
   });
 
-  // GET /api/agenticode/download/:platform — stream the installer.
+  // GET /api/agenticode/download/:platform — stream the installer (gated).
   fastify.get<{ Params: { platform: string } }>('/download/:platform', async (request, reply) => {
+    if (!DOWNLOADS_PUBLISHED) return reply.code(404).send({ error: 'Signed builds coming soon' });
     const meta = PLATFORM_FILES[request.params.platform];
     if (!meta) return reply.code(404).send({ error: 'Unknown platform' });
     const p = join(BUNDLE_DIR, meta.file);

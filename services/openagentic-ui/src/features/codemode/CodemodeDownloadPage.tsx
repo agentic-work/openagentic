@@ -21,6 +21,7 @@ interface PlatformBuild {
   filename?: string;
 }
 interface DownloadsManifest {
+  published?: boolean; // false until signed + notarized builds ship
   windows: PlatformBuild;
   macos: PlatformBuild;
 }
@@ -137,7 +138,18 @@ export const CodemodeDownloadPage: React.FC = () => {
         </div>
       )}
 
-      {/* Bind-to-instance */}
+      {/* Placeholder notice — shown until signed/notarized builds ship */}
+      {manifest && !manifest.published && (
+        <div className="rounded-xl p-4 text-center" style={{ backgroundColor: 'color-mix(in srgb, var(--color-accent, var(--color-primary)) 8%, transparent)', border: '1px dashed var(--color-border)' }}>
+          <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Signed builds coming soon</div>
+          <p className="mt-1 text-[11px]" style={{ color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+            The Windows &amp; macOS apps are being code-signed and notarized so they install cleanly (no "unknown developer" warning). Check back shortly.
+          </p>
+        </div>
+      )}
+
+      {/* Bind-to-instance — only meaningful once a build is published */}
+      {manifest?.published && (
       <div className="rounded-xl p-5" style={{ backgroundColor: 'var(--color-surfaceSecondary, color-mix(in srgb, var(--color-border) 18%, transparent))', border: '1px solid var(--color-border)' }}>
         <div className="text-[11px] font-bold uppercase mb-2" style={{ color: 'var(--text-tertiary)', letterSpacing: '1px' }}>
           After install — bind to this instance
@@ -165,6 +177,7 @@ export const CodemodeDownloadPage: React.FC = () => {
           instance. The app will <strong>only</strong> use this endpoint as its provider.
         </p>
       </div>
+      )}
     </div>
   );
 };
