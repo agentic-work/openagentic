@@ -1011,6 +1011,17 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register version routes');
   }
 
+  // Register agenticode desktop provider shim + downloads (Code Mode). It was
+  // originally wired in misc.plugin.ts, but that plugin is never registered —
+  // register it here in registerAllRoutes where it actually loads.
+  try {
+    const { agenticodeRoutes } = await import('./routes/agenticode.js');
+    await server.register(agenticodeRoutes, { prefix: '/api/agenticode' });
+    loggers.routes.info('Agenticode provider routes registered at /api/agenticode/* (config, health, v1/messages, downloads)');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register agenticode routes');
+  }
+
   // Register Feedback routes (thumbs up/down, copy tracking)
   try {
     const { feedbackRoutes } = await import('./routes/feedback.js');
