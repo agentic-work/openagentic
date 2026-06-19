@@ -43,6 +43,38 @@ secrets:
   awsAccessKeyId: ""
   awsSecretAccessKey: ""
   awsRegion: us-east-1
+  # Entra / cross-cloud OBO secrets — required only when auth.provider != local.
+  azureClientSecret: ""        # Entra app-reg client secret (login + Azure OBO)
+  gcpOauthClientSecret: ""     # GCP OAuth client secret (run gcp tools as the user)
+  gcpTokenEncryptionKey: ""    # at-rest key for stored GCP user tokens (openssl rand -hex 32)
+
+# ── Auth provider. 'local' (default) = local username/password (the public OSS
+# edition — renders exactly as today). 'azure-ad' = Microsoft Entra SSO; the SAME
+# app registration also powers the cross-cloud OBO below so azure/aws/gcp MCP
+# tools run AS the signed-in user. Everything here is INERT unless provider != local.
+auth:
+  provider: "local"             # local | azure-ad
+  azure:
+    tenantId: ""
+    clientId: ""
+    redirectUri: ""             # default: <ingress>/api/auth/microsoft/callback
+    authority: ""               # default: https://login.microsoftonline.com/<tenantId>
+    authorizedAdminGroups: []   # Entra group GUIDs granted admin
+    authorizedUserGroups: []    # Entra group GUIDs granted user
+    externalAdminEmails: []     # extra admin emails (e.g. guests)
+
+# Cross-cloud OBO (used only when auth.provider != local). AWS = STS
+# AssumeRoleWithWebIdentity trusting the Entra token; GCP = Google OAuth (link
+# Google once). Azure OBO reuses the login app reg above.
+obo:
+  aws:
+    roleArn: ""                 # arn:aws:iam::ACCOUNT:role/OpenAgenticOBORole
+    accountId: ""
+    region: "us-east-1"
+  gcp:
+    oauthClientId: ""
+    oauthRedirectUri: ""        # default: <ingress>/api/auth/gcp/callback
+    projectId: ""
 
 # Ollama. The in-cluster Ollama ALWAYS serves embeddings (nomic-embed-text is
 # light — runs fine CPU-only, GPU not required). The CHAT model is served by

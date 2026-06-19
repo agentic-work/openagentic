@@ -97,6 +97,15 @@ spec:
               value: {{ .Values.mcps.loki.url | default "http://loki:3100" | quote }}
             - name: OpenAgentic_ALERTMANAGER_MCP_DISABLED
               value: "true"
+            {{- if ne .Values.auth.provider "local" }}
+            # Azure creds for the in-proxy azure MCP: validate the user's token +
+            # run cloud tools as the signed-in user (OBO). Client secret arrives via
+            # the envFrom secretRef above (AZURE_CLIENT_SECRET).
+            - name: AZURE_TENANT_ID
+              value: {{ .Values.auth.azure.tenantId | quote }}
+            - name: AZURE_CLIENT_ID
+              value: {{ .Values.auth.azure.clientId | quote }}
+            {{- end }}
           readinessProbe:
             tcpSocket:
               port: 8080
