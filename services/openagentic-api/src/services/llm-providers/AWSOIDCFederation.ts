@@ -3,7 +3,7 @@
  *
  * Exchanges a user's Azure AD ID token for short-lived AWS credentials
  * via STS::AssumeRoleWithWebIdentity. Mirrors the Python reference at
- * `services/mcps/oap-aws-mcp/server.py::_get_credentials_via_direct_oidc`.
+ * `services/mcps/awp-aws-mcp/server.py::_get_credentials_via_direct_oidc`.
  *
  * Static access keys are explicitly forbidden — every AWS call made on
  * behalf of a user must resolve creds through this module.

@@ -12,6 +12,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { UserContext } from './types.js';
 import { prisma } from '../utils/prisma.js';
+import { AzureADAuthService } from './azureADAuth.js';
 
 import crypto from 'crypto';
 
@@ -25,6 +26,17 @@ const JWT_SECRET = isPlaceholder
 if (isPlaceholder) {
   console.error('[CRITICAL] JWT_SECRET is missing or contains a placeholder value. Generated an ephemeral runtime secret — sessions will not persist across restarts. Fix: set a real JWT_SECRET in Helm values or Vault ESO.');
 }
+
+// ── Entra / Azure AD provider (enterprise SSO) ──────────────────────────────
+// Instantiated ONLY when AUTH_PROVIDER selects it. The default OSS edition runs
+// AUTH_PROVIDER=local → azureADAuthService is null → the azure branch in
+// validateAnyToken below is skipped entirely and the local-auth path is
+// byte-for-byte unchanged. Activating it requires AZURE_AD_TENANT_ID/CLIENT_ID
+// (read by AzureADAuthService from env).
+const AUTH_PROVIDER = (process.env.AUTH_PROVIDER || 'local').toLowerCase();
+const azureADAuthService = ['azure-ad', 'azure', 'hybrid', 'both', 'all'].includes(AUTH_PROVIDER)
+  ? new AzureADAuthService({})
+  : null;
 
 export interface UnifiedTokenResult {
   isValid: boolean;
@@ -63,6 +75,28 @@ export async function validateAnyToken(
       }
 
       return await validateApiKey(token, options);
+    }
+
+    // Step 0.5: Entra / Azure AD token — ONLY when AUTH_PROVIDER selects it.
+    // Skipped entirely in the default local edition (azureADAuthService === null),
+    // so the local-auth path below is unchanged. In azure/hybrid mode an Entra
+    // access token validates here; a locally-minted session JWT (issued after the
+    // SSO callback) falls through to the HS256 path below.
+    if (azureADAuthService) {
+      try {
+        const az = await azureADAuthService.validateToken(token);
+        if (az.isValid && az.user) {
+          if (options?.requireAdmin && !az.user.isAdmin) {
+            return { isValid: false, error: 'Administrator access required', tokenType: 'local' };
+          }
+          if (options?.logger) {
+            options.logger.info({ userId: az.user.userId, email: az.user.email, isAdmin: az.user.isAdmin }, '[TOKEN-VALIDATOR] Azure AD token validated');
+          }
+          return { isValid: true, user: az.user, tokenType: 'local' };
+        }
+      } catch (e: any) {
+        if (options?.logger) options.logger.debug({ err: e?.message }, '[TOKEN-VALIDATOR] Azure validation failed; falling through to local JWT');
+      }
     }
 
     // Step 1: Treat as a locally-issued HS256 JWT. Verify against JWT_SECRET.
