@@ -111,7 +111,7 @@ openagentic is built and maintained by **Agenticwork™ LLC**. If you want the c
 - **[openagentics.io](https://openagentics.io)** — docs, releases, changelog.
 - **[agenticwork.io](https://agenticwork.io)** — enterprise edition & support.
 - **[Zero-telemetry proof](./docs/zero-telemetry.md)** — what we checked, and how to verify it yourself.
-- **[`CLAUDE.md`](./CLAUDE.md)** — the service-level architecture map.
+- **[Architecture guide](./docs/guide/02-architecture.md)** — the service topology + request/data flow.
 
 ## Contributing
 
