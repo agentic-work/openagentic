@@ -518,6 +518,37 @@ services:
       retries: 5
     depends_on: [api]
 
+  # ─── Loki + Promtail — log aggregation for the built-in loki MCP ──────────
+  # Loki backs the loki MCP (mcp-proxy LOKI_URL=http://loki:3100). Promtail
+  # discovers every compose container via the Docker socket and ships its
+  # stdout/stderr into Loki, so LogQL queries ("show me the api errors") work
+  # on a fresh install with no external log pipeline. Default profile, like
+  # prometheus — a normal `docker compose --profile milvus up -d` lights it up.
+  loki:
+    <<: *defaults
+    image: grafana/loki:3.4.2
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    volumes:
+      - ./scripts/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3100/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  promtail:
+    <<: *defaults
+    image: grafana/promtail:3.4.2
+    command: ["-config.file=/etc/promtail/promtail-config.yaml"]
+    volumes:
+      - ./scripts/promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on: [loki]
+
 networks:
   oap:
     driver: bridge
@@ -530,3 +561,4 @@ volumes:
   milvus-data:
   ollama-data:
   prometheus-data:
+  loki-data:
