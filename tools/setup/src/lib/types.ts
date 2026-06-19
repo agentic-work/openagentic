@@ -61,6 +61,23 @@ export interface WizardConfig {
   uiPort: number;
   /** Helm path only: resolved kubeconfig path used for cluster probe. */
   kubeconfigPath?: string;
+  /** Auth provider. 'local' (default) = local username/password only — the
+   *  public OSS edition. 'azure-ad' = Microsoft Entra ID SSO; the wizard
+   *  collects the app-registration config and emits AUTH_PROVIDER + AZURE_AD_*
+   *  (plus the AZURE_* OBO mirror so cloud tools can run as the signed-in user).
+   *  Off by default. */
+  auth: {
+    provider: 'local' | 'azure-ad';
+    entra?: {
+      tenantId: string;
+      clientId: string;
+      clientSecret: string;
+      redirectUri: string;
+      userGroups: string;          // comma-sep group GUIDs allowed to sign in (blank = any)
+      adminGroups: string;         // comma-sep group GUIDs granted admin
+      externalAdminEmails: string; // comma-sep guest emails granted admin (optional)
+    };
+  };
 }
 
 export const DEFAULT_CONFIG: WizardConfig = {
@@ -83,4 +100,5 @@ export const DEFAULT_CONFIG: WizardConfig = {
   mcps: [],          // populated from defaultEnabledMcps() in the MCP step
   mcpAuth: {},
   uiPort: 8080,
+  auth: { provider: 'local' },
 };

@@ -296,6 +296,27 @@ function toEnv(c: WizardConfig): Record<string, string> {
     if (v) env[k] = v;
   }
 
+  // Auth provider. Default 'local' writes nothing extra (local username/password
+  // only — the public OSS edition). Entra SSO emits AUTH_PROVIDER + the AZURE_AD_*
+  // login config; the SAME app registration is mirrored to AZURE_TENANT_ID/
+  // CLIENT_ID/CLIENT_SECRET so the OBO services (run azure/aws/gcp tools as the
+  // signed-in user) authenticate with the same credentials.
+  if (c.auth.provider === 'azure-ad' && c.auth.entra) {
+    const e = c.auth.entra;
+    env.AUTH_PROVIDER = 'azure-ad';
+    env.AZURE_AD_TENANT_ID = e.tenantId;
+    env.AZURE_AD_CLIENT_ID = e.clientId;
+    env.AZURE_AD_CLIENT_SECRET = e.clientSecret;
+    if (e.redirectUri) env.AZURE_AD_REDIRECT_URI = e.redirectUri;
+    if (e.userGroups) env.AZURE_AD_AUTHORIZED_GROUPS = e.userGroups;
+    if (e.adminGroups) env.AZURE_ADMIN_GROUPS = e.adminGroups;
+    if (e.externalAdminEmails) env.EXTERNAL_ADMIN_EMAILS = e.externalAdminEmails;
+    // OBO mirror — same app registration drives the on-behalf-of token exchange.
+    env.AZURE_TENANT_ID = e.tenantId;
+    env.AZURE_CLIENT_ID = e.clientId;
+    env.AZURE_CLIENT_SECRET = e.clientSecret;
+  }
+
   return env;
 }
 
