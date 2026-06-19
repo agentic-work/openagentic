@@ -10,6 +10,13 @@ import { authMiddleware, adminMiddleware } from '../middleware/unifiedAuth.js';
 import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
 import { listAgentsFromSOT } from '../services/listAgentsFromSOT.js';
+import {
+  getSkillSources,
+  getSkillSource,
+  listRepoSkills,
+  fetchRepoSkillMarkdown,
+  parseSkillMarkdown,
+} from '../services/skillSources.js';
 
 // Lazy import to avoid circular dependency (same pattern as WorkflowExecutionEngine)
 async function invalidateRegistryCache() {
@@ -369,6 +376,65 @@ export const adminAgentRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
       return reply.code(500).send({ error: error.message });
     }
   });
+
+  // ─── Skill Sources (public SKILL.md repos the admin can browse + import) ───
+
+  /**
+   * GET /api/admin/agents/skill-sources - List the configured public skill repos
+   * (agenticwork-skills, Anthropic, OpenClaw; override via SKILL_SOURCE_REPOS).
+   */
+  fastify.get('/skill-sources', async (_request, reply) => {
+    return reply.send({ sources: getSkillSources() });
+  });
+
+  /**
+   * GET /api/admin/agents/skill-sources/:id/skills - Browse the SKILL.md skills
+   * available in a source repo (name + description for each).
+   */
+  fastify.get<{ Params: { id: string } }>('/skill-sources/:id/skills', async (request, reply) => {
+    const source = getSkillSource(request.params.id);
+    if (!source) return reply.code(404).send({ error: `Unknown skill source: ${request.params.id}` });
+    try {
+      const skills = await listRepoSkills(source);
+      return reply.send({ source, skills });
+    } catch (error: any) {
+      return reply.code(502).send({ error: error.message });
+    }
+  });
+
+  /**
+   * POST /api/admin/agents/skill-sources/:id/import - Fetch a repo SKILL.md by
+   * path, parse it, and create/update the AgentSkill (upsert by name).
+   */
+  fastify.post<{ Params: { id: string }; Body: { path: string; visibility?: string } }>(
+    '/skill-sources/:id/import',
+    async (request, reply) => {
+      const source = getSkillSource(request.params.id);
+      if (!source) return reply.code(404).send({ error: `Unknown skill source: ${request.params.id}` });
+      const { path, visibility } = request.body || ({} as any);
+      if (!path) return reply.code(400).send({ error: 'Missing "path" to the SKILL.md in the repo.' });
+      const user = (request as any).user;
+      try {
+        const markdown = await fetchRepoSkillMarkdown(source, path);
+        const parsed = parseSkillMarkdown(markdown);
+        const data = {
+          ...parsed,
+          source: `repo:${source.id}`,
+          source_url: `https://github.com/${source.repo}/blob/${source.branch}/${path}`,
+          visibility: visibility || 'private',
+          created_by: user?.userId || user?.id || 'system',
+        };
+        // Upsert by name so re-importing refreshes rather than duplicates.
+        const existing = await prisma.agentSkill.findFirst({ where: { name: parsed.name } });
+        const skill = existing
+          ? await prisma.agentSkill.update({ where: { id: existing.id }, data })
+          : await prisma.agentSkill.create({ data });
+        return reply.code(201).send({ skill, imported: true, updated: !!existing });
+      } catch (error: any) {
+        return reply.code(502).send({ error: error.message });
+      }
+    },
+  );
 
   /**
    * DELETE /api/admin/agents/skills/:id

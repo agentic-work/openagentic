@@ -21,6 +21,21 @@ interface AgentSkill {
   created_at: string;
 }
 
+interface SkillSource {
+  id: string;
+  name: string;
+  repo: string;
+  branch: string;
+  description: string;
+}
+
+interface RepoSkill {
+  name: string;
+  displayName: string;
+  description: string;
+  path: string;
+}
+
 interface SkillsMarketplaceViewProps {
   theme: string;
 }
@@ -43,6 +58,14 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingSkill, setEditingSkill] = useState<AgentSkill | null>(null);
   const [editForm, setEditForm] = useState({ display_name: '', description: '', type: '', tags: '' });
+  // Browse public skill repos (agenticwork-skills, Anthropic, OpenClaw)
+  const [showBrowseModal, setShowBrowseModal] = useState(false);
+  const [sources, setSources] = useState<SkillSource[]>([]);
+  const [activeSource, setActiveSource] = useState<string | null>(null);
+  const [repoSkills, setRepoSkills] = useState<RepoSkill[]>([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
+  const [browseError, setBrowseError] = useState<string | null>(null);
+  const [importingPath, setImportingPath] = useState<string | null>(null);
 
   const handleEditOpen = (skill: AgentSkill) => {
     setEditingSkill(skill);
@@ -91,6 +114,55 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
   }, []);
 
   useEffect(() => { fetchSkills(); }, [fetchSkills]);
+
+  const fetchSources = useCallback(async () => {
+    try {
+      const r = await fetch('/api/admin/agents/skill-sources', { credentials: 'include' });
+      if (!r.ok) return;
+      const d = await r.json();
+      setSources(d.sources || []);
+    } catch { /* sources are optional chrome */ }
+  }, []);
+  useEffect(() => { fetchSources(); }, [fetchSources]);
+
+  const browseSource = useCallback(async (id: string) => {
+    setActiveSource(id);
+    setBrowseLoading(true);
+    setBrowseError(null);
+    setRepoSkills([]);
+    try {
+      const r = await fetch(`/api/admin/agents/skill-sources/${id}/skills`, { credentials: 'include' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Failed to browse repository');
+      setRepoSkills(d.skills || []);
+    } catch (err: any) {
+      setBrowseError(err.message);
+    } finally {
+      setBrowseLoading(false);
+    }
+  }, []);
+
+  const importRepoSkill = useCallback(async (sourceId: string, path: string) => {
+    setImportingPath(path);
+    setBrowseError(null);
+    try {
+      const r = await fetch(`/api/admin/agents/skill-sources/${sourceId}/import`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Import failed');
+      await fetchSkills();
+    } catch (err: any) {
+      setBrowseError(err.message);
+    } finally {
+      setImportingPath(null);
+    }
+  }, [fetchSkills]);
+
+  const importedNames = new Set(skills.map(s => s.name));
 
   const handleImport = async () => {
     if (!importUrl.trim()) return;
@@ -171,13 +243,13 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowImportModal(true)}
+            onClick={() => { setShowBrowseModal(true); if (sources[0] && !activeSource) browseSource(sources[0].id); }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors"
             style={{ border: '1px solid var(--color-border)', color: 'var(--text-secondary)' }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-accent, var(--color-primary))'; e.currentTarget.style.color = 'var(--text-primary)'; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
           >
-            <Download size={12} /> Import
+            <Download size={12} /> Add from Repo
           </button>
           <button
             onClick={() => setShowImportModal(true)}
@@ -275,6 +347,63 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
       {filteredSkills.length === 0 && (
         <div className="text-center py-12 text-sm" style={{ color: 'var(--text-tertiary)' }}>
           No skills found. Import from a URL or create a custom skill.
+        </div>
+      )}
+
+      {/* Browse Repositories Modal — add skills from public SKILL.md repos */}
+      {showBrowseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setShowBrowseModal(false)}>
+          <div className="rounded-xl w-[760px] max-h-[80vh] flex flex-col shadow-2xl" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <div>
+                <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Add skills from a public repository</h3>
+                <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Browse curated SKILL.md repos and import with one click.</p>
+              </div>
+              <button onClick={() => setShowBrowseModal(false)} className="p-1 rounded transition-opacity hover:opacity-70" style={{ color: 'var(--text-secondary)' }}><X size={14} /></button>
+            </div>
+            <div className="flex flex-1 min-h-0">
+              {/* Source rail */}
+              <div className="w-52 flex-shrink-0 overflow-y-auto p-2 space-y-1" style={{ borderRight: '1px solid var(--color-border)' }}>
+                {sources.map(src => (
+                  <button key={src.id} onClick={() => browseSource(src.id)}
+                    className="w-full text-left px-3 py-2 rounded-md transition-colors"
+                    style={{ backgroundColor: activeSource === src.id ? 'color-mix(in srgb, var(--color-accent, var(--color-primary)) 12%, transparent)' : 'transparent', border: '1px solid ' + (activeSource === src.id ? 'var(--color-accent, var(--color-primary))' : 'transparent') }}>
+                    <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{src.name}</div>
+                    <div className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-code)' }}>{src.repo}</div>
+                  </button>
+                ))}
+                {sources.length === 0 && <div className="text-[11px] p-3" style={{ color: 'var(--text-tertiary)' }}>No skill sources configured.</div>}
+              </div>
+              {/* Skills panel */}
+              <div className="flex-1 overflow-y-auto p-3">
+                {browseError && <div className="p-2 mb-2 rounded text-xs" style={{ backgroundColor: 'color-mix(in srgb, var(--color-error) 10%, transparent)', color: 'var(--color-error)' }}>{browseError}</div>}
+                {browseLoading && <div className="text-xs py-8 text-center" style={{ color: 'var(--text-secondary)' }}>Loading skills…</div>}
+                {!browseLoading && !activeSource && <div className="text-xs py-8 text-center" style={{ color: 'var(--text-tertiary)' }}>Select a repository to browse its skills.</div>}
+                {!browseLoading && activeSource && repoSkills.length === 0 && !browseError && <div className="text-xs py-8 text-center" style={{ color: 'var(--text-tertiary)' }}>No SKILL.md skills found in this repo.</div>}
+                <div className="space-y-2">
+                  {repoSkills.map(rs => {
+                    const already = importedNames.has(rs.name);
+                    return (
+                      <div key={rs.path} className="rounded-lg p-3 flex items-start justify-between gap-3" style={{ backgroundColor: 'var(--color-surfaceSecondary, color-mix(in srgb, var(--color-border) 18%, transparent))', border: '1px solid var(--color-border)' }}>
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{rs.displayName}</div>
+                          {rs.description && <p className="text-[11px] mt-1 line-clamp-2" style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>{rs.description}</p>}
+                          <div className="text-[10px] mt-1 truncate" style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-code)' }}>{rs.path}</div>
+                        </div>
+                        <button
+                          onClick={() => activeSource && importRepoSkill(activeSource, rs.path)}
+                          disabled={importingPath === rs.path}
+                          className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all hover:brightness-110 disabled:opacity-50"
+                          style={{ backgroundColor: already ? 'transparent' : 'var(--color-accent, var(--color-primary))', color: already ? 'var(--text-secondary)' : 'var(--ap-fg-0)', border: already ? '1px solid var(--color-border)' : 'none' }}>
+                          <Download size={11} /> {importingPath === rs.path ? 'Importing…' : already ? 'Re-import' : 'Import'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
