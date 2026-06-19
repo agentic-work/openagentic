@@ -54,7 +54,7 @@ const exampleParams: Params = {
     { phaseId: 'p3', ts: '12:03:33', level: 'info', text: '✓ pushed (4 layers, 92 MiB)' },
     { phaseId: 'p4', ts: '12:03:35', level: 'info', text: '> helm upgrade openagentic ./helm/openagentic -f values-k3s-local.yaml' },
     { phaseId: 'p4', ts: '12:03:42', level: 'info', text: 'Release "openagentic" has been upgraded. Happy Helming!' },
-    { phaseId: 'p5', ts: '12:03:43', level: 'info', text: '> kubectl rollout status deploy/api -n agentic-dev' },
+    { phaseId: 'p5', ts: '12:03:43', level: 'info', text: '> kubectl rollout status deploy/api -n default' },
     { phaseId: 'p5', ts: '12:04:01', level: 'info', text: 'deployment "api" successfully rolled out' },
   ],
 };

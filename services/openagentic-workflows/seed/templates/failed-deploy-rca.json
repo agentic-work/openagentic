@@ -29,7 +29,7 @@
     "tags": ["aiops", "kubernetes", "deploy", "rca", "rollout", "demo"]
   },
   "defaultInputs": {
-    "namespace": "agentic-dev",
+    "namespace": "default",
     "deployment_name": "api",
     "time_range": "1h"
   },

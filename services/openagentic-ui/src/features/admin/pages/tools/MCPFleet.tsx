@@ -728,8 +728,8 @@ mcpProxy:
             whiteSpace: 'pre-wrap',
           }}>{`helm upgrade openagentic ./helm/openagentic \\
   -f values-k3s-local.yaml -f values-local-registry.yaml \\
-  -n agentic-dev --no-hooks
-kubectl rollout restart deployment/openagentic-mcp-proxy -n agentic-dev`}</pre>
+  -n openagentic --no-hooks
+kubectl rollout restart deployment/openagentic-mcp-proxy -n openagentic`}</pre>
 
           <p style={{ margin: 0, fontSize: 11, color: 'var(--ap-text-muted)' }}>
             mcp-proxy picks up the new server, registers its tools at the <code>/tools</code> endpoint, and this page surfaces it on the next refresh.

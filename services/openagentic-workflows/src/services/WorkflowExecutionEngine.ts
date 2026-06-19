@@ -2268,14 +2268,14 @@ export class WorkflowExecutionEngine extends EventEmitter {
       }
       // For k8s tools: extract namespace and deployment_name from input
       else if (toolName?.startsWith('k8s_') && !resolvedArgs.namespace) {
-        resolvedArgs.namespace = input?.namespace || 'agentic-dev';
+        resolvedArgs.namespace = input?.namespace || process.env.OPENAGENTIC_NAMESPACE || 'default';
         if (input?.deployment_name) resolvedArgs.deployment_name = input.deployment_name;
         if (input?.deployment) resolvedArgs.deployment_name = input.deployment;
       }
       // For loki_query: extract query from input
       else if (toolName === 'loki_query' && !resolvedArgs.query) {
         resolvedArgs.query = input?.query || input?.loki_query ||
-          `{namespace="${input?.namespace || 'agentic-dev'}"}`;
+          `{namespace="${input?.namespace || process.env.OPENAGENTIC_NAMESPACE || 'default'}"}`;
       }
       // Generic: if input is an object with simple values, pass as arguments
       // BUT skip LLM output fields (content, model, usage, provider, _costMeta)
@@ -2491,7 +2491,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     //    has to flow through the api proxy (which uses Kubernetes
     //    short-name DNS — not the FQDN — so it hits no deny rule).
     const internalAllowList = (process.env.INTERNAL_HOST_ALLOWLIST?.split(',').map((s) => s.trim()).filter(Boolean))
-      ?? ['openagentic-api.agentic-dev.svc.cluster.local'];
+      ?? [`openagentic-api.${process.env.OPENAGENTIC_NAMESPACE || 'default'}.svc.cluster.local`];
     let isInternalUrl = false;
     if (await isAllowedInternalHost(parsedUrl, internalAllowList)) {
       isInternalUrl = true;

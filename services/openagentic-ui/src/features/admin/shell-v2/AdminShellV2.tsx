@@ -139,7 +139,7 @@ export function AdminShellV2() {
           <div className="col-span-2 row-start-1">
             <TopBar
               user={{ initials: 'MT' }}
-              env="openagentic-dev/agentic-dev"
+              env="production"
             />
           </div>
           <div className="row-start-2 col-start-1 h-full overflow-hidden">

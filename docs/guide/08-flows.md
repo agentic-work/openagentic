@@ -422,7 +422,7 @@ Execute a saved flow by ID. Smart Router selects the model — never pass a
 # Manual run of a saved flow
 curl -sX POST http://localhost:8080/api/workflows/$WORKFLOW_ID/execute \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"input": {"alert": "High error rate on api", "namespace": "agentic-dev", "time_range": "1h"}}'
+  -d '{"input": {"alert": "High error rate on api", "namespace": "default", "time_range": "1h"}}'
 ```
 
 The execute route supports a `?dryRun=` and `?async=` query flag. Under the hood

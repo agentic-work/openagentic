@@ -81,14 +81,14 @@ export async function execute(
             inputObj?.message ||
             inputStr.substring(0, 500);
     } else if (toolName?.startsWith('k8s_') && !resolvedArgs.namespace) {
-      resolvedArgs.namespace = inputObj?.namespace || 'agentic-dev';
+      resolvedArgs.namespace = inputObj?.namespace || process.env.OPENAGENTIC_NAMESPACE || 'default';
       if (inputObj?.deployment_name) resolvedArgs.deployment_name = inputObj.deployment_name;
       if (inputObj?.deployment) resolvedArgs.deployment_name = inputObj.deployment;
     } else if (toolName === 'loki_query' && !resolvedArgs.query) {
       resolvedArgs.query =
         inputObj?.query ||
         inputObj?.loki_query ||
-        `{namespace="${inputObj?.namespace || 'agentic-dev'}"}`;
+        `{namespace="${inputObj?.namespace || process.env.OPENAGENTIC_NAMESPACE || 'default'}"}`;
     } else if (typeof input === 'object' && !Array.isArray(input)) {
       // Generic: pass simple object values, but skip LLM-output leakage fields.
       for (const [k, v] of Object.entries(inputObj)) {

@@ -407,3 +407,4 @@ tests/demos-pw/package-lock.json
 
 # CI-prefetched helm binary (vendored at build time, never committed)
 services/openagentic-mcp-proxy/vendor/helm
+*.new

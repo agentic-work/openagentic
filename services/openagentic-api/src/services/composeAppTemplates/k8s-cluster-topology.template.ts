@@ -42,16 +42,16 @@ type Params = z.infer<typeof ParamsSchema>;
 const exampleParams: Params = {
   title: 'prod-eks (us-east-1)',
   cluster: 'prod-eks',
-  namespaces: ['agentic-dev', 'observability', 'kube-system'],
+  namespaces: ['default', 'observability', 'kube-system'],
   nodes: [
     { id: 'n1', label: 'ip-10-0-1-12', role: 'worker', cpuCapacityCores: 8, memCapacityGiB: 32, ready: true },
     { id: 'n2', label: 'ip-10-0-1-13', role: 'worker', cpuCapacityCores: 8, memCapacityGiB: 32, ready: true },
     { id: 'n3', label: 'ip-10-0-1-14', role: 'worker', cpuCapacityCores: 4, memCapacityGiB: 16, ready: false },
   ],
   pods: [
-    { id: 'p1', label: 'api-7d4f', nodeId: 'n1', namespace: 'agentic-dev', status: 'Running', cpuMilli: 420, memMiB: 612 },
-    { id: 'p2', label: 'ui-9a2b', nodeId: 'n1', namespace: 'agentic-dev', status: 'Running', cpuMilli: 110, memMiB: 256 },
-    { id: 'p3', label: 'milvus-0', nodeId: 'n2', namespace: 'agentic-dev', status: 'Running', cpuMilli: 1200, memMiB: 4096 },
+    { id: 'p1', label: 'api-7d4f', nodeId: 'n1', namespace: 'default', status: 'Running', cpuMilli: 420, memMiB: 612 },
+    { id: 'p2', label: 'ui-9a2b', nodeId: 'n1', namespace: 'default', status: 'Running', cpuMilli: 110, memMiB: 256 },
+    { id: 'p3', label: 'milvus-0', nodeId: 'n2', namespace: 'default', status: 'Running', cpuMilli: 1200, memMiB: 4096 },
     { id: 'p4', label: 'prometheus-0', nodeId: 'n2', namespace: 'observability', status: 'Running', cpuMilli: 240, memMiB: 1024 },
     { id: 'p5', label: 'kube-proxy-x4', nodeId: 'n3', namespace: 'kube-system', status: 'CrashLoopBackOff', cpuMilli: 0, memMiB: 0 },
   ],

@@ -31,7 +31,7 @@
   "defaultInputs": {
     "alert": "High error rate on the api service",
     "symptom_query": "up == 0",
-    "namespace": "agentic-dev",
+    "namespace": "default",
     "time_range": "1h"
   },
   "definition": {
