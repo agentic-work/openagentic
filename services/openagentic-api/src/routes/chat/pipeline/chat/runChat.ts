@@ -30,6 +30,7 @@
  *   - Vercel opcode envelope (NDJSON 0/2/3/4/e)
  *   - Synthesis fallback for empty end_turn after tool_results
  */
+import { prisma } from '../../../../utils/prisma.js';
 import type {
   ChatLoopInput,
   ChatLoopDeps,
@@ -1002,7 +1003,7 @@ export async function runChat(
       // dispatches it through the audited executeMcpTool seam. server_name is not
       // load-bearing (the proxy infers the server from the tool-name prefix).
       try {
-        const row = await deps.prismaLike?.mCPTool?.findFirst({
+        const row = await prisma.mCPTool.findFirst({
           where: { name, is_enabled: true },
           select: { name: true, description: true, schema: true },
         });
