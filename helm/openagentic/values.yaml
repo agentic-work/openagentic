@@ -58,6 +58,7 @@ auth:
     tenantId: ""
     clientId: ""
     redirectUri: ""             # default: <ingress>/api/auth/microsoft/callback
+    subscriptionId: ""          # default subscription for the azure MCP tools (OBO)
     authority: ""               # default: https://login.microsoftonline.com/<tenantId>
     authorizedAdminGroups: []   # Entra group GUIDs granted admin
     authorizedUserGroups: []    # Entra group GUIDs granted user
@@ -67,6 +68,8 @@ auth:
 # AssumeRoleWithWebIdentity trusting the Entra token; GCP = Google OAuth (link
 # Google once). Azure OBO reuses the login app reg above.
 obo:
+  readOnlyMode: true            # block mutating cloud tool calls (set false to allow writes)
+  awsFallbackToService: false   # fail loud if OBO can't run as the user (no silent SP)
   aws:
     roleArn: ""                 # arn:aws:iam::ACCOUNT:role/OpenAgenticOBORole
     accountId: ""

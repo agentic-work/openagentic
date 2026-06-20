@@ -123,6 +123,10 @@ spec:
               value: {{ .Values.auth.azure.tenantId | quote }}
             - name: AZURE_CLIENT_ID
               value: {{ .Values.auth.azure.clientId | quote }}
+            {{- with .Values.auth.azure.subscriptionId }}
+            - name: AZURE_SUBSCRIPTION_ID
+              value: {{ . | quote }}
+            {{- end }}
             {{- with .Values.obo.aws.roleArn }}
             - name: AWS_OBO_ROLE_ARN
               value: {{ . | quote }}

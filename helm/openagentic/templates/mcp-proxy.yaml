@@ -105,6 +105,20 @@ spec:
               value: {{ .Values.auth.azure.tenantId | quote }}
             - name: AZURE_CLIENT_ID
               value: {{ .Values.auth.azure.clientId | quote }}
+            {{- with .Values.auth.azure.subscriptionId }}
+            # default subscription for the azure MCP (azure_list_resource_groups etc.)
+            - name: AZURE_SUBSCRIPTION_ID
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.obo.aws.roleArn }}
+            - name: AWS_OBO_ROLE_ARN
+              value: {{ . | quote }}
+            {{- end }}
+            # OBO demo hardening: read-only + fail-loud (no silent SP fallback).
+            - name: MCP_READ_ONLY_MODE
+              value: {{ .Values.obo.readOnlyMode | default true | quote }}
+            - name: AWS_OBO_FALLBACK_TO_SERVICE
+              value: {{ .Values.obo.awsFallbackToService | default false | quote }}
             {{- end }}
           readinessProbe:
             tcpSocket:
