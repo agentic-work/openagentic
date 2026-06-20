@@ -31,6 +31,11 @@ import {
   type NodeExecutionContext as SharedNodeCtx,
   type NodePlugin as SharedNodePlugin,
 } from '@openagentic/workflow-engine/nodes/types';
+// Approval gate + audit (HIGH-severity bypass fix, 2026-06-20). When the api
+// engine runs a flow in-process (WORKFLOW_SERVICE_URL unset / forwarding
+// fails), its mcp_tool node must be governed by the SAME runAuditAndGate as
+// chat/orchestrate. In-process here — no HTTP self-call needed.
+import { runAuditAndGate } from './approval/auditAndGate.js';
 
 const logger = loggers.services;
 
@@ -971,6 +976,30 @@ export class WorkflowExecutionEngine extends EventEmitter {
       userEmail: this.context.userEmail,
       interpolateTemplate: (t, i) => this.interpolateTemplate(t, i),
       getInternalAuthHeaders: () => this.getInternalAuthHeaders(),
+      // Approval gate + audit for mcp_tool (HIGH-severity bypass fix,
+      // 2026-06-20). In-process: this api engine path is in the SAME service
+      // as runAuditAndGate, so call it directly (origin 'subagent') instead of
+      // an HTTP self-call. The executor blocks the proxy call when allowed is
+      // false; a gate throw is caught there and fail-safe-blocks mutating calls.
+      gateMcpCall: async (call) => {
+        const res = await runAuditAndGate({
+          toolName: call.toolName,
+          serverName: call.serverName,
+          args: call.args ?? {},
+          userId: this.context.userId,
+          sessionId: this.context.executionId,
+          origin: 'subagent',
+          // No SSE emit on the in-process flow path: a MUTATING call with the
+          // gate ON blocks on ApprovalRegistry.waitFor until approved via the
+          // approve/deny route or times out → deny (fail safe).
+          logger,
+        });
+        return {
+          allowed: res.allowed,
+          blockReason: res.blockReason,
+          classification: res.classification,
+        };
+      },
       logger,
       // webhook_response stash hook — same pattern as workflows-service.
       setWebhookResponse: (response) => {

@@ -1608,11 +1608,16 @@ model ToolCallAuditLog {
   message_id     String?
   origin         String    @default("chat") // 'chat' | 'subagent'
   created_at     DateTime  @default(now())
+  // Crypto chaining fields (AU-10) — tamper-evident audit trail.
+  previous_hash  String? // Prior row's chain_hash (linear content chain)
+  chain_hash     String? // SHA-256(previous_hash + immutable insert content)
+  decision_hash  String? // SHA-256(this row's chain_hash + decision content); null while pending
 
   @@index([decision])
   @@index([user_id])
   @@index([tool_name])
   @@index([created_at])
+  @@index([chain_hash])
   @@map("tool_call_audit_log")
   @@schema("admin")
 }

@@ -7,12 +7,21 @@
  *
  * Auth: this node runs AS the user — uses ctx.authToken (NOT internal-secret)
  * + optional X-AWS-ID-Token / X-Azure-ID-Token for OBO federation.
+ *
+ * Approval gate (HIGH-severity bypass fix, 2026-06-20): before the proxy call,
+ * this executor runs the SAME approval gate + audit as chat/orchestrate via
+ * `ctx.gateMcpCall` (the engine wires it to the api's gated decision endpoint,
+ * `runAuditAndGate` origin 'subagent'). A MUTATING tool call in a Flow is
+ * audited and — when the gate is ON — blocked pending human approval; READ
+ * calls pass through. See `local fail-safe block` below: if the wired gate
+ * errors, a MUTATING call is blocked (fail SAFE), never silently executed.
  */
 
 import type { WorkflowNode } from '../types.js';
 import type { NodeExecutionContext } from '../types.js';
 import { abortableAxiosPost } from '../../abortableAxios.js';
 import { resolveMockMcpResponse } from '../../runtime/testMocks.js';
+import { looksMutating } from './localClassify.js';
 
 const LLM_OUTPUT_FIELDS = new Set([
   'content',
@@ -131,6 +140,56 @@ export async function execute(
       '[mcp_tool] Returning mocked response (test-mode)',
     );
     return mock.response;
+  }
+
+  // ---------------------------------------------------------------------------
+  // APPROVAL GATE + AUDIT (HIGH-severity bypass fix, 2026-06-20)
+  // ---------------------------------------------------------------------------
+  // Route this tool call through the SAME approval gate + audit as
+  // chat/orchestrate, BEFORE it reaches the proxy. The engine wires
+  // `ctx.gateMcpCall` to the api's gated decision endpoint (runAuditAndGate,
+  // origin 'subagent'): the api writes the audit row and, for a MUTATING call
+  // with the gate ON, blocks pending human approval. READ calls pass through.
+  //
+  // FAIL SAFE: if the WIRED gate throws (api/DB outage), block anything that
+  // even looks mutating (local conservative heuristic) — never silently execute
+  // an un-audited mutation. When `ctx.gateMcpCall` is ABSENT (isolated unit
+  // tests only; the engine always wires it in production), proceed unchanged.
+  if (typeof ctx.gateMcpCall === 'function') {
+    let decision: { allowed: boolean; blockReason?: string } | null = null;
+    try {
+      decision = await ctx.gateMcpCall({
+        toolName,
+        serverName: effectiveServer,
+        args: resolvedArgs,
+      });
+    } catch (gateErr) {
+      // Gate plumbing failed. Fail SAFE: block if the call looks mutating.
+      if (looksMutating(toolName, effectiveServer)) {
+        ctx.logger.error(
+          { nodeId: node.id, toolName, toolServer: effectiveServer, err: (gateErr as Error)?.message },
+          '[mcp_tool] approval gate unavailable — blocking MUTATING call (fail-safe)',
+        );
+        throw new Error(
+          `MCP tool "${toolName}" blocked: approval gate unavailable for a mutating call`,
+        );
+      }
+      ctx.logger.warn(
+        { nodeId: node.id, toolName, toolServer: effectiveServer, err: (gateErr as Error)?.message },
+        '[mcp_tool] approval gate unavailable — allowing READ call (degraded)',
+      );
+      decision = { allowed: true };
+    }
+
+    if (decision && decision.allowed === false) {
+      ctx.logger.warn(
+        { nodeId: node.id, toolName, toolServer: effectiveServer, reason: decision.blockReason },
+        '[mcp_tool] tool call blocked by approval gate',
+      );
+      throw new Error(
+        decision.blockReason ?? `MCP tool "${toolName}" blocked by approval gate`,
+      );
+    }
   }
 
   ctx.logger.info(

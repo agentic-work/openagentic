@@ -361,6 +361,63 @@ export class WorkflowExecutionEngine extends EventEmitter {
     return this.context.authToken ? { 'Authorization': this.context.authToken } : {};
   }
 
+  /**
+   * Approval gate + audit for the `mcp_tool` node (HIGH-severity bypass fix,
+   * 2026-06-20). POSTs the gated decision endpoint on the api so a Flow's tool
+   * call is audited + (gate ON) human-approval-gated by the SAME
+   * `runAuditAndGate` the chat + orchestrate paths use (origin 'subagent').
+   *
+   * Returns the gate decision. FAIL SAFE: a non-2xx response or any transport
+   * error THROWS — the mcp_tool executor catches it and blocks anything that
+   * looks mutating (never silently executes an un-audited mutation). A clean
+   * `{ allowed:false }` likewise blocks the call (the executor does not proxy).
+   */
+  private async gateMcpCall(call: {
+    toolName: string;
+    serverName?: string;
+    args: Record<string, unknown>;
+  }): Promise<{ allowed: boolean; blockReason?: string; classification?: 'READ' | 'MUTATING' }> {
+    const resp = await axios.post(
+      `${this.apiUrl}/api/internal/mcp/exec`,
+      {
+        toolName: call.toolName,
+        serverName: call.serverName,
+        args: call.args ?? {},
+        userId: this.context.userId,
+        // The workflow exec id is the closest thing to a session for audit
+        // correlation; threads through so the audit row links to the run.
+        sessionId: this.context.executionId,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.getInternalAuthHeaders(),
+        },
+        // Long timeout: a gated MUTATING call blocks server-side on
+        // ApprovalRegistry.waitFor until approved/denied/timed-out. The api's
+        // own approval-gate policy timeout (default 300s → deny) bounds this;
+        // give the HTTP call headroom past that so we receive the decision
+        // rather than tripping our own client timeout first (which would
+        // fail-safe block, but we prefer the real audited decision).
+        timeout: 360_000,
+        validateStatus: () => true,
+      },
+    );
+    if (resp.status < 200 || resp.status >= 300) {
+      throw new Error(`mcp gate returned HTTP ${resp.status}`);
+    }
+    const data = (resp.data ?? {}) as {
+      allowed?: boolean;
+      blockReason?: string;
+      classification?: 'READ' | 'MUTATING';
+    };
+    return {
+      allowed: data.allowed === true,
+      blockReason: data.blockReason,
+      classification: data.classification,
+    };
+  }
+
   /** Auth headers for openagentic-proxy (uses its own internal key + X-Agent-Proxy flag) */
   private getOpenAgenticProxyAuthHeaders(): Record<string, string> {
     const agentKey = process.env.OPENAGENTIC_PROXY_INTERNAL_KEY;
@@ -1385,6 +1442,13 @@ export class WorkflowExecutionEngine extends EventEmitter {
       userEmail: this.context.userEmail,
       interpolateTemplate: (t, i) => this.interpolateTemplate(t, i),
       getInternalAuthHeaders: () => this.getInternalAuthHeaders(),
+      // Approval gate + audit for mcp_tool (HIGH-severity bypass fix,
+      // 2026-06-20). Routes the engine's tool call through the SAME
+      // runAuditAndGate the chat/orchestrate paths use, via the api's gated
+      // decision endpoint. The api owns the audit row + ApprovalRegistry; this
+      // hook returns only the decision (the executor blocks the proxy call when
+      // allowed===false). See executor.ts for the fail-safe-block contract.
+      gateMcpCall: (call) => this.gateMcpCall(call),
       logger,
       tracing: this.tracing,
       subFlowDepth: this.context.subFlowDepth ?? 0,

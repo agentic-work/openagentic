@@ -24,11 +24,11 @@
 
 ## Why not just Claude Code + a few MCP servers?
 
-You *can* point a coding agent at a handful of ops MCP servers — but that gives you a single operator at a CLI with no controls. openagentic is the governed, multi-operator version of that idea, built for running real infrastructure:
+You *can* point a coding agent at a handful of ops MCP servers — but that gives you a raw CLI with no controls. openagentic is the governed version of that idea, built for running real infrastructure:
 
-- **Governance, at the infrastructure layer.** A **human-approval gate** sits on *every mutating tool call* — the agent investigates and recommends, but nothing that changes your infra runs until a human clicks Approve. Every tool call, proposed and executed, lands in an **immutable, hash-chained audit log**. This is enforced at the one seam every tool call passes through, so it can't be prompted around.
+- **Governance, at the infrastructure layer.** A **human-approval gate** sits on *every mutating tool call* — the agent investigates and recommends, but nothing that changes your infra runs until you click Approve. Every tool call, proposed and executed, lands in an **immutable, hash-chained audit log**. This is enforced at the one seam every tool call passes through, so it can't be prompted around.
 - **Repeatable incident runbooks as visual Flows.** Incident response shouldn't be ad-hoc prompting. **incident-triage**, **cost-anomaly**, and **failed-deploy RCA** ship as ready-to-run Flow templates, pre-wired to the Prometheus / Loki / Kubernetes / AWS MCPs.
-- **A multi-operator web console, not a single CLI.** A shared platform with local accounts, an admin console, per-tool permissions, and the audit log a team can review together — rather than one terminal on one laptop.
+- **A web console, not a raw CLI.** A self-hosted platform with a local admin account, an admin console, per-tool permissions, and a reviewable audit log — rather than one terminal on one laptop. (The OSS edition is **single-operator, local-auth**; multi-user SSO and team RBAC are in the Enterprise edition.)
 - **Zero-egress, air-gappable self-hosting.** One `docker compose up` (or Helm) box you can **fork, audit, and run on your own hardware**. Local Ollama for inference, **zero telemetry**, no phone-home. Your data and your models never leave your network.
 
 > **For:** the platform / SRE lead at a sovereignty-bound org who wants an AI ops platform they can self-host, audit, and trust — and who is done with both the compliance risk and the bill-shock of SaaS.
@@ -43,18 +43,25 @@ This is one box you can **fork, audit, and run on your own hardware**. Model-agn
 
 ## Quickstart
 
-**Docker Compose** — single-node, the quick path. Probes Ollama on `localhost:11434`, pulls the embed + chat model if missing, generates random admin / postgres / JWT creds, brings the stack up, and opens your browser auto-logged-in:
+**Docker Compose** — single-node, the quick path. Clone the repo and run the installer from the checkout: it probes Ollama on `localhost:11434`, pulls the embed + chat model if missing, generates random admin / postgres / JWT creds, brings the stack up (lightweight pgvector-only by default — no Milvus), and opens your browser auto-logged-in:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/install.sh | bash
+git clone git@github.com:agentic-work/openagentic.git ~/.openagentic   # SSH — repo is private until launch
+cd ~/.openagentic
+./install.sh
 ```
 
-> The `curl | bash` one-liners below are the **public-launch** install path. While the repo is still private, that URL 404s and prebuilt public images aren't published yet — clone the repo (see *Prerequisites + manual install*) and run `./install.sh` from the checkout instead.
+> **Once public / images published**, a one-line `curl … | bash` will be the install path:
+> ```bash
+> curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/install.sh | bash
+> ```
+> While the repo is still private, that URL 404s and prebuilt public images aren't published yet, so use the `git clone … && ./install.sh` form above (or the manual steps under *Prerequisites + manual install*).
 
-**Kubernetes (Helm)** — same one-liner, `--helm`. Runs `helm upgrade --install openagentic ./helm/openagentic` into the `openagentic` namespace:
+**Kubernetes (Helm)** — run the same installer with `--helm`. Runs `helm upgrade --install openagentic ./helm/openagentic` into the `openagentic` namespace:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/install.sh | bash -s -- --helm
+./install.sh --helm          # from the checkout
+# once public / images published:  curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/install.sh | bash -s -- --helm
 ```
 
 Want a careful walk-through (provider keys, MCP picks)? Add `--wizard` — an Ink TUI that writes a `.env` you can commit and re-use on the next box with `./install.sh --env path/to/.env`.
@@ -71,11 +78,15 @@ Want a careful walk-through (provider keys, MCP picks)? Add `--wizard` — an In
 git clone git@github.com:agentic-work/openagentic.git ~/.openagentic   # SSH — repo is private until launch
 cd ~/.openagentic
 cp .env.example .env          # set POSTGRES_PASSWORD (required), admin email/password, OLLAMA_HOST, optional provider keys
-docker compose --profile milvus up -d   # the milvus profile (etcd/minio/milvus) is required for semantic tool search
+docker compose up -d          # lightweight default: pgvector-only, no etcd/minio/milvus
 open http://localhost:8080
 ```
 
-> **The `milvus` profile is required.** etcd/minio/milvus are gated behind `--profile milvus`, and the API connects to Milvus on boot — it exits if it can't reach it — so always bring the stack up with `--profile milvus`. Until prebuilt public images are published, the first run **builds** every service image from source (a cold, multi-GB build), and images are amd64-only today.
+> **The default is pgvector-only.** A bare `docker compose up -d` boots the lightweight stack — Postgres + `pgvector` backs both RAG and semantic tool search, and the API runs without etcd/minio/milvus. **Milvus is optional**, for HA / large-scale embedding + RAG workloads: bring it up with the gated profile and flip the flag —
+> ```bash
+> MILVUS_ENABLED=true docker compose --profile milvus up -d
+> ```
+> Until prebuilt public images are published, the first run **builds** every service image from source (a cold, multi-GB build), and images are amd64-only today.
 
 The Helm chart lives at [`helm/openagentic/`](./helm/openagentic/) for the manual k8s path.
 

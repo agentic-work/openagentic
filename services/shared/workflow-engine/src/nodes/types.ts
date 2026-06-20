@@ -213,6 +213,39 @@ export interface NodeExecutionContext {
   interpolateTemplate(template: string, input: unknown): string;
   /** Internal-service auth headers for self-calls (LLM endpoint). */
   getInternalAuthHeaders(): Record<string, string>;
+
+  /**
+   * Approval-gate + audit hook for `mcp_tool` (HIGH-severity bypass fix,
+   * 2026-06-20). The workflow engine runs as a SEPARATE service
+   * (openagentic-workflows) and previously called the mcp-proxy DIRECTLY — so a
+   * Flow that invoked a MUTATING tool (kubectl delete, aws modify) executed
+   * with NO human approval and NO audit row: the highest-blast-radius surface
+   * was ungoverned while chat + orchestrate audit/gate every call.
+   *
+   * This hook routes the engine's tool call through the SAME approval gate +
+   * audit as chat/orchestrate. The engine wires it to POST the api's gated
+   * decision endpoint (`/api/internal/mcp/exec` → `runAuditAndGate`, origin
+   * 'subagent') BEFORE the executor reaches the proxy. The api owns the audit
+   * row (it has the ToolCallAuditLog table + ApprovalRegistry; the workflows
+   * service does not), so this hook returns only the decision.
+   *
+   * Contract:
+   *   - READ calls (classifyTool → READ) and all calls when the gate is OFF →
+   *     `{ allowed: true }`, audited decision='auto', execute normally.
+   *   - MUTATING + gate ON → `{ allowed: false, blockReason }` unless approved;
+   *     the executor MUST NOT call the proxy when allowed===false.
+   *
+   * FAIL SAFE: when this hook is WIRED but throws/errors, the executor blocks
+   * MUTATING calls (classified locally) and lets READs through — an audit/gate
+   * outage must never silently execute an un-audited mutation. When the hook is
+   * ABSENT entirely (isolated unit tests only — the engine always wires it in
+   * production), the executor proceeds unchanged.
+   */
+  gateMcpCall?: (call: {
+    toolName: string;
+    serverName?: string;
+    args: Record<string, unknown>;
+  }) => Promise<{ allowed: boolean; blockReason?: string; classification?: 'READ' | 'MUTATING' }>;
   /**
    * Pino-compatible logger. The signature is intentionally loose
    * (`...args: any[]`) so the engine can pass its raw pino instance

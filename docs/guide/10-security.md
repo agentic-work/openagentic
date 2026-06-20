@@ -404,8 +404,20 @@ Key properties:
   Read verbs (`get`, `list`, `describe`, `status`, `tool_search`, `web_search`,
   …) are never gated, so chat never hangs on a benign read. Write/destructive
   verbs (`create`, `apply`, `delete`, `terminate`, `scale`, `rollout`, …) are.
-  Unknown tools default to READ to avoid over-gating, while genuine mutating
-  verb tokens always win.
+- **Unknown verbs on infra servers fail CLOSED to MUTATING.** This is the
+  load-bearing safety property. After the read-override and known-mutating-verb
+  checks, a tool whose verb the classifier does *not* recognize is treated as
+  **MUTATING** when it belongs to a mutating-capable cloud/infra server —
+  `aws`, `azure`, `gcp`, `kubernetes` / `k8s`, or `github` / `gh`
+  (`MUTATING_CAPABLE_SERVERS` in `classifyTool.ts`). A security gate must never
+  auto-approve an op it cannot *prove* is read-only: verified bypasses that the
+  old READ-default would have waved through include `aws_ssm_send_command`
+  (a shell on every instance), `aws_sts_assume_role` (privesc),
+  `aws_bedrock_invoke_*`, S3 `sync`, and KMS `rotate`/`sign`. Genuine reads on
+  those servers are still caught by the read-verb overrides above, so what
+  reaches the fail-closed tail is ambiguous — and ambiguous-on-infra means a
+  human approves. Only **non-infra** tools with no verb signal either way fall
+  through to READ, so benign app/web/knowledge reads never hang on approval.
 - **The gate fails SAFE.** If a `pending` row cannot even be recorded for a
   mutating call, the call is **blocked** — an un-audited mutation can never slip
   through. A failure on a READ degrades to allow-and-log.

@@ -73,6 +73,21 @@ export function normalizeDetails(details: unknown): string {
   return JSON.stringify(canonicalize(v));
 }
 
+/**
+ * The ONE crypto primitive shared by every tamper-evident audit chain in the
+ * codebase (admin-audit AND tool-call-audit). Given the prior row's hash and an
+ * ordered list of content fields, produce `SHA256(previousHash | f0 | f1 | …)`.
+ *
+ * Callers pass already-stringified, deterministic fields (use `normalizeDetails`
+ * for any jsonb value so write-hash == verify-hash despite Postgres key churn).
+ * Keeping this generic means a second chain (tool-call) reuses the exact crypto
+ * — no duplicated SHA-256 / GENESIS / canonicalization logic.
+ */
+export function computeChainHash(previousHash: string | null, fields: string[]): string {
+  const payload = [previousHash ?? 'GENESIS', ...fields].join('|');
+  return createHash('sha256').update(payload).digest('hex');
+}
+
 export function computeAdminChainHash(
   previousHash: string | null,
   userId: string,
@@ -80,15 +95,13 @@ export function computeAdminChainHash(
   timestamp: Date,
   details?: unknown,
 ): string {
-  const payload = [
-    previousHash ?? 'GENESIS',
+  return computeChainHash(previousHash, [
     EVENT_TYPE,
     userId,
     action,
     timestamp.toISOString(),
     normalizeDetails(details),
-  ].join('|');
-  return createHash('sha256').update(payload).digest('hex');
+  ]);
 }
 
 async function coldStart(): Promise<void> {

@@ -31,17 +31,19 @@ by service name.
 | `ollama-init` | `ollama/ollama` | one-shot | Pulls the embedding model (`nomic-embed-text`) on first boot, then exits. |
 | `postgres` | `pgvector/pgvector:pg16` | `postgres:5432` | System-of-record. All relational state + `pgvector`/`halfvec` embedding columns. |
 | `redis` | `redis:7-alpine` | `redis:6379` | Cache, pub/sub (live prompt invalidation, SSE relay), MCP enabled-state, execution store. |
-| `milvus` | `milvusdb/milvus:v2.4.15` | `milvus:19530` | Vector database for semantic search (tool catalog, agents, memories, patterns, docs). **Mandatory** — the api exits at boot if it cannot connect. |
-| `etcd` | `quay.io/coreos/etcd` | internal | Milvus metadata store. |
-| `minio` | `minio/minio` | internal | Milvus object storage backend. |
+| `milvus` | `milvusdb/milvus:v2.4.15` | `milvus:19530` | **Optional** vector database for semantic search (tool catalog, agents, memories, patterns, docs) at HA / large scale. Off by default; enable with the `milvus` profile + `MILVUS_ENABLED=true`. When disabled, `pgvector` serves the same searches. |
+| `etcd` | `quay.io/coreos/etcd` | internal | Milvus metadata store (only with the `milvus` profile). |
+| `minio` | `minio/minio` | internal | Milvus object storage backend (only with the `milvus` profile). |
 | `searxng` | `searxng/searxng` | `http://searxng:8080` | Free self-hosted metasearch engine; the default search backend for the `web` MCP (no API key needed). |
 | `prometheus` | `prom/prometheus:v2.54.1` | `prometheus:9090` | Scrapes `/api/metrics` (and the proxy/workflows) so the admin dashboard shows real data. Published on `:9090`. |
 
 > **Profile gating.** `etcd`, `minio`, and `milvus` are gated behind the
-> `milvus` compose profile so they pull as one unit. Because the api requires
-> Milvus on boot, a bare `docker compose up -d` (no profile) crashes the api.
-> Always use `docker compose --profile milvus up -d`. `prometheus` is in the
-> default profile — it lights up the dashboard on a normal `up`.
+> `milvus` compose profile so they pull as one unit, and they are **off by
+> default**. The default `docker compose up -d` is the lightweight pgvector-only
+> stack — the api boots healthy without Milvus and uses `pgvector` for RAG and
+> semantic tool search. Bring Milvus up only when you want it, with
+> `MILVUS_ENABLED=true docker compose --profile milvus up -d`. `prometheus` is
+> in the default profile — it lights up the dashboard on a normal `up`.
 
 ### Why a fleet, not a monolith
 
@@ -85,15 +87,33 @@ Redis is the shared coordination layer:
 - **SSE relay + execution store** — the `proxy` service relays sub-agent
   progress and stores execution records through Redis.
 
-### Milvus (mandatory)
+### Milvus (optional)
 
-Milvus is the vector database. The api connects to it on boot and calls
-`process.exit(1)` if it is unreachable — there is **no** pgvector-only fallback
-for the boot connection (`MILVUS_HOST` defaults to `milvus`). Milvus standalone
-is itself three containers: `milvus` plus its `etcd` (metadata) and `minio`
-(object storage) dependencies.
+Milvus is an **optional** vector database for HA / large-scale embedding and RAG
+workloads. It is **off by default**: a bare `docker compose up -d` runs the
+lightweight pgvector-only stack and the api boots healthy without it. The api
+gates the Milvus boot connection on `isMilvusEnabled()` (`server.ts`), which
+returns `false` — i.e. pgvector-only — when **any** of these hold:
 
-Milvus holds the semantic-search collections the platform relies on, including:
+- `MILVUS_ENABLED=false` (explicit opt-out), or
+- `SKIP_TOOL_SEMANTIC_CACHE=true`, or
+- `MILVUS_HOST` is unset/empty.
+
+The default compose stack does not set `MILVUS_HOST`, so the default is
+pgvector-only. When Milvus **is** enabled, the boot path is fail-loud — the api
+connects with retry and `process.exit(1)`s after repeated failures, so a
+configured-but-unreachable vector store never boots silently degraded. Milvus
+standalone is itself three containers: `milvus` plus its `etcd` (metadata) and
+`minio` (object storage) dependencies, all gated behind the `milvus` profile.
+
+To enable it:
+
+```bash
+MILVUS_ENABLED=true docker compose --profile milvus up -d
+```
+
+Whether on Milvus or pgvector, the platform serves the same semantic-search
+collections, including:
 
 | Collection (conceptual) | Used by | Purpose |
 |---|---|---|
@@ -103,8 +123,9 @@ Milvus holds the semantic-search collections the platform relies on, including:
 | User memories | memory recall | Per-user semantic memory injected into the system prompt. |
 | Docs RAG | documentation search | Embedded platform docs for retrieval. |
 
-`SKIP_TOOL_SEMANTIC_CACHE` only gates **embedding generation / RAG indexing** —
-it does *not* let the api skip the mandatory Milvus boot connection.
+Note `SKIP_TOOL_SEMANTIC_CACHE=true` both disables **embedding generation / RAG
+indexing** *and* forces the pgvector-only path (it is one of the
+`isMilvusEnabled()` opt-outs).
 
 ### Ollama
 

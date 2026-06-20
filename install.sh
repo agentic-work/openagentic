@@ -37,6 +37,9 @@
 #                  reports what's wrong. Run this first when something breaks.
 #   --no-open      Don't auto-open the browser at the end.
 #   --ollama URL   Override the Ollama endpoint (default: localhost:11434).
+#   --milvus       Opt in to the Milvus vector store (HA / large-scale RAG).
+#                  Default is the lightweight pgvector-only stack — no
+#                  etcd/minio/milvus. (Or set OPENAGENTIC_MILVUS=1.)
 #   -h, --help     Show this help.
 #
 # Get help:  https://openagentics.io/docs/troubleshooting
@@ -145,6 +148,9 @@ MODE=wizard
 OPEN_BROWSER=1
 OLLAMA_HOST_OVERRIDE=""
 ENV_FILE_OVERRIDE=""
+# Vector store: pgvector-only by default (lightweight — no etcd/minio/milvus).
+# Opt in to Milvus with --milvus or OPENAGENTIC_MILVUS=1.
+USE_MILVUS="${OPENAGENTIC_MILVUS:-0}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --wizard)  MODE=wizard;     shift ;;
@@ -155,12 +161,25 @@ while [[ $# -gt 0 ]]; do
     --env)     MODE=env-file; ENV_FILE_OVERRIDE="${2:-}"; shift 2 ;;
     --no-open) OPEN_BROWSER=0;  shift ;;
     --ollama)  OLLAMA_HOST_OVERRIDE="${2:-}"; shift 2 ;;
+    --milvus)  USE_MILVUS=1;    shift ;;
     -h|--help)
-      sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//;s/^#//'
+      sed -n '2,42p' "$0" | sed 's/^# \{0,1\}//;s/^#//'
       EXIT_OK=1; exit 0 ;;
     *) warn "Unknown option: $1 (ignoring). Run with --help to see valid flags."; shift ;;
   esac
 done
+
+# `docker compose up` argument set, gated on the vector-store choice. Default is
+# pgvector-only (NO --profile milvus, MILVUS_ENABLED unset → isMilvusEnabled()
+# returns false in server.ts). --milvus opts into the HA Milvus trio + flips the
+# flag so the api connects to it. compose_up <extra-up-args...>
+compose_up() {
+  if [[ "$USE_MILVUS" == "1" ]]; then
+    MILVUS_ENABLED=true docker compose --profile milvus up "$@"
+  else
+    docker compose up "$@"
+  fi
+}
 
 banner
 
@@ -299,7 +318,7 @@ if [[ "$MODE" == "update" ]]; then
   [[ -f .env ]] || warn 'No .env found in the install dir — a rebuild will use defaults.'
   step "Rebuilding + restarting (Docker Compose)"
   info 'Pulling base images, rebuilding changed services…'
-  docker compose --profile milvus up -d --build 2>&1 | tail -10 \
+  compose_up -d --build 2>&1 | tail -10 \
     || fatal 'docker compose up failed during update.' 'Check: docker compose ps   and   docker logs openagentic-api-1 --tail=100'
   info 'Waiting for api healthy (~90s)…'
   s=unknown
@@ -435,7 +454,7 @@ if [[ "$MODE" == "env-file" ]]; then
   fi
 
   step "docker compose up"
-  docker compose --profile milvus up -d 2>&1 | tail -8
+  compose_up -d 2>&1 | tail -8
 
   info 'Waiting for api healthy (~90s on first boot)…'
   s=unknown
@@ -626,11 +645,23 @@ OLLAMA_HOST=$OLLAMA_HOST
 OLLAMA_EMBED_MODEL=$EMBED_MODEL
 OLLAMA_CHAT_MODEL=$CHAT_MODEL
 UI_HOST_PORT=8080
-# Quick path uses pgvector inside postgres. For Milvus, run:
-#   docker compose --profile milvus up -d
+EOF
+  if [[ "$USE_MILVUS" == "1" ]]; then
+    # Opted into Milvus (HA / large-scale RAG): enable RAG + the vector store.
+    cat >> .env <<EOF
+# Milvus opt-in (run: docker compose --profile milvus up -d)
+MILVUS_ENABLED=true
+EOF
+  else
+    # Default: lightweight pgvector-only (no etcd/minio/milvus). MILVUS_ENABLED
+    # stays unset → isMilvusEnabled() returns false in server.ts.
+    cat >> .env <<EOF
+# Default lightweight stack — pgvector-only (no Milvus). For Milvus, re-run with
+# --milvus (or: MILVUS_ENABLED=true docker compose --profile milvus up -d).
 DISABLE_RAG=true
 SKIP_TOOL_SEMANTIC_CACHE=true
 EOF
+  fi
   printf 'email: admin@openagentic.local\npassword: %s\n' "$ADMIN_PASS" > "$HOME/.openagentic/admin-credentials.txt"
   chmod 600 "$HOME/.openagentic/admin-credentials.txt" .env
   ok "Generated .env (admin creds in ~/.openagentic/admin-credentials.txt)"
@@ -656,11 +687,16 @@ else
   warn 'Run `az login` / `aws configure` / `gcloud auth login` to wire them up.'
 fi
 
-# 6. Bring it up. The milvus profile (etcd/minio/milvus) is REQUIRED — the api
-# connects to Milvus on boot and exits if it can't reach it (server.ts).
+# 6. Bring it up. Default is the lightweight pgvector-only stack (no Milvus) —
+# the api boots healthy without etcd/minio/milvus (isMilvusEnabled() in
+# server.ts). --milvus opts into the Milvus trio for HA / large-scale RAG.
 step "docker compose up"
-info 'Pulling images and starting services (first boot pulls a few GB)…'
-docker compose --profile milvus up -d 2>&1 | tail -8
+if [[ "$USE_MILVUS" == "1" ]]; then
+  info 'Pulling images and starting services with Milvus (first boot pulls a few GB)…'
+else
+  info 'Pulling images and starting services — pgvector-only (first boot pulls a few GB)…'
+fi
+compose_up -d 2>&1 | tail -8
 
 # 7. Wait for api healthy.
 info 'Waiting for api healthy (~90s on first boot)…'

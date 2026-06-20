@@ -1465,6 +1465,22 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register internal HITL policy routes');
   }
 
+  // Register Internal MCP Gate route (approval-gate bypass fix, 2026-06-20).
+  // The workflow engine (separate service openagentic-workflows) POSTs here
+  // BEFORE its mcp_tool node reaches the proxy, so a Flow's MUTATING tool call
+  // is audited + human-approval-gated by the SAME runAuditAndGate the chat +
+  // orchestrate paths use (origin 'subagent'). Without this the highest-blast
+  // surface (Flows calling kubectl delete / aws modify) was ungoverned.
+  try {
+    const { registerInternalMcpGateRoute } = await import('./routes/internal/mcp-gate.js');
+    registerInternalMcpGateRoute(server, {
+      internalSecret: process.env.INTERNAL_SERVICE_SECRET ?? '',
+    });
+    loggers.routes.info('Internal MCP gate route registered at /api/internal/mcp/exec');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register internal MCP gate route');
+  }
+
   // Register Internal Prompt Compose routes (for openagentic-proxy and workflow engine)
   try {
     const { registerPromptComposeRoutes } = await import('./routes/internal/prompt-compose.js');

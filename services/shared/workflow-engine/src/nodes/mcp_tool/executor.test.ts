@@ -373,4 +373,122 @@ describe('mcp_tool/executor', () => {
       ),
     ).rejects.toThrow(/mcp.*proxy/i);
   });
+
+  // ---------------------------------------------------------------------------
+  // APPROVAL GATE + AUDIT (HIGH-severity bypass fix, 2026-06-20)
+  //
+  // The workflow engine ran mcp_tool calls DIRECTLY against the proxy with NO
+  // gate + NO audit — a Flow could `kubernetes_delete_pod` / `aws_*_modify`
+  // with no human approval and no audit row. The executor now routes every
+  // call through `ctx.gateMcpCall` (wired by the engine to the api's
+  // runAuditAndGate, origin 'subagent') BEFORE the proxy. These tests pin:
+  //   - a blocked MUTATING call NEVER reaches the proxy and throws
+  //   - the gate is consulted with the resolved tool/server/args (→ audited)
+  //   - a READ (allowed) call passes through to the proxy unchanged
+  //   - FAIL SAFE: a gate hook error blocks a mutating call (never executes)
+  // ---------------------------------------------------------------------------
+  describe('approval gate', () => {
+    it('blocks a MUTATING tool (kubernetes_delete_pod) and NEVER hits the proxy', async () => {
+      const post = vi.spyOn(axios, 'post');
+      const gateMcpCall = vi.fn().mockResolvedValue({
+        allowed: false,
+        blockReason: "Mutating tool 'kubernetes_delete_pod' denied by approval gate",
+        classification: 'MUTATING',
+      });
+
+      await expect(
+        execute(
+          mcpNode({
+            toolName: 'kubernetes_delete_pod',
+            toolServer: 'openagentic_kubernetes',
+            arguments: { namespace: 'prod', name: 'api-0' },
+          }),
+          null,
+          makeCtx({ gateMcpCall }),
+        ),
+      ).rejects.toThrow(/denied by approval gate/);
+
+      // Gate was consulted with the resolved call (this is what gets audited).
+      expect(gateMcpCall).toHaveBeenCalledTimes(1);
+      expect(gateMcpCall.mock.calls[0][0]).toMatchObject({
+        toolName: 'kubernetes_delete_pod',
+        serverName: 'openagentic_kubernetes',
+        args: { namespace: 'prod', name: 'api-0' },
+      });
+      // The mutation NEVER reached the proxy.
+      expect(post).not.toHaveBeenCalled();
+    });
+
+    it('lets a READ tool through to the proxy after the gate allows it', async () => {
+      const gateMcpCall = vi.fn().mockResolvedValue({
+        allowed: true,
+        classification: 'READ',
+      });
+      const post = mockProxy({
+        result: {
+          jsonrpc: '2.0',
+          id: 1,
+          result: { content: [{ type: 'text', text: 'pod-a\npod-b' }], isError: false },
+        },
+      });
+
+      const out: any = await execute(
+        mcpNode({
+          toolName: 'kubernetes_list_pods',
+          toolServer: 'openagentic_kubernetes',
+          arguments: { namespace: 'prod' },
+        }),
+        null,
+        makeCtx({ gateMcpCall }),
+      );
+
+      expect(gateMcpCall).toHaveBeenCalledTimes(1);
+      expect(gateMcpCall.mock.calls[0][0]).toMatchObject({
+        toolName: 'kubernetes_list_pods',
+      });
+      // Gate allowed → proxy WAS hit, result returned normally.
+      expect(post).toHaveBeenCalledTimes(1);
+      expect(post.mock.calls[0][0]).toBe('http://mcp-proxy/call');
+      expect(out.content).toBe('pod-a\npod-b');
+    });
+
+    it('FAIL SAFE: a gate hook error blocks a MUTATING call (no proxy call)', async () => {
+      const post = vi.spyOn(axios, 'post');
+      const gateMcpCall = vi.fn().mockRejectedValue(new Error('api unreachable'));
+
+      await expect(
+        execute(
+          mcpNode({
+            toolName: 'aws_ec2_terminate_instances',
+            toolServer: 'openagentic_aws',
+            arguments: { instance_ids: ['i-123'] },
+          }),
+          null,
+          makeCtx({ gateMcpCall }),
+        ),
+      ).rejects.toThrow(/approval gate unavailable for a mutating call/);
+
+      expect(post).not.toHaveBeenCalled();
+    });
+
+    it('FAIL SAFE (degraded): a gate hook error lets an obvious READ through', async () => {
+      const gateMcpCall = vi.fn().mockRejectedValue(new Error('api unreachable'));
+      const post = mockProxy({
+        result: { jsonrpc: '2.0', id: 1, result: { content: [], isError: false } },
+      });
+
+      await execute(
+        mcpNode({
+          toolName: 'list_kvs',
+          toolServer: 'openagentic_azure',
+          arguments: {},
+        }),
+        null,
+        makeCtx({ gateMcpCall }),
+      );
+
+      // READ degrades to allow-and-proceed (never hangs / never over-blocks).
+      expect(post).toHaveBeenCalledTimes(1);
+    });
+  });
 });
