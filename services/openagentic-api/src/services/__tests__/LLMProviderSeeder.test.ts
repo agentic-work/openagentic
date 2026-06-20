@@ -106,7 +106,7 @@ describe('seedLLMProviders (bootstrap provider contract, task #294)', () => {
       process.env.AWS_BEDROCK_ENABLED = 'true';
       process.env.AWS_BEDROCK_MODEL_ID = 'us.anthropic.claude-sonnet-4-6';
       process.env.OLLAMA_ENABLED = 'true';
-      process.env.OLLAMA_BASE_URL = 'http://10.2.10.142:11434';
+      process.env.OLLAMA_BASE_URL = 'http://192.0.2.10:11434';
       delete process.env.BOOTSTRAP_PROVIDER_NAME;
 
       await seedLLMProviders();
@@ -130,7 +130,7 @@ describe('seedLLMProviders (bootstrap provider contract, task #294)', () => {
       process.env.BOOTSTRAP_PROVIDER_TYPE = 'ollama';
       process.env.BOOTSTRAP_PROVIDER_CONFIG = JSON.stringify({
         type: 'ollama',
-        endpoint: 'http://10.2.10.142:11434',
+        endpoint: 'http://192.0.2.10:11434',
       });
       process.env.BOOTSTRAP_PROVIDER_DEFAULTS = JSON.stringify({
         chat: 'gpt-oss:20b',
@@ -153,7 +153,7 @@ describe('seedLLMProviders (bootstrap provider contract, task #294)', () => {
       // seeder_managed stamp on the provider_config so discoverable sync keeps working
       expect((args.data.provider_config as any).seeder_managed).toBe(true);
       // Endpoint + auth type survived encryption mock
-      expect((args.data.auth_config as any).endpoint).toBe('http://10.2.10.142:11434');
+      expect((args.data.auth_config as any).endpoint).toBe('http://192.0.2.10:11434');
       expect((args.data.auth_config as any).type).toBe('ollama');
     });
 

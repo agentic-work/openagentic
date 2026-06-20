@@ -18,7 +18,7 @@ node_modules
 !services/openagentic-cli/node_modules/**
 !services/openagentic-cli/package.json
 
-# Exception: SDK and CLI at repo root (copied by build script for openagentic-manager)
+# Exception: SDK and CLI at repo root (copied by the build script)
 !sdk
 !sdk/**
 !openagentic-cli

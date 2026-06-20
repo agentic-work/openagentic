@@ -2143,7 +2143,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       return this.executeJavaScript(code, input, node.data.timeoutMs, node.data.memoryCapMb);
     }
 
-    // For Python, would route to openagentic-manager
+    // Python execution is not supported by the OSS in-process engine.
     // For now, throw error for unsupported languages
     throw new Error(`Language ${language} execution not yet implemented in workflows`);
   }

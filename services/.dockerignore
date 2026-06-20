@@ -8,6 +8,6 @@ litellm
 *.log
 .env*
 
-# Include openagentic-cli pre-built files for openagentic-manager build
+# Include openagentic-cli pre-built files for the build
 !openagentic-cli/dist
 !openagentic-cli/node_modules

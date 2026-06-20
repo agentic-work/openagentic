@@ -1,5 +1,5 @@
 /**
- * #650 U9 — Live discovery contract on chat-dev.
+ * #650 U9 — Live discovery contract in the dev environment.
  *
  * Drives 4 providers through the Add-Model + Refresh-from-provider
  * surface and asserts the Registry row's discovered fields match
@@ -8,7 +8,7 @@
  * Auth: re-uses `.auth/user.json` from saveAuthState helper. Regen on
  * JWT expiry per release-readiness.spec.ts top-of-file recipe.
  *
- * Pre-conditions (the fixture state on chat-dev):
+ * Pre-conditions (the fixture state in the dev environment):
  * - Bedrock provider exists with credentials configured
  * - Vertex provider exists with credentials configured
  * - Azure AI Foundry provider exists with `awf-aif-20902` deployment

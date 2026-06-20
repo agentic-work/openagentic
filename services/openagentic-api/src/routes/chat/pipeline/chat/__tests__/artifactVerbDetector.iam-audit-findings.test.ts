@@ -1,7 +1,7 @@
 /**
  * #1108 — artifactVerbDetector regression test for the IAM-audit + JSON-findings
  * prompt class that failed to force compose_app on the rule-0 first-video drive
- * (2026-05-25, image 0.7.1-115f2f6b → fb007bea, Sonnet 4.6 on chat-dev).
+ * (2026-05-25, image 0.7.1-115f2f6b → fb007bea, Sonnet 4.6 in the dev environment).
  *
  * Live evidence: prompt was the fanout audit shown in
  * reports/verify-cadence/rule-0-first-video/22c196b2/frames/15-*.png.

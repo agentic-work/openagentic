@@ -4,7 +4,7 @@
  * function-call syntax. The parser extracts template + params so chatLoop can
  * re-emit them as synthetic tool_use frames and the iframes mount.
  *
- * RED tests pin the exact shapes observed live on chat-dev:
+ * RED tests pin the exact shapes observed live in the dev environment:
  *  - o4-mini multi-line `params={...}` JS object literal (k8s audit turn)
  *  - single-line variant
  *  - mixed compose_app + compose_visual in one body

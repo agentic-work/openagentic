@@ -4,7 +4,7 @@
  * Deterministic + LLM-free: extracts pod/component/IP tokens from the
  * claim, intersects with the ground-truth bundle, returns the unfounded
  * set. Catches the "model invented a Redis crash that didn't happen"
- * failure mode observed live on chat-dev 2026-05-15.
+ * failure mode observed live in the dev environment 2026-05-15.
  */
 
 import { describe, it, expect } from 'vitest';

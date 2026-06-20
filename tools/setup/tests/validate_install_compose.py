@@ -6,7 +6,7 @@ import os, sys, shutil, time
 from pathlib import Path
 import pexpect
 
-REPO = Path("/home/trent/agenticwork/openagentic")
+REPO = Path(os.environ.get("REPO", Path(__file__).resolve().parents[3]))
 ENV = REPO / ".env"
 BAK = Path("/tmp/.env.live.bak")
 ENTER, DOWN, SPACE = "\r", "\x1b[B", " "
@@ -37,7 +37,11 @@ def send(child, s, settle=0.35):
 if ENV.exists(): shutil.copy(ENV, BAK)
 env = os.environ.copy()
 env["WIZARD_DRY_RUN"] = "1"
-env["PATH"] = "/home/trent/.nvm/versions/node/v22.22.3/bin:" + env["PATH"]
+# Ensure `node` is reachable; honor NODE_BIN if the harness runs under a version
+# manager whose shims aren't on the non-interactive PATH.
+_node_bin = os.environ.get("NODE_BIN")
+if _node_bin:
+    env["PATH"] = _node_bin + os.pathsep + env["PATH"]
 
 child = pexpect.spawn("bash install.sh --wizard", cwd=str(REPO), env=env, encoding="utf-8", timeout=30, dimensions=(50, 160))
 ok = True

@@ -31,7 +31,7 @@ env:
 jobs:
   build:
     name: Build & push (${{ matrix.service }})
-    runs-on: openagentic-runners
+    runs-on: ubuntu-latest
 
     permissions:
       contents: read
@@ -161,7 +161,7 @@ jobs:
   release-artifacts:
     name: Package release artifacts
     needs: build
-    runs-on: openagentic-runners
+    runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
     permissions:
@@ -239,7 +239,7 @@ jobs:
   # Set wizard_dry_run=false to actually publish that version.
   manual-wizard-publish:
     name: Manual wizard publish (@agenticwork/openagentic)
-    runs-on: openagentic-runners
+    runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && inputs.wizard_version != ''
     permissions:
       contents: read

@@ -48,9 +48,9 @@ describe('registry', () => {
   });
 
   // The in-process JavaScript `code` node (V8 isolate) is schema-driven.
-  // The `openagentic`/`agenticode` code-execution nodes (which spawned
-  // isolated sessions in the removed code-manager service) were excised
-  // from the OSS edition — no code-execution surface ships.
+  // The external code-execution nodes (which spawned isolated sessions in a
+  // separate runner service) were excised from the OSS edition — no
+  // external code-execution surface ships.
   it('registers the in-process JS `code` node', () => {
     expect(registry.has('code')).toBe(true);
   });

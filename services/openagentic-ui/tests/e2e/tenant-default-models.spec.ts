@@ -1,5 +1,5 @@
 /**
- * Stage T-C E2E — Tenant Default Models round-trip on chat-dev.
+ * Stage T-C E2E — Tenant Default Models round-trip in the dev environment.
  *
  * Validates the full SOT consolidation:
  *   (1) Page renders with all 5 categories + precedence flow.
@@ -9,7 +9,7 @@
  *
  * Prerequisites:
  *   - AW_JWT env var must be set to a valid openagentic_token JWT for
- *     an admin user on chat-dev.
+ *     an admin user in the dev environment.
  *   - Run with:
  *       AW_JWT=<token> npx playwright test \
  *         --config=services/openagentic-ui/tests/e2e/playwright.config.ts \
@@ -25,7 +25,7 @@ import { test, expect, type Page, type APIRequestContext } from '@playwright/tes
 const BASE_URL = process.env.BASE_URL || 'https://chat.example.com';
 const AW_JWT   = process.env.AW_JWT ?? '';
 
-// A model that is known to be enabled in the registry on chat-dev.
+// A model that is known to be enabled in the registry in the dev environment.
 // Used as the "different model" for the code-category live-propagation test.
 // The value intentionally lives here (not hardcoded in application source).
 const HAIKU_MODEL_ID = 'global.anthropic.claude-haiku-4-5';

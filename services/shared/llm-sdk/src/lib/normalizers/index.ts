@@ -7,7 +7,7 @@
  * Every provider wrapper in `@agentic-work/llm-sdk` uses one of these
  * normalizers to translate raw cloud SSE/NDJSON into the canonical event
  * union the rest of the platform consumes. Downstream services
- * (openagentic-api, openagentic CLI, code-manager, workflows) see ONLY
+ * (openagentic-api, workflows, and other consumers) see ONLY
  * canonical OpenAgentic events. Provider differences become invisible.
  *
  * Spec: docs/superpowers/specs/2026-05-01-canonical-stream-normalizer.md

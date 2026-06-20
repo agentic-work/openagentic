@@ -3,7 +3,7 @@
  *
  * Option B unification (2026-05-13). Before this slice:
  *   - chatmode Task tool read from 8 markdown files (`src/agents/built-in/*.md`)
- *   - Flows + Admin Console read from `prisma.agent` (33 rows on chat-dev)
+ *   - Flows + Admin Console read from `prisma.agent` (33 rows in the dev environment)
  *   - Admin-created custom agents were invisible to chatmode.
  *
  * After this slice:

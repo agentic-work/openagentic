@@ -5,8 +5,8 @@ import { PYODIDE_VERSION } from '../pyodideWorker';
 // exist on the Pyodide CDN (v0.28.3 is the last 0.28.x release per
 // https://data.jsdelivr.com/v1/package/npm/pyodide/). Every dynamic
 // `import(...pyodide.mjs)` therefore 404'd and the browser sandbox could
-// never boot — exactly the failure mode the user hit end-to-end on
-// chat-dev.
+// never boot — exactly the failure mode the user hit end-to-end in
+// the dev environment.
 //
 // This spec pins two invariants:
 //   1. The version string is a valid semver triple we'd expect to see on

@@ -589,7 +589,7 @@ describe('makeRunSubagentViaRecursor — Phase E.8.e (unit)', () => {
 const OLLAMA_CANDIDATES: string[] = [
   process.env.TEST_OLLAMA_BASE_URL ?? '',
   'http://gpu-node:11434',
-  'http://10.2.10.142:11434',
+  'http://192.0.2.10:11434',
   process.env.OLLAMA_BASE_URL ?? '',
 ].filter(Boolean);
 

@@ -2,7 +2,7 @@
  * Sev-1 #922 — HITL approval cards MUST render INLINE with the matching
  * tool_use, not in a per-message footer strip.
  *
- * Background (chat-dev live drive 2026-05-17, image 0.7.1-87b85a9b): when
+ * Background (dev environment live drive 2026-05-17, image 0.7.1-87b85a9b): when
  * the model fired two parallel `azure_create_resource_group` tool_use
  * blocks, the HITL approval cards rendered at the bottom of the message
  * (rectTop 796/894/992) while the corresponding tool cards rendered near
@@ -233,7 +233,7 @@ describe('Sev-1 #922 — HITL approval cards render INLINE with matching tool_us
   });
 
   it('shows optimistic "Approving…" feedback immediately on click + disables both buttons (Sev-1 UX)', async () => {
-    // Live regression on chat-dev 2026-05-24: user clicked Approve, "nothing
+    // Live regression in the dev environment 2026-05-24: user clicked Approve, "nothing
     // feels like it happens", then ~15s later the image rendered. The click
     // DID fire (next turn ran with status:approved) but the button had zero
     // visual feedback — no spinner, no disable, no "Approving…" text. The

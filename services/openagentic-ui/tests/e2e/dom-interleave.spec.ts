@@ -4,7 +4,7 @@
  * Plan: docs/superpowers/plans/sprightly-percolating-brook.md §0.2
  *
  * For each scenario in Q1..Q20 (see PROMPTS.md), this spec:
- *   1. Logs in to chat-dev as mcp-tester (Microsoft SSO).
+ *   1. Logs in to the dev environment as mcp-tester (Microsoft SSO).
  *   2. Pins the model via the model selector (Sonnet 4.6 OR gpt-oss:20b,
  *      driven by env MODEL).
  *   3. Sends the prompt.
@@ -70,10 +70,13 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
+/** App host under test — set APP_HOST to the deployed origin when running. */
+const APP_HOST = process.env.APP_HOST ?? 'chat.example.com';
+
 /** SSO login helper — mirrors codemode-live-proof.spec.ts. */
 async function loginIfNeeded(page: Page): Promise<void> {
   const url = page.url();
-  if (url.includes('chat-dev') && !url.includes('login.microsoftonline.com')) {
+  if (url.includes(APP_HOST) && !url.includes('login.microsoftonline.com')) {
     return;
   }
   await page
@@ -86,7 +89,7 @@ async function loginIfNeeded(page: Page): Promise<void> {
     .fill(process.env.SSO_PASS ?? 'TestMcp@2026');
   await page.getByRole('button', { name: /sign in/i }).click();
   await page.getByRole('button', { name: /yes|stay signed in/i }).click().catch(() => {});
-  await page.waitForURL(/chat-dev/, { timeout: 30_000 });
+  await page.waitForURL(new RegExp(APP_HOST), { timeout: 30_000 });
 }
 
 async function selectModel(page: Page, model: string): Promise<void> {

@@ -4323,7 +4323,7 @@ pre.shiki-fallback {
 .cm-input-card:focus-within {
   /* Hardcoded ring color fallback — color-mix(... transparent) was
      resolving to zero alpha in some contexts (observed on the running
-     chat-dev bundle). Using explicit --cm-accent with inline rgba
+     dev environment bundle). Using explicit --cm-accent with inline rgba
      alpha dodges the issue while still being theme-driven. */
   border-color: var(--cm-accent, #58a6ff);
   box-shadow:

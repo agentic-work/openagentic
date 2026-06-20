@@ -1,7 +1,7 @@
 /**
  * #807 part 2 — server-side rescue for inline compose_app/compose_visual XML.
  *
- * Models like o4-mini (chat-dev 2026-05-13T20:16 k8s audit session) emit
+ * Models like o4-mini (dev environment 2026-05-13T20:16 k8s audit session) emit
  * compose_app frames as inline TEXT inside the assistant message body:
  *
  *   <compose_app template="k8s-cluster-topology" params={"groups":[...]}>

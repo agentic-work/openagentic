@@ -7,7 +7,6 @@
  *
  * Consumers:
  *  - src/plugins/admin.plugin.ts     — ollamaEnabled
- *  - src/plugins/auth.plugin.ts      — authProvider
  *  - src/plugins/chat.plugin.ts      — enableCoT
  *
  * Rules:
@@ -56,18 +55,12 @@ export const featureFlags = {
    * via getSystemPromptForRole and bypasses the legacy 35-module
    * legacy static + sidecar composer machinery. Default false during
    * Phase B rollout — flip to true via helm values once Phase B.7
-   * Playwright probes confirm parity on chat-dev.
+   * Playwright probes confirm parity in a deployed environment.
    */
   useRbacPrompt: bool('USE_RBAC_PROMPT', false),
 
   /** Ollama local-model provider enabled (OLLAMA_ENABLED=true). */
   ollamaEnabled: bool('OLLAMA_ENABLED', false),
-
-  /** Auth provider type ('azure-ad' | 'local'). Default 'local' for the OSS
-   * edition (matches tokenValidator.ts + server.ts OBO gate); Entra activates
-   * only when AUTH_PROVIDER is explicitly set. An unset deploy must NOT silently
-   * enable the Entra/OBO path. */
-  authProvider: process.env.AUTH_PROVIDER || 'local',
 
   /** MCP proxy sidecar enabled (MCP_PROXY_ENABLED=true, default on). */
   mcpProxyEnabled: bool('MCP_PROXY_ENABLED', true),
@@ -82,8 +75,7 @@ export const featureFlags = {
 
   /**
    * Kubernetes namespace for exec-pod address construction + cluster
-   * queries. Helm sets this from `{{ .Release.Namespace }}` (api) or
-   * downward API `fieldRef: metadata.namespace` (code-manager) in every
+   * queries. Helm sets this from `{{ .Release.Namespace }}` (api) in every
    * fully-configured env. We log-loud-and-fall-back to 'default'
    * here as a last-resort safety net — initial fail-fast (2026-04-27)
    * crashed the live api because the active helm chart hadn't been
@@ -105,9 +97,8 @@ export const featureFlags = {
     return v;
   })(),
 
-  // (seedOmhsTemplates + seedPlatformTemplates both removed — all the
-  // OMHS pack and the two platform showcase templates now seed via the
-  // canonical SEED_WORKFLOW_TEMPLATES inline path in routes/workflows.ts,
-  // which writes to the `workflow` table that chat-dev's Templates panel
-  // actually reads.)
+  // (seedOmhsTemplates + seedPlatformTemplates both removed — the
+  // showcase templates now seed via the canonical SEED_WORKFLOW_TEMPLATES
+  // inline path in routes/workflows.ts, which writes to the `workflow`
+  // table that the Templates panel actually reads.)
 } as const;

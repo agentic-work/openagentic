@@ -280,23 +280,6 @@ services:
       # Auth: local username/password only (stored in Postgres). No federated
       # identity / SSO in OSS.
       AUTH_PROVIDER: ${AUTH_PROVIDER:-local}
-      # Entra IdP + cross-cloud OBO (run cloud tools as the signed-in user).
-      # All empty by default → inert (local-auth). Set via .env / cloud-secrets/azure-obo.env
-      # only when AUTH_PROVIDER=azure-ad. Both name families: AZURE_AD_* (login/validator) + AZURE_* (OBO).
-      AZURE_AD_TENANT_ID: ${AZURE_AD_TENANT_ID:-}
-      AZURE_AD_CLIENT_ID: ${AZURE_AD_CLIENT_ID:-}
-      AZURE_AD_CLIENT_SECRET: ${AZURE_AD_CLIENT_SECRET:-}
-      AZURE_AD_REDIRECT_URI: ${AZURE_AD_REDIRECT_URI:-}
-      AZURE_AD_AUTHORIZED_GROUPS: ${AZURE_AD_AUTHORIZED_GROUPS:-}
-      AZURE_ADMIN_GROUPS: ${AZURE_ADMIN_GROUPS:-}
-      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
-      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
-      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-}
-      AZURE_SUBSCRIPTION_ID: ${AZURE_SUBSCRIPTION_ID:-}
-      AWS_OBO_ROLE_ARN: ${AWS_OBO_ROLE_ARN:-}
-      AWS_ACCOUNT_ID: ${AWS_ACCOUNT_ID:-}
-      GCP_WORKLOAD_IDENTITY_AUDIENCE: ${GCP_WORKLOAD_IDENTITY_AUDIENCE:-}
-      GCP_WORKLOAD_IDENTITY_SA_EMAIL: ${GCP_WORKLOAD_IDENTITY_SA_EMAIL:-}
       # JWT signing (generated-random fallback is ephemeral; set once for stable sessions)
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env — generate with openssl rand -hex 32}
       SIGNING_SECRET: ${SIGNING_SECRET:?set SIGNING_SECRET in .env — generate with openssl rand -hex 32}
@@ -464,19 +447,6 @@ services:
       OpenAgentic_AWS_MCP_DISABLED: ${OpenAgentic_AWS_MCP_DISABLED:-false}
       OpenAgentic_AZURE_MCP_DISABLED: ${OpenAgentic_AZURE_MCP_DISABLED:-false}
       OpenAgentic_GCP_MCP_DISABLED: ${OpenAgentic_GCP_MCP_DISABLED:-false}
-      # Entra OBO: the in-proxy azure MCP validates the user token; cloud MCPs run as
-      # the signed-in user. Empty by default → SP/static creds (unchanged). Hardening:
-      # fail-loud (no silent SP fallback on AWS) + read-only, set only for the OBO demo.
-      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
-      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
-      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-}
-      AZURE_SUBSCRIPTION_ID: ${AZURE_SUBSCRIPTION_ID:-}
-      AWS_OBO_ROLE_ARN: ${AWS_OBO_ROLE_ARN:-}
-      AWS_ACCOUNT_ID: ${AWS_ACCOUNT_ID:-}
-      GCP_WORKLOAD_IDENTITY_AUDIENCE: ${GCP_WORKLOAD_IDENTITY_AUDIENCE:-}
-      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
-      MCP_READ_ONLY_MODE: ${MCP_READ_ONLY_MODE:-false}
-      AWS_OBO_FALLBACK_TO_SERVICE: ${AWS_OBO_FALLBACK_TO_SERVICE:-true}
       OpenAgentic_KUBERNETES_MCP_DISABLED: ${OpenAgentic_KUBERNETES_MCP_DISABLED:-false}
       # github/prometheus/loki default to ENABLED so all 9 built-in MCPs SPAWN
       # out-of-the-box. None of them hard-require a token/URL to start (see

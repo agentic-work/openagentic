@@ -2,7 +2,7 @@
  * Microsoft SSO login helper for Playwright e2e specs.
  *
  * Drives the AAD interactive sign-in for `admin@example.onmicrosoft.com`
- * against the live chat-dev surface, then reads `localStorage.auth_token`
+ * against the live dev environment surface, then reads `localStorage.auth_token`
  * for subsequent direct `fetch()` calls against the workflows API.
  *
  * Env overrides:

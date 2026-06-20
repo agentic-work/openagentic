@@ -1103,7 +1103,7 @@ const MODEL_PATTERNS: ModelPattern[] = [
   },
   // gpt-oss (Ollama) — has custom channel-based tool call parsing in OllamaProvider.
   // FCA 0.87 matches the router's live in-memory profile (validated on gpt-oss:20b
-  // in production chat-dev routing). MCR previously carried 0.75 which was a
+  // in the production dev environment routing). MCR previously carried 0.75 which was a
   // pre-channel-parser estimate from the original seed; bumped 2026-04-23 to
   // unblock chat-pool routing (gpt-oss:20b was being filtered out by the 0.82
   // floor, causing simple prompts like "write a haiku" to fall through to

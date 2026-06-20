@@ -271,7 +271,7 @@ describe('chatLoop — Bedrock Sonnet tool_use dispatch (Sev-0 real-capture)', (
     expect(
       toolExecFrames.length,
       'expected two tool_executing NDJSON frames (mock 01 fan-out per chatmode UX); ' +
-        'zero frames = empty assistant message in chat-dev (the live regression)',
+        'zero frames = empty assistant message in the dev environment (the live regression)',
     ).toBe(2);
     const execNames = toolExecFrames.map((f) => f.payload.name).sort();
     expect(execNames).toEqual(['tool_search', 'tool_search']);

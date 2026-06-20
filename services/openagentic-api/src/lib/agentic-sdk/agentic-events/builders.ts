@@ -1,7 +1,7 @@
 /**
  * Event-builder helpers — typed constructors for the OpenAgentic canonical
  * event taxonomy. Every emit site in the platform (api / workflows /
- * code-manager / openagentic) should call these helpers
+ * and other services) should call these helpers
  * INSTEAD of constructing object literals.
  *
  * Pattern: each builder takes `Omit<Event, 'type' | 'ts'>` and stamps the

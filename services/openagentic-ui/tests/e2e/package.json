@@ -2,7 +2,7 @@
   "name": "openagentic-ui-e2e-tests",
   "version": "1.0.0",
   "private": true,
-  "description": "Playwright E2E tests for the openagentic-ui service running against chat-dev",
+  "description": "Playwright E2E tests for the openagentic-ui service running against the dev environment",
   "scripts": {
     "test": "playwright test",
     "test:list": "playwright test --list"

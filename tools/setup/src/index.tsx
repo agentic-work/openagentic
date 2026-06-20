@@ -7,7 +7,6 @@ import { WizardErrorBoundary } from './ui/ErrorScreen.tsx';
 import { DeployTargetStep } from './steps/DeployTarget.tsx';
 import { HelmPreflightStep } from './steps/HelmPreflight.tsx';
 import { AdminUserStep } from './steps/AdminUser.tsx';
-import { AuthProviderStep } from './steps/AuthProvider.tsx';
 import { LlmStrategyStep } from './steps/LlmStrategy.tsx';
 import type { LlmStrategy } from './lib/types.ts';
 import { OllamaStep } from './steps/Ollama.tsx';
@@ -21,7 +20,7 @@ import { DEFAULT_CONFIG, type WizardConfig, type DeployTarget } from './lib/type
 import { defaultEnabledMcps, allMcpIds } from './lib/mcps.ts';
 import { readCurrent } from './lib/env.ts';
 
-type Screen = 'target' | 'helm-preflight' | 'admin' | 'auth' | 'llm-strategy' | 'ollama' | 'providers' | 'vertex' | 'mcps' | 'mcp-auth' | 'review' | 'launch' | 'done';
+type Screen = 'target' | 'helm-preflight' | 'admin' | 'llm-strategy' | 'ollama' | 'providers' | 'vertex' | 'mcps' | 'mcp-auth' | 'review' | 'launch' | 'done';
 
 export const App: React.FC = () => {
   // Seed from any existing .env so re-running the wizard is non-destructive.
@@ -71,21 +70,6 @@ export const App: React.FC = () => {
     mcps: existing.MCPS_ENABLED ? existing.MCPS_ENABLED.split(',').map((s: string) => s.trim()).filter(Boolean) : defaultEnabledMcps(),
     mcpAuth: {},
     uiPort: existing.UI_HOST_PORT ? Number(existing.UI_HOST_PORT) : DEFAULT_CONFIG.uiPort,
-    // Hydrate the auth provider from a prior .env so a re-run is sticky.
-    auth: existing.AUTH_PROVIDER === 'azure-ad'
-      ? {
-          provider: 'azure-ad' as const,
-          entra: {
-            tenantId: existing.AZURE_AD_TENANT_ID || '',
-            clientId: existing.AZURE_AD_CLIENT_ID || '',
-            clientSecret: existing.AZURE_AD_CLIENT_SECRET || '',
-            redirectUri: existing.AZURE_AD_REDIRECT_URI || '',
-            userGroups: existing.AZURE_AD_AUTHORIZED_GROUPS || '',
-            adminGroups: existing.AZURE_ADMIN_GROUPS || '',
-            externalAdminEmails: existing.EXTERNAL_ADMIN_EMAILS || '',
-          },
-        }
-      : { provider: 'local' as const },
   }));
   const [screen, setScreen] = useState<Screen>('target');
   const llmStrategy = config.llmStrategy;
@@ -99,13 +83,12 @@ export const App: React.FC = () => {
   const providersCount = (llmStrategy === 'cloud'  || llmStrategy === 'both') ? 1 : 0;
   const vertexCount    = (llmStrategy === 'vertex') ? 1 : 0;
   // base (Docker, both): target + admin + llm-strategy + ollama + providers + mcps + mcp-auth + review + launch = 9
-  const total = 1 + helmBump + 1 /*admin*/ + 1 /*auth*/ + 1 /*llm-strategy*/ + ollamaCount + providersCount + vertexCount + 1 /*mcps*/ + 1 /*mcp-auth*/ + 1 /*review*/ + 1 /*launch*/;
+  const total = 1 + helmBump + 1 /*admin*/ + 1 /*llm-strategy*/ + ollamaCount + providersCount + vertexCount + 1 /*mcps*/ + 1 /*mcp-auth*/ + 1 /*review*/ + 1 /*launch*/;
   let cursor = 1;
   const stepNum = {
     target: cursor++,
     helmPreflight: config.target === 'helm' ? cursor++ : 0,
     admin: cursor++,
-    auth: cursor++,
     llmStrategy: cursor++,
     ollama: ollamaCount ? cursor++ : 0,
     providers: providersCount ? cursor++ : 0,
@@ -157,20 +140,6 @@ export const App: React.FC = () => {
         total={total}
         onDone={(admin) => {
           setConfig({ ...config, admin });
-          setScreen('auth');
-        }}
-      />
-    );
-  }
-  if (screen === 'auth') {
-    return (
-      <AuthProviderStep
-        initial={config.auth}
-        uiPort={config.uiPort}
-        step={stepNum.auth}
-        total={total}
-        onDone={(auth) => {
-          setConfig({ ...config, auth });
           setScreen('llm-strategy');
         }}
       />

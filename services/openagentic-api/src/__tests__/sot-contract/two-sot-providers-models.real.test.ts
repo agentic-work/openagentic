@@ -9,7 +9,7 @@
  *    up in ONLY SOT thats show in admin console llm/providers/model
  *    registry- OR if admins ADD them AFTER deploy."
  *
- * This is NOT a mock test. It hits the running api at chat-dev with an
+ * This is NOT a mock test. It hits the running api in the dev environment with an
  * admin API key and exercises the live admin endpoints. It then asserts
  * end-to-end behavior — including via `/api/chat/stream`, which is the
  * load-bearing routing decision path.

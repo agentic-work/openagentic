@@ -21,7 +21,7 @@
  *
  * Required env per provider:
  *   aif-chat / aif-responses: AIF_TENANT_ID, AIF_CLIENT_ID, AIF_CLIENT_SECRET, AIF_ENDPOINT_URL
- *   ollama:                   OLLAMA_BASE_URL (default http://10.0.0.142:11434)
+ *   ollama:                   OLLAMA_BASE_URL (default http://127.0.0.1:11434)
  *   vertex:                   GOOGLE_APPLICATION_CREDENTIALS (path to SA json), VERTEX_PROJECT_ID, VERTEX_LOCATION (default us-central1)
  *
  * Outputs to reports/provider-probe/<YYYY-MM-DD>/<provider-endpoint>-<model>-<slug>.{raw,canonical,summary}.{ndjson,json}.
@@ -304,7 +304,7 @@ async function probeAifResponses(args: Args): Promise<{ raw: any[]; canonical: C
 // ---------------------------------------------------------------------------
 
 async function probeOllama(args: Args): Promise<{ raw: any[]; canonical: CanonicalEvent[]; status: number; httpBody?: string }> {
-  const baseUrl = process.env.OLLAMA_BASE_URL || 'http://10.0.0.142:11434';
+  const baseUrl = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
   const url = `${baseUrl}/api/chat`;
   const body = {
     model: args.model,

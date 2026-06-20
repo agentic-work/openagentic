@@ -1,5 +1,5 @@
 /**
- * Live capture 2026-05-12 on chat-dev (post-SEV-0 OBO fix in 8f2ffe56):
+ * Live capture 2026-05-12 in the dev environment (post-SEV-0 OBO fix in 8f2ffe56):
  *
  *   List Subscriptions
  *   0 subscriptions          ← chip badge

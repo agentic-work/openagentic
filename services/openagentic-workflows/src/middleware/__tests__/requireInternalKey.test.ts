@@ -4,9 +4,9 @@
  * The workflows-service used to accept `userId` / `userPermissions` /
  * `authToken` from the request body with no verification, so anyone with
  * port 3400 reachability could execute workflows as anyone. The fix:
- * require a shared internal key on the Authorization header. Only the
- * api (which has authenticated the end-user) and code-manager hold that
- * key, so unauthenticated callers cannot reach the engine.
+ * require a shared internal key on the Authorization header. Only trusted
+ * internal services (e.g. the api, which has authenticated the end-user)
+ * hold that key, so unauthenticated callers cannot reach the engine.
  *
  * The user's identity (userId, permissions, OBO token) still rides in
  * the body — that's how node executors call cloud APIs on behalf of the

@@ -52,17 +52,17 @@ Default rate limits are applied per user:
       `,
       version: '1.0.0',
       contact: {
-        name: 'OpenAgentic Support',
-        email: 'support@openagentic.com'
+        name: 'OpenAgentic',
+        url: 'https://github.com/agentic-work/openagentic'
       },
       license: {
-        name: 'Proprietary',
-        url: 'https://openagentic.com/license'
+        name: 'Apache-2.0',
+        url: 'https://www.apache.org/licenses/LICENSE-2.0'
       }
     },
     externalDocs: {
-      url: 'https://docs.openagentic.com',
-      description: 'Full Documentation'
+      url: 'https://github.com/agentic-work/openagentic',
+      description: 'Documentation'
     },
     servers: [
       {

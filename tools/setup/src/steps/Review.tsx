@@ -71,9 +71,6 @@ export const ReviewStep: React.FC<Props> = ({ config, step, total, onLaunch, onC
         {row('deploy target', config.target)}
         {config.target === 'helm' && config.kubeconfigPath && row('kubeconfig', config.kubeconfigPath)}
         {row('admin email', config.admin.email)}
-        {row('auth', config.auth.provider === 'azure-ad'
-          ? `Entra SSO (tenant ${(config.auth.entra?.tenantId || '').slice(0, 8)}…)`
-          : 'local username/password')}
         {row('LLM strategy', describeStrategy(config.llmStrategy))}
         {(config.llmStrategy === 'ollama' || config.llmStrategy === 'both') &&
           row('ollama host', config.ollama.host)}

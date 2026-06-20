@@ -1,7 +1,5 @@
-# SonarQube Code Analysis — runs on the self-hosted ARC pool registered
-# for this repo (scale-set name `openagentic-runners`, k8s-backed,
-# scale-to-zero). Reports to the AgenticWork SQ instance at
-# sonarqube-dev.agenticwork.io.
+# SonarQube Code Analysis. Reports to the SonarQube instance configured
+# via the SONAR_HOST_URL CI variable and the SONAR_TOKEN secret.
 #
 # Triggers: push to main, PRs to main, manual dispatch. Community Edition
 # doesn't support non-main branch analysis or PR decoration, so we don't
@@ -22,7 +20,7 @@ permissions:
 jobs:
   sonarqube:
     name: SonarQube Scan
-    runs-on: openagentic-runners
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:

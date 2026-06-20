@@ -1,5 +1,5 @@
 /**
- * Stage E E2E — Router Tuning round-trip on chat-dev.
+ * Stage E E2E — Router Tuning round-trip in the dev environment.
  *
  * Validates the full live-propagation cycle:
  *   (1) Scope note renders correctly on the admin Router Tuning page.
@@ -12,7 +12,7 @@
  *
  * Prerequisites:
  *   - AW_JWT env var must be set to a valid openagentic_token JWT for
- *     an admin user on chat-dev.
+ *     an admin user in the dev environment.
  *   - Run with:
  *       AW_JWT=<token> npx playwright test \
  *         --config=services/openagentic-ui/tests/e2e/playwright.config.ts \

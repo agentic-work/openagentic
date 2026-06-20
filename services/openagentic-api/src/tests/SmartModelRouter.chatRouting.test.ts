@@ -1,7 +1,7 @@
 /**
  * SmartModelRouter — chat-routing quality guard (task #99, 2026-04-23).
  *
- * Observed bug on chat-dev: simple chat prompts ("write a poem about
+ * Observed bug in the dev environment: simple chat prompts ("write a poem about
  * dogs") were being routed to Ministral-3B. Root cause: after the
  * slider rip (2026-04-19) `scoreModel()` fixed both cost and quality
  * weights at 0.5, but the quality-bonus branch was still gated behind

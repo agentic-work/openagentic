@@ -56,7 +56,6 @@ model User {
   sessions               ChatSession[]
   messages               ChatMessage[]
   auth_tokens            UserAuthToken[]
-  gcp_credential         GcpUserCredential?
   user_sessions          UserSession[]
   memories               UserMemory[]
   user_settings          UserSetting[]
@@ -195,36 +194,6 @@ model UserAuthToken {
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("user_azure_tokens")
-  @@schema("public")
-}
-
-// ============================================================================
-// GCP CREDENTIALS - Per-user GCP OAuth/WIF tokens for the GCP MCP (OBO)
-// ============================================================================
-
-model GcpUserCredential {
-  id      String @id @default(uuid())
-  user_id String @unique
-
-  access_token  String  @db.Text
-  refresh_token String? @db.Text
-  token_type    String  @default("Bearer")
-  scope         String?
-
-  gcp_email  String?
-  project_id String?
-
-  expires_at     DateTime?
-  last_used_at   DateTime?
-  last_validated DateTime?
-  is_valid       Boolean   @default(true)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@map("gcp_user_credentials")
   @@schema("public")
 }
 

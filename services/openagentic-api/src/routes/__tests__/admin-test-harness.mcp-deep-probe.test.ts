@@ -153,7 +153,7 @@ describe('admin-test-harness — MCP category deep probe', () => {
    * (Replaces the old `awc_`/`awc_system_` prefixes — see
    * services/openagentic-api/src/services/llm-providers/util/mintInterServiceSystemToken.ts.)
    *
-   * Smoking gun: live harness probe on chat-dev showed mcp 1p/10f, all 10 fails
+   * Smoking gun: live harness probe in the dev environment showed mcp 1p/10f, all 10 fails
    * with `Request failed with status code 401`. api pod env: MCP_PROXY_API_KEY
    * length 0, INTERNAL_SERVICE_SECRET length 64. mcp-proxy auth scheme spec is
    * services/openagentic-mcp-proxy/src/main.py:913.

@@ -51,7 +51,7 @@ import { PATTERN_RECALL_TOOL } from '../../../../services/PatternRecallTool.js';
 // commits 1-3 of #1085 but the TOOL DEFINITION wasn't being offered to the
 // model, so any model that tried to recall (gpt-oss:20b, Sonnet, etc.) hit
 // the #850 unknown-tool short-circuit and returned "tool not available."
-// Live evidence: chat-dev 2026-05-24, mcp-tester user, model called
+// Live evidence: dev environment 2026-05-24, mcp-tester user, model called
 // memory_search → offeredCount=17, short-circuit fired, model apologized.
 import { MEMORY_SEARCH_TOOL_DEF } from '../../../../services/MemorySearchTool.js';
 // 2026-05-31 — memorize (WRITE side) re-added to T1 for the SAME reason as

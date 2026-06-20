@@ -3,7 +3,7 @@
  * BlobStorageService must honor STORAGE_BUCKET over BLOB_STORAGE_BUCKET.
  *
  * Context: the helm chart sets STORAGE_BUCKET=openagentic-workspaces across
- * api / code-manager / synth-executor as the canonical bucket env. Historic
+ * services as the canonical bucket env. Historic
  * code in BlobStorageService only read BLOB_STORAGE_BUCKET, silently falling
  * through to the `openagentic-images` literal and writing admin/global
  * blobs to the wrong bucket on every deploy.

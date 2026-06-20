@@ -5,7 +5,7 @@
  *
  * For each scenario with a matching `mocks/UX/AI/Chatmode/end-state-NN-*.html`:
  *   1. Render the mock in a hidden tab at a known viewport.
- *   2. Drive the same prompt against chat-dev (separate tab).
+ *   2. Drive the same prompt against the dev environment (separate tab).
  *   3. Capture screenshots of the AAS subtree in both, mask dynamic regions
  *      (numbers, timestamps, tool durations), pixelmatch diff.
  *   4. Pass threshold ≤8% pixel delta — looser than tests that diff identical
@@ -24,6 +24,14 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
 const BASE_URL = process.env.BASE_URL ?? 'https://chat.example.com';
+// App host (no scheme) derived from BASE_URL — used to detect the post-login landing URL.
+const APP_HOST = (() => {
+  try {
+    return new URL(BASE_URL).host;
+  } catch {
+    return 'chat.example.com';
+  }
+})();
 const RUN_LABEL = process.env.RUN_LABEL ?? new Date().toISOString().split('T')[0];
 const MODEL = process.env.MODEL ?? 'claude-sonnet-4-6';
 const OUT_ROOT =
@@ -72,7 +80,7 @@ async function loginIfNeeded(page: Page): Promise<void> {
       .getByRole('button', { name: /yes|stay signed in/i })
       .click()
       .catch(() => {});
-    await page.waitForURL(/chat-dev/, { timeout: 30_000 });
+    await page.waitForURL(new RegExp(APP_HOST), { timeout: 30_000 });
   }
 }
 

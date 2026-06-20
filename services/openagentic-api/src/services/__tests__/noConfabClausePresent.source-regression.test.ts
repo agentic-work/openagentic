@@ -2,7 +2,7 @@
  * Sev-0 #780 follow-up — no-confabulation clause must be present in
  * the admin + member RBAC system prompts.
  *
- * Live verify on chat-dev 0.7.1-3d7fb248 (2026-05-13) showed Sonnet 4.6
+ * Live verify in the dev environment 0.7.1-3d7fb248 (2026-05-13) showed Sonnet 4.6
  * fabricating per-model AWS Bedrock cost breakdowns ($518/$83/$74 for
  * Claude Sonnet 4.6 / Opus 4.6 / Opus 4.7) — AWS Cost Explorer does NOT
  * expose model-name-level cost data; the figures came entirely from the

@@ -12,8 +12,8 @@ import { fileURLToPath } from 'node:url';
  * Round 2 (2026-05-13, this commit): per the user's sharper directive
  * "you have to VALIDATE THE FLOWS RUN - that its ALL correct- each node, and
  * its full results- not just say its good if it ran," I re-validated every
- * template with strict per-node + per-output criteria via Playwright MCP on
- * chat-dev. Every one of the 10 failed at least one of:
+ * template with strict per-node + per-output criteria via Playwright MCP in
+ * the dev environment. Every one of the 10 failed at least one of:
  *
  *   3a. NO chain-of-thought / instruction-preamble leak
  *   3b. NO mock data presented as real
@@ -41,7 +41,7 @@ import { fileURLToPath } from 'node:url';
  *   reports/flows-templates-strict-validation/2026-05-13/screenshots/
  *
  * To re-add a template: rebuild it with REAL upstream data nodes (MCP / HTTP
- * / RAG calls), verify per-node output passes all 6 criteria live on chat-dev,
+ * / RAG calls), verify per-node output passes all 6 criteria live in the dev environment,
  * commit the seed JSON + harness test + add the slug to KEPT_SLUGS below.
  */
 
@@ -59,7 +59,7 @@ const SEED_DIR = resolve(__dirname, '../../../seed/templates');
  *    are not Running or have restart_count > 5, asks the platform LLM
  *    for a 3-bullet summary, strips any chain-of-thought preamble in a
  *    follow-up transform, renders an HTML operator report via
- *    webhook_response. Per-node live-verified on chat-dev. Evidence:
+ *    webhook_response. Per-node live-verified in the dev environment. Evidence:
  *      reports/flows-rebuild-aiops/2026-05-13/01-k8s-pod-health-summary/
  *
  * 2. `loki-error-log-research-report` — calls real openagentic_loki.loki_search_errors
@@ -69,7 +69,7 @@ const SEED_DIR = resolve(__dirname, '../../../seed/templates');
  *    strips CoT preamble, calls openagentic_web.web_search (SearXNG in-cluster) on
  *    the dominant pattern's keyword query, renders an HTML AIOps report
  *    via webhook_response with summary + raw patterns + research links.
- *    Per-node live-verified on chat-dev. Evidence:
+ *    Per-node live-verified in the dev environment. Evidence:
  *      reports/flows-rebuild-aiops/2026-05-13/loki-error-log-research-report/
  *
  * 3. `k8s-crashloop-triage` — calls real openagentic_kubernetes.k8s_list_pods, filters
@@ -88,7 +88,7 @@ const SEED_DIR = resolve(__dirname, '../../../seed/templates');
  *    offender shape that still fetches REAL log evidence and produces one
  *    bullet per unhealthy pod from a single LLM call — operationally
  *    equivalent for the typical 1-5 crashlooping pod count.
- *    Per-node live-verified on chat-dev. Evidence:
+ *    Per-node live-verified in the dev environment. Evidence:
  *      reports/flows-rebuild-aiops/2026-05-13/k8s-crashloop-triage/
  *
  * 4. `prometheus-active-alerts-digest` — calls real
@@ -107,7 +107,7 @@ const SEED_DIR = resolve(__dirname, '../../../seed/templates');
  *    is the literal "No active alerts" string, the parser returns an
  *    empty array and the report explicitly says so instead of rendering
  *    a blank table.
- *    Per-node live-verified on chat-dev. Evidence:
+ *    Per-node live-verified in the dev environment. Evidence:
  *      reports/flows-rebuild-aiops/2026-05-13/prometheus-active-alerts-digest/
  *
  * 5. `k8s-deployment-rollout-status-report` — calls real
@@ -129,7 +129,7 @@ const SEED_DIR = resolve(__dirname, '../../../seed/templates');
  *    per the live agentic-dev capture 2026-05-13 where every deployment
  *    has ready_replicas === replicas) is handled — the report explicitly
  *    renders "All N deployments healthy" instead of a blank table.
- *    Per-node live-verified on chat-dev. Evidence:
+ *    Per-node live-verified in the dev environment. Evidence:
  *      reports/flows-rebuild-aiops/2026-05-13/k8s-deployment-rollout-status-report/
  *
  * 6. `prometheus-target-down-rca` — calls real
@@ -157,7 +157,7 @@ const SEED_DIR = resolve(__dirname, '../../../seed/templates');
  *    so the `analyze` and `loki_query` nodes use literal labels
  *    matching their IDs to give the correlate transform predictable
  *    keys (`input.analyze.*`, `input.loki_query.*`).
- *    Per-node live-verified on chat-dev. Evidence:
+ *    Per-node live-verified in the dev environment. Evidence:
  *      reports/flows-rebuild-aiops/2026-05-13/prometheus-target-down-rca/
  *
  * 8. `k8s-namespace-resource-survey` — fans the trigger out to three
@@ -189,7 +189,7 @@ const SEED_DIR = resolve(__dirname, '../../../seed/templates');
  *    renders an explicit "No resources found in this namespace" banner
  *    + per-section "<em>No X in this namespace.</em>" placeholders
  *    instead of blank tables.
- *    Per-node live-verified on chat-dev. Evidence:
+ *    Per-node live-verified in the dev environment. Evidence:
  *      reports/flows-rebuild-aiops/2026-05-13/k8s-namespace-resource-survey/
  *
  * 7. `platform-infra-health-digest` — fans the trigger out to three
@@ -213,14 +213,14 @@ const SEED_DIR = resolve(__dirname, '../../../seed/templates');
  *    returns healthy=false) is exercised by the harness fixture
  *    admin_redis_health-degraded.json — analyze flips overall_status to
  *    'degraded' and the report explicitly highlights the failing service.
- *    Per-node live-verified on chat-dev. Evidence:
+ *    Per-node live-verified in the dev environment. Evidence:
  *      reports/flows-rebuild-aiops/2026-05-13/platform-infra-health-digest/
  *
  * To add the next template:
  *   1. Build the seed JSON with REAL upstream data nodes (MCP / HTTP / RAG),
  *      NOT `op:"set"` literals masquerading as fetch results.
  *   2. Verify every node's input + output passes the 6 sub-criteria live on
- *      chat-dev via Playwright MCP.
+ *      the dev environment via Playwright MCP.
  *   3. Add the slug here and commit the evidence alongside the JSON.
  */
 const KEPT_SLUGS: ReadonlyArray<string> = [
@@ -297,7 +297,7 @@ describe('templates gallery only contains live-verified templates', () => {
       expect(
         KEPT_SLUGS,
         `seed/templates contains "${s}" but it is NOT in the kept-slug allow-list. ` +
-          `Either add it to KEPT_SLUGS (after live-verifying via Playwright MCP on chat-dev) ` +
+          `Either add it to KEPT_SLUGS (after live-verifying via Playwright MCP in the dev environment) ` +
           `or remove the seed JSON.`,
       ).toContain(s);
     }

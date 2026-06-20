@@ -86,7 +86,7 @@ def get_k8s_client():
     urllib3 request interception inside a running MCP pod:
 
       Captured request from kubernetes-python client:
-        GET /api/v1/namespaces/agentic-dev/pods?limit=1
+        GET /api/v1/namespaces/default/pods?limit=1
         Headers: Accept, User-Agent, Content-Type
         (Authorization MISSING — request 401'd at kube-apiserver)
 

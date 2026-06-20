@@ -96,7 +96,7 @@ export async function rerankWithLLM(
     // field then falls through to "" → the provider blows up with
     // "Model '' is not available on the Ollama host", and the whole
     // tool-search reranking step silently fails. Captured live at
-    // 16:43:05.141Z (chat-dev, "show me my cloud resources").
+    // 16:43:05.141Z (dev environment, "show me my cloud resources").
     //
     // Strategy: ask ProviderManager for its default chat model. If
     // none is configured (test envs, partial bootstraps), bail with

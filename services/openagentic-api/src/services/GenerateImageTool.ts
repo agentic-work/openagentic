@@ -281,7 +281,7 @@ export async function executeGenerateImage(
   // The model uses `output` to narrate the result; it does NOT introspect the
   // parallel `image_render` NDJSON frame. If we return a bare "image generated"
   // here, the model concludes the platform didn't actually deliver an artifact
-  // and apologizes to the user (live regression on chat-dev 2026-05-24 with
+  // and apologizes to the user (live regression in the dev environment 2026-05-24 with
   // Vertex Imagen 3 — the UI rendered the image perfectly, the model still
   // said "no artifact ID or URL"). Spell out the URL + id so the model knows
   // the image is already inline.

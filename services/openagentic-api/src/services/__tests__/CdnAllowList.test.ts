@@ -56,7 +56,7 @@ describe('CdnAllowList — validateScriptUrls (#474 Phase 4)', () => {
       expect(validateScriptUrls(html).ok).toBe(true);
     });
 
-    it('passes absolute /api/cdn/lib/* on chat-dev origin', () => {
+    it('passes absolute /api/cdn/lib/* on a deployed origin', () => {
       const html = `<script src="https://chat.example.com/api/cdn/lib/echarts.min.js"></script>`;
       expect(validateScriptUrls(html).ok).toBe(true);
     });

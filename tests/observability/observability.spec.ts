@@ -66,8 +66,8 @@ describe('Observability Stack Tests', () => {
     });
   });
 
-  describe('Code Manager Metrics', () => {
-    it('should expose system metrics from code-manager', async () => {
+  describe('System Metrics', () => {
+    it('should expose system metrics', async () => {
       const response = await fetch(`${BASE_URL}/api/openagentic/metrics/system`);
       // May require auth, so accept 200 or 401
       expect([200, 401, 403]).toContain(response.status);

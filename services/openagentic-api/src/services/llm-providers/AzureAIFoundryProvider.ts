@@ -56,7 +56,7 @@ import { buildAnthropicWireBody } from './anthropic/buildAnthropicWireBody.js';
 //      exposed via Responses API. Verified 2026-05-10 by real-provider probe
 //      against AIF gpt-5.4 (Chat Completions: 0 reasoning_content; Responses:
 //      thinking_delta canonical events emit). Without this gate, gpt-5.4
-//      chat on chat-dev never streams thinking deltas to the wire — exactly
+//      chat in the dev environment never streams thinking deltas to the wire — exactly
 //      the symptom the user flagged.
 //
 // Keep this regex the single source of truth; never scatter model literals.
@@ -2185,7 +2185,7 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
 
               // Track tokens — captures the trailing usage chunk that
               // arrives AFTER finish_reason when stream_options.include_usage
-              // is enabled. Real shape per chat-dev capture 2026-05-10:
+              // is enabled. Real shape per dev-environment capture 2026-05-10:
               // {choices:[], usage:{prompt_tokens, completion_tokens, total_tokens}}.
               if (chunk.usage) {
                 totalTokens = chunk.usage.total_tokens || 0;

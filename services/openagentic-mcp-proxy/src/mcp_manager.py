@@ -775,9 +775,8 @@ class MCPManager:
         # OpenAgentic Draw.io MCP - DEPRECATED: Merged into openagentic_diagram MCP
         # The openagentic_diagram MCP now handles both React Flow and DrawIO formats
 
-        # REMOVED: OpenAgentic OpenAgentic MCP Server
-        # OpenAgentic functionality moved to dedicated Code Mode (openagentic-manager + openagentic-exec)
-        # Code execution no longer goes through MCP proxy in chat mode
+        # REMOVED: code-execution MCP server
+        # Code execution does not go through the MCP proxy in chat mode
 
         # OpenAgentic ServiceNow MCP Server - REMOVED
         # ServiceNow integration removed from v0.4.0

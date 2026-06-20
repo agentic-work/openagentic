@@ -2,7 +2,7 @@
  * #922 + #831 regression — HITL card MIGRATES to bottom of message when the
  * model emits consecutive tool_use blocks (serial-tool cluster).
  *
- * Customer-visible symptom (chat-dev 2026-05-20): the user prompts a
+ * Customer-visible symptom (dev environment 2026-05-20): the user prompts a
  * HITL-gated tool (e.g. azure_create_resource_group). The card appears
  * inline at the tool's position. Then the model immediately emits one or
  * more additional tool_use blocks (the model often dispatches a `Task` /

@@ -4,9 +4,7 @@ Open-source agentic work platform.
 
 ## What this repo is
 
-The OSS upstream of the OpenAgentic platform — services for building, orchestrating, and running production-grade AI agents with full control over providers, tools, and infrastructure.
-
-**Status:** private while we cut the first public release. A lot of work is still in flight on the internal upstream.
+The open-source OpenAgentic platform — services for building, orchestrating, and running production-grade AI agents with full control over providers, tools, and infrastructure.
 
 ## Services
 
@@ -17,9 +15,7 @@ The OSS upstream of the OpenAgentic platform — services for building, orchestr
 | `services/openagentic-workflows` | Workflow engine (Flowise-derived) |
 | `services/openagentic-mcp-proxy` | MCP server proxy (spawns built-in MCPs as subprocesses) |
 | `services/openagentic-proxy` | Egress proxy for agent tool calls |
-| `services/openagentic-synth` | OAT tool-synthesis framework runner |
-| `services/synth-executor` | Sandboxed runner for synth-emitted code |
-| `services/mcps/*` | 9 built-in MCP servers (aws, azure, gcp, kubernetes, prometheus, loki, github, admin, web) — these are what the proxy actually wires (see `services/openagentic-mcp-proxy/src/mcp_manager.py` `initialize_servers`). alertmanager/incident/runbook/agent-architect/knowledge were removed upstream as out-of-scope/redundant. |
+| `services/mcps/*` | 9 built-in MCP servers (aws, azure, gcp, kubernetes, prometheus, loki, github, admin, web) — these are what the proxy actually wires (see `services/openagentic-mcp-proxy/src/mcp_manager.py` `initialize_servers`). |
 | `services/openagentic-ollama` | Optional custom Ollama image with model pre-pull |
 | `services/shared` | Cross-service types / utilities |
 
@@ -71,17 +67,6 @@ These all tripped the first install and are fixed in commits `7266813` and `f7c6
 5. **mcp-proxy returning 401 on tool calls** — api signed internal JWTs with `JWT_SECRET`, mcp-proxy didn't have it. Fix: compose now passes `JWT_SECRET` + `SIGNING_SECRET` to both sides.
 6. **Internal service auth** — `JWT_SECRET`, `SIGNING_SECRET`, and `INTERNAL_API_KEY` must agree across api, ui, and mcp-proxy. Compose passes them all from `.env`.
 
-## Upstream sync
-
-`tools/sync-upstream.py` pulls from `$OAP_UPSTREAM` (default `~/agenticwork/agentic`) with path renames, brand rewrite, a skip-list for proprietary content, and a preserve-list for OSS-only patches. It automatically runs `tools/scrub-headers.py` on completion to strip copyright/license boilerplate the upstream keeps adding.
-
-Files in the PRESERVE list never get overwritten — any local fix you want to survive a sync must be added there. The current preserve list includes our entrypoint fix, the undici agent, the wizard, docker-compose.yml, install.sh, etc.
-
-```bash
-python3 tools/sync-upstream.py --dry-run  # preview
-python3 tools/sync-upstream.py            # sync + auto-scrub
-```
-
 ## Wizard tests
 
 The wizard has a pexpect-driven PTY harness under `tools/setup/tests/`. Run with:
@@ -104,13 +89,10 @@ Three variations exercise the main paths: `minimal` (defaults, 1 MCP), `all-mcps
 - No secrets in code or in this repo. The `.githooks/pre-commit` script blocks known secret patterns.
 - Prefer editing existing files over creating new ones.
 
-## Continuing this work from another machine
+## Quick start from a fresh clone
 
-This doc is meant to let `claude --continue` on a fresh clone (osx or linux) pick up where the install/test work left off. The happy path:
-
-1. `git clone git@github.com:agentic-work/openagentic.git && cd openagentic`
-2. `claude --continue` in this directory — the memory system will pull prior context (user profile, feedback rules, project state).
-3. Re-run the wizard against the local checkout as above, or use `curl | bash` for the real install.sh flow.
-4. Run the PTY harness to confirm the wizard still walks cleanly.
-5. Bring the stack up with `docker compose --profile milvus up -d` (a bare `up` does NOT start Milvus, which the api requires on boot); wait for `docker inspect --format '{{.State.Health.Status}}' openagentic-api-1` to report `healthy` (usually ~90s first boot because Prisma schema push + Milvus collections).
-6. Smoke test: login via `/api/auth/local/login`, send a chat with `/api/chat/stream`, verify tool calls succeed (the mcp-proxy auto-spawns web/knowledge/admin MCPs; cloud MCPs require creds in `~/.openagentic/cloud-secrets/*.env`).
+1. `git clone https://github.com/agentic-work/openagentic.git && cd openagentic`
+2. Re-run the wizard against the local checkout (above), or use `curl … | bash` for the install.sh flow.
+3. Run the PTY harness to confirm the wizard still walks cleanly.
+4. Bring the stack up with `docker compose --profile milvus up -d` (a bare `up` does NOT start Milvus, which the api requires on boot); wait for `docker inspect --format '{{.State.Health.Status}}' openagentic-api-1` to report `healthy` (usually ~90s first boot because Prisma schema push + Milvus collections).
+5. Smoke test: login via `/api/auth/local/login`, send a chat with `/api/chat/stream`, verify tool calls succeed (the mcp-proxy auto-spawns web/knowledge/admin MCPs; cloud MCPs require creds in `~/.openagentic/cloud-secrets/*.env`).

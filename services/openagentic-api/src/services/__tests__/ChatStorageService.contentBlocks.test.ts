@@ -1,7 +1,7 @@
 /**
  * Sev-0 P0 #940 (2026-05-18) — assistant persistence regression.
  *
- * Live symptom on chat-dev: chat sessions accumulate user rows only; zero
+ * Live symptom in the dev environment: chat sessions accumulate user rows only; zero
  * assistant rows ever land in DB. Breadcrumb says "4 msgs", DOM renders 4
  * user bubbles, 0 assistant bubbles. Stream completes 200 OK; client thinks
  * everything worked.

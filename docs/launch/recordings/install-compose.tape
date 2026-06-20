@@ -15,7 +15,7 @@ Set TypingSpeed 30ms
 
 # cd to repo root off-camera so ./install.sh resolves
 Hide
-Type "cd /home/trent/agenticwork/openagentic && clear"
+Type "cd ~/openagentic && clear"
 Enter
 Sleep 500ms
 Show

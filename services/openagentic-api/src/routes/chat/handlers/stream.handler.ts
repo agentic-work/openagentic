@@ -1657,11 +1657,6 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
             isAdmin: (request.user as any)?.isAdmin,
             groups: (request.user as any)?.groups,
             authMethod: resolvedAuthMethod,
-            // Carry the raw Entra access token forward so the per-user OBO broker
-            // (buildChatV2Deps.brokeredCredMeta) can exchange it on-demand and run
-            // azure/aws/gcp tools AS the signed-in user. Undefined under local-auth
-            // (the broker is gated off there anyway).
-            accessToken: (request.user as any)?.accessToken,
           },
         };
 

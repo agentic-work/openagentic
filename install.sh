@@ -126,12 +126,6 @@ on_exit() { local code=$?; [[ "$code" -ne 0 && "$EXIT_OK" -ne 1 ]] && need_help;
 trap on_exit EXIT
 trap 'CURRENT_STEP="line $LINENO"' ERR
 
-# NOTE: install analytics are captured SERVER-SIDE by the install server
-# (install-openagentics / server.mjs) — it sees the real client IP, does geo +
-# network enrichment, parses the UA, and beacons to admin.agenticwork.io with the
-# real INSTALL_BEACON_SECRET. No client-side beacon here: it would leak the secret
-# in this public script and can't reach the IP-gated admin anyway.
-
 # ─── Resource preflight helpers ──────────────────────────────────────────────
 # Free disk (GB) on the install volume. Best-effort; 0 if it can't be read.
 free_disk_gb() { df -Pg "$1" 2>/dev/null | awk 'NR==2{print $4+0}' || echo 0; }

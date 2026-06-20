@@ -45,10 +45,6 @@ import { executeTask } from './TaskTool.js';
 import { autoEmitStreamingTable } from './autoEmitStreamingTable.js';
 import { resolveMcpToolName } from './mcpToolNameResolver.js';
 import { prisma } from '../utils/prisma.js';
-import { featureFlags } from '../config/featureFlags.js';
-import { getCredentialBroker } from './CredentialBroker.js';
-import { AzureTokenService } from './AzureTokenService.js';
-import { AzureOBOService } from './AzureOBOService.js';
 import { trackMcpToolCall } from '../metrics/index.js';
 
 /**
@@ -579,111 +575,6 @@ async function buildMcpProxyHeaders(
   return headers;
 }
 
-// ---------------------------------------------------------------------------
-// Phase 1c — Entra-IdP cross-cloud OBO pass-through (OFF by default).
-//
-// When (and ONLY when) AUTH_PROVIDER is the explicit `azure-ad` deploy, the API
-// brokers a per-user cloud credential and rides it into `arguments.meta` so the
-// cloud MCP runs the tool AS THE SIGNED-IN USER. The gate is the POSITIVE
-// opt-in `featureFlags.authProvider === 'azure-ad'` — NOT `!== 'local'` —
-// because AUTH_PROVIDER unset defaults to 'azure-ad' at featureFlags.ts:67, so
-// `!== 'local'` would silently activate on an unconfigured deploy. On the
-// default/local path `withBrokeredMeta` returns the SAME input reference
-// (byte-identical request body); the mcp-proxy + MCP consumers behave exactly
-// as today.
-// ---------------------------------------------------------------------------
-
-type CloudTarget = 'aws' | 'azure' | 'gcp';
-function cloudTargetForTool(name: string): CloudTarget | null {
-  if (name.startsWith('aws_')   || name.startsWith('openagentic_aws'))   return 'aws';
-  if (name.startsWith('azure_') || name.startsWith('openagentic_azure')) return 'azure';
-  if (name.startsWith('gcp_')   || name.startsWith('openagentic_gcp'))   return 'gcp';
-  return null;
-}
-
-/** Raised when run-as-user was requested (azure-ad path) but no real per-user
- *  cred could be resolved. We THROW rather than return {} so the call fails
- *  loudly instead of silently degrading to the static service principal. */
-class BrokerRunAsUserError extends Error {}
-
-// Silent fallback logger for the lazily-constructed AzureTokenService, matching
-// the CredentialBroker singleton pattern (no fastify logger at this seam).
-const azureTokenSilentLogger: any = {
-  child: () => azureTokenSilentLogger,
-  info: () => {},
-  warn: () => {},
-  error: () => {},
-  debug: () => {},
-};
-let _azureTokenService: AzureTokenService | null = null;
-function getAzureTokenService(): AzureTokenService {
-  if (!_azureTokenService) {
-    _azureTokenService = new AzureTokenService(azureTokenSilentLogger);
-  }
-  return _azureTokenService;
-}
-let _azureOBOService: AzureOBOService | null = null;
-function getAzureOBOService(): AzureOBOService {
-  if (!_azureOBOService) _azureOBOService = new AzureOBOService(azureTokenSilentLogger);
-  return _azureOBOService;
-}
-
-/** Phase-1c: positive opt-in. Returns {} ONLY on the non-Entra path or a
- *  non-cloud tool. On a cloud tool under azure-ad it MUST resolve a real
- *  per-user cred or THROW — never silently fall through to the service
- *  principal. */
-async function brokeredCredMeta(ctx: any, toolName: string): Promise<Record<string, unknown>> {
-  if (featureFlags.authProvider !== 'azure-ad') return {};        // HARD GATE (positive opt-in)
-  const target = cloudTargetForTool(toolName);
-  if (!target) return {};
-  const userId: string | undefined = ctx?.user?.id;
-  const userJwt: string | undefined = ctx?.user?.accessToken;
-  if (!userId || !userJwt) {
-    throw new BrokerRunAsUserError(`Cannot run ${toolName} as the user — no Entra session.`);
-  }
-  const azure = getAzureTokenService();
-  if (target === 'azure') {
-    // ARM-audience OBO token (management.azure.com). Prefer the stored token (UI
-    // login flow); fall back to an ON-DEMAND OBO exchange from the request's Entra
-    // token (API/Bearer flow — the request always carries it).
-    let arm = await azure.getValidAzureTokenString(userId);
-    if (!arm) arm = await getAzureOBOService().getAzureManagementToken(userJwt);
-    if (!arm) throw new BrokerRunAsUserError('Could not run as you on Azure — OBO exchange failed (connect/permission).');
-    return { brokeredAzure: { AZURE_ACCESS_TOKEN: arm } };
-  }
-  if (target === 'aws') {
-    // AssumeRoleWithWebIdentity. Prefer the stored id_token (login flow); else use
-    // the request's Entra access token (API/Bearer) — its aud is the app clientId
-    // (which the IAM OIDC provider trusts) and its sub matches the role trust.
-    const info = await azure.getOrRefreshToken(userId);
-    const awsToken = info?.id_token || userJwt;
-    const creds = await getCredentialBroker().brokerFor(awsToken, ['aws'], userId);  // → STS web-identity
-    if (!creds.aws) throw new BrokerRunAsUserError('Could not run as you on AWS — STS assume-role failed.');
-    return { brokeredAws: creds.aws };
-  }
-  // gcp: per-user OAuth (the user's own GCP IAM) or the Entra→GCP WIF path. The WIF
-  // subject token is the stored self-audience token (login flow) or, failing that,
-  // the request's Entra access token (API/Bearer). The broker throws when neither a
-  // Google OAuth link nor a WIF exchange is available.
-  const entra = await azure.getSelfAudienceToken(userId);
-  const creds = await getCredentialBroker().brokerFor(userJwt, ['gcp'], userId, entra?.access_token || userJwt);
-  if (!creds.gcp?.GOOGLE_OAUTH_ACCESS_TOKEN) {
-    throw new BrokerRunAsUserError('Could not run as you on GCP — Connect GCP first.');
-  }
-  return { brokeredGcp: creds.gcp };
-}
-
-/** Wraps the tool-call argument object. On the default/non-Entra path returns
- *  the SAME `input` reference (byte-identical body). Only under azure-ad on a
- *  cloud tool does it shallow-clone and attach the brokered creds to .meta. */
-async function withBrokeredMeta(ctx: any, toolName: string, input: any): Promise<any> {
-  const patch = await brokeredCredMeta(ctx, toolName);
-  if (Object.keys(patch).length === 0) return input;             // non-Entra: SAME object ref, byte-identical
-  const args = { ...(input ?? {}) };
-  args.meta = { ...(args.meta ?? {}), ...patch };
-  return args;
-}
-
 /**
  * Build an MCP tool executor with Claude-Code-style tool-name resolution.
  *
@@ -749,7 +640,7 @@ export function makeExecuteMcpToolWithResolver(
         headers: await buildMcpProxyHeaders(ctx),
         body: JSON.stringify({
           tool: canonicalName,
-          arguments: await withBrokeredMeta(ctx, canonicalName, input ?? {}),
+          arguments: input ?? {},
           id: reqId,
         }),
       });
@@ -801,7 +692,7 @@ function makeExecuteMcpTool(): (ctx: any, name: string, input: any) => Promise<a
         headers: await buildMcpProxyHeaders(ctx),
         body: JSON.stringify({
           tool: name,
-          arguments: await withBrokeredMeta(ctx, name, input ?? {}),
+          arguments: input ?? {},
           id: reqId,
         }),
       });

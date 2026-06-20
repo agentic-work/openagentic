@@ -1,7 +1,7 @@
 /**
  * Playwright API spec — verifies the 0.7.0 deploy WITHOUT auth.
  *
- * No MFA required. Hits chat-dev's nginx, parses the index HTML to
+ * No MFA required. Hits the dev environment's nginx, parses the index HTML to
  * find the entry-bundle hash, fetches the bundle, asserts the
  * marquee strings that prove our toast + NavRail + per-slot picker
  * are in the served code.

@@ -27,7 +27,7 @@ import type { DiscoveredModel } from '../../../../../services/llm-providers/ILLM
  *      keeps Task; all other T1 primitives are unchanged.
  *   3. The wire-through (buildChatToolArray → shouldExposeTaskToolForModel
  *      → getAllBaseTools) is exercised by the source-regression test +
- *      live Playwright verify on chat-dev.
+ *      live Playwright verify in the dev environment.
  */
 
 function caps(overrides: Partial<DiscoveredModel> = {}): DiscoveredModel {

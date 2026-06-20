@@ -6,7 +6,7 @@
  *   `thinking.budget_tokens`. Please consult our documentation at
  *   https://docs.claude.com/en/docs/build-with-claude/extended-thinking
  *
- * Live error from chat-dev 2026-05-13T00:26Z, model us.anthropic.claude-
+ * Live error from the dev environment 2026-05-13T00:26Z, model us.anthropic.claude-
  * sonnet-4-5-20250929-v1:0, Q1 re-drive (commit 62856653, image
  * 0.7.1-62856653). Smart Router classified the tri-cloud cost prompt as
  * agentic → Sonnet 4.5 via AWSBedrockProvider. With BEDROCK_THINKING_BUDGET_TOKENS

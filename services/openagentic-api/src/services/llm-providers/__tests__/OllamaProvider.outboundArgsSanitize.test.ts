@@ -1,7 +1,7 @@
 /**
  * #806 Sev-0 — OllamaProvider outbound sanitization of tool_calls.arguments.
  *
- * Smoking gun (chat-dev 2026-05-13T20:10:58, session_1778703012207_7lrdug1on):
+ * Smoking gun (dev environment 2026-05-13T20:10:58, session_1778703012207_7lrdug1on):
  *
  *   errorText: "error parsing tool call: raw='{\"}' err=unexpected end of JSON input"
  *

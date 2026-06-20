@@ -6,7 +6,6 @@ services/openagentic-api/src/lib/agentic-sdk/normalizers/OllamaToOpenagentic.ts
 services/openagentic-api/src/lib/agentic-sdk/normalizers/OpenAIToOpenagentic.ts
 services/openagentic-api/src/routes/admin/chat-loop-config.ts
 services/openagentic-api/src/routes/admin/llm-providers.ts
-services/openagentic-api/src/routes/admin-synth.ts
 services/openagentic-api/src/routes/admin-test-harness.ts
 services/openagentic-api/src/routes/admin/v3-extras-misc.ts
 services/openagentic-api/src/routes/openagentic.ts

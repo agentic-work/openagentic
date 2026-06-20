@@ -115,7 +115,7 @@ describe('executeGenerateImage', () => {
   });
 
   test('result.output is a natural-language string containing the image url + artifact id so the model can narrate it (#1083 follow-up)', async () => {
-    // Live regression on chat-dev 2026-05-24: Vertex Imagen 3 succeeded
+    // Live regression in the dev environment 2026-05-24: Vertex Imagen 3 succeeded
     // end-to-end (UI rendered the 1024x1024 image via image_render frame),
     // but the model's prose said "platform didn't provide an artifact ID or
     // URL" because result.output was the literal string "image generated".

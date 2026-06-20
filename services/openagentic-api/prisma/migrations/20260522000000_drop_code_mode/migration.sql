@@ -1,5 +1,5 @@
 -- Drop Code Mode tables and columns. Code Mode is removed from the OSS edition;
--- the openagentic-exec service, UI, API routes, and Prisma models that backed it
+-- the code-execution service, UI, API routes, and Prisma models that backed it
 -- have all been deleted. This migration removes the now-orphaned schema.
 --
 -- Safe on fresh installs (IF EXISTS guards every drop) and on upgrades (CASCADE

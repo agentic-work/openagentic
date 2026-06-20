@@ -7,7 +7,7 @@
  * code-audit) and asserts a sub-agent card renders in the DOM with a
  * concrete `data-subagent-type` attribute.
  *
- * Default model at chat-dev is gpt-oss:20b. Smart Router escalates as
+ * Default model in the dev environment is gpt-oss:20b. Smart Router escalates as
  * needed. The spec doesn't pin a specific sub-agent; any concrete
  * variant counts as success (cloud_operations, artifact_creation,
  * code_audit, data_query, etc.).

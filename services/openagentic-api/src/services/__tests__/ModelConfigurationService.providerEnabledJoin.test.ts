@@ -2,7 +2,7 @@
  * #653 — getDefaultChatModel must skip Registry rows whose backing provider
  * is disabled.
  *
- * Live capture 2026-05-06 23:52Z: chat-dev had `gemini-2.5-pro` row
+ * Live capture 2026-05-06 23:52Z: the dev environment had `gemini-2.5-pro` row
  * (role=chat, enabled=true) in admin.model_role_assignments, but the
  * Vertex provider serving it had `llm_providers.enabled=false`. The
  * existing query was:

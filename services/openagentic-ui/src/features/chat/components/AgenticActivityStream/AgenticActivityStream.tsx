@@ -1920,7 +1920,7 @@ const HitlInlineCard: React.FC<HitlInlineCardProps> = ({ entry, onApprove, onDen
   // lands when the next NDJSON frame arrives after the model's next turn
   // completes (10-20s). Without local state, the user clicks Approve and
   // nothing visually changes — they think the click was lost. Tracked in
-  // the live regression on chat-dev 2026-05-24 ("hitl gate isnt working").
+  // the live regression in the dev environment 2026-05-24 ("hitl gate isnt working").
   const [pendingAction, setPendingAction] = React.useState<'approve' | 'deny' | null>(null);
 
   // When the parent flips entry.status (server confirmed), reset local state.

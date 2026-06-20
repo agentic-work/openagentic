@@ -2,7 +2,7 @@
  * Plan-permutation E2E matrix (2026-04-23).
  *
  * Runs ONE real chat prompt per behavior-changing commit landed today,
- * asserts the right routing/artifact/gate fires live on chat-dev.
+ * asserts the right routing/artifact/gate fires live in the dev environment.
  *
  * Covers (6 permutations):
  *   T1 simple-chat-routes-to-frontier   — #99 scoreModel quality-bonus
@@ -16,7 +16,7 @@
  * they don't depend on the UI re-auth flow.
  *
  * BEFORE RUNNING:
- *   export AW_JWT='<openagentic_token cookie value from chat-dev>'
+ *   export AW_JWT='<openagentic_token cookie value from the dev environment>'
  *   npx playwright test tests/e2e/plan-permutations.spec.ts
  */
 
@@ -110,7 +110,7 @@ test.describe.configure({ mode: 'serial' });
 const LONG_TEST_MS = 360_000;
 
 test.describe('Plan-permutation matrix (2026-04-23)', () => {
-  test.skip(!JWT, 'AW_JWT env var required — extract from chat-dev cookie');
+  test.skip(!JWT, 'AW_JWT env var required — extract from the dev environment cookie');
 
   let api: APIRequestContext;
 

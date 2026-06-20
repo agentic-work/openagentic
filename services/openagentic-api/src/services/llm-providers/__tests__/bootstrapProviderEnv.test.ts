@@ -37,7 +37,7 @@ describe('parseBootstrapProviderEnv', () => {
       BOOTSTRAP_PROVIDER_TYPE: 'ollama',
       BOOTSTRAP_PROVIDER_CONFIG: JSON.stringify({
         type: 'ollama',
-        endpoint: 'http://10.2.10.142:11434',
+        endpoint: 'http://192.0.2.10:11434',
       }),
       BOOTSTRAP_PROVIDER_DEFAULTS: JSON.stringify({
         chat: 'gpt-oss:20b',
@@ -52,7 +52,7 @@ describe('parseBootstrapProviderEnv', () => {
     expect(r!.providerType).toBe('ollama');
     expect(r!.authConfig).toEqual({
       type: 'ollama',
-      endpoint: 'http://10.2.10.142:11434',
+      endpoint: 'http://192.0.2.10:11434',
     });
     expect(r!.defaults).toEqual({
       chat: 'gpt-oss:20b',

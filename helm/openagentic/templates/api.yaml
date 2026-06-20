@@ -97,64 +97,6 @@ spec:
               value: {{ .Values.ollama.embedModel | quote }}
             - name: EMBEDDING_MODEL
               value: {{ .Values.ollama.embedModel | quote }}
-            {{- if ne .Values.auth.provider "local" }}
-            # ── Microsoft Entra IdP + cross-cloud OBO (auth.provider != local) ──
-            # Login + OBO env; the SAME app reg powers both, so cloud tools run AS
-            # the signed-in user. Client secrets arrive via envFrom secretRef
-            # (AZURE_AD_CLIENT_SECRET / AZURE_CLIENT_SECRET / GCP_OAUTH_CLIENT_SECRET
-            # / GCP_TOKEN_ENCRYPTION_KEY).
-            - name: AZURE_AD_TENANT_ID
-              value: {{ .Values.auth.azure.tenantId | quote }}
-            - name: AZURE_AD_CLIENT_ID
-              value: {{ .Values.auth.azure.clientId | quote }}
-            - name: AZURE_AD_REDIRECT_URI
-              value: {{ .Values.auth.azure.redirectUri | quote }}
-            {{- with .Values.auth.azure.authority }}
-            - name: AZURE_AD_AUTHORITY
-              value: {{ . | quote }}
-            {{- end }}
-            {{- with .Values.auth.azure.authorizedAdminGroups }}
-            - name: AZURE_ADMIN_GROUPS
-              value: {{ join "," . | quote }}
-            {{- end }}
-            {{- with .Values.auth.azure.authorizedUserGroups }}
-            - name: AZURE_AD_AUTHORIZED_GROUPS
-              value: {{ join "," . | quote }}
-            {{- end }}
-            {{- with .Values.auth.azure.externalAdminEmails }}
-            - name: EXTERNAL_ADMIN_EMAILS
-              value: {{ join "," . | quote }}
-            {{- end }}
-            # OBO — Azure (same login app reg)
-            - name: AZURE_TENANT_ID
-              value: {{ .Values.auth.azure.tenantId | quote }}
-            - name: AZURE_CLIENT_ID
-              value: {{ .Values.auth.azure.clientId | quote }}
-            {{- with .Values.auth.azure.subscriptionId }}
-            - name: AZURE_SUBSCRIPTION_ID
-              value: {{ . | quote }}
-            {{- end }}
-            {{- with .Values.obo.aws.roleArn }}
-            - name: AWS_OBO_ROLE_ARN
-              value: {{ . | quote }}
-            {{- end }}
-            {{- with .Values.obo.aws.accountId }}
-            - name: AWS_ACCOUNT_ID
-              value: {{ . | quote }}
-            {{- end }}
-            - name: AWS_REGION
-              value: {{ .Values.obo.aws.region | default "us-east-1" | quote }}
-            {{- with .Values.obo.gcp.oauthClientId }}
-            - name: GCP_OAUTH_CLIENT_ID
-              value: {{ . | quote }}
-            - name: GCP_OAUTH_REDIRECT_URI
-              value: {{ $.Values.obo.gcp.oauthRedirectUri | quote }}
-            {{- end }}
-            {{- with .Values.obo.gcp.projectId }}
-            - name: GCP_PROJECT_ID
-              value: {{ . | quote }}
-            {{- end }}
-            {{- end }}
             {{- if .Values.bootstrapProvider.enabled }}
             # AWS Bedrock (Claude via IAM) is the SOLE chat bootstrap provider.
             # Seeds claude-sonnet-4-6 as the default chat + flows model. CONFIG
@@ -225,7 +167,7 @@ spec:
               value: "https://{{ .Values.ingress.host }}"
             {{- end }}
             - name: AUTH_PROVIDER
-              value: {{ .Values.auth.provider | default "local" }}
+              value: local
             - name: ADMIN_USER_EMAIL
               value: {{ .Values.secrets.adminEmail | quote }}
             - name: LOCAL_ADMIN_USERNAME

@@ -36,7 +36,7 @@ const KIND_LABELS: Record<string, string> = {
 // frames alongside real artifact descriptors. Phase D launchers must ONLY
 // fire for these 6 production kinds, never for `unknown` or non-artifact
 // frame subtypes. Regression: 60+ "unknown Artifact" launchers rendered on
-// a single message on chat-dev 0.7.1-3d7fb248 (2026-05-13).
+// a single message in the dev environment 0.7.1-3d7fb248 (2026-05-13).
 const ARTIFACT_KINDS: ReadonlySet<string> = new Set([
   'python-report',
   'react-app',

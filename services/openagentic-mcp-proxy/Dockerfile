@@ -103,7 +103,7 @@ RUN cd /app/mcp-servers/oap-aws-mcp && pip install --no-cache-dir -r requirement
 RUN cd /app/mcp-servers/oap-web-mcp && pip install --no-cache-dir -r requirements.txt
 
 # REMOVED: OpenAgentic ServiceNow MCP - not yet implemented
-# REMOVED: OpenAgentic OpenAgentic MCP - moved to dedicated Code Mode (openagentic-manager + openagentic-exec)
+# REMOVED: code-execution MCP - code execution does not run through the MCP proxy
 
 # Install OpenAgentic Kubernetes MCP server dependencies (ADMIN-ONLY - K8s cluster management)
 RUN cd /app/mcp-servers/oap-kubernetes-mcp && pip install --no-cache-dir -r requirements.txt

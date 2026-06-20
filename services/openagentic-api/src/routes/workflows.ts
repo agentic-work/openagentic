@@ -66,8 +66,8 @@ const workflowCompiler = new WorkflowCompiler();
 
 // Workflow execution service URL — when available, execution is proxied to the dedicated service.
 // Phase A: when unset, log a loud warn at module load so the misconfig is
-// surfaced (the dedicated workflows pod was deployed and idle in agentic-dev
-// for weeks because nobody noticed). Phase B will fail-fast.
+// surfaced (a deployed-but-unrouted workflows pod would otherwise sit idle
+// without anyone noticing). Phase B will fail-fast.
 const WORKFLOW_SERVICE_URL = process.env.WORKFLOW_SERVICE_URL || '';
 if (!WORKFLOW_SERVICE_URL) {
   loggers.server.warn(
@@ -77,7 +77,7 @@ if (!WORKFLOW_SERVICE_URL) {
 }
 
 // Enterprise template definitions removed (OSS edition ships general-purpose
-// templates only; cloud/aiops/OMHS templates are enterprise-only).
+// templates only; cloud/aiops template packs are enterprise-only).
 
 // Helper to transform workflow from DB schema to API response format.
 // 2026-04-19 (task #144) — strip legacy `intelligenceLevel` and

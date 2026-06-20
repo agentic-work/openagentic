@@ -16,7 +16,7 @@ describe('openagentic node — sandboxed CLI session', () => {
   it('forwards the code to the manager and surfaces stdout + sessionStatus', async () => {
     let receivedBody: any;
     harnessServer.use(
-      http.post('http://openagentic-code-manager:8080/api/execute', async ({ request }) => {
+      http.post('http://code-exec.example.test:8080/api/execute', async ({ request }) => {
         receivedBody = await request.json();
         return HttpResponse.json({
           stdout: 'hello from sandbox\n',

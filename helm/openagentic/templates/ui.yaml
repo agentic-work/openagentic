@@ -67,7 +67,7 @@ spec:
             - name: OPENAGENTIC_PROXY_PORT
               value: "3300"
             - name: AUTH_PROVIDER
-              value: {{ .Values.auth.provider | default "local" }}
+              value: local
             - name: LOCAL_LOGIN_ENABLED
               value: "true"
           readinessProbe:

@@ -115,10 +115,10 @@ function wrapReactArtifact(jsx: string): string {
  */
 function buildCspMeta(pyodideRequired: boolean, origin: string, nonce?: string | null): string {
   // #484 C2 — script-src is path-prefixed to /api/cdn/lib/ ONLY. CSP3
-  // path-prefix sources match a path scope (https://chat-dev/api/cdn/lib/*)
+  // path-prefix sources match a path scope (https://<host>/api/cdn/lib/*)
   // not just a host. Without this restriction, the iframe could
   // `<script src="/api/embed/x.js">` and execute arbitrary JS returned
-  // from any chat-dev endpoint that emits application/javascript.
+  // from any deployed endpoint that emits application/javascript.
   //
   // connect-src stays bare-origin because the iframe needs to POST to
   // /api/synth/exec (auth-checked, AD-only).

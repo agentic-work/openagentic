@@ -6,9 +6,9 @@
  * only. Sonnet 4.5's seeded `capabilities.contextWindow = 200000` (no `s`)
  * matches NEITHER key → falls through to 8192 fallback → fails the
  * T3 gate (contextT3Floor=200000) → NO_T3_MODEL_IN_REGISTRY on any
- * T3 prompt → chat-dev sankey/compose_visual prompts permanently blocked.
+ * T3 prompt → dev-environment sankey/compose_visual prompts permanently blocked.
  *
- * Audit live evidence 2026-05-25 (Prisma raw SQL on chat-dev pod):
+ * Audit live evidence 2026-05-25 (Prisma raw SQL on the dev environment pod):
  *   capabilities = { "contextWindow": 200000, "chat": true, ... }
  *
  * This helper canonicalizes the lookup to accept all three legacy keys:
