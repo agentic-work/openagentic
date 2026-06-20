@@ -6,10 +6,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AppContext } from '../../context/AppContext.js';
 import { createLoggerMock } from '../../test/mocks/logger.js';
 
-const mockCheckHealth = vi.fn().mockResolvedValue({ isHealthy: true });
-const MockMilvusClient = vi.fn().mockImplementation(() => ({
-  checkHealth: mockCheckHealth,
-}));
+// vi.mock factories are hoisted above top-level const declarations, so the
+// mock vars must be created inside vi.hoisted() to be referenceable there.
+const { mockCheckHealth, MockMilvusClient } = vi.hoisted(() => {
+  const mockCheckHealth = vi.fn().mockResolvedValue({ isHealthy: true });
+  const MockMilvusClient = vi.fn().mockImplementation(() => ({
+    checkHealth: mockCheckHealth,
+  }));
+  return { mockCheckHealth, MockMilvusClient };
+});
 
 vi.mock('@zilliz/milvus2-sdk-node', () => ({
   MilvusClient: MockMilvusClient,

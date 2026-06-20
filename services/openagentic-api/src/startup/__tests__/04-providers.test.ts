@@ -9,19 +9,36 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AppContext } from '../../context/AppContext.js';
 import { createLoggerMock } from '../../test/mocks/logger.js';
 
-const mockProviderManagerInit = vi.fn().mockResolvedValue(undefined);
-const mockLoadProviderConfig = vi.fn().mockResolvedValue({ providers: [] });
-const mockCreateCompletion = vi.fn().mockResolvedValue({});
-const MockProviderManager = vi.fn().mockImplementation(() => ({
-  initialize: mockProviderManagerInit,
-  getAllModels: vi.fn().mockReturnValue([]),
-  createCompletion: mockCreateCompletion,
-  updateFromFeedback: vi.fn().mockResolvedValue(undefined),
-  getProvider: vi.fn().mockReturnValue(null),
-}));
-const MockProviderConfigService = vi.fn().mockImplementation(() => ({
-  loadProviderConfig: mockLoadProviderConfig,
-}));
+// vi.mock factories are hoisted above top-level const declarations, so the
+// mock vars must be created inside vi.hoisted() to be referenceable there.
+const {
+  mockProviderManagerInit,
+  mockLoadProviderConfig,
+  mockCreateCompletion,
+  MockProviderManager,
+  MockProviderConfigService,
+} = vi.hoisted(() => {
+  const mockProviderManagerInit = vi.fn().mockResolvedValue(undefined);
+  const mockLoadProviderConfig = vi.fn().mockResolvedValue({ providers: [] });
+  const mockCreateCompletion = vi.fn().mockResolvedValue({});
+  const MockProviderManager = vi.fn().mockImplementation(() => ({
+    initialize: mockProviderManagerInit,
+    getAllModels: vi.fn().mockReturnValue([]),
+    createCompletion: mockCreateCompletion,
+    updateFromFeedback: vi.fn().mockResolvedValue(undefined),
+    getProvider: vi.fn().mockReturnValue(null),
+  }));
+  const MockProviderConfigService = vi.fn().mockImplementation(() => ({
+    loadProviderConfig: mockLoadProviderConfig,
+  }));
+  return {
+    mockProviderManagerInit,
+    mockLoadProviderConfig,
+    mockCreateCompletion,
+    MockProviderManager,
+    MockProviderConfigService,
+  };
+});
 
 vi.mock('../../services/llm-providers/ProviderManager.js', () => ({
   ProviderManager: MockProviderManager,

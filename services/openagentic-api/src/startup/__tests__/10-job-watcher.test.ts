@@ -6,18 +6,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AppContext } from '../../context/AppContext.js';
 import { createLoggerMock } from '../../test/mocks/logger.js';
 
-const mockStart = vi.fn();
-const mockOn = vi.fn();
-const MockJobCompletionWatcher = vi.fn().mockImplementation(() => ({
-  start: mockStart,
-  on: mockOn,
-}));
+// vi.mock factories are hoisted above top-level const declarations, so the
+// mock vars must be created inside vi.hoisted() to be referenceable there.
+const { mockStart, mockOn, MockJobCompletionWatcher, mockIsConnected } = vi.hoisted(() => {
+  const mockStart = vi.fn();
+  const mockOn = vi.fn();
+  const MockJobCompletionWatcher = vi.fn().mockImplementation(() => ({
+    start: mockStart,
+    on: mockOn,
+  }));
+  const mockIsConnected = vi.fn().mockReturnValue(true);
+  return { mockStart, mockOn, MockJobCompletionWatcher, mockIsConnected };
+});
 
 vi.mock('../../services/JobCompletionWatcher.js', () => ({
   JobCompletionWatcher: MockJobCompletionWatcher,
 }));
 
-const mockIsConnected = vi.fn().mockReturnValue(true);
 vi.mock('../../utils/redis-client.js', () => ({
   getRedisClient: vi.fn().mockReturnValue({
     isConnected: mockIsConnected,

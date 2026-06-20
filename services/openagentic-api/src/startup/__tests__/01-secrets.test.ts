@@ -26,9 +26,9 @@ describe('LOAD_SECRETS step', () => {
     vi.clearAllMocks();
   });
 
-  it('has correct name and critical=false', () => {
+  it('has correct name and critical=true (B2 NIST IA-5: missing/weak secret is FATAL in prod)', () => {
     expect(LOAD_SECRETS.name).toBe('secrets-load');
-    expect(LOAD_SECRETS.critical).toBe(false);
+    expect(LOAD_SECRETS.critical).toBe(true);
   });
 
   it('sets (global as any).appSecrets on success', async () => {

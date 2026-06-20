@@ -53,7 +53,7 @@ import { getRedisClient, initializeRedis } from './utils/redis-client.js';
 import { validateAdminPortalConfiguration } from './startup/validateAdminPortal.js';
 import { ragInitService } from './services/RAGInitService.js';
 import { MCPToolIndexingService } from './services/MCPToolIndexingService.js';
-import { ToolPgvectorSearchService, setToolPgvectorSearchService } from './services/ToolPgvectorSearchService.js';
+import { ToolPgvectorSearchService, setToolPgvectorSearchService, getToolPgvectorSearchService } from './services/ToolPgvectorSearchService.js';
 import { JobCompletionWatcher } from './services/JobCompletionWatcher.js';
 import { ProviderManager } from './services/llm-providers/ProviderManager.js';
 import { SmartModelRouter, setSmartModelRouter, getSmartModelRouter } from './services/SmartModelRouter.js';
@@ -96,6 +96,30 @@ let toolSemanticCache: ToolSemanticCacheService;
 let toolSemanticCacheInitialized = false;
 let repositoryContainer: any = null;
 let jobCompletionWatcher: JobCompletionWatcher;
+
+/**
+ * Single source of truth for "is Milvus the vector backend this boot?".
+ *
+ * Milvus is the heavy vector store for tool/RAG/artifact embeddings. The api
+ * can run pgvector-only (PostgreSQL halfvec columns are the source of truth for
+ * MCP tool search via ToolPgvectorSearchService) — this lets a bare
+ * `docker compose up` (no `--profile milvus`) boot HEALTHY without the
+ * Milvus+etcd+MinIO trio.
+ *
+ * Disabled (→ pgvector-only) when ANY of:
+ *   - MILVUS_ENABLED=false           (explicit opt-out)
+ *   - SKIP_TOOL_SEMANTIC_CACHE=true  (legacy flag — also gates tool-embedding/RAG)
+ *   - MILVUS_HOST is unset/empty     (no Milvus to point at → don't crash on it)
+ *
+ * When enabled, the Milvus path is UNCHANGED — connect-with-retry, exit(1) on
+ * 10 consecutive failures (a configured-but-unreachable vector store fails loud).
+ */
+function isMilvusEnabled(): boolean {
+  if (process.env.MILVUS_ENABLED === 'false') return false;
+  if (process.env.SKIP_TOOL_SEMANTIC_CACHE === 'true') return false;
+  if (!process.env.MILVUS_HOST || process.env.MILVUS_HOST.trim() === '') return false;
+  return true;
+}
 
 // Milvus connection retry logic with extended retries for container startup
 async function connectToMilvus(retries = 3, delay = 2000): Promise<MilvusClient> {
@@ -401,8 +425,7 @@ async function initializeServices() {
     // search falls back to ToolPgvectorSearchService (initialized below), and the
     // Milvus-backed RAG/artifact features stay dormant. This matches the
     // pgvector-only path the docker entrypoint already supports.
-    const milvusEnabled = process.env.MILVUS_ENABLED !== 'false'
-      && process.env.SKIP_TOOL_SEMANTIC_CACHE !== 'true';
+    const milvusEnabled = isMilvusEnabled();
 
     if (milvusEnabled) {
       // Milvus ON: connect with retry, exit(1) after 10 failed attempts — when
@@ -1464,12 +1487,40 @@ async function registerAllRoutes() {
   // tool_search meta-tool POSTs here mid-turn to expand its tool set). Without
   // this registration the route 404s and every chat tool_search call fails,
   // so the model loops until the max-turns cap. getSearchService resolves the
-  // ToolSemanticCacheService singleton lazily (set on global after RAG init).
+  // ToolSemanticCacheService (Milvus) singleton lazily when Milvus is enabled;
+  // when it is NOT (pgvector-only boot), it returns a thin adapter over the
+  // ToolPgvectorSearchService singleton so tool_search resolves from the
+  // mcp_tools halfvec columns instead of 503-ing.
   try {
     const { registerInternalToolSearchRoute } = await import('./routes/internal/tool-search.js');
     registerInternalToolSearchRoute(server, {
       internalSecret: process.env.INTERNAL_SERVICE_SECRET ?? '',
-      getSearchService: () => (global as any).toolSemanticCache,
+      getSearchService: () => {
+        const milvusCache = (global as any).toolSemanticCache;
+        if (milvusCache) return milvusCache;
+        // pgvector-only fallback. The route's ToolSearchService contract is
+        // searchToolsAsOpenAIFunctions(query, topK?, serverFilter?: string,
+        // userPromptHint?: string). The pgvector service uses an options object
+        // for the server filter, so adapt a non-empty serverFilter string to
+        // { serverIds: [serverFilter] }.
+        const pgSearch = getToolPgvectorSearchService();
+        if (!pgSearch) return null;
+        return {
+          searchToolsAsOpenAIFunctions: (
+            query: string,
+            topK?: number,
+            serverFilter?: string,
+            _userPromptHint?: string,
+          ) =>
+            pgSearch.searchToolsAsOpenAIFunctions(query, topK ?? 8, {
+              serverIds:
+                typeof serverFilter === 'string' && serverFilter.length > 0
+                  ? [serverFilter]
+                  : undefined,
+              applyScoreGap: true,
+            }),
+        };
+      },
       // #51 (2026-06-01) — live connected-server list for the honest
       // no-match message. Reads the mcp-proxy /servers status endpoint
       // (same unauthenticated endpoint ChatMCPService.fetchServersFromProxy
@@ -2045,87 +2096,124 @@ const start = async () => {
   }
 
   // ========================================================================
-  // MANDATORY: Tool Semantic Cache — Milvus + pgvector + embeddings
-  // The platform CANNOT function without semantic tool search.
-  // ALL MCP tools MUST be indexed before the API accepts requests.
+  // Semantic tool search — Milvus (when enabled) + pgvector (always)
+  // The platform needs semantic MCP tool search to function. When Milvus is
+  // enabled it is the cache; pgvector (ToolPgvectorSearchService, below) is the
+  // source of truth either way. When Milvus is DISABLED (MILVUS_ENABLED=false,
+  // SKIP_TOOL_SEMANTIC_CACHE=true, or MILVUS_HOST unset — see isMilvusEnabled),
+  // the api boots pgvector-only and tool_search resolves from the mcp_tools
+  // halfvec columns — NO Milvus connect, NO exit(1).
   // ========================================================================
-  loggers.services.info('🔄 Initializing Tool Semantic Cache for MCP tools (MANDATORY)...');
+  if (isMilvusEnabled()) {
+    loggers.services.info('🔄 Initializing Tool Semantic Cache for MCP tools (Milvus)...');
 
-  // Retry Milvus connection with exponential backoff (entrypoint already waited for health)
-  let milvusConnected = false;
-  for (let attempt = 1; attempt <= 10; attempt++) {
-    try {
-      toolSemanticCache = new ToolSemanticCacheService(providerManager);
-      await toolSemanticCache.initialize();
-      toolSemanticCacheInitialized = true;
-      milvusConnected = true;
-      loggers.services.info(`✅ Tool Semantic Cache connected to Milvus (attempt ${attempt})`);
-      break;
-    } catch (error: any) {
-      loggers.services.warn({ error: error.message, attempt },
-        `⚠️ Milvus connection attempt ${attempt}/10 failed — retrying in ${attempt * 3}s`);
-      await new Promise(resolve => setTimeout(resolve, attempt * 3000));
-    }
-  }
-
-  if (!milvusConnected) {
-    loggers.services.fatal('🚨 FATAL: Cannot connect to Milvus after 10 attempts — shutting down');
-    process.exit(1);
-  }
-
-  // Index ALL MCP tools into Milvus. Best-effort on boot: the MCP proxy may
-  // not have spawned every subprocess yet on a fresh install, and single-user
-  // OSS deploys don't have a second replica to pick up the slack. Don't kill
-  // the API if we end up with 0 tools — background re-index fires on the first
-  // chat and the UI works fine with a shrinking tool set in the meantime.
-  // FULLY DETACHED tool indexing. A Milvus op here (notably indexToolTags) can
-  // block the event loop / never settle on a fresh boot — and a setTimeout-based
-  // Promise.race CANNOT rescue a synchronously-blocked loop, so awaiting it here
-  // (even "non-fatal") wedges server.listen() forever. The pgvector index (the
-  // source of truth for tool search) is already written above, so this whole
-  // block — the Milvus resilience replica + pg sync + verification — is best
-  // effort and runs in the BACKGROUND. The server starts listening immediately;
-  // the first-chat + periodic re-index finish the replica. (Fixes the boot hang
-  // at "tool_tags collection already at correct dimension".)
-  loggers.services.info('🔄 Indexing ALL MCP tools into Milvus… (background — not blocking boot)');
-  void (async () => {
-    try {
-      await toolSemanticCache.autoIndexToolsWhenReady();
-      loggers.services.info('✅ MCP tools indexed in Milvus (background)');
-    } catch (error: any) {
-      loggers.services.warn({ error: error?.message }, '⚠️ background Milvus tool indexing incomplete (non-fatal)');
-    }
-    try {
-      const testResults = await toolSemanticCache.searchToolsAsOpenAIFunctions('kubernetes pods logs', 5);
-      if (!testResults || testResults.length === 0) {
-        loggers.services.warn('⚠️ Post-indexing verification: 0 tools found — will reindex on first chat request');
-      } else {
-        const stats = await toolSemanticCache.getCacheStats?.() || {} as any;
-        loggers.services.info({
-          verificationResults: testResults.length,
-          sampleTools: testResults.slice(0, 3).map((t: any) => t.function?.name || t.name),
-          totalIndexed: (stats as any).totalTools || 'unknown'
-        }, '✅ POST-INDEX VERIFICATION: Semantic search returning results');
+    // Retry Milvus connection with exponential backoff (entrypoint already waited for health)
+    let milvusConnected = false;
+    for (let attempt = 1; attempt <= 10; attempt++) {
+      try {
+        toolSemanticCache = new ToolSemanticCacheService(providerManager);
+        await toolSemanticCache.initialize();
+        toolSemanticCacheInitialized = true;
+        milvusConnected = true;
+        loggers.services.info(`✅ Tool Semantic Cache connected to Milvus (attempt ${attempt})`);
+        break;
+      } catch (error: any) {
+        loggers.services.warn({ error: error.message, attempt },
+          `⚠️ Milvus connection attempt ${attempt}/10 failed — retrying in ${attempt * 3}s`);
+        await new Promise(resolve => setTimeout(resolve, attempt * 3000));
       }
-    } catch (verifyError: any) {
-      loggers.services.warn({ error: verifyError?.message }, '⚠️ Post-indexing verification failed (non-fatal)');
     }
-    try {
-      const { MilvusClient } = await import('@zilliz/milvus2-sdk-node');
-      const { getRedisClient } = await import('./utils/redis-client.js');
-      const milvusAddress = process.env.MILVUS_ADDRESS ||
-        `${process.env.MILVUS_HOST || 'milvus'}:${process.env.MILVUS_PORT || '19530'}`;
-      const milvus = new MilvusClient({ address: milvusAddress });
-      const redis = getRedisClient();
-      const pgIndexingService = new MCPToolIndexingService(loggers.services as any, milvus, redis, prisma);
-      await pgIndexingService.indexAllMCPTools(false);
-      loggers.services.info('✅ MCP tools synced to PostgreSQL with pgvector embeddings (background)');
-      pgIndexingService.startPeriodicIndexing?.();
-      loggers.services.info('🔄 Periodic MCP tool re-indexing started (30-min interval)');
-    } catch (pgError: any) {
-      loggers.services.warn({ error: pgError?.message }, '⚠️ background PostgreSQL tool indexing failed (Milvus primary is OK)');
+
+    if (!milvusConnected) {
+      loggers.services.fatal('🚨 FATAL: Cannot connect to Milvus after 10 attempts (set MILVUS_ENABLED=false for pgvector-only mode) — shutting down');
+      process.exit(1);
     }
-  })();
+
+    // Index ALL MCP tools into Milvus. Best-effort on boot: the MCP proxy may
+    // not have spawned every subprocess yet on a fresh install, and single-user
+    // OSS deploys don't have a second replica to pick up the slack. Don't kill
+    // the API if we end up with 0 tools — background re-index fires on the first
+    // chat and the UI works fine with a shrinking tool set in the meantime.
+    // FULLY DETACHED tool indexing. A Milvus op here (notably indexToolTags) can
+    // block the event loop / never settle on a fresh boot — and a setTimeout-based
+    // Promise.race CANNOT rescue a synchronously-blocked loop, so awaiting it here
+    // (even "non-fatal") wedges server.listen() forever. The pgvector index (the
+    // source of truth for tool search) is already written above, so this whole
+    // block — the Milvus resilience replica + pg sync + verification — is best
+    // effort and runs in the BACKGROUND. The server starts listening immediately;
+    // the first-chat + periodic re-index finish the replica. (Fixes the boot hang
+    // at "tool_tags collection already at correct dimension".)
+    loggers.services.info('🔄 Indexing ALL MCP tools into Milvus… (background — not blocking boot)');
+    void (async () => {
+      try {
+        await toolSemanticCache!.autoIndexToolsWhenReady();
+        loggers.services.info('✅ MCP tools indexed in Milvus (background)');
+      } catch (error: any) {
+        loggers.services.warn({ error: error?.message }, '⚠️ background Milvus tool indexing incomplete (non-fatal)');
+      }
+      try {
+        const testResults = await toolSemanticCache!.searchToolsAsOpenAIFunctions('kubernetes pods logs', 5);
+        if (!testResults || testResults.length === 0) {
+          loggers.services.warn('⚠️ Post-indexing verification: 0 tools found — will reindex on first chat request');
+        } else {
+          const stats = await toolSemanticCache!.getCacheStats?.() || {} as any;
+          loggers.services.info({
+            verificationResults: testResults.length,
+            sampleTools: testResults.slice(0, 3).map((t: any) => t.function?.name || t.name),
+            totalIndexed: (stats as any).totalTools || 'unknown'
+          }, '✅ POST-INDEX VERIFICATION: Semantic search returning results');
+        }
+      } catch (verifyError: any) {
+        loggers.services.warn({ error: verifyError?.message }, '⚠️ Post-indexing verification failed (non-fatal)');
+      }
+      try {
+        const { MilvusClient } = await import('@zilliz/milvus2-sdk-node');
+        const { getRedisClient } = await import('./utils/redis-client.js');
+        const milvusAddress = process.env.MILVUS_ADDRESS ||
+          `${process.env.MILVUS_HOST || 'milvus'}:${process.env.MILVUS_PORT || '19530'}`;
+        const milvus = new MilvusClient({ address: milvusAddress });
+        const redis = getRedisClient();
+        const pgIndexingService = new MCPToolIndexingService(loggers.services as any, milvus, redis, prisma);
+        await pgIndexingService.indexAllMCPTools(false);
+        loggers.services.info('✅ MCP tools synced to PostgreSQL with pgvector embeddings (background)');
+        pgIndexingService.startPeriodicIndexing?.();
+        loggers.services.info('🔄 Periodic MCP tool re-indexing started (30-min interval)');
+      } catch (pgError: any) {
+        loggers.services.warn({ error: pgError?.message }, '⚠️ background PostgreSQL tool indexing failed (Milvus primary is OK)');
+      }
+    })();
+  } else {
+    // pgvector-only mode: NO Milvus. ToolSemanticCacheService stays null;
+    // tool_search resolves from pgvector via the ToolPgvectorSearchService
+    // adapter wired into the /api/internal/tool-search route (see server.ts
+    // getSearchService). The api-side MCPToolIndexingService still loads the
+    // MCP catalog from the proxy and writes the mcp_tools halfvec columns
+    // (search_embedding + schema + category + is_enabled) — passing a null
+    // Milvus client makes it skip the Milvus sink and write ONLY pgvector. The
+    // periodic re-index keeps the catalog fresh. Background + best-effort so
+    // server.listen() is never blocked.
+    loggers.services.info('ℹ️ MILVUS_ENABLED=false (or MILVUS_HOST unset) — pgvector-only tool search. Skipping Milvus tool cache; indexing MCP tools into pgvector in background.');
+    void (async () => {
+      try {
+        const { getRedisClient } = await import('./utils/redis-client.js');
+        const redis = getRedisClient();
+        // null Milvus client → indexAllMCPTools writes pgvector only (the
+        // Milvus sink no-ops when this.milvusClient is falsy).
+        const pgIndexingService = new MCPToolIndexingService(loggers.services as any, null, redis, prisma);
+        await pgIndexingService.indexAllMCPTools(false);
+        loggers.services.info('✅ MCP tools indexed into PostgreSQL pgvector (background, pgvector-only mode)');
+        pgIndexingService.startPeriodicIndexing?.();
+        loggers.services.info('🔄 Periodic MCP tool re-indexing started (30-min interval)');
+        const pgSearch = getToolPgvectorSearchService();
+        if (pgSearch) {
+          await pgSearch.refreshReadiness();
+          loggers.services.info({ ready: pgSearch.isReady() }, '✅ pgvector tool search readiness refreshed after indexing');
+        }
+      } catch (pgError: any) {
+        loggers.services.warn({ error: pgError?.message }, '⚠️ background pgvector-only tool indexing failed (will retry on next periodic cycle / first chat)');
+      }
+    })();
+  }
 
   // Initialize ToolPgvectorSearchService for pgvector-first tool search
   try {

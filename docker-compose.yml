@@ -2,8 +2,11 @@
 #
 # Quick start:
 #   cp .env.example .env   # then set the required secrets (or just run ./install.sh)
-#   docker compose --profile milvus up -d   # bare `up` crashes the api — Milvus is required at boot
+#   docker compose up -d                    # default: pgvector-only — boots healthy with NO Milvus
 #   open http://localhost:8080
+#
+# Optional Milvus (large embedding/RAG workloads): start the trio + flip the switch
+#   docker compose --profile milvus up -d   # and set MILVUS_ENABLED=true + SKIP_TOOL_SEMANTIC_CACHE=false in .env
 #
 # First boot pulls the embedding model into Ollama (~270MB) before the API
 # becomes healthy. Plan ~3–5 min on first start; <30s thereafter.
@@ -52,17 +55,21 @@ services:
       timeout: 3s
       retries: 10
 
-  # ─── Milvus standalone (etcd + minio + milvus) — REQUIRED ─────────────────
-  # Milvus is MANDATORY: the api connects to it on boot and exits(1) if it is
-  # unreachable (server.ts) — there is no pgvector-only fallback. These three
-  # services are gated behind the `milvus` profile purely so they can be pulled
-  # as one unit; both install.sh and the setup wizard always start them:
+  # ─── Milvus standalone (etcd + minio + milvus) — OPTIONAL ─────────────────
+  # Milvus is OPTIONAL. By default the api runs pgvector-only (MILVUS_ENABLED=false
+  # on the api service) and does NOT connect to Milvus, so a bare
+  # `docker compose up -d` (no profile) boots HEALTHY without these three
+  # services. MCP tool/RAG embeddings live in PostgreSQL pgvector (halfvec
+  # columns); tool_search resolves from there (ToolPgvectorSearchService).
+  #
+  # Enable Milvus only for large embedding / RAG / artifact workloads:
   #
   #   docker compose --profile milvus up -d
+  #   # and in .env:  MILVUS_ENABLED=true   SKIP_TOOL_SEMANTIC_CACHE=false
   #
-  # MILVUS_HOST defaults to `milvus` (the service name below), so a profile-up
-  # install needs no extra .env. A bare `docker compose up -d` (no profile)
-  # will crash the api at boot.
+  # MILVUS_HOST defaults to `milvus` (the service name below), so enabling it
+  # needs no host override. When MILVUS_ENABLED=true the api connects on boot
+  # and exits(1) if Milvus is unreachable (a configured store must be present).
   etcd:
     <<: *defaults
     profiles: ["milvus"]
@@ -184,11 +191,20 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-openagentic}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-openagentic}
       REDIS_URL: redis://redis:6379
-      # Milvus is REQUIRED — the api connects on boot and exits without it
-      # (server.ts). It is reachable when started with `--profile milvus`
-      # (install.sh + the wizard always do). SKIP_TOOL_SEMANTIC_CACHE only
-      # gates tool-embedding generation / RAG indexing — it does NOT make the
-      # api skip the mandatory Milvus boot connection.
+      # Vector backend. DEFAULT = pgvector-only (MILVUS_ENABLED=false) so a bare
+      # `docker compose up` (no `--profile milvus`) boots HEALTHY with NO Milvus.
+      # MCP tool/RAG embeddings live in PostgreSQL pgvector (halfvec columns) and
+      # tool_search resolves from there (ToolPgvectorSearchService). The api does
+      # NOT connect to Milvus and does NOT exit(1) when it's absent.
+      #
+      # To run WITH Milvus (large embedding/RAG workloads), start the trio and
+      # flip the switch:
+      #   docker compose --profile milvus up -d
+      #   # in .env:  MILVUS_ENABLED=true   SKIP_TOOL_SEMANTIC_CACHE=false
+      #   #           (MILVUS_HOST defaults to the `milvus` service name)
+      # When MILVUS_ENABLED=true the api connects to Milvus on boot and exits if
+      # it is unreachable — a configured-but-missing vector store fails loud.
+      MILVUS_ENABLED: ${MILVUS_ENABLED:-false}
       MILVUS_HOST: ${MILVUS_HOST:-milvus}
       MILVUS_PORT: "19530"
       SKIP_TOOL_SEMANTIC_CACHE: ${SKIP_TOOL_SEMANTIC_CACHE:-true}

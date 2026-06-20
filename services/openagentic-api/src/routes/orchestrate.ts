@@ -18,6 +18,7 @@ import { createSubagentOrchestrator, type OrchestrationResult, type LLMClient, t
 import { createMCPProxyClient } from '../services/MCPProxyClient.js';
 import { GoogleVertexProvider } from '../services/llm-providers/GoogleVertexProvider.js';
 import { ndjsonHeaders, writeNDJSON } from '../infra/ndjson.js';
+import { gateMcpProxyClient } from '../services/approval/auditAndGate.js';
 
 const OrchestrateStreamSchema = z.object({
   request: z.string().min(1, 'Request is required'),
@@ -141,8 +142,16 @@ export default async function orchestrateRoutes(fastify: FastifyInstance) {
         stream: body.stream
       }, '[Orchestrate] Executing with subagents');
 
-      // Create MCP client with user's token for OBO
-      const mcpClient = createMCPProxyClient(logger, userToken);
+      // Create MCP client with user's token for OBO, then wrap it so every
+      // orchestrated tool call is audited + approval-gated (security: sub-agent
+      // callTool must NOT bypass the gate the chat path enforces). Non-SSE
+      // route → no `emit`; a MUTATING call still audits and fails SAFE (blocks
+      // on approval timeout). READs pass straight through.
+      const mcpClient = gateMcpProxyClient(createMCPProxyClient(logger, userToken), {
+        userId,
+        sessionId: body.sessionId,
+        logger,
+      });
 
       // Create LLM client for subagent reasoning
       // Each subagent gets its own LLM brain via this provider
@@ -248,8 +257,16 @@ export default async function orchestrateRoutes(fastify: FastifyInstance) {
         writeNDJSON(reply, event.type, event as unknown as Record<string, unknown>);
       };
 
-      // Create MCP client with user's token
-      const mcpClient = createMCPProxyClient(logger, userToken);
+      // Create MCP client with user's token, then wrap it so every orchestrated
+      // tool call is audited + approval-gated. This is the SSE/NDJSON route, so
+      // thread an `emit` that writes approval_required / approval_resolved as
+      // NDJSON lines — the UI can surface an approval prompt mid-orchestration.
+      const mcpClient = gateMcpProxyClient(createMCPProxyClient(logger, userToken), {
+        userId,
+        emit: (event: string, data: unknown) =>
+          writeNDJSON(reply, event, data as Record<string, unknown>),
+        logger,
+      });
 
       // Create LLM client for subagent reasoning
       let llmClient: LLMClient | undefined;

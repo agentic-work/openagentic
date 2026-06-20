@@ -58,8 +58,14 @@ export const INIT_TOOL_CACHE: BootstrapStep = {
     }
 
     if (!milvusConnected) {
-      loggers.services.fatal(`🚨 FATAL: Cannot connect to Milvus (fatalAttempts=${fatalAttempt}, recoveryAttempts=${recoveryAttempt}) — shutting down`);
-      throw new Error(`Cannot connect to Milvus after ${fatalAttempt} fatal + ${recoveryAttempt} recovery attempts`);
+      // #1059 — DO NOT throw. Step 07 (mcp-index, now mcp-proxy) populates the
+      // PostgreSQL pgvector source-of-truth for tool search; the api is fully
+      // serviceable on pgvector alone (ToolPgvectorSearchService, wired below).
+      // A throw here makes the orchestrator exit(1) and CrashLoopBackOff on a
+      // cold/absent Milvus — fail-closed on a fallback service is wrong. Log
+      // and continue: ctx.toolSemanticCacheInitialized stays false, tool_search
+      // resolves from pgvector.
+      loggers.services.warn(`⚠️ Cannot connect to Milvus (fatalAttempts=${fatalAttempt}, recoveryAttempts=${recoveryAttempt}) — tool search falls back to pgvector (api remains Ready)`);
     }
 
     // #1058: MCP tool indexing runs in BACKGROUND — must NEVER block bootstrap.
@@ -75,8 +81,12 @@ export const INIT_TOOL_CACHE: BootstrapStep = {
     // replica" — the api is fully serviceable on pgvector alone. Indexing into
     // Milvus completes opportunistically in the background; tool search degrades
     // gracefully to pgvector if Milvus indexing never finishes.
+    // Only kick the Milvus background indexer when the cache actually connected.
+    // In pgvector-only mode (Milvus unreachable / MILVUS_HOST unset) the cache
+    // is null or uninitialized — skip it; tool_search resolves from pgvector.
+    if (milvusConnected && ctx.toolSemanticCache) {
     loggers.services.info('🔄 MCP tool semantic-cache indexing dispatched to background (non-blocking) — pgvector primary remains available');
-    ctx.toolSemanticCache!.autoIndexToolsWhenReady()
+    ctx.toolSemanticCache.autoIndexToolsWhenReady()
       .then(async () => {
         loggers.services.info('✅ Background MCP tool indexing complete');
         try {
@@ -102,6 +112,9 @@ export const INIT_TOOL_CACHE: BootstrapStep = {
         loggers.services.error({ error: err?.message, stack: err?.stack },
           '⚠️ Background MCP tool indexing failed — tool search falls back to pgvector (api remains Ready)');
       });
+    } else {
+      loggers.services.info('ℹ️ Milvus not connected — skipping Milvus background indexing; tool_search resolves from pgvector (ToolPgvectorSearchService)');
+    }
 
     // ToolPgvectorSearchService
     try {

@@ -2,7 +2,7 @@
 
 # ⌥ openagentic
 
-### The open-source, self-hosted alternative to the $1B AI-SRE — your data never leaves.
+### The open, self-hosted AI-SRE you run yourself — multi-cloud + Kubernetes + observability in one box, where every action is approval-gated and audit-logged, and your data and models never leave your network.
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-FF5722.svg)](./LICENSE)
 [![Zero telemetry](https://img.shields.io/badge/telemetry-zero-18130C.svg)](./docs/zero-telemetry.md)
@@ -22,15 +22,24 @@
 
 ---
 
+## Why not just Claude Code + a few MCP servers?
+
+You *can* point a coding agent at a handful of ops MCP servers — but that gives you a single operator at a CLI with no controls. openagentic is the governed, multi-operator version of that idea, built for running real infrastructure:
+
+- **Governance, at the infrastructure layer.** A **human-approval gate** sits on *every mutating tool call* — the agent investigates and recommends, but nothing that changes your infra runs until a human clicks Approve. Every tool call, proposed and executed, lands in an **immutable, hash-chained audit log**. This is enforced at the one seam every tool call passes through, so it can't be prompted around.
+- **Repeatable incident runbooks as visual Flows.** Incident response shouldn't be ad-hoc prompting. **incident-triage**, **cost-anomaly**, and **failed-deploy RCA** ship as ready-to-run Flow templates, pre-wired to the Prometheus / Loki / Kubernetes / AWS MCPs.
+- **A multi-operator web console, not a single CLI.** A shared platform with local accounts, an admin console, per-tool permissions, and the audit log a team can review together — rather than one terminal on one laptop.
+- **Zero-egress, air-gappable self-hosting.** One `docker compose up` (or Helm) box you can **fork, audit, and run on your own hardware**. Local Ollama for inference, **zero telemetry**, no phone-home. Your data and your models never leave your network.
+
+> **For:** the platform / SRE lead at a sovereignty-bound org who wants an AI ops platform they can self-host, audit, and trust — and who is done with both the compliance risk and the bill-shock of SaaS.
+
 ## Why
 
 Every credible AI-SRE today is closed SaaS that wants to **ingest your infra logs** to do its job. If you run a DORA-regulated bank, anything touching PHI, a government system, or anything under EU/NIS2, you are often *legally forbidden* from shipping those logs to someone else's model — and you're watching the observability bill climb at the same time.
 
-openagentic is the wedge nobody else ships self-hostable: a **full ops platform** — chat + visual ops **Flows** + **RAG/memory** + **admin dashboards** — whose **MCPs actually touch** AWS, Kubernetes, Prometheus, and Loki. The open point tools (HolmesGPT, k8sgpt, kagent) have no UI, no Flows, no RAG. The cross-domain agents (Cleric, Resolve.ai, the cloud-vendor agents) are closed SaaS that ingest your data.
+openagentic is the wedge nobody else ships self-hostable: an ops platform whose **MCPs actually touch** AWS, Azure, GCP, Kubernetes, Prometheus, and Loki, with governance built in. The open point tools (HolmesGPT, k8sgpt, kagent) have no approval gate, no Flows, no console. The cross-domain agents (Cleric, Resolve.ai, the cloud-vendor agents) are closed SaaS that ingest your data.
 
-This is one `docker compose up` box you can **fork, audit, and run on your own hardware**. Model-agnostic. **Zero telemetry.** Your data never leaves.
-
-> **For:** the platform / SRE lead at a sovereignty-bound org who wants an AI ops platform they can self-host, audit, and trust — and who is done with both the compliance risk and the bill-shock of SaaS.
+This is one box you can **fork, audit, and run on your own hardware**. Model-agnostic. **Zero telemetry.** Your data never leaves.
 
 ## Quickstart
 
@@ -74,10 +83,6 @@ The Helm chart lives at [`helm/openagentic/`](./helm/openagentic/) for the manua
 
 ## What's inside
 
-- **Chat** — multi-provider, persistent history, semantic search over your past conversations and uploaded docs.
-- **Ops Flows** — visual agent runbooks. Drag-drop nodes, branching, tool calls, RAG — the whole loop, on a canvas.
-- **RAG + memory** — Milvus-backed knowledge and per-user memory that survives across sessions.
-- **Admin dashboards** — live Prometheus-driven analytics on usage, cost, and model behavior. In-box, never phoned home.
 - **9 first-party MCP servers** — and they *do things*:
 
   | Cloud | Ops | Knowledge / Meta |
@@ -86,17 +91,13 @@ The Helm chart lives at [`helm/openagentic/`](./helm/openagentic/) for the manua
 
   These are the MCPs the proxy actually wires (`mcp_manager.initialize_servers`). All disabled by default. The agent routes calls **semantically** (Milvus-indexed by description), so you can have all of them active and it still picks the right one. Paste any Claude-Desktop-format JSON config into the admin panel and `mcp-proxy` installs + indexes your own MCPs too.
 
-- **Bring your own model** — Ollama for free local inference, or plug in Anthropic / OpenAI / Azure OpenAI / Vertex AI keys.
+- **Ops Flow templates** — **incident-triage**, **cost-anomaly**, and **failed-deploy RCA** ship as ready-to-run visual runbooks, pre-wired to the Prometheus / Loki / Kubernetes / AWS MCPs. Drag-drop nodes, branching, tool calls — the whole loop, on a canvas.
 
-### The trust moat
+- **Governed by default.** Human approval on every mutating tool call, an immutable hash-chained audit log of everything proposed and executed, a scoped/SSRF-guarded egress path, and sandboxed artifact rendering — all enforced at the infrastructure layer, not the prompt. See the [Security & Compliance posture](./docs/guide/10-security.md) for the full model.
 
-This is infra-level, not prompt-level:
+- **Bring your own models** — Ollama for free local inference, or plug in Anthropic / OpenAI / Azure OpenAI / AWS Bedrock / Google Vertex AI keys. Nothing is hardcoded; your models never leave your network unless you choose a hosted provider.
 
-- **Human approval on every write.** The agent investigates and *recommends*; nothing that mutates your infra runs until you click Approve.
-- **Immutable audit log.** Every action — proposed and executed — lands in an append-only record.
-- **Scoped egress proxy.** Tool calls leave through a controlled, auditable path.
-
-The honest answer to *"what if the AI deletes our prod DB?"* is: it doesn't get to. It investigates, recommends, and waits for a human. We don't promise autonomous auto-healing — we promise control.
+- **Also includes** — multi-provider chat with persistent history; Milvus-backed RAG + per-user memory; and live Prometheus-driven admin dashboards for usage, cost, and model behavior. All in-box, never phoned home.
 
 ## Self-host, forever free
 

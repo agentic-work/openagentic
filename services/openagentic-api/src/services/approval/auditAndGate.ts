@@ -271,3 +271,98 @@ export function auditMcpExecutionSeam(
     return inner(ctx, name, input);
   };
 }
+
+// ---------------------------------------------------------------------------
+// Sub-agent MCP-proxy seam (approval-gate bypass fix, 2026-06-19)
+// ---------------------------------------------------------------------------
+//
+// WHY A THIRD SEAM:
+//   The chat path routes EVERY named MCP tool call through `runAuditAndGate`
+//   (via the dispatchBody seam / before_tool_call hook / auditMcpExecutionSeam).
+//   But `SubagentOrchestrator` calls `this.mcpProxy.callTool(server, tool, args)`
+//   DIRECTLY — it never touches any of those chat seams. An orchestrated
+//   MUTATING tool call (e.g. `kubernetes_delete_pod`, `aws_sts_assume_role`)
+//   therefore executed with NO audit row and NO human approval: a complete
+//   bypass of the trust gate.
+//
+//   The orchestrator only ever reaches the proxy through the `MCPProxyClient`
+//   interface (`callTool` / `getAvailableTools`). `gateMcpProxyClient` wraps
+//   that interface so EVERY `callTool` runs `runAuditAndGate` (origin
+//   'subagent') BEFORE the real proxy call. It reuses `runAuditAndGate` — no
+//   duplicated insert/gate logic — exactly like the chat seams.
+//
+//   READ calls (classifyTool → READ) and all calls when the gate is OFF pass
+//   straight through to the real proxy (no approval hang). A denied/timed-out
+//   MUTATING call NEVER reaches the real proxy — it throws a structured error
+//   carrying `blockReason`, surfaced to the sub-agent loop as a tool failure.
+//   FAIL SAFE: a gate/audit failure on a MUTATING call blocks it (the
+//   `runAuditAndGate` MUTATING-path catch returns allowed:false; for non-SSE
+//   routes with no `emit`, a MUTATING call simply blocks on approval timeout).
+
+/** Minimal shape `gateMcpProxyClient` wraps (the sub-agent MCPProxyClient). */
+export interface GateableMcpProxyClient {
+  callTool(server: string, tool: string, args: Record<string, any>): Promise<any>;
+  getAvailableTools(server?: string): Promise<string[]>;
+}
+
+/** Context threaded from the orchestrate route handler into the gate. */
+export interface SubagentGateContext {
+  userId?: string;
+  sessionId?: string;
+  /** SSE/NDJSON emit (approval_required / approval_resolved). Omit for non-SSE. */
+  emit?: (event: string, data: unknown) => void;
+  logger?: Pick<Logger, 'warn' | 'error'>;
+}
+
+/**
+ * Wrap an `MCPProxyClient` so its `callTool` is audited + approval-gated via
+ * `runAuditAndGate` (origin 'subagent') BEFORE the real proxy call. `callTool`
+ * keeps its exact `(server, tool, args) => Promise<any>` signature so it is a
+ * drop-in replacement for the orchestrator's `MCPProxyClient`.
+ *
+ * - READ → audited 'auto', passes straight through (no hang).
+ * - MUTATING + gate ON → pending audit + (if `emit`) approval_required SSE +
+ *   ApprovalRegistry.waitFor; on approve → real proxy; on deny/timeout/audit
+ *   failure → throws WITHOUT calling the real proxy (mutation never executes).
+ * - `getAvailableTools` passes through unchanged (read-only discovery).
+ */
+export function gateMcpProxyClient<T extends GateableMcpProxyClient>(
+  inner: T,
+  ctx: SubagentGateContext,
+): T {
+  const wrapped: GateableMcpProxyClient = {
+    async callTool(server: string, tool: string, args: Record<string, any>): Promise<any> {
+      const gate = await runAuditAndGate({
+        toolName: tool,
+        serverName: server,
+        args: (args ?? {}) as Record<string, unknown>,
+        userId: ctx.userId,
+        sessionId: ctx.sessionId,
+        origin: 'subagent',
+        emit: ctx.emit,
+        logger: ctx.logger,
+      });
+
+      if (!gate.allowed) {
+        // Mutation blocked by the gate — never reaches the real proxy. Throwing
+        // (rather than returning) matches MCPProxyClient.callTool's error
+        // contract; the orchestrator's per-tool try/catch turns this into a
+        // tool-result error the sub-agent LLM sees.
+        throw new Error(
+          gate.blockReason ?? `Mutating tool '${tool}' blocked by approval gate`,
+        );
+      }
+
+      return inner.callTool(server, tool, args);
+    },
+
+    getAvailableTools(server?: string): Promise<string[]> {
+      return inner.getAvailableTools(server);
+    },
+  };
+
+  // Preserve any extra methods/props on the concrete client (e.g.
+  // getServers, callToolsParallel) by layering the gated overrides on top of
+  // a prototype-preserving clone, so the returned value is still a `T`.
+  return Object.assign(Object.create(Object.getPrototypeOf(inner)), inner, wrapped) as T;
+}

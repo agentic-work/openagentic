@@ -133,24 +133,31 @@ describe('STEPS structural contract (imported from index)', () => {
     const { STEPS } = await import('../index.js');
     expect(STEPS).toHaveLength(12);
     const names = STEPS.map(s => s.name);
+    // Current step list: #1059 ripped `mcp-index` (writer moved to mcp-proxy)
+    // and `validate-admin-portal`; #605 added `milvus-collection-probe`; the
+    // markdown built-in-agent seeder (`seed-built-in-agents-md`) was added.
     expect(names).toEqual([
       'secrets-load', 'vault-init', 'database-init', 'providers-init',
-      'milvus-init', 'rag-init', 'mcp-index', 'tool-cache-init',
+      'milvus-init', 'rag-init', 'tool-cache-init',
       'prompt-cache-init',
       // step-10: chatmode-ux-mock-parity Wave 4 — initialize the
       // BuiltInAgentRegistry markdown loader so the V2 chat pipeline's
       // Task tool description is populated before traffic arrives.
       'agent-registry-init',
-      'job-watcher-start', 'validate-admin-portal',
+      'seed-built-in-agents-md',
+      'milvus-collection-probe',
+      'job-watcher-start',
     ]);
 
-    // Phase-2 follow-up: steps 08 (tool-cache) and 11 (validate-admin-portal) now
-    // correctly have critical=true, matching pre-Phase-2 process.exit(1) behaviour.
+    // Critical steps: secrets-load (B2 NIST IA-5), database-init, milvus-init,
+    // tool-cache-init. Note: tool-cache-init/milvus-init no longer abort boot on
+    // a Milvus failure — they degrade to pgvector (the orchestrator's exit(1) on
+    // a thrown critical step only fires for genuinely-fatal conditions now).
     const criticalNames = STEPS.filter(s => s.critical).map(s => s.name);
+    expect(criticalNames).toContain('secrets-load');
     expect(criticalNames).toContain('database-init');
     expect(criticalNames).toContain('milvus-init');
     expect(criticalNames).toContain('tool-cache-init');
-    expect(criticalNames).toContain('validate-admin-portal');
     expect(criticalNames).toHaveLength(4);
   });
 });

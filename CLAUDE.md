@@ -35,7 +35,7 @@ curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/instal
 cd ~/path/to/openagentic
 (cd tools/setup && npm install)  # first run only
 ./tools/setup/node_modules/.bin/tsx tools/setup/src/index.tsx
-# then: docker compose --profile milvus up -d  (Milvus/etcd/minio are profile-gated; the api requires Milvus on boot, so a bare up won't come up healthy)
+# then: docker compose up -d  (default = pgvector-only; boots healthy with NO Milvus. Add `--profile milvus` + set MILVUS_ENABLED=true + SKIP_TOOL_SEMANTIC_CACHE=false only for large embedding/RAG workloads)
 ```
 
 **On osx specifically**, the wizard defaults `OLLAMA_HOST` to `http://host.docker.internal:11434` so containers can reach Ollama running on the host. Docker Desktop's file-sharing must include the user's home dir (for `~/.openagentic/cloud-secrets` mounts) — this is the default, but verify under Docker Desktop → Settings → Resources → File sharing.
@@ -44,7 +44,8 @@ Health check after launch:
 
 ```bash
 # all services should be healthy or running
-# (run after `docker compose --profile milvus up -d` so etcd/minio/milvus appear)
+# (in the default pgvector-only stack etcd/minio/milvus are absent — that's expected;
+#  add `--profile milvus` only when running the optional Milvus path)
 docker compose ps
 
 # api self-reports connection status to each dependency
@@ -66,6 +67,7 @@ These all tripped the first install and are fixed in commits `7266813` and `f7c6
 4. **`fetch failed: Connect Timeout Error (attempted address: host.docker.internal:11434, timeout: 10000ms)`** — undici pool starved when chat + embedding calls run concurrently. Fix: `services/openagentic-api/src/utils/ollama-agent.ts` exports a shared `Agent` with 64 connections and 30s connect timeout, wired per-call via the `dispatcher` option in `OllamaProvider.ts` and `UniversalEmbeddingService.ts`. `setGlobalDispatcher()` from the npm undici package does NOT affect Node's built-in fetch; only the per-call dispatcher does.
 5. **mcp-proxy returning 401 on tool calls** — api signed internal JWTs with `JWT_SECRET`, mcp-proxy didn't have it. Fix: compose now passes `JWT_SECRET` + `SIGNING_SECRET` to both sides.
 6. **Internal service auth** — `JWT_SECRET`, `SIGNING_SECRET`, and `INTERNAL_API_KEY` must agree across api, ui, and mcp-proxy. Compose passes them all from `.env`.
+7. **`FATAL: Cannot connect to Milvus after 10 attempts` on a bare `docker compose up`** — used to be the biggest first-run blocker: the api treated Milvus as a hard boot dependency and `process.exit(1)`-ed when the Milvus trio (milvus+etcd+minio, profile-gated) wasn't running. Fix: the api now runs **pgvector-only by default** (`MILVUS_ENABLED=false` on the api service, the compose default). `server.ts` gates BOTH Milvus boot blocks behind `isMilvusEnabled()` (false when `MILVUS_ENABLED=false`, `SKIP_TOOL_SEMANTIC_CACHE=true`, or `MILVUS_HOST` is empty); MCP tool/RAG embeddings live in the PostgreSQL `mcp_tools` halfvec columns and `tool_search` resolves via `ToolPgvectorSearchService` (wired into the `/api/internal/tool-search` route as the pgvector fallback when the Milvus `toolSemanticCache` singleton is absent). The api-side `MCPToolIndexingService` populates `search_embedding`/`schema`/`category` in pgvector at boot + on a 30-min cycle (passing a null Milvus client so it skips the Milvus sink). A bare `docker compose up` now boots healthy. Set `MILVUS_ENABLED=true` + `SKIP_TOOL_SEMANTIC_CACHE=false` + `--profile milvus` to restore the Milvus path (unchanged — connect-with-retry, exit(1) on 10 fails).
 
 ## Wizard tests
 
@@ -94,5 +96,5 @@ Three variations exercise the main paths: `minimal` (defaults, 1 MCP), `all-mcps
 1. `git clone https://github.com/agentic-work/openagentic.git && cd openagentic`
 2. Re-run the wizard against the local checkout (above), or use `curl … | bash` for the install.sh flow.
 3. Run the PTY harness to confirm the wizard still walks cleanly.
-4. Bring the stack up with `docker compose --profile milvus up -d` (a bare `up` does NOT start Milvus, which the api requires on boot); wait for `docker inspect --format '{{.State.Health.Status}}' openagentic-api-1` to report `healthy` (usually ~90s first boot because Prisma schema push + Milvus collections).
+4. Bring the stack up with `docker compose up -d` (default = pgvector-only; the api boots healthy with NO Milvus. For the optional Milvus path: `docker compose --profile milvus up -d` + set `MILVUS_ENABLED=true` and `SKIP_TOOL_SEMANTIC_CACHE=false` in `.env`); wait for `docker inspect --format '{{.State.Health.Status}}' openagentic-api-1` to report `healthy` (usually ~90s first boot because of the Prisma schema push).
 5. Smoke test: login via `/api/auth/local/login`, send a chat with `/api/chat/stream`, verify tool calls succeed (the mcp-proxy auto-spawns web/knowledge/admin MCPs; cloud MCPs require creds in `~/.openagentic/cloud-secrets/*.env`).
