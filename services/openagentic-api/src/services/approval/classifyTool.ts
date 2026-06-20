@@ -1,8 +1,14 @@
 /**
  * Pure read/write classifier for the approval gate. MUTATING when the tool
- * name/verb implies a write/destructive op; otherwise READ. Unknown → READ
- * (do NOT over-gate — this deliberately diverges from ToolApprovalGate's
- * unknown→medium default).
+ * name/verb implies a write/destructive op; otherwise READ.
+ *
+ * FAIL-CLOSED for infra: an UNRECOGNIZED verb on a mutating-capable cloud/infra
+ * server (aws/azure/gcp/kubernetes/github) defaults to MUTATING — a security
+ * gate must never auto-approve an op it cannot prove is read-only (verified
+ * bypasses: aws_ssm_send_command = shell on every host, aws_sts_assume_role =
+ * privesc, aws_bedrock_invoke_*, s3 sync, kms rotate/sign). Tools with a clear
+ * READ signal, and non-infra tools, still fall through to READ so benign
+ * reads/health-checks never hang on approval.
  *
  * Consumed ONLY by the approval-gate hook (`builtin:approval-gate:before_tool_call`)
  * and the sub-agent tool-execution seam. The existing PermissionService /
@@ -22,6 +28,13 @@ export const MUTATING_VERBS: readonly string[] = [
   'enable', 'disable', 'detach', 'grant', 'revoke',
   'rename', 'move', 'mv', 'copy', 'cp', 'install', 'uninstall', 'upgrade',
   'add', 'insert', 'push', 'commit', 'revert',
+  // Cloud/infra mutating + dangerous verbs that name-classification missed and
+  // that silently bypassed the gate. DENY-BY-DEFAULT (classifyTool tail) is the
+  // backstop for any infra verb not listed here.
+  'invoke', 'send', 'assume', 'sync', 'publish', 'rotate', 'restore',
+  'snapshot', 'import', 'trigger', 'execute', 'cancel', 'abort', 'escalate',
+  'flush', 'expire', 'deregister',
+  'sign', 'issue', 'register',
 ] as const;
 
 /** Read-only verbs that must NEVER be gated even if a mutating substring matches. */
@@ -53,6 +66,18 @@ const SEP = /[_\-:.\s/]+/;
  */
 const EXACT_ONLY_MUTATING_VERBS = new Set<string>([
   'post', 'set', 'add', 'put', 'run', 'rm', 'mv', 'cp', 'merge', 'push',
+  // collision-prone: 'register'→'registry', 'sign'→'signature', 'issue'→'issues'
+  'register', 'sign', 'issue',
+]);
+
+/**
+ * Servers whose tools can perform destructive infra/cloud operations. On these,
+ * an UNRECOGNIZED verb fails CLOSED to MUTATING (see classifyTool tail) — a
+ * security gate must never auto-approve an op it can't prove is read-only.
+ * Matches the cloud/infra MCP server prefixes wired in mcp_manager.
+ */
+const MUTATING_CAPABLE_SERVERS = new Set<string>([
+  'aws', 'azure', 'gcp', 'kubernetes', 'k8s', 'github', 'gh',
 ]);
 
 export function classifyTool(
@@ -94,5 +119,15 @@ export function classifyTool(
     return 'READ';
   }
 
-  return prefixMutating ? 'MUTATING' : 'READ';
+  if (prefixMutating) return 'MUTATING';
+
+  // FAIL-CLOSED: an unrecognized verb on a mutating-capable cloud/infra server
+  // is gated, not auto-approved. Genuine reads are caught by the read overrides
+  // above, so what reaches here on an infra server is ambiguous — and a security
+  // gate must err toward requiring a human, not toward silently executing.
+  if (tokens.some((t) => MUTATING_CAPABLE_SERVERS.has(t))) return 'MUTATING';
+
+  // Non-infra tool with no signal either way → READ (don't over-gate benign
+  // app/web/knowledge reads that would otherwise hang waiting on approval).
+  return 'READ';
 }

@@ -2,8 +2,9 @@
  * Test A — classifyTool pure read/write classifier (no mocks).
  *
  * MUTATING when the tool name/verb implies a write/destructive op; otherwise
- * READ. Unknown → READ (do NOT over-gate). Table-driven, mirrors the style of
- * PermissionService.test.ts.
+ * READ. FAIL-CLOSED for infra: an unrecognized verb on a cloud/infra server
+ * (aws/azure/gcp/kubernetes/github) → MUTATING; non-infra unknown → READ (no
+ * over-gating). Table-driven, mirrors the style of PermissionService.test.ts.
  */
 import { describe, it, expect } from 'vitest';
 import { classifyTool, MUTATING_VERBS } from '../classifyTool.js';
@@ -70,6 +71,53 @@ describe('classifyTool — unknown → READ (no over-gating)', () => {
   });
   it('undefined → READ', () => {
     expect(classifyTool(undefined as any)).toBe('READ');
+  });
+});
+
+describe('classifyTool — fail-closed gate (regression: verified bypasses)', () => {
+  // These ALL silently auto-approved before the fail-closed fix — the verb-name
+  // guesser classified them READ because the verb wasn't in the list. A security
+  // gate MUST require a human for these.
+  const MUST_GATE: string[] = [
+    'aws_bedrock_invoke_model',
+    'aws_bedrock_invoke_agent',
+    'aws_ssm_send_command',       // = run shell on every targeted host
+    'aws_sts_assume_role',        // = privilege escalation
+    'aws_s3_sync',
+    'aws_kms_rotate_key',
+    'aws_kms_sign',
+    'azure_vm_run_command',
+    'gcp_compute_reset_instance',
+    'aws_ec2_monitor_instances',
+  ];
+  for (const name of MUST_GATE) {
+    it(`gates "${name}" (MUTATING)`, () => {
+      expect(classifyTool(name)).toBe('MUTATING');
+    });
+  }
+
+  // Fail-closed must NOT over-gate genuine infra reads (they carry a read verb,
+  // so they stay auto-approved — no approval hang).
+  const STILL_READ: string[] = [
+    'aws_s3_list_buckets',
+    'aws_ec2_describe_instances',
+    'azure_list_resource_groups',
+    'gcp_logging_entries_list',
+    'admin_system_postgres_health_check',
+    'prometheus_query',
+    'loki_query_range',
+  ];
+  for (const name of STILL_READ) {
+    it(`does not over-gate "${name}" (READ)`, () => {
+      expect(classifyTool(name)).toBe('READ');
+    });
+  }
+
+  it('unknown verb on an infra server fails CLOSED → MUTATING', () => {
+    expect(classifyTool('aws_widget_frobnicate')).toBe('MUTATING');
+  });
+  it('unknown verb on a NON-infra tool stays READ (no over-gate)', () => {
+    expect(classifyTool('frobnicate_widget')).toBe('READ');
   });
 });
 
