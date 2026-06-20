@@ -230,4 +230,4 @@ self.servers["admin"] = MCPServer(MCPServerConfig(
 
 ## License
 
-Proprietary - OpenAgentic Internal Use Only
+Apache-2.0 — see the root [LICENSE](../../../LICENSE).

@@ -429,13 +429,13 @@ This comprehensive load test creates 100 Flowise workflows (50 chatflows + 50 ag
 
 #### Standalone Execution
 ```bash
-cd /mnt/synology/Code/company/cdc/agentic/tests/load
+cd tests/load
 node flowise-workflow-tests.test.js
 ```
 
 #### With Test Runner
 ```bash
-cd /mnt/synology/Code/company/cdc/agentic/tests
+cd tests
 node run-all.js
 ```
 

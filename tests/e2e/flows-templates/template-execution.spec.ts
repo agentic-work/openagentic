@@ -64,8 +64,8 @@ const TEMPLATES: readonly TplCase[] = [
   },
   {
     name: 'GitHub PR Review',
-    inputs: { owner: 'openagentic', repo: 'agentic', pr_number: 42 },
-    contains: ['pr-review', 'openagentic/agentic#42'],
+    inputs: { owner: 'octocat', repo: 'hello-world', pr_number: 42 },
+    contains: ['pr-review', 'octocat/hello-world#42'],
   },
   {
     name: 'Morning Standup Digest',

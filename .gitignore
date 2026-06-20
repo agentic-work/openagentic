@@ -27,7 +27,6 @@
 !/docs/launch/
 !/docs/zero-telemetry.md
 !/docs/air-gapped-install.md
-!/docs/fedramp-remediation/
 !/docs/guide/
 
 # Screenshots (test artifacts)
@@ -408,3 +407,6 @@ tests/demos-pw/package-lock.json
 # CI-prefetched helm binary (vendored at build time, never committed)
 services/openagentic-mcp-proxy/vendor/helm
 *.new
+
+# Local internal status tooling — never ship
+live-dashboard/

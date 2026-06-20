@@ -4,11 +4,11 @@ Hooks openagentic's cloud MCPs (`oap-aws-mcp`, `oap-azure-mcp`, `oap-gcp-mcp`, p
 
 Everything provisioned here is **read-only** by default. Grant write scopes deliberately, per-use-case.
 
-## Reference deployment
+## What gets provisioned
 
-This doc captures the exact resources we created for the first reference instance. Use them as templates for your own org — nothing here is tenant-specific beyond the IDs.
+Each cloud needs one read-only identity for its MCP. The steps below create them as templates — nothing is tenant-specific beyond the IDs you supply.
 
-| Cloud | What we created | Identity for the MCP |
+| Cloud | What to create | Identity for the MCP |
 |---|---|---|
 | Azure | App Registration + Service Principal + Reader role | Service Principal (client credentials flow) |
 | AWS   | IAM user with `ReadOnlyAccess` | Access key pair |

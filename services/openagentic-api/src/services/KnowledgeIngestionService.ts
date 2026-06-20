@@ -261,11 +261,13 @@ export class KnowledgeIngestionService {
   async ingestDocumentation(): Promise<void> {
     this.logger.info('Starting documentation ingestion...');
     
+    // Configurable docs root; defaults to the deployed app's docs directory.
+    const docsRoot = process.env.KNOWLEDGE_DOCS_DIR || path.resolve(process.cwd(), 'docs');
     const baseDirs = [
       // Main project docs
-      '/mnt/synology/Code/company/openagentic/apps/Internal/PROD/chat/openagentic',
+      docsRoot,
       // Docusaurus docs site
-      '/mnt/synology/Code/company/openagentic/apps/Internal/PROD/chat/openagentic/services/docs'
+      path.join(docsRoot, 'services/docs')
     ];
     
     const docPatterns = [
@@ -309,7 +311,8 @@ export class KnowledgeIngestionService {
     try {
       const content = await fs.readFile(filePath, 'utf-8');
       const fileName = path.basename(filePath);
-      const relativePath = path.relative('/mnt/synology/Code/company/openagentic/apps/Internal/PROD/chat/openagentic', filePath);
+      const docsRoot = process.env.KNOWLEDGE_DOCS_DIR || path.resolve(process.cwd(), 'docs');
+      const relativePath = path.relative(docsRoot, filePath);
       
       // Extract title from markdown
       const titleMatch = content.match(/^#\s+(.+)$/m);

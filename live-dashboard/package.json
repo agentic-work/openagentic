@@ -1,7 +1,0 @@
-{
-  "name": "openagentic-pipeline-dashboard",
-  "type": "module",
-  "private": true,
-  "scripts": { "dev": "astro dev --host --port 4321", "build": "astro build" },
-  "dependencies": { "astro": "^4.16.18" }
-}

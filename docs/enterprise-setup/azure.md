@@ -1,14 +1,14 @@
 # Azure — App Registration + Reader role
 
-What the Azure MCP needs to introspect your tenant:
+What the Azure MCP needs to introspect an Azure tenant:
 
 1. An **App Registration** (client credentials flow — service principal auth)
 2. A **Service Principal** backing the app reg
-3. **Role assignments** on whatever subscriptions you want the MCP to read
+3. **Role assignments** on whatever subscriptions the MCP should be able to read
 
 The same Service Principal also powers the SP-based Azure **cost dashboard** in the admin console. (openagentic auth is local username/password only — there is no Microsoft/Entra user sign-in.)
 
-For the reference deployment we provisioned everything to your tenant against the `<YOUR_AZURE_SUBSCRIPTION_NAME>` subscription only — your environment/prod subscriptions were explicitly not touched.
+Provision these resources against a single non-production subscription. Scope role assignments to only the subscriptions the MCP needs; leave production subscriptions untouched.
 
 ## Preconditions
 
@@ -37,7 +37,7 @@ az ad app credential reset --id "$APP_ID" --years 2 \
 # → write password somewhere safe (you'll never see it again)
 ```
 
-We pipe this straight into `~/.openagentic/cloud-secrets/azure.env`.
+Pipe this straight into `~/.openagentic/cloud-secrets/azure.env`.
 
 ## 3. Service Principal for the App
 
@@ -75,7 +75,7 @@ EOF
 chmod 600 ~/.openagentic/cloud-secrets/azure.env
 ```
 
-## Reference instance values (template)
+## Values to record (template)
 
 | Key | Value |
 |---|---|

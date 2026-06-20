@@ -41,10 +41,8 @@ for FILE in $STAGED_FILES; do
     *.png|*.jpg|*.gif|*.ico|*.woff*|*.ttf|*.lock|package-lock.json|*.wasm) continue ;;
     .githooks/*) continue ;;
     *.template) continue ;;
-    # Skip tests/fixtures and ONLY the redact.py-guarded compliance tree
-    # (docs/fedramp-remediation/*, which intentionally documents — redacted —
-    # the secrets it removed). All OTHER docs ARE scanned (C7 / NIST RA-5).
-    */tests/*|*/test/*|*/__tests__/*|*test*.sh|*test*.spec.*|*.test.*|*/e2e/*|*/docs/fedramp-remediation/*) continue ;;
+    # Skip tests/fixtures. All docs ARE scanned (C7 / NIST RA-5).
+    */tests/*|*/test/*|*/__tests__/*|*test*.sh|*test*.spec.*|*.test.*|*/e2e/*) continue ;;
   esac
   [ -f "$FILE" ] || continue
 

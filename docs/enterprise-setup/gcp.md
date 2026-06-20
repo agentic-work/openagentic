@@ -1,6 +1,6 @@
 # GCP — service account for the GCP MCP
 
-Read-only service account in whatever project you want the GCP MCP to introspect. For the reference instance point this at the project you want introspected.
+Read-only service account in whatever project the GCP MCP should introspect. Point it at the project you want introspected.
 
 ## Preconditions
 
@@ -66,7 +66,7 @@ GOOGLE_APPLICATION_CREDENTIALS=~/.openagentic/cloud-secrets/gcp-sa.json \
 # → ya29.… (prints a valid access token)
 ```
 
-## Reference instance values
+## Values to record
 
 | Key | Value |
 |---|---|
@@ -78,7 +78,7 @@ GOOGLE_APPLICATION_CREDENTIALS=~/.openagentic/cloud-secrets/gcp-sa.json \
 
 ## Workload Identity Federation (no keys, recommended long-term)
 
-If this instance runs in k8s with Workload Identity enabled, you can drop the JSON key and bind the pod's k8s ServiceAccount to this GCP SA via annotations. Out of scope for the local Docker Compose path; re-visit when we write the helm chart deployment doc.
+If the instance runs in k8s with Workload Identity enabled, you can drop the JSON key and bind the pod's k8s ServiceAccount to this GCP SA via annotations. Out of scope for the local Docker Compose path; covered by the helm chart deployment docs.
 
 ## Teardown
 

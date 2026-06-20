@@ -54,13 +54,13 @@ AWS_ACCESS_KEY_ID=$AKID AWS_SECRET_ACCESS_KEY=$SK aws sts get-caller-identity
 # → Arn: arn:aws:iam::<account>:user/openagentic-mcp
 ```
 
-### Reference instance values
+### Values to record
 
 | Key | Value |
 |---|---|
-| Account | `123456789012` (Organizations management) |
+| Account | `<YOUR_AWS_ACCOUNT_ID>` |
 | IAM user | `openagentic-mcp` |
-| User ARN | `arn:aws:iam::123456789012:user/openagentic-mcp` |
+| User ARN | `arn:aws:iam::<YOUR_AWS_ACCOUNT_ID>:user/openagentic-mcp` |
 | Managed policy | `arn:aws:iam::aws:policy/ReadOnlyAccess` |
 | Access key | rotating, see `~/.openagentic/cloud-secrets/aws.env` |
 
