@@ -146,7 +146,7 @@ export async function denyIfPrivate(url: URL | string): Promise<void> {
  * Designed for the X-Internal-Secret gate in
  * WorkflowExecutionEngine.executeHTTPRequestNode: only an explicit list
  * of fully-qualified internal hosts (e.g.
- * `openagentic-api.agentic-dev.svc.cluster.local`) trusts the secret.
+ * `openagentic-api.openagentic.svc.cluster.local`) trusts the secret.
  *
  * Empty allowlist → always false.
  */

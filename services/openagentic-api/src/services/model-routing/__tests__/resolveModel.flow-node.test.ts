@@ -1,8 +1,8 @@
 /**
  * F1.3 — RED test for `resolveModel({flowNodeId})`
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F1.3)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * The flowNodeId path: when a flow node row has its own
  * `model_role_assignment` FK populated, resolveModel returns that row's

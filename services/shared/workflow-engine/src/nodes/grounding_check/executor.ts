@@ -9,14 +9,14 @@
  *
  * Entity tokens captured:
  *   - K8s pod / deployment names: `openagentic-mcp-proxy`,
- *     `redis-master-0`, `openagentic-api-6c8cddf76c-ckswm`, etc.
+ *     `redis-master-0`, `openagentic-api-<hash>-<suffix>`, etc.
  *     Detected via `^[a-z][a-z0-9-]{6,}` shape with at least one hyphen.
  *   - Component names from a curated list (Redis, Prometheus, Loki,
  *     MCP, Postgres, Ollama, MinIO, etc.) — case-insensitive.
  *   - IPv4 addresses (10.42.5.34, etc.) — common in stale-target reports.
  *
  * Stopwords (severity labels, k8s-generic terms like "namespace",
- * "agentic-dev", "pod") are stripped so they never get flagged.
+ * "openagentic", "pod") are stripped so they never get flagged.
  */
 
 import type { WorkflowNode } from '../types.js';
@@ -37,7 +37,7 @@ const STOPWORDS = new Set([
   'summary', 'finding', 'findings', 'recommendation', 'recommendations',
   'rationale', 'severity', 'analysis', 'proposed',
   // Common dev-env names that are background fixtures
-  'agentic-dev',
+  'openagentic',
 ]);
 
 // Sorted length-descending so the regex alternation matches the LONGEST
@@ -105,7 +105,7 @@ function extractEntities(text: string): Set<string> {
  * A claim token is "grounded" if either:
  *   - It's an exact match in the ground-truth entity set, OR
  *   - It's a prefix of any ground-truth token (e.g. claim mentions
- *     `openagentic-api` and ground truth has the full `openagentic-api-6c8cddf76c-ckswm`).
+ *     `openagentic-api` and ground truth has the full `openagentic-api-<hash>-<suffix>`).
  */
 function isGrounded(claimToken: string, truthSet: Set<string>): boolean {
   if (truthSet.has(claimToken)) return true;

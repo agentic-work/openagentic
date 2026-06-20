@@ -183,7 +183,7 @@ export interface ToolSearchResult extends Tool {
  * reuses the shared `embeddingInputCap` helper so a single pathological tool
  * description (e.g. aws_knowledge `read_documentation`, ~50k chars) cannot push
  * the embed call past the model's context window and 500 the whole indexing
- * run — the live failure that left `mcp_tools_cache` empty on open-dev
+ * run — the live failure that left `mcp_tools_cache` empty on openagentic
  * (2026-06-01) so `tool_search` returned nothing and no model could discover or
  * call any MCP tool.
  *
@@ -657,7 +657,7 @@ export class ToolSemanticCacheService {
       // more no-creds=admin backdoor). #1029 deduped the inline minting into
       // mintInterServiceSystemToken. Proxy verifier:
       // services/openagentic-mcp-proxy/src/main.py:913
-      // Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3 S1
+      // the design notes
       const systemToken = mintInterServiceSystemToken(process.env.INTERNAL_SERVICE_SECRET);
       const response = await fetch(`${MCP_PROXY_URL}/tools`, {
         method: 'GET',
@@ -970,7 +970,7 @@ export class ToolSemanticCacheService {
           // embeddingInputCap) so one pathological description can't blow the
           // embed model's context window. RESILIENCE: a single tool's embedding
           // failure must NEVER reject the whole batch (a rejected Promise.all
-          // here zeroes the entire mcp_tools_cache catalog — the open-dev
+          // here zeroes the entire mcp_tools_cache catalog — the openagentic
           // 2026-06-01 failure where tool_search returned nothing). On failure
           // we fall back to a zero vector so the tool STILL lands in the
           // collection (discoverable by exact-name getTool + lexical/tag

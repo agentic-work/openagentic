@@ -13,7 +13,7 @@
  *   - produce an envelope with `_meta.artifactHandle` defined
  *   - produce a `structuredContent` smaller than the raw payload (truncated).
  *
- * Plan: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.2.
+ * the design notes
  */
 import { describe, it, expect, vi } from 'vitest';
 import { makeDispatch, type V3DispatchDeps } from '../dispatchTool.js';

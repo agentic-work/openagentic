@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
  *   2. The engine imports HostAllowList helpers (denyIfPrivate +
  *      isAllowedInternalHost) and uses them.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3 S4
+ * the design notes
  */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

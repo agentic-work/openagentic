@@ -1177,7 +1177,7 @@ export class UniversalEmbeddingService {
    * Robust Ollama embedding: input-cap, then shrink-and-retry on a context
    * overflow, then a zero-vector last resort. A single oversized/pathological
    * input must NEVER fail the whole batch (which would leave the MCP tool
-   * catalog empty — the live failure on open-dev 2026-06-01).
+   * catalog empty — the live failure on openagentic 2026-06-01).
    *
    * Retry trigger is narrow: only the provider's context-overflow signal
    * ("input length exceeds the context length" / HTTP 500 from the embed

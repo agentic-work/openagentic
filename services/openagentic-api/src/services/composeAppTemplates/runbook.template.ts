@@ -2,7 +2,7 @@
  * runbook — numbered steps with code blocks + copy-button + run-now button
  * (visual only; the run-now is non-functional in templates).
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md
+ * the design notes
  *       (mock 06: aws-k8s-aiops finishes with a runbook)
  */
 

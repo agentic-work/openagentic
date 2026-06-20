@@ -24,7 +24,7 @@
  *   - srcdoc is the only path that lets widgets be both interactive
  *     AND isolated from the parent's cookies / localStorage.
  *
- * Reference: docs/superpowers/specs/2026-04-28-chatmode-internal-tools-and-visualize.md
+ * the design notes
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';

@@ -70,7 +70,7 @@ describe('flow_tool node — sub-flow as callable tool', () => {
         edges: [{ id: 'e1', source: 'trigger', target: 'ft' }],
       },
       tenantId: TENANT,
-      input: { body: { time_window: '15m', namespace: 'agentic-dev' } },
+      input: { body: { time_window: '15m', namespace: 'openagentic' } },
     });
 
     expect(result.status).toBe('completed');
@@ -87,7 +87,7 @@ describe('flow_tool node — sub-flow as callable tool', () => {
     // Single terminal node (webhook_response) → engine unwraps the per-node
     // envelope and returns the executor's output directly:
     // `{ statusCode, body, delivered, resolvedHeaders }`. We extract `body`.
-    expect(out.value).toBe('summary=15m|namespace=agentic-dev');
+    expect(out.value).toBe('summary=15m|namespace=openagentic');
 
     // Verify the engine resolved the wrapped flow via prisma — proves the
     // wire-up between flow_tool → ctx.executeSubWorkflow → prisma is live.

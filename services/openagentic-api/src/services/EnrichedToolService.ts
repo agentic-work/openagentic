@@ -1,8 +1,8 @@
 /**
  * EnrichedToolService — Postgres-backed SoT for per-T1-tool metadata.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §5
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md (Phase 5)
+ * the design notes
+ * the design notes (Phase 5)
  *
  * Read by Phase 4's envelope splitter via `getBySlug` + `toMetadata` to populate
  * `ToolResult._meta.outputTemplate` and the per-tool `truncate_summary` fn.

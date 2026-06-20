@@ -14,7 +14,7 @@
  *     const body = adapter.adaptRequest(canonicalReq);
  *     const resp = await fetch(this.endpoint, { method: 'POST', body: JSON.stringify(body), ... });
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       §"Phase 0.3 — outbound adapters"
  */
 

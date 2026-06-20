@@ -78,7 +78,7 @@ describe('ModelConfigurationService.getDefaultChatModel — provider enabled joi
     // gpt-5.4 (AIF, prio 1). gemini is the highest-priority "enabled"
     // entry but its provider is disabled live.
     m.modelRoleAssignment.findMany.mockResolvedValue([
-      { model: 'gemini-2.5-pro', provider: 'vertex-dev-openagentic-dev-us-central1', priority: 0 },
+      { model: 'gemini-2.5-pro', provider: 'vertex-dev-openagentic-example-us-central1', priority: 0 },
       { model: 'gpt-5.4', provider: 'aif', priority: 1 },
     ]);
     m.lLMProvider.findMany.mockResolvedValue([

@@ -103,7 +103,7 @@ describe('resolveChatModel — SmartModelRouter consultation', () => {
     };
 
     const m = await resolveChatModel({
-      message: 'design a multi-region FedRAMP failover architecture for our stack',
+      message: 'design a multi-region NIST 800-53 failover architecture for our stack',
       smartRouter: smartRouter as any,
     });
 

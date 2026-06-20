@@ -14,7 +14,7 @@
  *   - When the proxy fails (network error / non-2xx), the dispatch returns
  *     ok:false to the model channel — the loop never crashes.
  *
- * Spec §7: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md
+ * the design notes
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { runChat, _resetEnrichedToolsCacheForTests } from '../runChat.js';

@@ -1,7 +1,7 @@
 /**
  * EnrichedToolsPage — V3 Phase 5 stub.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §5
+ * the design notes
  *
  * Surfaces the EnrichedTool registry (per-T1-tool outputTemplate +
  * truncate_summary metadata) for admin operators. Phase 11 (UX

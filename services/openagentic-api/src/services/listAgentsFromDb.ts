@@ -16,7 +16,7 @@
  * tool description builder shows "no specialized agents registered yet —
  * use general-purpose" and dispatch continues to function (no crash).
  *
- * Plan: docs/superpowers/plans/2026-05-13-option-b-db-sot-unification.md.
+ * the design notes.
  */
 
 import { prisma } from '../utils/prisma.js';

@@ -1,7 +1,7 @@
 /**
  * #508 Phase 3 — RegistryWriter is the single write SoT for model registry mutations.
  *
- * Spec: docs/superpowers/specs/2026-04-29-provider-model-registry-fedramp-overhaul.md
+ * the design notes
  *   §5.2 lifecycle state machine
  *   §5.3 single writer contract
  *   §5.6 audit semantics

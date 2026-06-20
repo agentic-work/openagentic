@@ -1,7 +1,7 @@
 /**
  * Shared scaffolding for compose_app templates.
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md
+ * the design notes
  *
  * Every template renders a single self-contained HTML document. The
  * scaffolding here pins:

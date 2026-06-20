@@ -154,7 +154,7 @@ If the user asks for a mutation, explain that READ-ONLY mode is currently enable
  * Ground truth, injected per-turn so the model knows — BEFORE it searches —
  * which MCP servers are actually CONNECTED this session vs which are
  * unavailable because they require credentials or an Azure AD On-Behalf-Of
- * login the user doesn't have. On open-dev the connected set is just
+ * login the user doesn't have. On openagentic the connected set is just
  * `openagentic_web` + `aws_knowledge`; azure/gcp/github/k8s/etc. are not
  * connected (no OBO with local-admin). Without this the model loops
  * `tool_search` forever for an azure tool that does not exist, then leaks

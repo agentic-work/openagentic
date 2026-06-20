@@ -70,9 +70,6 @@ export const workflowNodeAnimations: Record<string, LottieAnimationData> = {
 
   // Agents
   synth: createTestTube(W),
-  synth_synthesize: createTestTube(W),
-  oat: createTestTube(W),
-  oat_synthesize: createTestTube(W),
   agent_single: createRobot(W),
   agent_pool: createTarget(W),
   agent_supervisor: createNeuralNetwork(W, '#e0e0e0'),

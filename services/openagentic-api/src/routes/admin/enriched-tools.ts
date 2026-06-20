@@ -1,8 +1,8 @@
 /**
  * Admin Routes — EnrichedTool registry (Phase 5).
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §5
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md (Phase 5)
+ * the design notes
+ * the design notes (Phase 5)
  *
  *   GET    /api/admin/enriched-tools           List (filters: ?category, ?mcp_server, ?enabled)
  *   GET    /api/admin/enriched-tools/:slug     Single

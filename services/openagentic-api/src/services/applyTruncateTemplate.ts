@@ -19,7 +19,7 @@
  * stays under 2KB even for multi-MB raw payloads. The full raw payload
  * lives in Redis behind the `_meta.artifactHandle`.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.2
+ * the design notes
  */
 import type { StructuredContent } from '../types/ToolResult.js';
 

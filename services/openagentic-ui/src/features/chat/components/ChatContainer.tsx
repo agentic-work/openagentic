@@ -331,7 +331,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   // freshly-created session's placeholder + streamed content (written under the
   // REAL id) would not appear in the rendered list until reload.
   //
-  // UPSTREAM-PARITY FIX (mirrors agenticwork-ui ChatContainer keying the in-flight
+  // UPSTREAM-PARITY FIX (mirrors the upstream ChatContainer keying the in-flight
   // mirror on a render-synchronous session id): the prior chain ended in
   // `firstSendStreamSessionId` — a useState set via setFirstSendStreamSessionId,
   // which flushes ONE render too late. The first `content_delta` frames arrive and
@@ -1542,7 +1542,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   // tokens then mirror into the placeholder under the freshly-created session on the
   // very first-delta render instead of bailing on a stale '' (which is why it used to
   // need a reload). renderSessionId stays in the dep list so the effect re-runs once
-  // the closure/state catch up. Mirrors agenticwork-ui ChatContainer, which keys this
+  // the closure/state catch up. Mirrors the upstream ChatContainer, which keys this
   // mirror on the live active session id.
   useEffect(() => {
     const writeSessionId = resolveSessionId();

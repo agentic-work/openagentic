@@ -8,7 +8,7 @@
  * supply default bodies via env or chart values, but for the cutover
  * window the .md files are the bootstrap source of truth.
  *
- * Spec: docs/superpowers/specs/2026-05-10-chatmode-prompts-db-editable.md
+ * the design notes
  */
 import type { PrismaClient } from '@prisma/client';
 import { readFile } from 'node:fs/promises';

@@ -7,7 +7,7 @@
  *   - ctx.emit('tool_result', ...) (UI channel) carries BOTH
  *     structuredContent AND `_meta`.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.2
+ * the design notes
  */
 import { describe, it, expect, vi } from 'vitest';
 import { chatLoop } from '../chatLoop.js';

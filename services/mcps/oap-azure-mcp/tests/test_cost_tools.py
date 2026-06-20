@@ -6,7 +6,7 @@ Bug captured 2026-05-12 in reports/verify-cadence/Q1-tri-cloud-cost-spike/
 
   Model called `azure_cost_by_service` and `azure_cost_query` without a
   `subscription_id`. The tool let `sub_id` resolve to "" (DEFAULT_SUBSCRIPTION_ID
-  env unset in agentic-dev), then built scope=`/subscriptions/` and passed it
+  env unset in openagentic), then built scope=`/subscriptions/` and passed it
   to the Azure SDK. The SDK collapsed `/subscriptions//providers/...` and
   Azure returned:
 

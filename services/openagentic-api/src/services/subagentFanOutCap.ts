@@ -17,7 +17,7 @@
  * (`maxConcurrentSubagents`, default 4).
  *
  * Source: https://www.anthropic.com/engineering/multi-agent-research-system
- * Plan: docs/superpowers/plans/2026-05-12-chatmode-industry-bestpractices-followup.md
+ * the design notes
  *       (Q1 — sub-agent fan-out cap)
  */
 

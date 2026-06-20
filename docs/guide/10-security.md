@@ -7,8 +7,8 @@ control. Nothing phones home.
 
 This page documents the security model in detail: how authentication works,
 how secrets are handled, how untrusted model output is sandboxed, how egress is
-constrained, how every privileged action is audited, and how the codebase is
-positioned for a regulated (FedRAMP-High-aligned) deployment.
+constrained, how every privileged action is audited, and how the codebase
+maps onto common security-control frameworks for regulated deployments.
 
 > **Scope note.** The OSS edition is **single-user, local-auth**. There is no
 > SSO, no Azure AD / OBO, no Google federation, and no MFA broker in the open
@@ -505,11 +505,10 @@ CSP-scoped — and even that is vendorable locally for an air-gapped posture. Se
 
 ---
 
-## FedRAMP-High alignment
+## Security control mapping (NIST 800-53)
 
-OpenAgentic's codebase is built to **support a FedRAMP-High-aligned deployment**.
-The security controls above map directly onto NIST 800-53 (High baseline)
-control families:
+The security controls above map onto NIST 800-53 control families — useful
+when deploying into a regulated or compliance-conscious environment:
 
 | Control family | What the platform provides |
 |---|---|
@@ -519,15 +518,13 @@ control families:
 | **AU-2 / AU-9 / AU-10** (audit events, protection of audit info, non-repudiation) | Append-only auth/tool-call/admin/flow audit logs; cryptographic hash chain on admin actions; read-only audit API |
 | **CM-7 / SA-15** (least functionality) | MCP Inspector debug surface defaults off in production images |
 
-> **This is an alignment statement, not an ATO.** OpenAgentic is software, not a
-> hosted service. **You deploy it inside your own authorization boundary**, with
-> your own SSP, POA&M, 3PAO assessment, and continuous monitoring — those are
-> organizational process artifacts that exist outside any codebase. What the
-> project provides is the **technical control implementation** a regulated
-> deployment builds on, documented and verified (see the remediation audit trail
-> under [`docs/fedramp-remediation/`](../fedramp-remediation/README.md)). The
-> zero-telemetry, self-hosted design is precisely what lets a sovereignty-bound
-> team run it where a SaaS AI-SRE is legally forbidden.
+> **This is a control-mapping reference, not a certification.** OpenAgentic is
+> software, not a hosted service. **You deploy it inside your own authorization
+> boundary**, with your own compliance processes layered on top — those are
+> organizational artifacts that exist outside any codebase. What the project
+> provides is the **technical control implementation** a regulated deployment
+> can build on. The zero-telemetry, self-hosted design is precisely what lets a
+> sovereignty-bound team run it where a SaaS AI tool may not be permitted.
 
 ---
 

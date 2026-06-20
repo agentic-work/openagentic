@@ -21,8 +21,8 @@
  * tests inject a `vi.fn()` stub. The service is intent-keyed, model-
  * agnostic by construction (NO model-name branches).
  *
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md Phase 10
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §11.3
+ * the design notes
+ * the design notes
  */
 
 export interface HandoffDecisionInput {

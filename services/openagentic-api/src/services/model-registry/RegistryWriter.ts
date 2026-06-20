@@ -1,7 +1,7 @@
 /**
  * RegistryWriter — single write source-of-truth for the model registry.
  *
- * Spec: docs/superpowers/specs/2026-04-29-provider-model-registry-fedramp-overhaul.md
+ * the design notes
  *   §5.2 lifecycle state machine
  *   §5.3 single writer contract
  *   §5.6 audit semantics (signature deferred to Phase 8)
@@ -17,7 +17,7 @@
  *      row commit atomically.
  *   2. State transitions are enforced. Illegal moves throw
  *      IllegalStateTransitionError before any write happens.
- *   3. propose+approve enforces separation of duty (FedRAMP AC-5).
+ *   3. propose+approve enforces separation of duty (NIST 800-53 AC-5).
  *   4. The audit-log table is APPEND-ONLY at the DB level (Phase 1 migration
  *      REVOKE-d UPDATE,DELETE). We only INSERT.
  *   5. signature column stays null — Phase 8 integrity hashing will populate.
@@ -54,12 +54,12 @@ export class IllegalStateTransitionError extends Error {
 }
 
 /** Thrown when the user proposing a row tries to also approve it.
- *  FedRAMP AC-5 separation of duty. */
+ *  NIST 800-53 AC-5 separation of duty. */
 export class SeparationOfDutyViolationError extends Error {
   constructor(userId: string) {
     super(
       `Separation-of-duty violation: user "${userId}" cannot approve a row ` +
-      `they themselves proposed (FedRAMP AC-5).`,
+      `they themselves proposed (NIST 800-53 AC-5).`,
     );
     this.name = 'SeparationOfDutyViolationError';
   }
@@ -369,7 +369,7 @@ export class RegistryWriter {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // deprecate — ACTIVE → DEPRECATED. Sets retention_until = +90d (FedRAMP AU-11).
+  // deprecate — ACTIVE → DEPRECATED. Sets retention_until = +90d (NIST 800-53 AU-11).
   // ─────────────────────────────────────────────────────────────────────────
   async deprecate(id: string, by: string, reason: string): Promise<ModelRecord> {
     const { prisma } = await import('../../utils/prisma.js');

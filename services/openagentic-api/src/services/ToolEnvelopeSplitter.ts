@@ -14,8 +14,8 @@
  * we keep the full content inline (artifactHandle stays undefined). Never
  * drop data — the model is better off seeing a verbose result than nothing.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.2
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
+ * the design notes
  *       Phase 4, Task 4.2.
  */
 

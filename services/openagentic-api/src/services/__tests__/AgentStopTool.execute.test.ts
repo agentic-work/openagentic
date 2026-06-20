@@ -1,5 +1,5 @@
 /**
- * AgentStopTool — RED test for the executor (chatmode-rip Phase C dispatcher
+ * AgentStopTool — RED test for the executor (the chat-pipeline refactor Phase C dispatcher
  * wire-up). The model invokes `agent_stop` to terminate a running sub-agent
  * session. `executeAgentStop` POSTs to openagentic-proxy's `/api/agents/executions/:id/kill`
  * endpoint.
@@ -40,7 +40,7 @@ function makeCtx(overrides: Record<string, any> = {}) {
   } as any;
 }
 
-describe('executeAgentStop (chatmode-rip Phase C dispatcher)', () => {
+describe('executeAgentStop (the chat-pipeline refactor Phase C dispatcher)', () => {
   const ENV_BACKUP = { ...process.env };
 
   beforeEach(() => {
@@ -106,7 +106,7 @@ describe('executeAgentStop (chatmode-rip Phase C dispatcher)', () => {
   });
 });
 
-describe('dispatchChatToolCall — agent_stop routing (chatmode-rip Phase C)', () => {
+describe('dispatchChatToolCall — agent_stop routing (the chat-pipeline refactor Phase C)', () => {
   const ENV_BACKUP = { ...process.env };
 
   beforeEach(() => {

@@ -110,7 +110,7 @@ describe('ModelRoleAssignment — dynamic pricing columns (task #342)', () => {
  * run doesn't need to unset it. We treat that stub as "no live DB" and
  * skip, while any real DSN (pointing at a reachable Postgres with the
  * migration applied) exercises the full constraint battery. The CI
- * live-DB job overrides DATABASE_URL to the agentic-dev Postgres where
+ * live-DB job overrides DATABASE_URL to the openagentic Postgres where
  * these cases act as a red/green gate for the migration itself.
  */
 const STUB_DB_URL = 'postgresql://test:test@localhost:5432/test';

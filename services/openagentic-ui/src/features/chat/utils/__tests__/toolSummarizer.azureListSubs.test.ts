@@ -6,7 +6,7 @@
  *
  *   2 Azure subscriptions visible:   ← model body text
  *     Azure subscription 1  6ed638e7-...
- *     openagentic-dev       815a115d-...
+ *     openagentic-example       815a115d-...
  *
  * Root cause: `toolSummarizer.ts:252-256` calls
  *   `countArray(unwrapResult(r), ['subscriptions', 'value']) ?? 0`
@@ -32,7 +32,7 @@ describe('azure_list_subscriptions summarizer — 2026-05-12 live capture', () =
       count: 2,
       subscriptions: [
         { id: '6ed638e7-7deb-4773-b516-a2a2b9dbb948', name: 'Azure subscription 1', state: 'Enabled' },
-        { id: '815a115d-bf32-495c-a89f-b5ce6b349b57', name: 'openagentic-dev', state: 'Enabled' },
+        { id: '815a115d-bf32-495c-a89f-b5ce6b349b57', name: 'openagentic-example', state: 'Enabled' },
       ],
       executed_as: { upn: 'admin@example.onmicrosoft.com' },
     };

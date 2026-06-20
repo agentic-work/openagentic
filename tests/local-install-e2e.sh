@@ -22,7 +22,7 @@
 #   2. Probes Ollama for the required models
 #   3. Brings up data-plane docker services only (postgres/redis/milvus)
 #   4. pnpm install + build llm-sdk + workflow-engine + prisma generate
-#   5. Launches api/ui/workflows/mcp-proxy/proxy/synth as background
+#   5. Launches api/ui/workflows/mcp-proxy/proxy as background
 #      processes; logs go to .e2e-logs/<service>.log; pids tracked in
 #      .e2e-logs/pids/
 #   6. Waits for each service's health endpoint
@@ -272,11 +272,6 @@ start_service workflows "env $COMMON_ENV \
 start_service proxy "env $COMMON_ENV \
   PORT=$PROXY_PORT \
   node services/openagentic-proxy/dist/index.js"
-
-# synth (python).
-start_service synth "env $COMMON_ENV \
-  PORT=$SYNTH_PORT \
-  python3 -m uvicorn main:app --app-dir services/openagentic-synth --host 127.0.0.1 --port $SYNTH_PORT"
 
 # ui: serve the freshly-built vite bundle via pnpm dlx serve (no node modules at runtime).
 start_service ui "pnpm dlx serve -s services/openagentic-ui/dist -l $UI_PORT"

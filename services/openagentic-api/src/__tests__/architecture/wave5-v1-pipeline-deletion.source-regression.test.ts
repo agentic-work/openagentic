@@ -117,7 +117,7 @@ describe('Wave 5 deletion gate — V1 chat pipeline files are gone', () => {
 /**
  * 2026-05-05 — V1 chat pipeline rip (full inventory).
  *
- * Plan: docs/research/2026-05-05-v1-chat-pipeline-rip-plan.md.
+ * Plan: the design notes.
  *
  * `routes/chat/pipeline/chat/runChat.ts` is the sole chat path on
  * `/api/chat/stream`; V1 imports zero pipeline-chat symbols and is now

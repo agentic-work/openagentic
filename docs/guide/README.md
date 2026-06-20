@@ -35,7 +35,7 @@ Other install paths: `… | bash -s -- --helm` (Kubernetes via Helm), `… | bas
 | 07 | **[Chat & Artifacts](07-chat-and-artifacts.md)** | The chat streaming endpoint, the T1 meta-tools, `compose_visual`/`compose_app`/`render_artifact`, the sandboxed iframe model, and the human approval gate + audit trail. |
 | 08 | **[Flows & Workflows](08-flows.md)** | The visual Flows canvas and engine, the 71 node types, the seeded templates, the cron scheduler, the AI Flow Builder, and the human-in-the-loop approval/input gates. |
 | 09 | **[Admin Console](09-admin-console.md)** | The v3 admin portal — dashboard, Prometheus analytics, MCP Fleet, providers and model registry, the two audit surfaces, tool permissions, and prompt governance. |
-| 10 | **[Security & Compliance Posture](10-security.md)** | Password/JWT/API-key handling, inter-service auth, no-weak-secret-defaults, the artifact sandbox, SSRF guards, the immutable audit chain, zero-telemetry enforcement, and the FedRAMP framing. |
+| 10 | **[Security & Compliance Posture](10-security.md)** | Password/JWT/API-key handling, inter-service auth, no-weak-secret-defaults, the artifact sandbox, SSRF guards, the immutable audit chain, zero-telemetry enforcement, and the NIST 800-53 control framing. |
 | 11 | **[API Reference](11-api-reference.md)** | The base URL, Swagger/OpenAPI, auth headers, chat streaming (NDJSON), the OpenAI-compatible endpoints, workflows, system config, and the admin API surface. |
 | 12 | **[Operations & Troubleshooting](12-operations.md)** | Health checks, updates and rollbacks, secret rotation, the first-boot landmines and their fixes, backups, scaling, and logs. |
 

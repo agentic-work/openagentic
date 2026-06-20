@@ -12,7 +12,7 @@
  *   1. JSON values containing `<script>` no longer become live DOM.
  *   2. HTML envelopes can't reach the chat DOM (sandboxed iframe).
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3 S6
+ * the design notes
  */
 
 import React from 'react';

@@ -2,7 +2,7 @@
  * #781 Phase A4 — arch pin: no legacy `artifact:html|react|svg` fence
  * prompts in production source.
  *
- * Plan: docs/superpowers/plans/2026-05-13-next-gen-artifact-slideouts.md §A4
+ * the design notes
  *
  * Context: the legacy HTML artifact slide-out pipeline ships
  * model-facing prose telling the model to emit ```artifact:html / react

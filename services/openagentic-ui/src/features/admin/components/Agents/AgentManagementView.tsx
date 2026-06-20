@@ -628,7 +628,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
         </div>
       )}
 
-      {/* Mission Control · SoT enforcement banner */}
+      {/* Admin console · SoT enforcement banner */}
       <div className="px-7 pt-3">
         <SoTBanner context="Agents resolve their model through tier (not literal model name) — tier composition lives in the registry. Removing a model from a tier rolls forward agents that depended on it to next-best in that tier." />
       </div>

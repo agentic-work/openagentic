@@ -6,7 +6,7 @@
  * provider class. This consolidates them under the SDK so adapters built
  * in Phase 0.3 can rely on a single SoT.
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *        §"Phase 0.2 — SDK shared canonical invariants"
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';

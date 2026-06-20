@@ -1,6 +1,6 @@
 /**
- * WebSearchTool — meta-tool definition for the chatmode-rip 10-primitive
- * T1 catalog (chatmode-rip plan §Phase C, task C.9).
+ * WebSearchTool — meta-tool definition for the chat-pipeline refactor 10-primitive
+ * T1 catalog (the chat-pipeline refactor plan §Phase C, task C.9).
  *
  * Promoted from MCP-only to T1 always-on so the model has public-internet
  * access without needing to discover it via tool_search first. Use cases:

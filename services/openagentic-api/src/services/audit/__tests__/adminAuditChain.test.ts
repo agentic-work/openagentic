@@ -1,5 +1,5 @@
 /**
- * AU-10 (FedRAMP / NIST AU-10 non-repudiation) — the admin-audit hash chain.
+ * AU-10 (NIST 800-53 AU-10 non-repudiation) — the admin-audit hash chain.
  *
  * Every admin_audit_log row must be cryptographically chained:
  *   chain_hash = SHA256(previous_hash + event + userId + action + ts + details)

@@ -34,7 +34,7 @@
  *   - chatLoop wraps streamProvider in withChatSpan
  *   - dispatchChatToolCall wraps tool dispatch in withToolSpan / withAgentSpan
  *
- * Plan: docs/superpowers/plans/2026-05-12-chatmode-industry-bestpractices-followup.md §F2
+ * the design notes
  */
 
 import {

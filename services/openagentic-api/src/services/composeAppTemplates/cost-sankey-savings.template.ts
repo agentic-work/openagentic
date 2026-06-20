@@ -2,7 +2,7 @@
  * cost-sankey-savings — sankey of current cost flows + savings card with
  * per-category deltas. echarts-based.
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md
+ * the design notes
  *       (mock 06: aws-k8s-aiops uses this for the cost optimization frame)
  *
  * Difference from compose_visual:sankey — this is the FULL augmented app

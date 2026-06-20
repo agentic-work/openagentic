@@ -5,7 +5,7 @@
  * (`_meta.artifactHandle` set), the model can paged-query the full
  * stored result via this meta-tool.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §10
+ * the design notes
  *       (memory_search + read_large_result meta-tools)
  */
 import { describe, it, expect, vi } from 'vitest';

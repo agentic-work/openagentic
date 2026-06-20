@@ -4,7 +4,7 @@ mcp-proxy. The proxy itself owns NO Milvus / embedding code — it forwards
 to the api's POST /api/internal/tool-search endpoint, which wraps
 ToolSemanticCacheService.searchToolsAsOpenAIFunctions.
 
-Spec: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+the design notes
 """
 from __future__ import annotations
 

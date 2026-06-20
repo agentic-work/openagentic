@@ -82,7 +82,7 @@ class TestDenyIfPrivate:
     @pytest.mark.asyncio
     async def test_rejects_svc_cluster_local(self):
         with pytest.raises(FetchError) as exc:
-            await deny_if_private("http://api.agentic-dev.svc.cluster.local/")
+            await deny_if_private("http://api.openagentic.svc.cluster.local/")
         assert exc.value.reason == "cluster_local"
 
     @pytest.mark.asyncio

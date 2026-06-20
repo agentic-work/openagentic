@@ -1,7 +1,7 @@
 /**
  * Visual screenshot diff vs mock HTML — Playwright spec (Phase 0.4).
  *
- * Plan: docs/superpowers/plans/sprightly-percolating-brook.md §0.4
+ * the design notes
  *
  * For each scenario with a matching `mocks/UX/AI/Chatmode/end-state-NN-*.html`:
  *   1. Render the mock in a hidden tab at a known viewport.

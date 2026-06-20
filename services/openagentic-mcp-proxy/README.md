@@ -356,7 +356,7 @@ token exchange). Credentials reach each MCP subprocess two ways:
 
 1. **`config.env` merge** — each cloud MCP's env block in
    `mcp_manager.initialize_servers` is built from `os.getenv(...)` and merged
-   into the spawned subprocess env (see the FedRAMP SC-4 filtered child-process
+   into the spawned subprocess env (see the NIST 800-53 SC-4 filtered child-process
    env in `src/mcp_manager.py`).
 2. **Read-only host CLI mounts** — `~/.azure`, `~/.aws`, `~/.config/gcloud`,
    `~/.kube` are mounted read-only so the SDKs (`az`, `boto3`, `google-auth`)

@@ -1,7 +1,7 @@
 /**
  * compose_app template registry — RED-first tests.
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md
+ * the design notes
  *
  * Each template:
  *   - resolves via findTemplate(slug)
@@ -40,7 +40,7 @@ const EXPECTED_SLUGS = [
   'bar-chart',
   'line-chart',
   'pie-chart',
-  // Phase 6 mocks-parity (reports/audits/2026-05-13-chatmode-mocks-parity.md).
+  // Phase 6 mocks-parity (the design notes).
   'savings-grid',
   'incident-timeline',
   'latency-heatmap',

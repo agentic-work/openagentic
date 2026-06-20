@@ -29,7 +29,7 @@ describe('mcp_tool node — MCP proxy dispatch', () => {
           result: {
             result: {
               content: [
-                { type: 'text', text: 'Found 3 pods in namespace agentic-dev.' },
+                { type: 'text', text: 'Found 3 pods in namespace openagentic.' },
               ],
             },
           },
@@ -47,7 +47,7 @@ describe('mcp_tool node — MCP proxy dispatch', () => {
             data: {
               toolName: 'k8s_list_pods',
               toolServer: 'openagentic-k8s',
-              arguments: { namespace: 'agentic-dev' },
+              arguments: { namespace: 'openagentic' },
             },
           },
         ],
@@ -61,7 +61,7 @@ describe('mcp_tool node — MCP proxy dispatch', () => {
     expect(receivedBody).toMatchObject({
       server: 'openagentic_k8s',
       tool: 'k8s_list_pods',
-      arguments: { namespace: 'agentic-dev' },
+      arguments: { namespace: 'openagentic' },
     });
 
     const out = result.outputs.mcp as { content: string };

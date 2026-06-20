@@ -123,7 +123,7 @@ export const ThemeProvider = ({ children }) => {
   // for tinted backgrounds and 1px borders on inline cards. Without these
   // soft+line derivations, the accent dropdown only repaints chrome and
   // leaves chatmode tool cards stuck on the canonical purple. Caught
-  // 2026-04-30 — see docs/superpowers/specs/2026-04-30-chatmode-ux-parity-punchlist.md.
+  // 2026-04-30 — the design notes.
   const applyAccentColor = (accent) => {
     const root = document.documentElement;
     // CANONICAL single accent driver (theme.css SOT). --color-accent and its

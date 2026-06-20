@@ -1,7 +1,7 @@
 /**
  * compose_app template registry.
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md
+ * the design notes
  *
  * Mirrors the shape of `compose_visual.templates` — model picks a slug +
  * supplies typed params, server hydrates the HTML deterministically. Every
@@ -36,7 +36,7 @@ import { BAR_CHART_TEMPLATE } from './composeAppTemplates/bar-chart.template.js'
 import { LINE_CHART_TEMPLATE } from './composeAppTemplates/line-chart.template.js';
 import { PIE_CHART_TEMPLATE } from './composeAppTemplates/pie-chart.template.js';
 // Phase 6 — mocks-parity templates landing as the biggest single unlock
-// per reports/audits/2026-05-13-chatmode-mocks-parity.md.
+// per the design notes.
 import { SAVINGS_GRID_TEMPLATE } from './composeAppTemplates/savings-grid.template.js';
 import { INCIDENT_TIMELINE_TEMPLATE } from './composeAppTemplates/incident-timeline.template.js';
 import { LATENCY_HEATMAP_TEMPLATE } from './composeAppTemplates/latency-heatmap.template.js';
@@ -94,7 +94,7 @@ export const COMPOSE_APP_TEMPLATES: ComposeAppTemplate[] = [
   BAR_CHART_TEMPLATE,
   LINE_CHART_TEMPLATE,
   PIE_CHART_TEMPLATE,
-  // Phase 6 mocks-parity templates (reports/audits/2026-05-13-chatmode-mocks-parity.md).
+  // Phase 6 mocks-parity templates (the design notes).
   SAVINGS_GRID_TEMPLATE,
   INCIDENT_TIMELINE_TEMPLATE,
   LATENCY_HEATMAP_TEMPLATE,

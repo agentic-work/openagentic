@@ -2,8 +2,8 @@
  * F2.5 integration test — verifies that 04-providers.ts wires the correct
  * seeder chain on boot.
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F2.5)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * Assertions:
  *   1. seedRegistryFromHelm IS called during the LLM-provider seeding block.

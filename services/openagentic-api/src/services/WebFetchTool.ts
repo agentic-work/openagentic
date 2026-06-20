@@ -1,6 +1,6 @@
 /**
- * WebFetchTool — meta-tool definition for the chatmode-rip 10-primitive
- * T1 catalog (chatmode-rip plan §Phase C, task C.10).
+ * WebFetchTool — meta-tool definition for the chat-pipeline refactor 10-primitive
+ * T1 catalog (the chat-pipeline refactor plan §Phase C, task C.10).
  *
  * Companion to web_search: pulls a single URL into context (extracts
  * readable text content) so the model can read referenced pages without

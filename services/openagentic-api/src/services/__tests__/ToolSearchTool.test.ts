@@ -2,7 +2,7 @@
  * ToolSearchTool / AgentSearchTool — synthetic meta-tools for model-invoked
  * MCP tool / sub-agent discovery.
  *
- * Spec: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  *
  * The api injects these two tool defs into the chat tool array unconditionally
  * (no cascade narrowing). When the model emits `tool_use` for either name,

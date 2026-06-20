@@ -18,7 +18,7 @@ export const adminPortalEnhancedRoutes: FastifyPluginAsync = async (fastify) => 
   // Apply auth middleware as any to avoid type issues
   const authHandlers = [authMiddleware as any, adminMiddleware as any];
 
-  // Legacy prompt-version routes RIPPED 2026-05-11 (chatmode-rip Phase E
+  // Legacy prompt-version routes RIPPED 2026-05-11 (the chat-pipeline refactor Phase E
   // final). The PromptTemplate / PromptUsage models that backed
   // /api/admin/prompts/versions* + /api/admin/prompts/:id/rollback +
   // /api/admin/prompts/:id/versions + /api/admin/prompts/versions/compare +

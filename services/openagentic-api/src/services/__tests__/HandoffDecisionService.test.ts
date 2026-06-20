@@ -10,8 +10,8 @@
  * current === gpt-oss:20b suggest sonnet"; it purely consults the router's
  * per-(model,intent) scoring API.
  *
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md Phase 10
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §11.3
+ * the design notes
+ * the design notes
  */
 import { describe, it, expect, vi } from 'vitest';
 import { HandoffDecisionService } from '../HandoffDecisionService.js';

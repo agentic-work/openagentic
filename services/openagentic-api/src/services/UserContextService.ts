@@ -2,7 +2,7 @@
  * UserContextService - Unified Cross-Mode Memory Layer
  *
  * Assembles user context from ALL platform modes (chat, code, workflows, memories).
- * Enforces per-user data isolation (FedRAMP HIGH AC-3).
+ * Enforces per-user data isolation (NIST 800-53 AC-3).
  * Uses pgvector for semantic search across the unified context index.
  */
 
@@ -45,7 +45,7 @@ class UserContextServiceImpl {
 
   /**
    * Get user context across all modes
-   * CRITICAL: Always filters by userId (FedRAMP AC-3)
+   * CRITICAL: Always filters by userId (NIST 800-53 AC-3)
    */
   async getUserContext(userId: string, options?: {
     includeChatHistory?: boolean;
@@ -227,11 +227,11 @@ class UserContextServiceImpl {
 
   /**
    * Index data from any mode into the unified context layer
-   * CRITICAL: Always stores with userId (FedRAMP AC-3)
+   * CRITICAL: Always stores with userId (NIST 800-53 AC-3)
    */
   async indexUserData(userId: string, data: IndexDataInput): Promise<void> {
     try {
-      // Sanitize content (FedRAMP SI-10)
+      // Sanitize content (NIST 800-53 SI-10)
       const sanitizedContent = data.content
         .replace(/<script[^>]*>.*?<\/script>/gi, '')
         .replace(/<[^>]+>/g, '')
@@ -252,7 +252,7 @@ class UserContextServiceImpl {
 
   /**
    * Search across all user context
-   * CRITICAL: Always filters by userId (FedRAMP AC-3)
+   * CRITICAL: Always filters by userId (NIST 800-53 AC-3)
    */
   async searchUserContext(userId: string, query: string, options?: {
     sources?: ('chat' | 'code' | 'workflow' | 'memory')[];

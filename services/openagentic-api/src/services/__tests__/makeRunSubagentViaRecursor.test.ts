@@ -7,8 +7,7 @@
  * buildChatV2Deps; the chat path uses it when buildChatV2Deps is invoked
  * with `useRecursor: true`.
  *
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §E.8.e
- * Spec: chatmode three-layer architecture (docs/superpowers/specs/2026-05-10).
+ * See the design notes for the three-layer architecture.
  *
  * TDD red→green. The factory does NOT exist when this file is written.
  *

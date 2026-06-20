@@ -11,7 +11,7 @@
  *
  * If this test fails: trim the .md file, don't bump the cap.
  *
- * Spec: docs/superpowers/specs/2026-05-10-chatmode-three-layer-architecture.md §Layer-1
+ * the design notes-1
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';

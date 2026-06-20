@@ -1,14 +1,14 @@
 /**
  * Phase 11 — architecture completeness test.
  *
- * Pins the 10 outputTemplate slugs that the v3-enterprise-chatmode
+ * Pins the 10 outputTemplate slugs that the chat-pipeline refactor
  * design audit identified as required primitives. Every slug here
  * MUST resolve to a concrete component (not the StreamingMarkdown
  * fallback) — if a future refactor removes a registry entry, this
  * test trips and the regression is surfaced in CI.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §12
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
+ * the design notes
  *       Phase 11, Task 11.30 (registry completeness arch test).
  */
 

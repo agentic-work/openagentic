@@ -1,7 +1,7 @@
 /**
  * AC-D1 — artifact_emit reducer.
  *
- * Server emits `artifact_emit` when synth-executor (or any tool) finishes
+ * Server emits `artifact_emit` when the sandbox executor (or any tool) finishes
  * writing bytes to UserStorageService. Wire shape:
  *
  *   {

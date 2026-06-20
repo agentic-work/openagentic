@@ -1,7 +1,7 @@
 /**
  * Contract diff — pure ordered-subsequence matcher (Phase 0.3).
  *
- * Plan: docs/superpowers/plans/sprightly-percolating-brook.md §0.3
+ * the design notes
  *
  * Given a `.contract.json` (mocks/UX/AI/Chatmode/end-state-NN.contract.json)
  * and a captured wire `Timeline` (from wire-timeline-viewer.ts), assert the

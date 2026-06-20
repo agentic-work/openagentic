@@ -7,7 +7,7 @@
  * tool description (e.g. aws_knowledge `read_documentation`) cannot exceed the
  * embed model's context window and 500 the whole indexing run.
  *
- * Live failure this guards against (open-dev, 2026-06-01):
+ * Live failure this guards against (openagentic, 2026-06-01):
  *   `Ollama embedding request failed: 500 Internal Server Error -
  *    {"error":"the input length exceeds the context length"}`
  *   thrown from UniversalEmbeddingService.generateOllamaEmbedding while

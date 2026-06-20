@@ -21,7 +21,7 @@
  *   Keeping them separate prevents the two concerns (payload shape vs.
  *   correlation tuple) from drifting again.
  *
- * See docs/research/2026-04-23-subagent-architecture-survey.md §2.6 +
+ * See the design notes §2.6 +
  * §3.2 for the full reasoning.
  */
 

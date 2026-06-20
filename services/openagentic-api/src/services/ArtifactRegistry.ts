@@ -2,7 +2,7 @@
  * ArtifactRegistry — classify a `tool_result._meta.outputTemplate` (or
  * compose_app template slug) into one of 5 first-class artifact kinds.
  *
- * Plan: docs/superpowers/plans/2026-05-13-next-gen-artifact-slideouts.md
+ * the design notes
  * Phase A.1 (#781)
  *
  * Contract:

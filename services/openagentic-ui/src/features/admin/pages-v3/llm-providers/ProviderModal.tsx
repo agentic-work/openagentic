@@ -133,7 +133,7 @@ export const ProviderModal: React.FC<ProviderModalProps> = ({ open, onClose, edi
     setSaving(true)
     setErr(null)
     try {
-      // FedRAMP discriminator — per-provider-type required origin fields
+      // discriminator — per-provider-type required origin fields
       // (see services/openagentic-api/src/services/llm-providers/
       // ProviderDiscriminatorSchema.ts). The v3 modal doesn't expose a
       // separate Origin section; deriveOrigin computes every required

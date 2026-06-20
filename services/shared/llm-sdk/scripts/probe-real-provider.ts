@@ -27,10 +27,10 @@
  * Outputs to reports/provider-probe/<YYYY-MM-DD>/<provider-endpoint>-<model>-<slug>.{raw,canonical,summary}.{ndjson,json}.
  */
 
-import { createOpenAIToAgenticworkNormalizer } from '../src/lib/normalizers/OpenAIToAgenticwork.js';
-import { createAIFResponsesToAgenticworkNormalizer } from '../src/lib/normalizers/AIFResponsesToAgenticwork.js';
-import { createOllamaToAgenticworkNormalizer } from '../src/lib/normalizers/OllamaToAgenticwork.js';
-import { createVertexGeminiToAgenticworkNormalizer } from '../src/lib/normalizers/VertexGeminiToAgenticwork.js';
+import { createOpenAIToOpenagenticNormalizer } from '../src/lib/normalizers/OpenAIToOpenagentic.js';
+import { createAIFResponsesToOpenagenticNormalizer } from '../src/lib/normalizers/AIFResponsesToOpenagentic.js';
+import { createOllamaToOpenagenticNormalizer } from '../src/lib/normalizers/OllamaToOpenagentic.js';
+import { createVertexGeminiToOpenagenticNormalizer } from '../src/lib/normalizers/VertexGeminiToOpenagentic.js';
 import type { CanonicalEvent } from '../src/lib/normalizers/CanonicalEvent.js';
 import {
   getCapabilities,
@@ -254,7 +254,7 @@ async function probeAifChat(args: Args): Promise<{ raw: any[]; canonical: Canoni
     body: JSON.stringify(body),
   });
   if (!res.ok || !res.body) return { raw: [], canonical: [], status: res.status, httpBody: await res.text() };
-  const norm = createOpenAIToAgenticworkNormalizer({ messageId: `probe-${Date.now()}`, model: args.model });
+  const norm = createOpenAIToOpenagenticNormalizer({ messageId: `probe-${Date.now()}`, model: args.model });
   const raw: any[] = [];
   const canonical: CanonicalEvent[] = [];
   for await (const payload of sseLines(res)) {
@@ -291,7 +291,7 @@ async function probeAifResponses(args: Args): Promise<{ raw: any[]; canonical: C
   });
   if (!res.ok) return { raw: [], canonical: [], status: res.status, httpBody: await res.text() };
   const envelope = await res.json();
-  const norm = createAIFResponsesToAgenticworkNormalizer({ messageId: `probe-${Date.now()}`, model: args.model });
+  const norm = createAIFResponsesToOpenagenticNormalizer({ messageId: `probe-${Date.now()}`, model: args.model });
   const raw = [envelope];
   const canonical: CanonicalEvent[] = [];
   for (const ev of norm.consume(envelope)) canonical.push(ev);
@@ -319,7 +319,7 @@ async function probeOllama(args: Args): Promise<{ raw: any[]; canonical: Canonic
     body: JSON.stringify(body),
   });
   if (!res.ok || !res.body) return { raw: [], canonical: [], status: res.status, httpBody: await res.text() };
-  const norm = createOllamaToAgenticworkNormalizer({ messageId: `probe-${Date.now()}`, model: args.model });
+  const norm = createOllamaToOpenagenticNormalizer({ messageId: `probe-${Date.now()}`, model: args.model });
   const raw: any[] = [];
   const canonical: CanonicalEvent[] = [];
   for await (const line of ndjsonLines(res)) {
@@ -401,7 +401,7 @@ async function probeVertex(args: Args): Promise<{ raw: any[]; canonical: Canonic
     body: JSON.stringify(body),
   });
   if (!res.ok || !res.body) return { raw: [], canonical: [], status: res.status, httpBody: await res.text() };
-  const norm = createVertexGeminiToAgenticworkNormalizer({ messageId: `probe-${Date.now()}`, model: args.model });
+  const norm = createVertexGeminiToOpenagenticNormalizer({ messageId: `probe-${Date.now()}`, model: args.model });
   const raw: any[] = [];
   const canonical: CanonicalEvent[] = [];
   for await (const payload of sseLines(res)) {
@@ -427,8 +427,8 @@ async function probeBedrock(args: Args): Promise<{ raw: any[]; canonical: Canoni
   // AnthropicShape normalizer is passthrough — Bedrock event-stream events
   // ARE Anthropic-shape (message_start / content_block_delta / message_delta /
   // message_stop). We feed each event verbatim.
-  const { createBedrockToAgenticworkNormalizer } = await import(
-    '../src/lib/normalizers/AnthropicShapeToAgenticwork.js'
+  const { createBedrockToOpenagenticNormalizer } = await import(
+    '../src/lib/normalizers/AnthropicShapeToOpenagentic.js'
   );
   const region = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1';
   const client = new BedrockRuntimeClient({ region });
@@ -465,7 +465,7 @@ async function probeBedrock(args: Args): Promise<{ raw: any[]; canonical: Canoni
     httpBody = err?.message ?? String(err);
     return { raw: [], canonical: [], status, httpBody };
   }
-  const norm = createBedrockToAgenticworkNormalizer({ messageId: `probe-${Date.now()}`, model: args.model });
+  const norm = createBedrockToOpenagenticNormalizer({ messageId: `probe-${Date.now()}`, model: args.model });
   const raw: any[] = [];
   const canonical: CanonicalEvent[] = [];
   for await (const evt of response.body ?? []) {

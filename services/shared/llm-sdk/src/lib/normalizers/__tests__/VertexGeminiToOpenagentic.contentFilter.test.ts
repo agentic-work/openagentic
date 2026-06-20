@@ -2,7 +2,7 @@
  * B8 (chatmode punch-list) — Vertex Gemini finishReason="SAFETY" must map
  * to canonical stop_reason="safety" and finishReason="RECITATION" to
  * "recitation". Before B8 both collapsed to 'end_turn', hiding a SAFETY /
- * RECITATION compliance event from the FedRAMP-Hi audit trail.
+ * RECITATION compliance event from the audit trail.
  *
  * Synthetic fixtures here (no real Vertex SAFETY capture available in
  * the dev environment; Vertex enforces safety server-side and the
@@ -10,7 +10,7 @@
  * verbatim from the Vertex Gemini streamGenerateContent reference docs
  * (https://cloud.google.com/vertex-ai/generative-ai/docs/reference/rest/v1/projects.locations.endpoints/streamGenerateContent).
  *
- * Plan ref: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md §1.4
+ * Plan ref: the design notes
  */
 
 import { describe, it, expect } from 'vitest';

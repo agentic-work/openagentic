@@ -3,7 +3,7 @@
  * wire shape AnthropicProvider sends after Phase 0.4 migrated wire
  * conversion to the SDK adapter.
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md §0.4
+ * the design notes
  */
 
 import { describe, it, expect } from 'vitest';

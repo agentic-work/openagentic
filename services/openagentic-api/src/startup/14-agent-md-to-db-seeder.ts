@@ -16,7 +16,7 @@
  * Critical=false: a markdown-loader hiccup or transient DB blip degrades
  * to "Task tool sees the previously-seeded rows" rather than CrashLoopBackOff.
  *
- * Plan: docs/superpowers/plans/2026-05-13-option-b-db-sot-unification.md.
+ * the design notes.
  */
 
 import { loadBuiltInAgents } from '../services/BuiltInAgentRegistry.js';

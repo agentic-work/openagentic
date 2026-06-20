@@ -180,7 +180,7 @@ describe('Pre-run required-input gate (RAG template repro)', () => {
         type: 'trigger',
         data: {
           input_schema: { namespace: 'string', restart_threshold: 'number' },
-          defaultInputs: { namespace: 'openagentic-dev', restart_threshold: 3 },
+          defaultInputs: { namespace: 'openagentic-example', restart_threshold: 3 },
         },
       },
     ];
@@ -191,7 +191,7 @@ describe('Pre-run required-input gate (RAG template repro)', () => {
     expect(screen.queryByTestId('run-inputs-modal')).not.toBeInTheDocument();
     expect(execute).toHaveBeenCalledTimes(1);
     expect(execute.mock.calls[0][0]).toEqual({
-      namespace: 'openagentic-dev',
+      namespace: 'openagentic-example',
       restart_threshold: 3,
     });
   });

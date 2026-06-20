@@ -1,7 +1,7 @@
 /**
  * #51 (2026-06-01) — tool_search relevance floor.
  *
- * LIVE BUG (open-dev, gpt-oss:20b): "show me my azure subscriptions" spun
+ * LIVE BUG (openagentic, gpt-oss:20b): "show me my azure subscriptions" spun
  * forever because tool_search returned the top-N of the WHOLE catalog by
  * cosine with NO relevance threshold. A query with no real match ("azure"
  * against a catalog of only aws/web tools) still returned 14 irrelevant

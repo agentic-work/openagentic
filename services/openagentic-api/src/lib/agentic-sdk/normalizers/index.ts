@@ -10,7 +10,7 @@
  * (openagentic-api, workflows, and other consumers) see ONLY
  * canonical OpenAgentic events. Provider differences become invisible.
  *
- * Spec: docs/superpowers/specs/2026-05-01-canonical-stream-normalizer.md
+ * the design notes
  *
  * Architecture: each normalizer is a pure state machine — feed native
  * provider chunks one at a time via `consume()`, collect emitted canonical

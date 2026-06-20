@@ -22,7 +22,7 @@
  * production wiring uses `LargeResultStorageService.storeResult` (Redis
  * with 48h TTL); the contract is identical.
  *
- * Plan: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.2
+ * the design notes
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { makeDispatch, type V3DispatchDeps } from '../../routes/chat/pipeline/chat/dispatchTool.js';

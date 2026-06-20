@@ -8,7 +8,7 @@
  * Today the api normalizes IDs inconsistently per-provider — audit L4-4
  * + L5-6. This single SoT collapses those normalizations.
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *        §"Phase 0.2 — SDK shared canonical invariants"
  */
 import { describe, it, expect } from 'vitest';

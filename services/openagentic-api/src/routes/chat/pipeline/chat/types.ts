@@ -130,7 +130,7 @@ export interface ToolDispatchResult {
    * (NDJSON tool_result frame). When absent, chatLoop falls back to
    * the legacy `output` / `error` rendering for backward compat.
    *
-   * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6
+   * the design notes
    */
   envelope?: import('../../../../types/ToolResult.js').ToolResult;
 }
@@ -147,7 +147,7 @@ export interface RunCtx {
   userId?: string;
   user?: any; // OBO surface — propagates to sub-agents per Plan §Sub-Agent Recursion
   /**
-   * Typed accessor for the user's Azure AD ACCESS token (chatmode-rip
+   * Typed accessor for the user's Azure AD ACCESS token (the chat-pipeline refactor
    * Phase C.6). Set once per turn by `runChat.ts` via `extractUserJwt`.
    * The OBO-aware cloud-MCP dispatch path reads `ctx.userJwt` instead of
    * sniffing `ctx.user` so the contract stays typed and an idToken never
@@ -224,7 +224,7 @@ export interface HookRunnerLike {
  * `compactContext` is best-effort — failures must never abort a turn;
  * callers swallow the throw and log a warn.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §4.4
+ * the design notes
  */
 export interface ContextMgmtLike {
   getContextUsage: (
@@ -351,7 +351,7 @@ export interface ChatLoopDeps {
    * mid-loop check is skipped entirely. Production deps factory
    * (runChat) must inject the singleton.
    *
-   * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §4.4
+   * the design notes
    */
   contextMgmt?: ContextMgmtLike;
   /**
@@ -369,7 +369,7 @@ export interface ChatLoopDeps {
    * Optional: when omitted (existing unit tests + back-compat), no
    * mid-loop trigger fires.
    *
-   * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §11.3
+   * the design notes
    */
   onMidLoopHandoffTrigger?: (
     signal: 'consecutive_clarifications' | 'max_tokens',
@@ -499,7 +499,7 @@ export interface RunChatInput {
   /**
    * #51 (2026-06-01) — live connected MCP servers this turn (the set that
    * returned tools from the proxy, e.g. ['openagentic_web','aws_knowledge']
-   * on open-dev). Threaded into the system prompt's <connected-capabilities>
+   * on openagentic). Threaded into the system prompt's <connected-capabilities>
    * section so the model knows what is actually available. Optional — when
    * omitted the section is empty (no behavior change for existing callers).
    */
@@ -652,7 +652,7 @@ export interface RunChatDeps {
    * prom-client default register). Test paths leave undefined and the chat
    * loop runs without spans.
    *
-   * Spec: docs/superpowers/plans/2026-05-12-chatmode-industry-bestpractices-followup.md §F2
+   * the design notes
    */
   genAITracer?: import('../../../../services/observability/GenAITracer.js').GenAITracer;
   /**

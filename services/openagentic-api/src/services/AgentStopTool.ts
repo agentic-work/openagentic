@@ -1,6 +1,6 @@
 /**
- * AgentStopTool — meta-tool definition for the chatmode-rip 10-primitive
- * T1 catalog (chatmode-rip plan §Phase C, task C.4).
+ * AgentStopTool — meta-tool definition for the chat-pipeline refactor 10-primitive
+ * T1 catalog (the chat-pipeline refactor plan §Phase C, task C.4).
  *
  * The model invokes `agent_stop` to terminate a running sub-agent before
  * it completes naturally. Destructive: the sub-agent's accumulated

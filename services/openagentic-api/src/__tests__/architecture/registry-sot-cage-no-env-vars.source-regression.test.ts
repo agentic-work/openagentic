@@ -1,8 +1,8 @@
 /**
  * Architecture cage — no process.env.*_MODEL reads outside the allow-list.
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F0.1)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * The Registry SoT v1 contract: model resolution at runtime reads ONLY from
  * admin.model_role_assignments (via resolveModel()). Env-var reads are
@@ -97,7 +97,7 @@ describe('Registry SoT v1 cage — no process.env.*_MODEL reads outside Registry
       ? ''
       : `\n${violations.length} forbidden env-var model read(s):\n` +
         violations.map(v => `  ${v.file}:${v.line} reads process.env.${v.envVar}`).join('\n') +
-        `\n\nFix: route through resolveModel({role: '...'}) per spec docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md\n` +
+        `\n\nFix: route through resolveModel({role: '...'}) the design notes\n` +
         `If this file is genuinely bootstrap-only, add it to ALLOW_LIST in this test file with justification.`;
 
     expect(violations, summary).toEqual([]);

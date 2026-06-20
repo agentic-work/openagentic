@@ -1,6 +1,6 @@
 /**
  * AgentProgressContext — TDD spec for Phase A of the subagent architecture
- * cleanup (docs/research/2026-04-23-subagent-architecture-survey.md §4).
+ * cleanup (the design notes §4).
  *
  * Mirrors Inngest AgentKit's `StreamingContext`
  * (packages/agent-kit/src/streaming.ts:359-412): a single injected

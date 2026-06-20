@@ -5,8 +5,8 @@
  * sections (session-facts, memories, mcp-instructions). No DB-backed
  * composer, no priority sort, no intent filter, no audience filter.
  *
- * Spec: docs/superpowers/specs/2026-05-10-chatmode-three-layer-architecture.md §Layer-1
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §Task-B.4
+ * the design notes-1
+ * the design notes-B.4
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getSystemPromptForRole } from '../getSystemPromptForRole.js';

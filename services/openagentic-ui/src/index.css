@@ -28,7 +28,7 @@
    gives us real Inter + JetBrains Mono for the main UI too. Without this
    the "Inter" / "IBM Plex Sans" names in our --*-font stacks silently
    fall through to system-ui on every client that lacks the font.
-   See docs/superpowers/specs/2026-04-14-codemode-ux-comparison.md.
+ the design notes.
    ────────────────────────────────────────────────────────────────────── */
 @font-face {
   font-family: 'Inter';
@@ -4055,7 +4055,7 @@ pre.shiki-fallback {
    tokyo-night, dracula, terminal) keeps its palette. A theme that
    genuinely wants mono prose can set
      --cm-prose-font: var(--cm-mono-font);
-   on its root element. See docs/superpowers/specs/2026-04-14-codemode-ux-comparison.md. */
+   on its root element. the design notes. */
 .cm-markdown {
   /* Inter is self-hosted (see @font-face above) — putting it FIRST means
      the real editorial font actually lands instead of falling through to

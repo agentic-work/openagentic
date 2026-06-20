@@ -1,7 +1,7 @@
 /**
  * F1.6 — RED test for `resolveModel({role})` role-based default path
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F1.6)
+ * the design notes
  *
  * When the caller has no explicit/flow/agent/scoring hint, resolveModel
  * picks the highest-priority enabled Registry row for the requested role.

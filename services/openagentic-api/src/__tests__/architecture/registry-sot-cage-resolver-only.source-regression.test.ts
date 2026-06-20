@@ -1,8 +1,8 @@
 /**
  * Architecture cage — only resolveModel.ts may call legacy lookup functions.
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F1.8)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * Once F1's `resolveModel()` accessor lands, every consumer in the platform
  * MUST go through it. The legacy lookup helpers (`getDefaultChatModel`,
@@ -113,7 +113,7 @@ describe('Registry SoT v1 cage — only resolveModel.ts (and seeder) may call le
       : `\n${violations.length} forbidden legacy lookup call(s) — these must go through resolveModel():\n` +
         violations.map(v => `  ${v.file}:${v.line} uses ${v.callee}`).join('\n') +
         `\n\nFix: replace with resolveModel({role: 'chat'|'code'|'embedding'|...}) per ` +
-        `docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md.\n` +
+        `the design notes.\n` +
         `If this file is a genuine bootstrap shim, add to ALLOW_LIST in this test file with justification.`;
 
     expect(violations, summary).toEqual([]);

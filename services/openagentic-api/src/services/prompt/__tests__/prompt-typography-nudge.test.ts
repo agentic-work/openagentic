@@ -1,7 +1,7 @@
 /**
  * G4 — Slice C revision: mock-fidelity prose nudge.
  *
- * Mocks audit (peraton/2026-05-16-chatmode-mocks-fidelity-audit.md)
+ * Mocks audit (the design notes)
  * found Slice C v1 (UPPERCASE banner + `## h2` anchors + 14 bolds) was
  * pushing the model AWAY from the customer-language at
  * `mocks/UX/AI/Chatmode/end-state-*.html`. The mocks use ZERO

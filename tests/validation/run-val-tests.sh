@@ -112,11 +112,11 @@ check_k8s_logs() {
     local logfile="$RESULTS_DIR/${test_id}-k8s-errors.log"
 
     # Check API logs
-    kubectl logs -n agentic-dev -l app.kubernetes.io/component=api --since="$since" 2>/dev/null | \
+    kubectl logs -n openagentic -l app.kubernetes.io/component=api --since="$since" 2>/dev/null | \
         grep -i "error\|exception\|fatal\|panic" | tail -20 > "$logfile" 2>/dev/null || true
 
     # Check MCP proxy logs
-    kubectl logs -n agentic-dev -l app.kubernetes.io/component=mcp-proxy --since="$since" 2>/dev/null | \
+    kubectl logs -n openagentic -l app.kubernetes.io/component=mcp-proxy --since="$since" 2>/dev/null | \
         grep -i "error\|exception\|fatal\|traceback" | tail -20 >> "$logfile" 2>/dev/null || true
 
     local error_count
@@ -172,8 +172,8 @@ echo "  Turn 2: Follow-up on health findings..."
 if echo "$T1_CONTENT" | grep -qi "fail\|error\|down\|unhealthy\|warning"; then
     FOLLOWUP_01="I see some issues in the health audit. Please investigate further:
 1. Use admin_system_postgres_raw_query to run: SELECT tablename, n_dead_tup, last_vacuum FROM pg_stat_user_tables WHERE n_dead_tup > 1000 ORDER BY n_dead_tup DESC LIMIT 5
-2. Use loki_search_errors for namespace 'agentic-dev' in the last 30 minutes
-3. Use k8s_list_pods in agentic-dev and show me any pods that have restarted more than once
+2. Use loki_search_errors for namespace 'openagentic' in the last 30 minutes
+3. Use k8s_list_pods in openagentic and show me any pods that have restarted more than once
 What's causing the issues you found?"
 else
     FOLLOWUP_01="Good - the systems look healthy. Now dig deeper:
@@ -220,13 +220,13 @@ echo "  Session: $SESSION_02"
 
 # Turn 1: Create deployment
 echo "  Turn 1: Create test pod..."
-send_message "$SESSION_02" "Create a test pod in the agentic-dev namespace using k8s_apply_yaml with this YAML:
+send_message "$SESSION_02" "Create a test pod in the openagentic namespace using k8s_apply_yaml with this YAML:
 ---
 apiVersion: v1
 kind: Pod
 metadata:
   name: val-test-nginx
-  namespace: agentic-dev
+  namespace: openagentic
   labels:
     app: val-test
     test: val-02
@@ -241,7 +241,7 @@ spec:
         memory: 64Mi
         cpu: 100m
 
-Then use k8s_list_pods with namespace agentic-dev and label selector 'test=val-02' to verify it was created." \
+Then use k8s_list_pods with namespace openagentic and label selector 'test=val-02' to verify it was created." \
     "$RESULTS_DIR/VAL-02-T1.sse"
 
 T1_TOOLS=$(count_tool_calls "$RESULTS_DIR/VAL-02-T1.sse")
@@ -258,7 +258,7 @@ if echo "$T1_CONTENT" | grep -qi "created\|running\|val-test-nginx"; then
 Show me the pod's IP, node, and annotations."
 else
     FOLLOWUP="The pod creation may have failed. Please:
-1. Use k8s_get_events in namespace agentic-dev to see what happened
+1. Use k8s_get_events in namespace openagentic to see what happened
 2. Try creating it again or check if it already exists with k8s_list_pods
 3. Report what went wrong and the actual error."
 fi
@@ -270,7 +270,7 @@ echo "    Tools used ($T2_TOOLS)"
 # Turn 3: Cleanup and verify
 echo "  Turn 3: Cleanup test pod..."
 send_message "$SESSION_02" "Now clean up:
-1. Use k8s_delete_pod to delete the val-test-nginx pod from agentic-dev namespace
+1. Use k8s_delete_pod to delete the val-test-nginx pod from openagentic namespace
 2. Use k8s_list_pods with label selector 'test=val-02' to confirm it's gone
 Report the final status - was the full lifecycle successful?" \
     "$RESULTS_DIR/VAL-02-T3.sse"
@@ -303,8 +303,8 @@ SESSION_03=$(create_session "VAL-03: Research + Knowledge Synthesis")
 echo "  Session: $SESSION_03"
 
 # Turn 1: Research
-echo "  Turn 1: Research FedRAMP for AI..."
-send_message "$SESSION_03" "Search for 'FedRAMP AI ML authorization requirements 2025 2026' using web_search. Also search for 'NIST AI Risk Management Framework'. Fetch the top 2 most relevant URLs using web_fetch. Store a summary of key findings using web_store_knowledge. Report what you found." \
+echo "  Turn 1: Research NIST 800-53 for AI..."
+send_message "$SESSION_03" "Search for 'NIST 800-53 AI ML control requirements 2025 2026' using web_search. Also search for 'NIST AI Risk Management Framework'. Fetch the top 2 most relevant URLs using web_fetch. Store a summary of key findings using web_store_knowledge. Report what you found." \
     "$RESULTS_DIR/VAL-03-T1.sse"
 
 T1_TOOLS=$(count_tool_calls "$RESULTS_DIR/VAL-03-T1.sse")
@@ -313,11 +313,11 @@ echo "    Tools used ($T1_TOOLS)"
 
 # Turn 2: Follow-up - synthesize and compare
 echo "  Turn 2: Synthesize and create gap analysis..."
-send_message "$SESSION_03" "Based on the FedRAMP research you just did, now:
+send_message "$SESSION_03" "Based on the NIST 800-53 research you just did, now:
 1. Use admin_system_postgres_raw_query to check our platform data: SELECT COUNT(*) as total_users FROM \"User\"; and SELECT COUNT(*) as total_sessions FROM \"ChatSession\";
-2. Create a gap analysis: compare FedRAMP AI requirements against what you know about this OpenAgentic platform
+2. Create a gap analysis: compare NIST 800-53 AI requirements against what you know about this OpenAgentic platform
 3. List the top 5 compliance gaps with severity ratings (Critical/High/Medium/Low)
-4. What specific changes would we need to make to achieve FedRAMP Moderate authorization?" \
+4. What specific changes would we need to make to achieve NIST 800-53 control coverage?" \
     "$RESULTS_DIR/VAL-03-T2.sse"
 
 T2_TOOLS=$(count_tool_calls "$RESULTS_DIR/VAL-03-T2.sse")
@@ -330,7 +330,7 @@ echo "$T2_CONTENT" >> "$RESULTS_DIR/VAL-03.txt"
 
 check_k8s_logs "VAL-03" "10m"
 
-if [ "$TOTAL_TOOLS" -ge 5 ] && echo "$T2_CONTENT" | grep -qi "gap\|compliance\|FedRAMP\|risk\|critical\|recommendation"; then
+if [ "$TOTAL_TOOLS" -ge 5 ] && echo "$T2_CONTENT" | grep -qi "gap\|compliance\|NIST\|risk\|critical\|recommendation"; then
     report "VAL-03" "PASS" "2-turn research + gap analysis with $TOTAL_TOOLS tool calls"
 elif [ "$TOTAL_TOOLS" -ge 3 ]; then
     report "VAL-03" "PARTIAL" "$TOTAL_TOOLS tool calls (expected 6+)"
@@ -349,8 +349,8 @@ echo "  Session: $SESSION_04"
 echo "  Turn 1: Create incident + initial diagnostics..."
 send_message "$SESSION_04" "Create a P2 incident using incident_create titled 'VAL-04 Test: API Latency Spike' with description 'Automated test - elevated p99 latency detected'. Then immediately start diagnostics:
 1. Use prometheus_query with query 'up' to check service availability
-2. Use k8s_list_pods in agentic-dev to check pod health
-3. Use loki_search_errors for namespace 'agentic-dev' in the last 15 minutes
+2. Use k8s_list_pods in openagentic to check pod health
+3. Use loki_search_errors for namespace 'openagentic' in the last 15 minutes
 Report the incident ID and initial findings." \
     "$RESULTS_DIR/VAL-04-T1.sse"
 
@@ -685,9 +685,9 @@ echo "  Turn 2: Loki log analysis..."
 send_message "$SESSION_10" "Now analyze logs with Loki:
 1. Use loki_labels to show all log labels
 2. Use loki_label_values for label 'container'
-3. Use loki_search_errors for namespace 'agentic-dev' last 2 hours
-4. Use loki_count_logs for '{namespace=\"agentic-dev\"}' to show log volume
-5. Use loki_log_rate for '{namespace=\"agentic-dev\"}' for log rate trends
+3. Use loki_search_errors for namespace 'openagentic' last 2 hours
+4. Use loki_count_logs for '{namespace=\"openagentic\"}' to show log volume
+5. Use loki_log_rate for '{namespace=\"openagentic\"}' for log rate trends
 How many errors did you find? What's the log volume? Any concerning patterns?" \
     "$RESULTS_DIR/VAL-10-T2.sse"
 
@@ -699,7 +699,7 @@ echo "  Turn 3: K8s state + synthesis..."
 send_message "$SESSION_10" "Final checks:
 1. Use k8s_cluster_health for cluster status
 2. Use k8s_list_nodes for node health
-3. Use k8s_list_pods in agentic-dev for all pod statuses
+3. Use k8s_list_pods in openagentic for all pod statuses
 4. Use admin_full_system_test for end-to-end app test
 
 Now create a 'Platform Health Dashboard' with:
@@ -784,7 +784,7 @@ Each test follows this pattern:
 ## Test Descriptions
 - **VAL-01**: Infrastructure health (3 turns: audit → deep-dive → scoring)
 - **VAL-02**: K8s lifecycle (3 turns: create → inspect/modify → cleanup/verify)
-- **VAL-03**: FedRAMP research (2 turns: search → gap analysis)
+- **VAL-03**: NIST 800-53 research (2 turns: search → gap analysis)
 - **VAL-04**: Incident response (3 turns: create → investigate → resolve)
 - **VAL-05**: Cloud cost analysis (2 turns: gather → analyze/optimize)
 - **VAL-06**: Flowise workflow (3 turns: discover/create → validate → cleanup)

@@ -22,7 +22,7 @@
  * `end_turn` terminator, chatLoop sees `stopReason === 'end_turn'`, and
  * the dispatch branch at chatLoop.ts:316+ is never reached.
  *
- * Live smoking gun — pod `openagentic-api-5bc9fcfb44-zpsdj`, image
+ * Live smoking gun — pod `openagentic-api-<pod>`, image
  * `0.7.1-fad13a56` (2026-05-11), Claude Sonnet 4.6 cross-region on us-east-1:
  *
  *   [BEDROCK-RAW] content_block_start { type:"tool_use", id:"toolu_bdrk_01Y5N5...",
@@ -81,7 +81,7 @@ function makeCtx() {
 /**
  * Real-capture replay: chunks AWSBedrockProvider.convertStreamChunk yields
  * for a parallel-tool_use turn from Claude Sonnet 4.6. Captured 2026-05-11
- * from pod `openagentic-api-5bc9fcfb44-zpsdj`.
+ * from pod `openagentic-api-<pod>`.
  *
  *   content_block_start  (canonical, retains type field)
  *   content_block_delta  (canonical, retains type field)

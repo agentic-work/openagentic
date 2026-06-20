@@ -1,7 +1,7 @@
 /**
  * AgentStopTool — RED test for the meta-tool definition shape.
  *
- * chatmode-rip plan §Phase C task C.4: the model invokes `agent_stop`
+ * the chat-pipeline refactor plan §Phase C task C.4: the model invokes `agent_stop`
  * to tear down a running sub-agent session before it completes naturally.
  * Use cases: user changes mind, scope shrinks, agent looping or stuck,
  * resource cleanup at end of chat.
@@ -13,7 +13,7 @@
 import { describe, it, expect } from 'vitest';
 import { AGENT_STOP_TOOL, isAgentStopTool } from '../AgentStopTool.js';
 
-describe('AGENT_STOP_TOOL definition (chatmode-rip Phase C.4)', () => {
+describe('AGENT_STOP_TOOL definition (the chat-pipeline refactor Phase C.4)', () => {
   it('declares function-shape with name="agent_stop"', () => {
     expect(AGENT_STOP_TOOL.type).toBe('function');
     expect(AGENT_STOP_TOOL.function.name).toBe('agent_stop');

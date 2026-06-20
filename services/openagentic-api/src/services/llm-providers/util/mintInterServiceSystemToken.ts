@@ -20,7 +20,7 @@
  * reject the call. This matches the existing inline behavior so the
  * dedupe at the 3 prior call sites stays observably identical.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3 S1
+ * the design notes
  */
 import { createHmac } from 'node:crypto';
 

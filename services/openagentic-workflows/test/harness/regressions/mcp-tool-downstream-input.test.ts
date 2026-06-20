@@ -35,12 +35,12 @@ const MCP_ENVELOPE_PODS = {
       content: [
         {
           type: 'text',
-          text: 'Pods in namespace agentic-dev (2 total): foo (Running), bar (Pending).',
+          text: 'Pods in namespace openagentic (2 total): foo (Running), bar (Pending).',
         },
       ],
       structuredContent: {
         success: true,
-        namespace: 'agentic-dev',
+        namespace: 'openagentic',
         pods: [
           { name: 'foo', status: 'Running', restarts: 0 },
           { name: 'bar', status: 'Pending', restarts: 5 },
@@ -71,7 +71,7 @@ describe('mcp_tool downstream input — MCP envelope structuredContent lift', ()
             data: {
               toolName: 'k8s_list_pods',
               toolServer: 'openagentic_kubernetes',
-              arguments: { namespace: 'agentic-dev' },
+              arguments: { namespace: 'openagentic' },
             },
           },
           {
@@ -134,7 +134,7 @@ describe('mcp_tool downstream input — MCP envelope structuredContent lift', ()
             data: {
               toolName: 'k8s_list_pods',
               toolServer: 'openagentic_kubernetes',
-              arguments: { namespace: 'agentic-dev' },
+              arguments: { namespace: 'openagentic' },
             },
           },
           {
@@ -187,7 +187,7 @@ describe('mcp_tool downstream input — MCP envelope structuredContent lift', ()
             data: {
               toolName: 'k8s_list_pods',
               toolServer: 'openagentic_kubernetes',
-              arguments: { namespace: 'agentic-dev' },
+              arguments: { namespace: 'openagentic' },
             },
           },
           {
@@ -234,7 +234,7 @@ describe('mcp_tool downstream input — MCP envelope structuredContent lift', ()
               structuredContent: {
                 result: {
                   success: true,
-                  namespace: 'agentic-dev',
+                  namespace: 'openagentic',
                   pods: [
                     { name: 'foo', status: 'Running' },
                     { name: 'bar', status: 'Pending' },
@@ -259,7 +259,7 @@ describe('mcp_tool downstream input — MCP envelope structuredContent lift', ()
             data: {
               toolName: 'k8s_list_pods',
               toolServer: 'openagentic_kubernetes',
-              arguments: { namespace: 'agentic-dev' },
+              arguments: { namespace: 'openagentic' },
             },
           },
           {
@@ -288,7 +288,7 @@ describe('mcp_tool downstream input — MCP envelope structuredContent lift', ()
     expect(Array.isArray(mcpOut.pods)).toBe(true);
     expect(mcpOut.pods?.length).toBe(2);
     expect(mcpOut.success).toBe(true);
-    expect(mcpOut.namespace).toBe('agentic-dev');
+    expect(mcpOut.namespace).toBe('openagentic');
     // structuredContent kept as sibling for back-compat (still with the
     // original FastMCP wrap untouched).
     expect(mcpOut.structuredContent).toBeDefined();
@@ -310,7 +310,7 @@ describe('mcp_tool downstream input — MCP envelope structuredContent lift', ()
           result: {
             result: {
               success: true,
-              namespace: 'agentic-dev',
+              namespace: 'openagentic',
               pods: [{ name: 'foo', status: 'Running' }],
               count: 1,
             },
@@ -329,7 +329,7 @@ describe('mcp_tool downstream input — MCP envelope structuredContent lift', ()
             data: {
               toolName: 'k8s_list_pods',
               toolServer: 'openagentic_kubernetes',
-              arguments: { namespace: 'agentic-dev' },
+              arguments: { namespace: 'openagentic' },
             },
           },
           {

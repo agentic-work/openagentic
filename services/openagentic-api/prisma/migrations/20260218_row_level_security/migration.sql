@@ -1,6 +1,6 @@
 
 
--- FedRAMP AC-4: Row-Level Security for multi-tenant data isolation
+-- NIST 800-53 AC-4: Row-Level Security for multi-tenant data isolation
 -- Ensures users can only access their own data even if application-level checks are bypassed.
 -- Uses PostgreSQL session variable app.current_user_id set per-request by the API middleware.
 

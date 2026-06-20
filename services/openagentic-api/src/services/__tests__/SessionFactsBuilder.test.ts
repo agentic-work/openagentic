@@ -1,7 +1,7 @@
 /**
  * Phase 7 — SessionFactsBuilder (TDD RED first).
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §8
+ * the design notes
  *
  * Builds a `<session-facts>` block injected ABOVE the user message on
  * turn 1 of every chat session. Mirrors Claude Code's `<env>` / `<session>`

@@ -102,7 +102,7 @@ That is the canonical shape.`;
   });
 
   it('passes through plain prose without modification (no false positives)', () => {
-    const text = `Pods in agentic-dev: 26 running, 1 pending. Latest deploy SHA 0.7.1-abcdef. ` +
+    const text = `Pods in openagentic: 26 running, 1 pending. Latest deploy SHA 0.7.1-abcdef. ` +
       `Cost MoM delta: +12.3%. The < and > characters here are punctuation, not tags.`;
     const result = stripFreestyleHtml(text);
     expect(result.stripped).toBe(text);

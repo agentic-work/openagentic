@@ -56,7 +56,7 @@ def test_every_probe_is_well_formed():
 
 def test_credential_free_mcps_flagged():
     free = {p.mcp for p in MCP_PROBES if not p.needs_creds}
-    # The open-dev default set + safe built-ins.
+    # The openagentic default set + safe built-ins.
     assert {"web", "knowledge", "admin"}.issubset(free)
     # Cloud + monitoring + github require creds.
     for needs in ("aws", "azure", "gcp", "kubernetes", "github", "prometheus", "loki", "alertmanager"):

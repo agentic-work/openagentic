@@ -2,7 +2,7 @@
  * Sev-1 / Audit L3-5 (was F1-1) — raw dispatcher object leaks as model-facing
  * output when the inner dispatcher returns success without an `output` field.
  *
- * Plan: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       §Phase 2.3.4 — "L3-5 dispatchTool.ts:119 raw-leak fix".
  */
 import { describe, it, expect, vi } from 'vitest';

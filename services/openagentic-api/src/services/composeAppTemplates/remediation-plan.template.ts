@@ -51,7 +51,7 @@ const exampleParams: Params = {
     {
       phase: 'Phase 3 — verify',
       actions: [
-        { action: 'Run FedRAMP scanner end-to-end', owner: 'sec-eng', eta: '2026-06-02', status: 'todo' },
+        { action: 'Run NIST 800-53 scanner end-to-end', owner: 'sec-eng', eta: '2026-06-02', status: 'todo' },
         { action: 'Submit assessor package', owner: 'compliance', eta: '2026-06-15', status: 'todo' },
       ],
     },

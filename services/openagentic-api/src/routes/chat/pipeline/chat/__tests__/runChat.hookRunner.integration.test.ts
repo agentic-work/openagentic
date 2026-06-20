@@ -23,7 +23,7 @@
  * stub (not the singleton). The stub records `run('before_tool_call', ...)`
  * + `run('after_tool_call', ...)` invocations.
  *
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §D.1
+ * the design notes
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import pino from 'pino';

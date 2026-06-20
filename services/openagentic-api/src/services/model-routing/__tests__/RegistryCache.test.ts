@@ -1,7 +1,7 @@
 /**
  * F1.7 — RED unit tests for RegistryCache.
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (F1.7)
+ * the design notes (F1.7)
  *
  * RegistryCache is an LRU cache (TTL=30s) wrapped around resolveModel().
  * Postgres LISTEN/NOTIFY on the `model_registry_changed` channel triggers

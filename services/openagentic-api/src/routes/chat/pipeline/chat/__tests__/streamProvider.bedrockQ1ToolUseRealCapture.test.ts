@@ -5,7 +5,7 @@
  * frames and the conversation ended at the first model turn.
  *
  * Fixture is the verbatim 153-chunk NDJSON capture from pod
- * openagentic-api-cc8fc5cc8-j6htb (image 0.7.1-c7d2e9ef), msg id
+ * openagentic-api-<pod> (image 0.7.1-c7d2e9ef), msg id
  * `msg_bdrk_01RdfUa4u1Y538dhCLLzaUCd` — see
  * `reports/verify-cadence/Q1-redrive-2/0.7.1-c7d2e9ef/full-api-log.log`
  * `[BEDROCK-RAW]` lines.

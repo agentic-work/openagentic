@@ -4,8 +4,8 @@
  * V3 chatLoop must wire all required HookRunner points so DLP/HITL/audit/
  * observability/cost cross-cuts attach via existing hook implementations.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §4.3 + §7
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md Phase 3
+ * the design notes
+ * the design notes
  *
  * Failure mode if a hook point goes missing: the DLP/HITL/audit/cost cross-cuts
  * silently stop running for chatmode V3 traffic. This test pins the wire-up

@@ -328,7 +328,7 @@ describe('seedLLMProviders (bootstrap provider contract, task #294)', () => {
     it('does NOT create a provider for VERTEX_AI_ENABLED when bootstrap unset', async () => {
       delete process.env.BOOTSTRAP_PROVIDER_NAME;
       process.env.VERTEX_AI_ENABLED = 'true';
-      process.env.VERTEX_AI_PROJECT_ID = 'openagentic-dev';
+      process.env.VERTEX_AI_PROJECT_ID = 'openagentic-example';
 
       await seedLLMProviders();
 

@@ -530,7 +530,7 @@ export class UserStorageService {
 
   /**
    * AC-D4 — issue a presigned GET URL for a user's artifact. Used by the
-   * synth-executor → api → artifact_emit pipeline so the UI's
+   * sandbox-executor → api → artifact_emit pipeline so the UI's
    * <DownloadTile> click resolves directly against MinIO without
    * proxying bytes through the api pod.
    *

@@ -2,7 +2,7 @@
  * cloud-run-grid — grid of GCP Cloud Run service cards with status,
  * sparklines, latency, error rate.
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md
+ * the design notes
  *       (mock 04: gcp-cloudrun-interrogation)
  */
 

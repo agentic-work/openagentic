@@ -1,5 +1,5 @@
 /**
- * userJwt wire integration test (chatmode-rip Phase C.6).
+ * userJwt wire integration test (the chat-pipeline refactor Phase C.6).
  *
  * Verifies that `runChat` plumbs the user's Azure AD ACCESS token from
  * the loose `ctx.user` surface onto the typed `ctx.userJwt` field via
@@ -12,8 +12,8 @@
  * ctx with `ctx.user.accessToken`, runChat runs, `ctx.userJwt` is set
  * before chatLoop dispatches any tool.
  *
- * Spec: docs/superpowers/specs/2026-05-10-chatmode-three-layer-architecture.md
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §Phase C.6
+ * the design notes
+ * the design notes C.6
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { runChat } from '../runChat.js';
@@ -80,7 +80,7 @@ function makeInput() {
   };
 }
 
-describe('userJwt wire (chatmode-rip Phase C.6 integration)', () => {
+describe('userJwt wire (the chat-pipeline refactor Phase C.6 integration)', () => {
   it('case 1: surfaces ctx.user.accessToken onto ctx.userJwt before chatLoop runs', async () => {
     // stream.handler.ts:1313-1322 constructs ctx.user with accessToken pulled
     // from the user's stored Azure tokens (deps.getAzureTokenInfo). After

@@ -1,7 +1,7 @@
 /**
  * Wire NDJSON timeline viewer — pure replay (Phase 0.1).
  *
- * Plan: docs/superpowers/plans/sprightly-percolating-brook.md §0.1
+ * the design notes
  * Spec source: services/openagentic-api/src/infra/wireCapture.ts emits one
  * pino log line per NDJSON frame when WIRE_CAPTURE_ENABLED=true:
  *

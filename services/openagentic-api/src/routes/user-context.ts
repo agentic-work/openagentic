@@ -2,7 +2,7 @@
  * User Context API Routes
  *
  * Provides cross-mode memory/context access for the unified memory layer.
- * All endpoints enforce per-user data isolation (FedRAMP AC-3).
+ * All endpoints enforce per-user data isolation (NIST 800-53 AC-3).
  */
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { authMiddleware } from '../middleware/unifiedAuth.js';

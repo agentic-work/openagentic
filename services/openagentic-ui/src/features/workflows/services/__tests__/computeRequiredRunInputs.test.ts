@@ -71,12 +71,12 @@ describe('computeRequiredRunInputs', () => {
         type: 'trigger',
         data: {
           input_schema: { namespace: 'string', restart_threshold: 'number' },
-          defaultInputs: { namespace: 'openagentic-dev', restart_threshold: 3 },
+          defaultInputs: { namespace: 'openagentic-example', restart_threshold: 3 },
         },
       },
     ];
     const req = computeRequiredRunInputs(nodes);
-    expect(req.defaults).toEqual({ namespace: 'openagentic-dev', restart_threshold: 3 });
+    expect(req.defaults).toEqual({ namespace: 'openagentic-example', restart_threshold: 3 });
     // All required fields have defaults → no need to ask.
     expect(hasUnprovidedRequiredInputs(req)).toBe(false);
   });

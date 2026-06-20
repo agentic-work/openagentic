@@ -9,7 +9,7 @@
  *     (memory_search now discoverable via tool_search,
  *     not part of the always-on T1 catalog)
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §10
+ * the design notes
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';

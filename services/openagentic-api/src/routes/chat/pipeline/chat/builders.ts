@@ -21,8 +21,8 @@
  * `__tests__/architecture/no-object-literal-emits.source-regression.test.ts`
  * keeps the door closed against new object-literal regressions.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §12.2
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
+ * the design notes
  *       Phase 2, Tasks 2.4-2.7.
  */
 
@@ -108,7 +108,7 @@ export interface ToolResultPayload {
    * UI's `useChatStream` tool_result reducer arm reads `_meta.outputTemplate`
    * and looks up the React component via FrameRendererRegistry.
    *
-   * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.2
+   * the design notes
    */
   _meta?: ToolResultMeta;
 }

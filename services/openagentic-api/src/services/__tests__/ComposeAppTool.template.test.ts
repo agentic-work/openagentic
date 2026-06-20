@@ -1,7 +1,7 @@
 /**
  * ComposeAppTool — `template` + `params` registry path.
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md
+ * the design notes
  *
  * The tool gains an optional `template?: string` (registry slug) and
  * `params?: object`. When `template` is set:

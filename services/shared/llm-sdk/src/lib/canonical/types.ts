@@ -19,7 +19,7 @@
  * SoT. The request side extends that with tool_result + cache_control
  * which only appear on the request body, never on the model output stream.
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *        §"Phase 0.2 — SDK shared canonical invariants"
  */
 

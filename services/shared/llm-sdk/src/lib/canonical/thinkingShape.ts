@@ -10,7 +10,7 @@
  * extraction. This module is the SoT every adapter and normalizer pulls
  * from.
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *        §"Phase 0.2 — SDK shared canonical invariants"
  *
  * Audit refs:

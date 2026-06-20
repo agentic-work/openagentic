@@ -30,7 +30,7 @@ const feedbackSubmitSchema = z.object({
   tokenCount: z.number().optional(),
   // Phase 13 advisory loop: intent classification captured at turn time so
   // analyze() can group (intent, model) without joining ChatMessage metadata.
-  // The `audience` column was DROPPED in chatmode-rip Phase E.7 (role
+  // The `audience` column was DROPPED in the chat-pipeline refactor Phase E.7 (role
   // discrimination now lives on rbac_system_prompts), so the request schema
   // is intent-only.
   intent: z.string().optional(),
@@ -121,7 +121,7 @@ export const feedbackRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           provider: validatedBody.provider || null,
           response_time: validatedBody.responseTime,
           token_count: validatedBody.tokenCount || null,
-          // Phase 13 advisory loop. `audience` was dropped in chatmode-rip
+          // Phase 13 advisory loop. `audience` was dropped in the chat-pipeline refactor
           // Phase E.7 (role discrim now on rbac_system_prompts).
           intent: validatedBody.intent || null,
           metadata: {

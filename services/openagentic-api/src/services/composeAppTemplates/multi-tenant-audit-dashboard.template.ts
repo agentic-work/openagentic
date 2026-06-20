@@ -2,7 +2,7 @@
  * multi-tenant-audit-dashboard — tabbed dashboard with security score per
  * tenant, critical findings list, drill-downs.
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md
+ * the design notes
  *       (mock 02: enterprise multi-tenant audit)
  *
  * Pure DOM + a tiny no-eval tab switch. No CDN libs needed — keeps the
@@ -38,34 +38,34 @@ const ParamsSchema = z.object({
 type Params = z.infer<typeof ParamsSchema>;
 
 const exampleParams: Params = {
-  title: 'openagentic-omhs — full security audit',
+  title: 'acme-corp — full security audit',
   scannedAt: '2026-05-03T12:00:00Z',
   tenants: [
     {
-      id: 'omhs-prod',
-      name: 'omhs-prod',
+      id: 'acme-prod',
+      name: 'acme-prod',
       cloud: 'azure',
       scoreOutOf100: 72,
       findings: [
-        { id: 'f1', severity: 'critical', title: 'Storage account allows public blob access', resource: 'omhsprodlogs', remediation: 'Disable AllowBlobPublicAccess.' },
+        { id: 'f1', severity: 'critical', title: 'Storage account allows public blob access', resource: 'acmeprodlogs', remediation: 'Disable AllowBlobPublicAccess.' },
         { id: 'f2', severity: 'critical', title: 'NSG rule allows 0.0.0.0/0 → 22', resource: 'nsg-prod-default', remediation: 'Restrict source CIDR or remove rule.' },
-        { id: 'f3', severity: 'high', title: 'Key Vault soft-delete disabled', resource: 'kv-omhs-prod', remediation: 'Enable purge protection.' },
+        { id: 'f3', severity: 'high', title: 'Key Vault soft-delete disabled', resource: 'kv-acme-prod', remediation: 'Enable purge protection.' },
         { id: 'f4', severity: 'medium', title: 'Diagnostic logs not centralized', resource: 'subscription:default' },
       ],
     },
     {
-      id: 'omhs-staging',
-      name: 'omhs-staging',
+      id: 'acme-staging',
+      name: 'acme-staging',
       cloud: 'azure',
       scoreOutOf100: 84,
       findings: [
-        { id: 's1', severity: 'high', title: 'TLS 1.0 still enabled on App Service', resource: 'app-omhs-staging' },
-        { id: 's2', severity: 'medium', title: 'No private endpoint for SQL', resource: 'sqldb-omhs-staging' },
+        { id: 's1', severity: 'high', title: 'TLS 1.0 still enabled on App Service', resource: 'app-acme-staging' },
+        { id: 's2', severity: 'medium', title: 'No private endpoint for SQL', resource: 'sqldb-acme-staging' },
       ],
     },
     {
-      id: 'omhs-dev',
-      name: 'omhs-dev',
+      id: 'acme-dev',
+      name: 'acme-dev',
       cloud: 'azure',
       scoreOutOf100: 91,
       findings: [

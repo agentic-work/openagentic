@@ -18,7 +18,7 @@
  * Mock SoT: mocks/UX/AI/Chatmode/end-state-07-tri-cloud-cost-spikes.html §114-121.
  * CSS: chatmode-v2.css → .viz / .viz-head / .viz-head .{ico,name,badge,caption,timer}
  *
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
  *       Phase Z, Task Z.5
  */
 

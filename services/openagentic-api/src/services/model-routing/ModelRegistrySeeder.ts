@@ -1,8 +1,8 @@
 /**
  * ModelRegistrySeeder — discovery-list utilities for the Add-Model wizard.
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F2.4)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * F2.4 NARROWING: this file is now informational-only. It provides:
  *   - discoverFromProvider() — fetch a provider's model catalog for the UI

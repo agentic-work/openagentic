@@ -2,7 +2,7 @@
  * AgentSearchTool — synthetic meta-tool for model-invoked sub-agent discovery.
  *
  * Sister to ToolSearchTool. Spec:
- * docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  *
  * The description teaches Claude Code's parallel-spawn pattern verbatim
  * — the model emits multiple Task tool_use blocks in ONE assistant turn

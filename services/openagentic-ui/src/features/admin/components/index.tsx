@@ -53,7 +53,7 @@ export {
 } from './MCP';
 
 // Content - Prompts, templates, pipeline
-// PromptTemplateManager RIPPED 2026-05-11 (chatmode-rip Phase E final cleanup).
+// PromptTemplateManager RIPPED 2026-05-11 (the chat-pipeline refactor Phase E final cleanup).
 export {
   PipelineSettingsView,
   PromptMetrics

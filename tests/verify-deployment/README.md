@@ -31,7 +31,7 @@ empty matrix (nothing verified) is also non-zero.
 
 ## Run it
 
-Defaults target the `open-dev` release at `https://open-dev.agenticwork.io`.
+Defaults target the `openagentic` release at `https://openagentic.example.com`.
 
 ```bash
 # one-liner (admin password via env)
@@ -54,9 +54,9 @@ python3 tests/verify-deployment/verify_deployment.py \
 
 | Flag | Env | Default |
 |---|---|---|
-| `--url` | `DEPLOY_URL` | `https://open-dev.agenticwork.io` |
-| `--namespace` | `DEPLOY_NAMESPACE` | `open-dev` |
-| `--release` | `DEPLOY_RELEASE` | `open-dev` |
+| `--url` | `DEPLOY_URL` | `https://openagentic.example.com` |
+| `--namespace` | `DEPLOY_NAMESPACE` | `openagentic` |
+| `--release` | `DEPLOY_RELEASE` | `openagentic` |
 | `--context` | `DEPLOY_KUBE_CONTEXT` | current context |
 | `--admin-email` | `DEPLOY_ADMIN_EMAIL` | `admin@openagentic.local` |
 | `--admin-password` | `DEPLOY_ADMIN_PASSWORD` | *(required)* |
@@ -96,9 +96,9 @@ python3 -m pytest tests/verify-deployment/test_harness_lib.py -q
 npm run verify:deployment:test
 ```
 
-## Honest expectation (open-dev, today)
+## Honest expectation (openagentic, today)
 
-On `open-dev` only `web`, `knowledge`, and `admin` are enabled, so the other
+On `openagentic` only `web`, `knowledge`, and `admin` are enabled, so the other
 **11 MCP rows SKIP** (no creds). Until the tool auto-resolve fix deploys, the
 **MCP-in-chat and Flow rows that depend on tool execution may be RED** — that is
 **correct**. This harness is the truth-teller: it reports the real state and

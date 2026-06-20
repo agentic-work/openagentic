@@ -11,8 +11,8 @@
  * the model "drill into" the full result without re-running the source
  * tool.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §10
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
+ * the design notes
  *       Phase 4, Task 4.7-4.10.
  */
 

@@ -1,8 +1,8 @@
 /**
  * EnrichedToolSeeder — boot-time seeder for the EnrichedTool registry.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §5
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md (Phase 5)
+ * the design notes
+ * the design notes (Phase 5)
  *
  * Lands the canonical T1-tool metadata rows on first boot and updates
  * existing rows on every subsequent boot (idempotent). Admin edits via

@@ -2,7 +2,7 @@
  * Sev-0 (2026-06-01) — Ollama native tool call dropped at the
  * translateOpenAIFinishChunk short-circuit.
  *
- * LIVE FAILURE (open-dev, gpt-oss:20b): the model emits a native tool
+ * LIVE FAILURE (openagentic, gpt-oss:20b): the model emits a native tool
  * call (e.g. `web_search`). The OllamaProvider surfaces it as a SINGLE
  * OpenAI-compatible chunk that carries BOTH the `delta.tool_calls`
  * payload AND `finish_reason:'tool_calls'` in the same object

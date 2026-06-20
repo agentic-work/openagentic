@@ -1,7 +1,7 @@
 /**
  * Phase 7 — V3 chatLoop session-facts injection (TDD RED first).
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §8
+ * the design notes
  *
  * Asserts that runChat prepends a `<session-facts>` block as a synthetic
  * user-role message ABOVE the actual user message on the FIRST chat-loop

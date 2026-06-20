@@ -12,7 +12,7 @@
  * (`14-agent-md-to-db-seeder.ts`) converts hyphenated slugs to underscored
  * types on upsert. This helper is the single bridge point.
  *
- * Plan: docs/superpowers/plans/2026-05-13-option-b-db-sot-unification.md.
+ * the design notes.
  */
 
 /**

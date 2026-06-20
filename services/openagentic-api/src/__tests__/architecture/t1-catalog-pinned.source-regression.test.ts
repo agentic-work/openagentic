@@ -1,7 +1,7 @@
 /**
  * Phase C.14 arch — Pin the T1 catalog source to exactly 12 primitives.
  *
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §C.14
+ * the design notes
  *
  * Growth log:
  *   - Phase C.1 (2026-05-10): 10 primitives baseline.
@@ -10,7 +10,7 @@
  * This is a source-text regression test: it reads `toolRegistry.ts` and
  * asserts that getAllBaseTools() returns an array literal containing
  * exactly the 12 T1 tool symbols, in the canonical order spec'd by
- * `2026-05-10-chatmode-three-layer-architecture.md §Layer-2`.
+ * the design notes.
  *
  * The behavioral pin lives in
  * `routes/chat/pipeline/chat/__tests__/getAllBaseTools.t1Catalog.test.ts`.

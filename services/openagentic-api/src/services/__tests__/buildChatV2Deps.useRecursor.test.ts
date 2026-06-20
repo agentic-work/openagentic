@@ -10,7 +10,7 @@
  * This file used to exercise the `useRecursor` flag toggle (Phase E.8.e);
  * after the rip it locks the recursor-default contract.
  *
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §E.8.g+h
+ * the design notes+h
  */
 import { describe, it, expect, vi } from 'vitest';
 import { buildChatV2Deps } from '../buildChatV2Deps.js';

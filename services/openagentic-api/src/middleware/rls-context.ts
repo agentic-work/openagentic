@@ -1,5 +1,5 @@
 /**
- * Row-Level Security Context Middleware (FedRAMP AC-4)
+ * Row-Level Security Context Middleware (NIST 800-53 AC-4)
  *
  * Sets the PostgreSQL session variable `app.current_user_id` for each authenticated
  * request so that RLS policies can enforce per-user data isolation at the database level.

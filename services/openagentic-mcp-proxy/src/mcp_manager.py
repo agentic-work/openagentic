@@ -194,7 +194,7 @@ class MCPServer:
             self.status = MCPServerStatus.STARTING
             logger.info(f"Starting MCP server: {self.config.name}")
 
-            # FedRAMP SC-4: Filtered environment - only pass minimal base + server-specific vars
+            # NIST 800-53 SC-4: Filtered environment - only pass minimal base + server-specific vars
             # Prevents leaking secrets (DB passwords, API keys, etc.) to child MCP processes
             _ALLOWED_BASE_ENV = (
                 'PATH', 'HOME', 'USER', 'LANG', 'LC_ALL', 'TZ',
@@ -506,7 +506,7 @@ class MCPManager:
                 "LOG_LEVEL": "info",
                 # CRITICAL: Pass K8s service discovery vars for in-cluster auth.
                 # load_incluster_config() reads these to find the API server.
-                # The FedRAMP env filter (SC-4) strips them — re-inject here.
+                # The hardened env filter (SC-4) strips them — re-inject here.
                 "KUBERNETES_SERVICE_HOST": os.getenv("KUBERNETES_SERVICE_HOST", ""),
                 "KUBERNETES_SERVICE_PORT": os.getenv("KUBERNETES_SERVICE_PORT", ""),
                 "KUBERNETES_SERVICE_PORT_HTTPS": os.getenv("KUBERNETES_SERVICE_PORT_HTTPS", ""),
@@ -965,7 +965,7 @@ class MCPManager:
             raise ValueError("Server configuration must include 'command'")
 
         # BUILTIN sentinel: the API persists an in-process "builtin" MCP
-        # (agentic-memory-mcp) and pushes its config to the proxy along with
+        # (the in-process memory feature) and pushes its config to the proxy along with
         # the real external servers. There is no 'builtin' executable to spawn —
         # attempting it produced "[Errno 2] No such file or directory: 'builtin'".
         # Treat it as a managed no-op so the proxy doesn't try to Popen it.

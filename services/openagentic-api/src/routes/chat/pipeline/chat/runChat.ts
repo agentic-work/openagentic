@@ -281,7 +281,7 @@ export function _resetEnrichedToolsCacheForTests(): void {
  *   - Surfaces proxy failures as `{ ok: false, error }` so the chat
  *     loop's Task tool returns a structured failure to the model.
  *
- * Spec §7: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md
+ * the design notes
  */
 function makeOpenAgenticProxyRunSubagent(
   ctx: RunCtx,
@@ -439,7 +439,7 @@ export async function runChat(
   //     so the percentage is the gate.
   //   - Awaited (not fire-and-forget) so chatLoop sees post-compaction state.
   //
-  // Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §4.4
+  // the design notes
   const ctxMgmt: ContextMgmtLike = (deps as any).contextMgmt ?? contextManagementService;
   if (ctx.sessionId) {
     try {
@@ -552,7 +552,7 @@ export async function runChat(
 
   // 3. System prompt — rev-2 RBAC path (the only path now).
   //
-  // Spec (`docs/superpowers/specs/2026-05-10-chatmode-three-layer-architecture.md`):
+  // Spec (see the design notes):
   // load `prompts/chat-system-{admin,member}.md`, append <session-facts>
   // + <memories> via plain functions. No DB composer, no intent
   // classifier, no audience filter, no priority sort. Total system

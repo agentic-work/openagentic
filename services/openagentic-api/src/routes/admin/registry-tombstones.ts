@@ -1,8 +1,8 @@
 /**
  * Registry Tombstone Admin Routes — F2.6 Registry SoT v1
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F2.6)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * Endpoints:
  *   GET  /api/admin/registry/tombstones        — list current tombstones
@@ -12,7 +12,7 @@
  * `RESET-TOMBSTONES-${CLUSTER_NAME}` (env) and a free-text reason ≥ 10 chars.
  * On success it emits a TOMBSTONE_RESET event to model_registry_events
  * (hash-chained to the prior event) so the destructive action is captured
- * in the FedRAMP AU-2/AU-9 audit trail.
+ * in the NIST 800-53 AU-2/AU-9 audit trail.
  *
  * Auth: adminMiddleware preHandler — registered in admin.plugin.ts exactly
  * like every other /api/admin sub-route.

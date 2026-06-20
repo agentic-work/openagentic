@@ -2,7 +2,7 @@
  * Architecture pin — RouterTuningService DEFAULT block must NOT contain
  * a hardcoded model identifier for `intentClassifierModelId`.
  *
- * Spec: docs/superpowers/specs/2026-05-05-tool-grounding-architecture.md +
+ * the design notes +
  *       follow-up Smart-Router agency layering (chat session, this commit).
  *
  * Why this gate exists:

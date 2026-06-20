@@ -15,7 +15,7 @@
  *
  * outputTemplate slug: `gate`.
  *
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
  *       Phase 11, Task 11.2.
  */
 

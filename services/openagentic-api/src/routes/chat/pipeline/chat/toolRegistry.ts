@@ -1,8 +1,8 @@
 /**
  * Chat toolRegistry — T1 catalog source-of-truth + concurrency-safe set.
  *
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §C.1
- * Spec: docs/superpowers/specs/2026-05-10-chatmode-three-layer-architecture.md §Layer-2
+ * the design notes
+ * the design notes-2
  *
  * The T1 catalog (canonical order):
  *   tool_search · agent_search · Task · agent_send · agent_list · agent_stop ·
@@ -61,7 +61,7 @@ import { MEMORY_SEARCH_TOOL_DEF } from '../../../../services/MemorySearchTool.js
 // model would apologize that "the memory-write primitive isn't loaded."
 // The dispatch arm (dispatchChatToolCall → executeMemorize →
 // AgentMemoryService.store + Milvus embed) was already wired; only this
-// catalog entry was missing. Verified live on open-dev 2026-05-31.
+// catalog entry was missing. Verified live on openagentic 2026-05-31.
 import { MEMORIZE_TOOL } from '../../../../services/MemorizeTool.js';
 // 2026-05-12 — visualization + clarification meta-tools brought BACK into
 // T1 (was discovery-only, but tool_search wasn't reliably surfacing them

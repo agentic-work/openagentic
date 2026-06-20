@@ -367,7 +367,7 @@ const getToolIcon = (toolName: string): React.ReactNode => {
  * stay on the string-flattened `getCompactSummary` to preserve their
  * existing layout assumptions.
  *
- * Closes openagentic-omhs#330 Tier 1 — the favicon URLs were already
+ * Closes openagentic#330 Tier 1 — the favicon URLs were already
  * being computed by `summarizeToolCall` and discarded by the string
  * collapse below; this helper exposes them.
  */
@@ -413,7 +413,7 @@ const getCompactSummary = (toolCall: ToolCall): string | null => {
  * as small chips with optional hint tooltips. Designed to fit on the
  * single-line success row alongside the duration timestamp.
  *
- * openagentic-omhs#330 Tier 2.
+ * openagentic#330 Tier 2.
  */
 /** Map a RichSummary.icon name to a component from `@/shared/icons`. */
 const RICH_ICON_MAP = {
@@ -547,7 +547,7 @@ const SummaryRich: React.FC<{ summary: RichSummary }> = ({ summary }) => {
                 {item.badge && (() => {
                   // Per-item status pill (✓ / ✕ / running / etc) — used by
                   // delegate_to_agents to surface sub-agent outcomes at a
-                  // glance. openagentic-omhs#330 Tier 4.
+                  // glance. openagentic#330 Tier 4.
                   const c = toneColor(item.badgeTone);
                   return (
                     <span
@@ -727,7 +727,7 @@ StatusDot.displayName = 'StatusDot';
 // ============================================================================
 // Category Badge — icon-led pill (icon + category name). Replaces the
 // text-only badge so users can scan tool steps by category at a glance
-// (☁️ AWS, ☁️ Azure, ⎈ Kubernetes, etc). openagentic-omhs#330.
+// (☁️ AWS, ☁️ Azure, ⎈ Kubernetes, etc). openagentic#330.
 // ============================================================================
 
 const CATEGORY_ICON_MAP: Record<string, React.FC<any>> = {
@@ -1533,7 +1533,7 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
                 - 'links' → SummaryLinks (favicon + title pills)
                 - 'text'  → flat text span
               Anything else (kind 'none' or null) renders nothing.
-              See openagentic-omhs#330. */}
+              See openagentic#330. */}
           {finalStatus === 'success' && structuredSummary?.kind === 'rich' ? (
             <SummaryRich summary={structuredSummary} />
           ) : finalStatus === 'success' && structuredSummary?.kind === 'links' && structuredSummary.items.length > 0 ? (

@@ -1,7 +1,7 @@
 /**
  * Unit tests for the embedding INPUT-text safety cap.
  *
- * Guards the live failure (open-dev 2026-06-01): one over-long MCP tool
+ * Guards the live failure (openagentic 2026-06-01): one over-long MCP tool
  * description ("the input length exceeds the context length") 500'd the whole
  * 14-tool batch embed, leaving the vector catalog empty.
  *

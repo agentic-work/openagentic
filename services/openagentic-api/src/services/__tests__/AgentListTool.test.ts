@@ -1,7 +1,7 @@
 /**
  * AgentListTool — RED test for the meta-tool definition shape.
  *
- * chatmode-rip plan (docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md
+ * the chat-pipeline refactor plan (the design notes
  * §Phase C — task C.3): the new T1 catalog includes `agent_list` as a
  * lifecycle primitive. The model invokes it to enumerate live sub-agent
  * sessions for the current chat (so it can subsequently `agent_send` to
@@ -14,7 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import { AGENT_LIST_TOOL, isAgentListTool } from '../AgentListTool.js';
 
-describe('AGENT_LIST_TOOL definition (chatmode-rip Phase C.3)', () => {
+describe('AGENT_LIST_TOOL definition (the chat-pipeline refactor Phase C.3)', () => {
   it('declares function-shape with name="agent_list"', () => {
     expect(AGENT_LIST_TOOL.type).toBe('function');
     expect(AGENT_LIST_TOOL.function.name).toBe('agent_list');

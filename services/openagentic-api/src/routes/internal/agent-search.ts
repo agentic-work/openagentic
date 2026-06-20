@@ -23,7 +23,7 @@
  * header validated against the INTERNAL_SERVICE_SECRET env var. Empty
  * server-side secret is fail-closed.
  *
- * Spec: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  */
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';

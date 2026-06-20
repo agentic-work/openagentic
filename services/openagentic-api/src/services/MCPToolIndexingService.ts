@@ -14,7 +14,7 @@ import {
 // dropped from the T1 catalog (per toolRegistry.ts header). These must be
 // discoverable via `tool_search` so the model can expand the catalog
 // mid-turn — same surface as MCP-server-registered tools.
-// chatmode-rip Phase C indexer extension (2026-05-11).
+// the chat-pipeline refactor Phase C indexer extension (2026-05-11).
 import { COMPOSE_VISUAL_TOOL } from './ComposeVisualTool.js';
 import { COMPOSE_APP_TOOL } from './ComposeAppTool.js';
 import { RENDER_ARTIFACT_TOOL } from './RenderArtifactTool.js';
@@ -263,7 +263,7 @@ export class MCPToolIndexingService {
       this.logger.info('[MCP_INDEXING] 💾 [LAST RESORT] Caching tools in Redis (emergency fallback)...');
       await this.cacheToolsInRedis(allTools);
 
-      // 4. BUILT-IN META-TOOLS (chatmode-rip Phase C) — keep tool_search
+      // 4. BUILT-IN META-TOOLS (the chat-pipeline refactor Phase C) — keep tool_search
       //    capable of returning compose_visual / compose_app / render_artifact
       //    / request_clarification / browser_sandbox_exec / memorize /
       //    memory_search alongside the MCP fan-out. Indexed under
@@ -365,7 +365,7 @@ export class MCPToolIndexingService {
     // Substrate fix S1 (2026-05-09): mcp-proxy requires Authorization on every
     // call. #1029 (2026-05-22) deduped the inline minting pattern into
     // mintInterServiceSystemToken so all 4 call sites stay byte-identical.
-    // Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3 S1
+    // the design notes
     const systemToken = mintInterServiceSystemToken(process.env.INTERNAL_SERVICE_SECRET);
 
     const headers: any = {
@@ -1675,7 +1675,7 @@ export class MCPToolIndexingService {
 
   /**
    * Built-in meta-tools that ship in the openagentic-api image but were
-   * removed from the T1 catalog per the chatmode-rip plan. They must be
+   * removed from the T1 catalog per the chat-pipeline refactor plan. They must be
    * discoverable via `tool_search` so the model can expand its tool array
    * mid-turn (e.g. when the user asks for a chart, the model searches and
    * finds `compose_visual` in the top results).
@@ -1696,7 +1696,7 @@ export class MCPToolIndexingService {
   ];
 
   /**
-   * Index the built-in meta-tools (chatmode-rip Phase C). Idempotent —
+   * Index the built-in meta-tools (the chat-pipeline refactor Phase C). Idempotent —
    * uses the same Prisma upsert path as MCP-server tools, keyed on
    * (server_id='builtin', name). Repeated calls overwrite the existing
    * rows without producing duplicates.
@@ -1733,7 +1733,7 @@ export class MCPToolIndexingService {
 
     this.logger.info(
       { count: projected.length, names: projected.map((p) => p.function.name) },
-      '[MCP_INDEXING] 🛠️ Indexing built-in meta-tools (chatmode-rip Phase C)',
+      '[MCP_INDEXING] 🛠️ Indexing built-in meta-tools (the chat-pipeline refactor Phase C)',
     );
 
     try {

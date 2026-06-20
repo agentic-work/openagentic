@@ -1,7 +1,7 @@
 /**
  * AgentSendTool — RED test for the meta-tool definition shape.
  *
- * chatmode-rip plan §Phase C task C.2: the model invokes `agent_send`
+ * the chat-pipeline refactor plan §Phase C task C.2: the model invokes `agent_send`
  * to push a follow-up message into a running sub-agent's chatLoop
  * (mid-task adjustment, e.g. "also check us-west-2 while you're at it").
  *
@@ -12,7 +12,7 @@
 import { describe, it, expect } from 'vitest';
 import { AGENT_SEND_TOOL, isAgentSendTool } from '../AgentSendTool.js';
 
-describe('AGENT_SEND_TOOL definition (chatmode-rip Phase C.2)', () => {
+describe('AGENT_SEND_TOOL definition (the chat-pipeline refactor Phase C.2)', () => {
   it('declares function-shape with name="agent_send"', () => {
     expect(AGENT_SEND_TOOL.type).toBe('function');
     expect(AGENT_SEND_TOOL.function.name).toBe('agent_send');

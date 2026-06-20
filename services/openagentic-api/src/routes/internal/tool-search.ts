@@ -25,7 +25,7 @@
  * pattern: `x-internal-secret` header validated against the
  * INTERNAL_SERVICE_SECRET env var. Empty server-side secret is fail-closed.
  *
- * Spec: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  */
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -56,7 +56,7 @@ export interface InternalToolSearchRouteDeps {
   /**
    * #51 (2026-06-01) — live connected MCP servers (the set that returned
    * tools from the proxy this session, e.g. ['openagentic_web',
-   * 'aws_knowledge'] on open-dev). When wired, the 200 body carries
+   * 'aws_knowledge'] on openagentic). When wired, the 200 body carries
    * `connectedServers` so the T1 `tool_search` tool can render an honest
    * "no connected tool matches X — connected: …" message on an empty
    * result, instead of the old false-positive "call any of them". Optional

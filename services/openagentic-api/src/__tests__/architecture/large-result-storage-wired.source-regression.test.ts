@@ -4,7 +4,7 @@
  * (multi-MB cloud-list aggregates) overflow to Redis instead of bloating
  * the model context.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.2
+ * the design notes
  *
  * Wires checked (in order):
  *   1. RunChatDeps surface has `largeResultStorage` + `thresholdBytes`

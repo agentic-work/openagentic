@@ -25,7 +25,7 @@
  * a unit test — so they are tagged with `@cascade-live` and excluded from
  * the standard `playwright test` invocation. Run explicitly:
  *
- *   API_POD=$(kubectl -n agentic-dev get pods -l app.kubernetes.io/component=api -o jsonpath='{.items[0].metadata.name}')
+ *   API_POD=$(kubectl -n openagentic get pods -l app.kubernetes.io/component=api -o jsonpath='{.items[0].metadata.name}')
  *   API_POD=$API_POD npx playwright test tests/e2e/cascade-tool-routing.spec.ts
  *
  * The 10 probes cover:
@@ -85,12 +85,12 @@ function readCascadeSeams(sinceSec = 60): CascadeSeams {
   if (!API_POD) {
     throw new Error(
       'API_POD env var must be set to the running api pod name. Example:\n' +
-      '  API_POD=$(kubectl -n agentic-dev get pods -l app.kubernetes.io/component=api -o jsonpath=\'{.items[0].metadata.name}\')',
+      '  API_POD=$(kubectl -n openagentic get pods -l app.kubernetes.io/component=api -o jsonpath=\'{.items[0].metadata.name}\')',
     );
   }
   const since = `${Math.max(1, Math.floor(sinceSec))}s`;
   const raw = execSync(
-    `kubectl -n agentic-dev logs ${API_POD} --since=${since}`,
+    `kubectl -n openagentic logs ${API_POD} --since=${since}`,
     { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
   );
   const lines = raw.split('\n').filter(Boolean);
@@ -242,7 +242,7 @@ test.describe('cascade tool-routing battery (@cascade-live)', () => {
 
   test('probe 4 — k8s pods: intent=cloud-list, server=k8s', async ({ page }) => {
     await newChatSession(page);
-    await sendChat(page, 'list pods running in agentic-dev namespace');
+    await sendChat(page, 'list pods running in openagentic namespace');
     await waitForCascadeExitInLogs();
     const s = readCascadeSeams(120);
     expect(s.classifiedIntent).toBe('cloud-list');

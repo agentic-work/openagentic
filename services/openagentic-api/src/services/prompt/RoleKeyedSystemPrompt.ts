@@ -6,7 +6,7 @@
  * Editing prompts = PR + redeploy (compliance boundary; not an admin-UI
  * feature). Selection happens upstream via `request.user.is_admin`.
  *
- * Spec: docs/superpowers/specs/2026-05-10-chatmode-three-layer-architecture.md §Layer-1
+ * the design notes-1
  */
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';

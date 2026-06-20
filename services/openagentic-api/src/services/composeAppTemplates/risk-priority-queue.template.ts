@@ -31,7 +31,7 @@ const exampleParams: Params = {
   title: 'Risk register — Q3 priority queue',
   subtitle: 'sorted by priority_score desc (impact × probability)',
   risks: [
-    { id: 'R-001', title: 'FedRAMP-Hi crypto gap (SC-13)',           impact: 9, probability: 8, owner: 'sec-eng',  eta: '2026-06-15', status: 'accepted' },
+    { id: 'R-001', title: 'NIST 800-53 crypto gap (SC-13)',           impact: 9, probability: 8, owner: 'sec-eng',  eta: '2026-06-15', status: 'accepted' },
     { id: 'R-002', title: 'Single-AZ payment-gateway',                impact: 8, probability: 6, owner: 'platform', eta: '2026-07-01', status: 'new' },
     { id: 'R-003', title: 'Stripe connect cutover (data migration)',  impact: 9, probability: 5, owner: 'billing',  eta: '2026-08-01', status: 'accepted' },
     { id: 'R-004', title: 'Pen-test scope expansion to MCP plane',    impact: 6, probability: 7, owner: 'sec-eng',  eta: '2026-06-30', status: 'new' },

@@ -1,12 +1,12 @@
 /**
  * Architecture cage — real Postgres FKs only (no Prisma soft FKs).
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F0.4)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * The Registry SoT v1 contract: Prisma `relationMode = "prisma"` (soft FKs)
  * is FORBIDDEN. Soft FKs let Prisma "think" a relation exists without the DB
- * actually enforcing it — a FedRAMP audit footgun (3PAO will catch a deleted
+ * actually enforcing it — an audit footgun (an auditor will catch a deleted
  * Registry row that's still referenced by built_in_agents.model_role_assignment_id).
  *
  * The cage: schema.prisma must declare `relationMode = "foreignKeys"` (the

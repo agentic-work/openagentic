@@ -2,7 +2,7 @@
  * P1-5 of chatmode UX parity — suppress orphan / trivial artifact
  * slide-outs that the model fires for plain prose.
  *
- * Punch list ref: docs/superpowers/specs/2026-04-30-chatmode-ux-parity-punchlist.md
+ * the design notes
  *
  * User direction (verbatim 2026-04-30):
  * "the broken almost always empty or shitty Html Artifact slide outs are

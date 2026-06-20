@@ -1,8 +1,8 @@
 /**
  * RegistryCache — TTL cache for resolveModel() outputs.
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (F1.7)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes (F1.7)
+ * the design notes
  *
  * Two indexes:
  *   - by role (for `resolveRoleDefault('chat')`-style lookups)

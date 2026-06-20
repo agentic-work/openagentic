@@ -30,7 +30,7 @@
  *     Adapter converts canonical `toolu_*` → `call_*` for outbound compatibility.
  *
  * Spec: https://github.com/ollama/ollama/blob/main/docs/api.md +
- *       docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  */
 
 import type {

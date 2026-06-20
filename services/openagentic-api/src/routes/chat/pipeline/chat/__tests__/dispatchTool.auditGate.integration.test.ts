@@ -5,7 +5,7 @@
  * `makeDispatch(...) → dispatchBody`. It does NOT drive the before_tool_call
  * hook in isolation (that's covered by pipeline/__tests__/approval-gate-hook.test.ts).
  * It proves that EVERY tool call dispatched through the live seam is audited —
- * which is the gap that caused `tool_search` to execute on open-dev with
+ * which is the gap that caused `tool_search` to execute on openagentic with
  * `GET /api/admin/audit-log` returning total:0 (the before_tool_call hook
  * silently no-op'd because deps.hooks was unwired).
  *

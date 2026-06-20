@@ -39,7 +39,7 @@ const sample = {
       tag: 'T+1',
       title: 'Confirm',
       body: 'health probe from 3 non-affected regions',
-      owner: 'synth-executor · auto',
+      owner: 'sandbox · auto',
       duration: '30s',
     },
     {

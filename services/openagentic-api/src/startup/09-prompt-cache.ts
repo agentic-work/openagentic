@@ -6,9 +6,8 @@ import { loggers } from '../utils/logger.js';
 import type { BootstrapStep } from './types.js';
 
 /**
- * Layer-1 of the chatmode three-layer prompt architecture (RBAC + dynamic
- * overlay per spec `docs/superpowers/specs/2026-05-10-chatmode-three-layer-
- * architecture.md`). Loads role-keyed prompts from `rbac_system_prompts`,
+ * Layer-1 of the three-layer prompt architecture (RBAC + dynamic
+ * overlay). Loads role-keyed prompts from `rbac_system_prompts`,
  * with file-based seeds in `services/openagentic-api/prompts/chat-system-
  * {admin,member}.md` as source of truth on cold-DB / fresh-deploy.
  *

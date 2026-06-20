@@ -14,8 +14,8 @@
  * (compose_visual variant) — these are widget-renderer surfaces, not
  * primitives, and route through WidgetRenderer instead of this registry.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.3
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
+ * the design notes
  *       Phase 4, Task 4.5.
  */
 
@@ -82,7 +82,7 @@ StreamingMarkdownFallback.displayName = 'StreamingMarkdown';
 /**
  * The registry table. Mutable via `register()` so feature flags or
  * downstream extensions (e.g. customer-specific outputTemplates in
- * openagentic-omhs) can override entries at boot.
+ * a downstream fork) can override entries at boot.
  */
 const registry: Record<string, ComponentType<any>> = {
   // ── Tabular ────────────────────────────────────────────────────────

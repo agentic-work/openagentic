@@ -31,9 +31,9 @@ const ParamsSchema = z.object({
 type Params = z.infer<typeof ParamsSchema>;
 
 const exampleParams: Params = {
-  title: 'FedRAMP-High readiness',
-  framework: 'FedRAMP-High Rev 5',
-  subtitle: 'omhs-prod tenant · scan 2026-05-13',
+  title: 'NIST 800-53 readiness',
+  framework: 'NIST 800-53 Rev 5',
+  subtitle: 'acme-prod tenant · scan 2026-05-13',
   families: [
     {
       family: 'AC — Access Control',
@@ -175,7 +175,7 @@ export const COMPLIANCE_DASHBOARD_TEMPLATE: ComposeAppTemplate = {
   slug: 'compliance-dashboard',
   title: 'Compliance controls dashboard (by family)',
   description:
-    'Compliance dashboard — controls grouped by family with MET / PARTIAL / GAP counts + overall readiness percentage. Supply { framework, families[{family, controls[{id,name,status,evidence?}]}] }. Use for FedRAMP / SOC-2 / ISO / HIPAA readiness views. Also accepts the alias slug "compliance_dashboard".',
+    'Compliance dashboard — controls grouped by family with MET / PARTIAL / GAP counts + overall readiness percentage. Supply { framework, families[{family, controls[{id,name,status,evidence?}]}] }. Use for NIST 800-53 / SOC-2 / ISO / HIPAA readiness views. Also accepts the alias slug "compliance_dashboard".',
   paramsSchema: ParamsSchema,
   htmlTemplate: renderHtml,
   cdnLibs: [],

@@ -5,7 +5,7 @@
  * Replaces the implicit "HTML-fence-or-bust" path that silently failed when
  * outputTemplate was missing or unrecognized.
  *
- * Plan: docs/superpowers/plans/2026-05-13-next-gen-artifact-slideouts.md
+ * the design notes
  * Phase A.1 (#781)
  */
 import { describe, it, expect } from 'vitest';

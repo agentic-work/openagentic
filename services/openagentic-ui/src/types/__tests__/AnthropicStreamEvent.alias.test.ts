@@ -1,7 +1,7 @@
 /**
  * AnthropicStreamEvent.alias.test (UI mirror) — Phase A guard for the
  * model-stream re-export migration. See:
- * `docs/superpowers/plans/2026-05-01-sdk-stream-event-migration.md`.
+ * the design notes.
  */
 
 import { describe, test, expectTypeOf } from 'vitest';

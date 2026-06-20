@@ -256,7 +256,7 @@ export const ModelManagementView: React.FC<ModelManagementViewProps> = ({ theme 
         ]}
       />
 
-      {/* Mission Control · SoT enforcement banner — top of page, every render */}
+      {/* Admin console · SoT enforcement banner — top of page, every render */}
       <SoTBanner />
 
       {/* Tab switcher — unchanged below the page header */}

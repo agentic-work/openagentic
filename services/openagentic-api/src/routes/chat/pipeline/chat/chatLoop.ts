@@ -798,7 +798,7 @@ export async function chatLoop(
   // 3rd-and-later clarification turn — `MID_LOOP_CLARIFICATION_THRESHOLD`
   // is the trigger gate, not a one-shot.
   //
-  // Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §11.3
+  // the design notes
   let consecutiveClarificationCount = 0;
   const MID_LOOP_CLARIFICATION_THRESHOLD = 3;
 
@@ -1417,7 +1417,7 @@ export async function chatLoop(
       // F2-4 (2026-05-12 audit): Azure Responsible AI tripped on the
       // assistant's output. Emit a distinct annotation frame so the UI
       // renders a compliance banner instead of an empty bubble, AND a
-      // structured warn log so operators / FedRAMP audit can trace it.
+      // structured warn log so operators / the audit trail can trace it.
       ctx.logger.warn(
         { turn, model: input.model, sessionId: ctx.sessionId },
         '[chat] content_filter stop_reason — Responsible AI tripped on assistant output',
@@ -2241,7 +2241,7 @@ export async function chatLoop(
     // buffer. Failures are non-fatal — logged + swallowed so the loop
     // continues even if the underlying ContextManagementService throws.
     //
-    // Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §4.4
+    // the design notes
     if (deps.contextMgmt && ctx.sessionId) {
       try {
         const usage = await deps.contextMgmt.getContextUsage(ctx.sessionId, input.model);

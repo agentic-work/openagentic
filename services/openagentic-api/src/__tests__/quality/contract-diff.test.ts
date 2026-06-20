@@ -1,7 +1,7 @@
 /**
  * Contract diff — RED tests (Phase 0.3).
  *
- * Plan: docs/superpowers/plans/sprightly-percolating-brook.md §0.3
+ * the design notes
  *
  * Given a wire Timeline (from 0.1) + a `.contract.json` (mocks/UX/AI/Chatmode),
  * assert the contract's `frames[]` sequence appears as an ordered SUBSEQUENCE

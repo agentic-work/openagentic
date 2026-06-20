@@ -16,7 +16,7 @@ export const INIT_RAG: BootstrapStep = {
 
     // RAG service — collection bootstrap only. The legacy
     // `syncAllTemplates()` step was ripped 2026-05-11 along with the
-    // PromptTemplate model (chatmode-rip Phase E final cleanup); RAG no
+    // PromptTemplate model (the chat-pipeline refactor Phase E final cleanup); RAG no
     // longer ingests prompt templates.
     try {
       ctx.ragService = new RAGService(ctx.milvusClient!, loggers.services);

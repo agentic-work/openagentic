@@ -1,7 +1,7 @@
 /**
  * Phase 9 — V3 memory injection at turn start (TDD RED first).
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §10
+ * the design notes
  *
  * Asserts that runChat calls AgentMemoryService.recall on turn 1 and,
  * when hits are returned, prepends a `<memories>` block ABOVE the

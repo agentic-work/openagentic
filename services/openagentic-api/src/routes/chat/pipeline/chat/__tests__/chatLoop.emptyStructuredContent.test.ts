@@ -2,7 +2,7 @@
  * Sev-1 / Audit L3-6 (was F1-2) — empty `envelope.structuredContent` silently
  * feeds '' to the model on the next turn (empty bubble).
  *
- * Plan: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       §Phase 2.3.5 — "L3-6 empty envelope.structuredContent fallback".
  */
 import { describe, it, expect, vi } from 'vitest';

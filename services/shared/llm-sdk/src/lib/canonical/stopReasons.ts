@@ -19,7 +19,7 @@
  * Mapping functions are TOTAL over CanonicalStopReason; unknown provider
  * inputs degrade to 'end_turn' with a console.warn (no throws).
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *        §"Phase 0.2 — SDK shared canonical invariants"
  */
 

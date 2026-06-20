@@ -20,7 +20,7 @@ describe('composeAppValidator (#474 Phase 4 step 2)', () => {
   describe('happy path', () => {
     it('accepts a minimal valid payload with internal-CDN scripts', () => {
       // #482/#491 — same-origin architecture. The synth-cdn pod is ClusterIP-only
-      // (`openagentic-synth-executor:8090`), exposed to the browser via UI nginx
+      // (the sandbox executor pod), exposed to the browser via UI nginx
       // reverse-proxy at `/api/cdn/lib/*`. There is NO `cdn.openagentic.io` host
       // (no DNS, no ingress, no TLS cert) — the legacy URL form is explicitly
       // banned (#491). Use the canonical same-origin `/api/cdn/lib/*` path.

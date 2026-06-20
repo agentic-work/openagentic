@@ -209,7 +209,7 @@ const RoadmapPage: React.FC = () => {
       nodes: [
         { id: 'current', label: `v${version}`, description: `Current: ${codename || 'latest'}`, shape: 'rounded', color: 'green' },
         { id: 'a2a', label: 'A2A + Marketplace', description: 'Inter-agent + ecosystem', shape: 'rounded', color: 'primary' },
-        { id: 'compliance', label: 'FedRAMP + SOC 2', description: 'Compliance coverage', shape: 'rounded', color: 'purple' },
+        { id: 'compliance', label: 'NIST 800-53 + SOC 2', description: 'Compliance coverage', shape: 'rounded', color: 'purple' },
         { id: 'ga', label: 'General Availability', description: 'GA milestone', shape: 'rounded', color: 'cyan' },
       ],
       edges: [

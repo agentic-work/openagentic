@@ -14,7 +14,7 @@
  * was extended with `content_filter | safety | recitation` variants.
  *
  * Fixture: fixtures/aif-content-filter-real.ndjson
- * Plan ref: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md §1.4
+ * Plan ref: the design notes
  */
 
 import { describe, it, expect } from 'vitest';

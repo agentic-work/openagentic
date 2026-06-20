@@ -5,7 +5,7 @@
  * write. Process-local cache keyed by role; bust via `invalidate(role)`
  * (called by the redis-pubsub subscriber wired in P-Live-3).
  *
- * Spec: docs/superpowers/specs/2026-05-10-chatmode-prompts-db-editable.md
+ * the design notes
  */
 import type { PrismaClient } from '@prisma/client';
 

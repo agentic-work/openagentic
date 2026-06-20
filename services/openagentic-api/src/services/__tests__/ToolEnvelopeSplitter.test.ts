@@ -8,7 +8,7 @@
  *     `_meta.artifactHandle` set, `structuredContent.truncated === true`.
  *   - tool.truncate_summary fn (when provided): drives shaped digest in overflow path.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.2
+ * the design notes
  */
 import { describe, it, expect, vi } from 'vitest';
 import { splitEnvelope } from '../ToolEnvelopeSplitter.js';

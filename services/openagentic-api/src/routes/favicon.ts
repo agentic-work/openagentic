@@ -10,7 +10,7 @@
  *   → returns the favicon image bytes, cached in Redis 24h
  *   → on miss / fetch failure returns a small neutral placeholder SVG
  *
- * See agentic-work/openagentic-omhs#330 (Tier 3).
+ * See agentic-work/openagentic#330 (Tier 3).
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';

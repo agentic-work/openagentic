@@ -1,8 +1,8 @@
 /**
  * RegistryBootstrapSeeder — Registry SoT v1 non-bulldozer bootstrap seeder.
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F2.2)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * Contract:
  *   1. Gate on SEEDER_VERSION (env int). If last-applied === SEEDER_VERSION → no-op.

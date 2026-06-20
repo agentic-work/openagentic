@@ -3990,7 +3990,7 @@ def _resolve_cost_subscriptions(
 
     Q1-blocker-1 (2026-05-12): models invoke cost tools without
     `subscription_id`. Previously the tool fell back to `DEFAULT_SUBSCRIPTION_ID`
-    (empty string in agentic-dev), built scope=`/subscriptions/`, and the
+    (empty string in openagentic), built scope=`/subscriptions/`, and the
     Azure SDK collapsed `/subscriptions//providers/...` so Azure returned
     `InvalidSubscriptionId 'providers' is malformed`.
 

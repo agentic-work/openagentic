@@ -1,8 +1,8 @@
 /**
  * Architecture cage — no system_configuration.default_models reads.
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F0.3)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * The Registry SoT v1 contract: the secondary SoT row at
  * system_configuration.default_models JSONB ({chat, code, embedding, vision,
@@ -95,7 +95,7 @@ describe('Registry SoT v1 cage — no system_configuration.default_models reads'
         violations.map(v => `  ${v.file}:${v.line} — ${v.description}`).join('\n') +
         `\n\nFix: Phase F4 retires system_configuration.default_models. Read from Registry:\n` +
         `  prisma.modelRoleAssignment.findFirst({ where: { role, enabled: true }, orderBy: { priority: 'asc' } })\n` +
-        `Or call resolveModel({ role: 'chat'|'code'|'embedding'|... }) — see spec docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md`;
+        `Or call resolveModel({ role: 'chat'|'code'|'embedding'|... }) — the design notes`;
 
     expect(violations, summary).toEqual([]);
   });

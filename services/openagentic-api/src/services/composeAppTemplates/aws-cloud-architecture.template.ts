@@ -2,7 +2,7 @@
  * aws-cloud-architecture — AWS architecture diagram with VPCs, subnets,
  * services, and edges. Renders via d3 force-layout grouped by VPC.
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md
+ * the design notes
  *       (mock 06: aws-k8s-aiops uses this for the EKS topology context)
  *
  * Visual reference: mocks/Diagrams/2026-04-23-multicloud-arch-mock-1.html

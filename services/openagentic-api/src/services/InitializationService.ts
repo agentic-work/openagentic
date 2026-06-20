@@ -236,15 +236,15 @@ export class InitializationService {
     // Check if re-initialization is needed due to version changes
     const needsReinit = status.isInitialized ? await this.needsReinitialization(status) : false;
 
-    // Always shed legacy/phantom MCP rows (e.g. the 'agentic-memory-mcp' brand-scrub
-    // leak) BEFORE the already-initialized short-circuit below. Existing deployments
+    // Always shed legacy/phantom MCP rows (e.g. the legacy 'agentic-memory-mcp'
+    // row) BEFORE the already-initialized short-circuit below. Existing deployments
     // were initialized before the phantom was removed, so the gated init never runs
     // again — this unconditional pass is what actually deletes the stale row. Best-effort.
     await this.cleanupLegacyMcpRows();
 
     // Skip if already initialized unless forced or version changed.
     // Legacy `promptsNeedReseeding` re-init trigger RIPPED 2026-05-11 along
-    // with the PromptTemplate model (chatmode-rip Phase E final cleanup).
+    // with the PromptTemplate model (the chat-pipeline refactor Phase E final cleanup).
     if (status.isInitialized && config.skipIfDone && !config.forceReinit && !needsReinit) {
       this.logger.info({
         completedComponents: status.completedComponents,
@@ -306,7 +306,7 @@ export class InitializationService {
         this.logger.info('✅ Milvus collections and RAG initialized');
       }
 
-      // 5b. Prompt-template Milvus indexing RIPPED 2026-05-11 (chatmode-rip
+      // 5b. Prompt-template Milvus indexing RIPPED 2026-05-11 (the chat-pipeline refactor
       // Phase E final). The PromptTemplate model is gone; RBAC prompts ship
       // as static files and don't need vector indexing.
 
@@ -382,7 +382,7 @@ export class InitializationService {
    * Initialize system prompts.
    *
    * RIPPED 2026-05-11 — the legacy DB-backed PromptTemplate seeder went away
-   * with the chatmode-rip Phase E final cleanup. RBAC system prompts are
+   * with the chat-pipeline refactor Phase E final cleanup. RBAC system prompts are
    * file-sourced from `services/openagentic-api/prompts/chat-system-*.md`
    * and seeded into `rbac_system_prompts` by `startup/09-prompt-cache.ts`
    * via `seedRbacSystemPromptsFromFiles`. Nothing to do here at init time
@@ -794,7 +794,7 @@ export class InitializationService {
    */
   /**
    * Delete legacy / phantom MCP rows on EVERY boot, BEFORE the already-initialized
-   * short-circuit in initialize(). The 'agentic-memory-mcp' brand-scrub-leak row was
+   * short-circuit in initialize(). The legacy 'agentic-memory-mcp' row was
    * created by an old unconditional upsert; that upsert is gone, but existing DBs
    * still carry the row and the gated init never runs again to shed it. This
    * unconditional, best-effort pass removes it (and never throws into the boot path).
@@ -1713,7 +1713,7 @@ export class InitializationService {
    *
    * The original gate required at least one row in PromptTemplate +
    * UserPromptAssignment. Both tables were ripped 2026-05-11 along with
-   * the composable prompt-module system (chatmode-rip Phase E final).
+   * the composable prompt-module system (the chat-pipeline refactor Phase E final).
    * RBAC system prompts ship as files in `services/openagentic-api/prompts/`
    * and the runtime falls back to the static body when the
    * rbac_system_prompts table is empty, so there's no longer a hard
@@ -1751,7 +1751,7 @@ export class InitializationService {
   }
 
   /**
-   * indexPromptsInMilvus RIPPED 2026-05-11 (chatmode-rip Phase E final).
+   * indexPromptsInMilvus RIPPED 2026-05-11 (the chat-pipeline refactor Phase E final).
    * The PromptTemplate model is gone; the `prompt_templates` Milvus
    * collection is no longer maintained. RBAC prompts ship as static files.
    */

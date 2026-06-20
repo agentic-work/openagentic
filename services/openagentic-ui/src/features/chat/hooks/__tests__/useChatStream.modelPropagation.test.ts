@@ -4,8 +4,8 @@
  * can render the assistant pill (mocks/UX/01-cloud-ops.html:206-212).
  *
  * Plan refs:
- *   - docs/superpowers/specs/2026-04-30-chatmode-ux-parity-punchlist.md
- *   - docs/superpowers/specs/2026-04-30-chatmode-ux-resumption.md
+ *   - the design notes
+ *   - the design notes
  *
  * The wire frame `message_received` (and `message_saved`) carries a single
  * `model` string like `claude-opus-4-7`. `splitModelIdentifier` (already

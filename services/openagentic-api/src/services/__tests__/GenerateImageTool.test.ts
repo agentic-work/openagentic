@@ -129,7 +129,7 @@ describe('executeGenerateImage', () => {
         image_url: '/api/images/img_real_xyz.png',
         artifact_id: 'img_real_xyz',
         model: 'imagen-3.0-generate-001',
-        provider: 'vertex-dev-openagentic-dev-us-central1',
+        provider: 'vertex-dev-openagentic-example-us-central1',
         format: 'png' as const,
       })),
     };

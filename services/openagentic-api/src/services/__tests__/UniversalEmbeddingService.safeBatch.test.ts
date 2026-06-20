@@ -1,7 +1,7 @@
 /**
  * Service-level proof that a single oversized/pathological embedding input
  * does NOT fail the whole batch (which would leave the MCP tool catalog empty
- * — the live open-dev failure on 2026-06-01).
+ * — the live openagentic failure on 2026-06-01).
  *
  * generateBatchEmbeddings (ollama) must:
  *   - cap each input before sending

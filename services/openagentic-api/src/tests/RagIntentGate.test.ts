@@ -16,7 +16,7 @@ describe('RagIntentGate.evaluateRagIntent', () => {
       'list all resource groups in my Azure subscription',
       'create a VM in eastus',
       'delete the test resource group uc2-test-rg',
-      'show me the pods in the agentic-dev namespace',
+      'show me the pods in the openagentic namespace',
       'how many AKS clusters do I have',
       'count the storage accounts across my subscriptions',
       'audit IAM role assignments',
@@ -29,7 +29,7 @@ describe('RagIntentGate.evaluateRagIntent', () => {
       'make me a dashboard for cluster health',
       'draw an architecture diagram of my workloads',
       'run the bash command: ls -la',
-      'kubectl get pods -n agentic-dev',
+      'kubectl get pods -n openagentic',
       'helm upgrade the chart',
       'read the file /etc/hosts',
     ])('skips: %s', (msg) => {

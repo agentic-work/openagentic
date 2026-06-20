@@ -1,7 +1,7 @@
 /**
  * A2/A3 — compose_visual wire stamps tool_use_id + _meta.outputTemplate.
  *
- * Plan: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       §2.2.2 (tool_use_id stamping) + §2.2.3 (_meta.outputTemplate).
  *
  * Why: parallel tool fan-out can ship multiple compose_visual frames in

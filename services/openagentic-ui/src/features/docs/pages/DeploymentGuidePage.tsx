@@ -220,14 +220,14 @@ const DeploymentGuidePage: React.FC = () => {
         <div style={{ marginBottom: '16px' }}>
           <p style={labelStyle}>Upgrade the Helm release</p>
           <div style={codeBlockStyle}>
-            {'helm upgrade openagentic ./helm/openagentic \\\n  -f values-k3s-local.yaml \\\n  -f values-local-registry.yaml \\\n  -n agentic-dev --no-hooks'}
+            {'helm upgrade openagentic ./helm/openagentic \\\n  -f values-k3s-local.yaml \\\n  -f values-local-registry.yaml \\\n  -n openagentic --no-hooks'}
           </div>
         </div>
 
         <div style={{ marginBottom: '24px' }}>
           <p style={labelStyle}>Restart a specific service</p>
           <div style={codeBlockStyle}>
-            {'kubectl rollout restart deployment/<service> -n agentic-dev'}
+            {'kubectl rollout restart deployment/<service> -n openagentic'}
           </div>
         </div>
 

@@ -1,7 +1,7 @@
 /**
  * SessionFactsBuilder — Phase 7 (V3 Enterprise Chatmode).
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §8
+ * the design notes
  *
  * Builds a compact `<session-facts>` block injected ABOVE the user message
  * on turn 1 of every chat session. Mirrors Claude Code's `<env>` /

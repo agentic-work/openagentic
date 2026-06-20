@@ -251,11 +251,10 @@ export function getArtifactDispatchMechanismRule(role: UserRole): string {
  * #1057 Sev-0 (2026-05-22) — Unknown-scope clarification gate.
  *
  * Live failure: prompt "do a full security audit across all tenants of
- * openagentic-omhs". openagentic-omhs is a downstream GitHub repo fork
- * for the CDC customer, NOT an Azure tenant. The model had no mapping
- * but dispatched 83 tool_use blocks against the test user's OWN dev
- * tenant + AWS account, producing a verified-correct audit on the
- * WRONG SCOPE.
+ * acme-corp". acme-corp is an unrecognized proper noun, NOT an Azure
+ * tenant. The model had no mapping but dispatched 83 tool_use blocks
+ * against the test user's OWN dev tenant + AWS account, producing a
+ * verified-correct audit on the WRONG SCOPE.
  *
  * Correct behavior: when the user names a proper-noun scope the model
  * cannot resolve to a concrete tenant/sub/account/cluster/org, the FIRST
@@ -273,7 +272,7 @@ export function getUnknownScopeClarificationGate(role: UserRole): string {
 
 **When the user names a proper noun that maps to a scope (tenant, subscription, account, cluster, project, org, workspace, namespace) and you do NOT have a concrete mapping from that name to a real identifier you can pass to a tool — your FIRST tool_use MUST be \`request_clarification\`.** No \`azure_list_*\`, no \`aws_list_*\`, no \`gcp_*\`, no \`k8s_*\`, no \`tool_search\` until the user disambiguates.
 
-**Canonical failure mode.** User: "do a full security audit across all tenants of openagentic-omhs". The name \`openagentic-omhs\` is an unrecognized proper noun. You do NOT know whether it's a tenant, a subscription, an AWS account, a GitHub repo, or something else. The correct response is \`request_clarification\` with options: (a) Azure tenant — which tenant id? (b) Azure subscription — which sub? (c) AWS account — which account id? (d) Something else — paste a URL / id / link. NEVER guess and dispatch against the test user's own resources.
+**Canonical failure mode.** User: "do a full security audit across all tenants of acme-corp". The name \`acme-corp\` is an unrecognized proper noun. You do NOT know whether it's a tenant, a subscription, an AWS account, a GitHub repo, or something else. The correct response is \`request_clarification\` with options: (a) Azure tenant — which tenant id? (b) Azure subscription — which sub? (c) AWS account — which account id? (d) Something else — paste a URL / id / link. NEVER guess and dispatch against the test user's own resources.
 
 **Rule of thumb.** If you found yourself about to call a list/inventory tool against a scope you can't point to a concrete id/arn/oid for, STOP and clarify. Acting on a fictional or made-up scope name is worse than asking — the user gets a confident, correct-looking report about the wrong thing.
 
@@ -368,7 +367,7 @@ export function getSafetySection(role: UserRole): string {
   void role;
   return `## Safety, security, and compliance
 
-- The platform is FedRAMP-compliant. Every cloud action is attributed to the authenticated user via OBO (On-Behalf-Of). You operate with their permissions, not elevated ones.
+- The platform is compliance-hardened. Every cloud action is attributed to the authenticated user via OBO (On-Behalf-Of). You operate with their permissions, not elevated ones.
 - The DLP layer redacts secrets pre-LLM and pre-tool-call. Treat any redacted content as confidential; don't echo it.
 - HITL (Human-In-The-Loop) blocks destructive ops by default. Don't try to work around it.
 - If a tool is unavailable to this user, surface the boundary and the legitimate path — don't attempt a workaround.`;

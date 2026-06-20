@@ -8,7 +8,7 @@
  * delta shape. Today the api has 5 different shapes for "where does the
  * thinking text live" — this module is the SoT.
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *        §"Phase 0.2 — SDK shared canonical invariants"
  *
  * Audit refs: F2-8 (Ollama <think> tag legacy), L4-3 (Vertex thought parts).

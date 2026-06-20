@@ -16,7 +16,7 @@
  *  - `seqCounter` is a SHARED mutable {value:number} across the parent
  *    + child tree so clients can linearize the fan-out from seq alone.
  *
- * See docs/research/2026-04-23-subagent-architecture-survey.md §2.6 for
+ * See the design notes §2.6 for
  * the full reasoning.
  */
 
@@ -97,7 +97,7 @@ export class AgentProgressContext {
 // with the internal-secret header (`x-internal-secret`). Two env vars:
 //
 //   OPENAGENTIC_API_CALLBACK_URL — base URL of the api service
-//     (e.g. http://openagentic-api.agentic-dev.svc.cluster.local:8080).
+//     (e.g. http://openagentic-api.openagentic.svc.cluster.local:8080).
 //     When unset, `createHttpPublisher` returns a no-op publisher so
 //     local dev without a running api doesn't crash openagentic-proxy. This
 //     matches the local-dev fallback described in Phase C4.

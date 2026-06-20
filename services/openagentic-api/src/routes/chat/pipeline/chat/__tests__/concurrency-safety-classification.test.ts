@@ -13,7 +13,7 @@
  * is to wire `PermissionService` through `RunChatDeps` so the default
  * classifier consults real rules instead of returning 'ask'.
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       (audit §10 step ?? — added 2026-05-12 fresh audit)
  *
  * TDD discipline: this file is RED before the wiring change in runChat.ts

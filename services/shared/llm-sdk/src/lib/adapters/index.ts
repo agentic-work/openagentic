@@ -5,7 +5,7 @@
  * Provider classes call `selectOutboundAdapter(streamFormat)` once at request
  * time and dispatch through the returned adapter's `adaptRequest()`.
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       §"Phase 0.3 — outbound adapters"
  */
 

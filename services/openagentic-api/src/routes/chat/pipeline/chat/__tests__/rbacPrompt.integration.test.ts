@@ -11,8 +11,8 @@
  *   - admin and member produce DIFFERENT system prompts
  *   - flag OFF preserves the legacy composeStatic+composeSidecar path
  *
- * Spec: docs/superpowers/specs/2026-05-10-chatmode-three-layer-architecture.md §Layer-1
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §Task-B.6
+ * the design notes-1
+ * the design notes-B.6
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runChat } from '../runChat.js';

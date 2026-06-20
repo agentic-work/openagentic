@@ -89,7 +89,7 @@ export type AnimationMode = 'smooth' | 'none';
  * every previously-typed field exists on `UIContentBlock` with identical
  * semantics. See:
  *   - SDK SoT:   openagentic-sdk/src/lib/ui-stream/types.ts (UIContentBlock)
- *   - Follow-up: docs/superpowers/specs/2026-05-18-streaming-engine-design.md
+ *   - Follow-up: the design notes
  *                §"Follow-up tickets" (F1+F2 deeper rip)
  */
 export type ContentBlock = UIContentBlock;
@@ -1905,8 +1905,8 @@ export const useChatStream = ({
   // message) when canonical stop_reason='content_filter' / 'safety' /
   // 'recitation' fires. UI renders <ContentFilterBanner> inline so the
   // operator sees a distinct compliance signal instead of an empty
-  // bubble. FedRAMP-Hi audit requires this surfaces to the user.
-  // Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md §1.4
+  // bubble. audit policy requires this surfaces to the user.
+  // the design notes
   const [contentFilterBannerByMessageId, setContentFilterBannerByMessageId] = useState<
     Record<string, { kind: string; model: string; message: string }>
   >({});
@@ -2044,7 +2044,7 @@ export const useChatStream = ({
       // session A used to bleed into session B because the SubAgentEntry[]
       // reducer keys by role, not sessionId. New sessions start empty;
       // any prior session's cards must be dropped here. See
-      // docs/superpowers/specs/2026-04-30-chatmode-ux-parity-punchlist.md (P0-1).
+      // the design notes.
       setSubAgents([]);
       // P0-1 part 2 — drop the per-message scoped map too on session switch.
       setSubAgentsByMessageId({});
@@ -3941,7 +3941,7 @@ export const useChatStream = ({
                 // frame with {kind, model, message}. UI stores the latest
                 // banner per assistant message id so <ContentFilterBanner>
                 // renders inline with the (possibly partial) assistant
-                // bubble. FedRAMP-Hi audit requires this surfaces to user
+                // bubble. audit policy requires this surfaces to user
                 // instead of silently truncating as end_turn.
                 case 'content_filter': {
                   const flushKey = getAssistantPlaceholderId?.() || messageId || '';
@@ -3951,7 +3951,7 @@ export const useChatStream = ({
                   const message =
                     typeof d.message === 'string' && d.message.length > 0
                       ? d.message
-                      : 'This response was filtered by Azure Responsible AI. The platform owner has been notified per FedRAMP-Hi audit policy. Try rephrasing your request.';
+                      : 'This response was filtered by Azure Responsible AI. The platform owner has been notified per audit policy. Try rephrasing your request.';
                   if (flushKey) {
                     setContentFilterBannerByMessageId((prev) => ({
                       ...prev,

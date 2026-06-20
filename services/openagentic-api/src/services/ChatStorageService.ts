@@ -277,7 +277,7 @@ export class ChatStorageService {
       }
 
       if (!userExists) {
-        // SECURITY: AUTH_MODE=local admin fallback removed in v0.5.0 FedRAMP hardening (Bolt 01)
+        // SECURITY: AUTH_MODE=local admin fallback removed in v0.5.0 security hardening (Bolt 01)
         // All users must exist in the database before creating sessions.
         // User provisioning happens during Azure AD authentication flow.
         throw new Error(`User ${userId} not found in database. Please ensure user exists before creating sessions.`);

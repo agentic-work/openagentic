@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Unit tests for verify_deployment.assistant_text — the SSE delta reassembler.
 
-Triage context (open-dev harness MEMORY=FAIL): cross-session memory recall is
+Triage context (openagentic harness MEMORY=FAIL): cross-session memory recall is
 genuinely working (the model answers the codeword correctly), but the harness
 asserted `secret in <raw SSE stream>`. The model streams the answer one token
 at a time as separate content_block_delta/text_delta JSON envelopes, and the

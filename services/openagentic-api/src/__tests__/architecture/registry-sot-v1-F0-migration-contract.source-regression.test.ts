@@ -1,7 +1,7 @@
 /**
  * Contract test for the F0 migration SQL.
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F0.5)
+ * the design notes
  *
  * Asserts the migration SQL declares all DDL the spec requires. Pure file-content
  * test; no Testcontainers (this repo doesn't have it). F2 will add real DB

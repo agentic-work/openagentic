@@ -2,9 +2,8 @@
  * stripLeadingReasoning — strip the leaked gpt-oss Harmony "analysis" channel
  * from a flow LLM node's final content.
  *
- * WHY (confirmed live 2026-06-02 against workflow_executions.node_outputs on
- * api pod agenticwork-api-6b968d546-bvr6b + a live wire capture against
- * /api/v1/chat/completions):
+ * WHY (confirmed live against workflow_executions.node_outputs on the
+ * api pod + a live wire capture against /api/v1/chat/completions):
  *
  *   gpt-oss:20b emits a Harmony "analysis" channel (chain-of-thought) before
  *   its "final" channel. On the OpenAI-compatible streaming endpoint the

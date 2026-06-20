@@ -12,7 +12,7 @@
  *   - content_block_stop  → finalize, parse JSON only when consumed downstream
  *   - NO in-stream JSON repair
  *
- * Reference: docs/superpowers/specs/2026-05-01-canonical-anthropic-stream-normalizer.md
+ * the design notes
  */
 
 import { describe, it, expect } from 'vitest';

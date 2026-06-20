@@ -16,7 +16,7 @@
  * Adding a path here REQUIRES SECURITY REVIEW. The default reaction to
  * a new entry should be "no — route via SafeHtmlIframe instead."
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3 S6
+ * the design notes
  */
 
 import { describe, it, expect } from 'vitest';

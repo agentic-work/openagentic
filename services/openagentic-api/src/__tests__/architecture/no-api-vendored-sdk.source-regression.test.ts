@@ -16,7 +16,7 @@
  * `selectCanonicalNormalizer` factory + the `CanonicalStreamFormat`
  * discriminator. openagentic-api imports from `@agentic-work/llm-sdk`.
  *
- * Plan: docs/superpowers/plans/2026-05-05-chatmode-100-percent-accuracy-implementation.md
+ * the design notes
  *       Workstream D, Step 1.
  */
 

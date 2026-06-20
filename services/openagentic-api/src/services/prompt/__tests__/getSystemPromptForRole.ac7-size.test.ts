@@ -1,7 +1,7 @@
 /**
- * AC-7 size-cap RED→GREEN test (chatmode-rip, surfaced 2026-05-10).
+ * AC-7 size-cap RED→GREEN test (the chat-pipeline refactor, surfaced 2026-05-10).
  *
- * Spec `2026-05-10-chatmode-three-layer-architecture.md` §goals 2:
+ * Spec the design notes §goals 2:
  *   "Total rendered system prompt MUST be ≤ what Claude Code's
  *    prompts.ts produces (~5,000 tokens)."
  *

@@ -22,7 +22,7 @@ import type { ExecutionStep } from '../hooks/useAgentPlayground';
 
 // Category → icon (kept in sync with CategoryBadge in AgenticActivityStream).
 // Used to give the agent timeline the same visual scan rate as the main
-// chat-mode activity stream. openagentic-omhs#330 follow-up.
+// chat-mode activity stream. openagentic#330 follow-up.
 const TIMELINE_ICON_MAP: Record<string, React.FC<any>> = {
   azure: Cloud, aws: Cloud, gcp: Cloud,
   k8s: Cpu, kubernetes: Cpu, kubectl: Cpu,
@@ -167,7 +167,7 @@ export const AgentExecutionTimeline: React.FC<AgentExecutionTimelineProps> = ({ 
                     {/* Resource name extracted from the tool args
                         (e.g. "uc-test-arch-rg"). Surfaces what was
                         actually being created/queried instead of just
-                        the tool name. openagentic-omhs#330. */}
+                        the tool name. openagentic#330. */}
                     {(step.type === 'tool_call' || step.type === 'tool_result') && (() => {
                       const args = (step.data?.arguments) || step.data?.args || step.data?.input;
                       const resourceName = extractResourceName(args);

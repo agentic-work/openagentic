@@ -2,7 +2,7 @@
  * chatLoopRecursor — execute a sub-agent task as a child chatLoop turn.
  *
  * Replaces the legacy in-api orchestrator's `orchestrate(prompt, tools)`
- * call for sub-agent dispatch (Phase E.8.d of the chatmode-rip plan). A
+ * call for sub-agent dispatch (Phase E.8.d of the chat-pipeline refactor plan). A
  * sub-agent is simply a child chatLoop call with its own RunCtx (child
  * sequencer, agent-scoped model + system prompt), reusing the parent's
  * tool resolver, streamProvider, and AgentEventStore subscription.
@@ -25,7 +25,7 @@
  *                                             agentSpec.model / systemPrompt,
  *                                             inherited streamProvider+dispatch)
  *
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §E.8
+ * the design notes
  *
  * IMPORTANT — Phase E.8.d delivers ONLY the primitive + tests. Wiring
  * TaskTool to call this is E.8.e (separate slice). DO NOT extend.

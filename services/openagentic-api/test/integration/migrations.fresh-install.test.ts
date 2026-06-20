@@ -1,7 +1,7 @@
 /**
  * Prisma migration integrity gate (#508 §6.0) — Phase 1 lifecycle migration.
  *
- * The FedRAMP overhaul spec §6.0 mandates that every migration in this
+ * The security overhaul spec §6.0 mandates that every migration in this
  * overhaul apply cleanly to:
  *   1. a freshly-created empty database
  *   2. an existing populated database (no row loss)

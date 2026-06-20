@@ -3,7 +3,7 @@
  * into admin.model_role_assignments (the Model Registry).
  *
  * This is the write-side of the Registry SoT contract established in
- * docs/superpowers/plans/2026-04-22-model-registry-sot.md. Called by the
+ * the design notes. Called by the
  * POST /api/admin/llm-providers handler immediately after a provider is
  * created and `provider.discoverModels()` has returned its catalog.
  *

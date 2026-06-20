@@ -1,7 +1,7 @@
 /**
  * RegistryReader — single read source-of-truth for model availability.
  *
- * Spec: docs/superpowers/specs/2026-04-29-provider-model-registry-fedramp-overhaul.md (#508 §5.3)
+ * the design notes (#508 §5.3)
  *
  * Replaces the disparate read paths in:
  *   - ModelConfigurationService.getDefaultChatModel

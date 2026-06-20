@@ -4,7 +4,7 @@ export { Sparkline } from './Sparkline'
 export { StatCard } from './StatCard'
 export { BigChart } from './BigChart'
 export type { ChartSeries } from './BigChart'
-// Mission Control retrofit primitives
+// Admin console retrofit primitives
 export { ExplainerCard } from './ExplainerCard'
 export { SoTBanner } from './SoTBanner'
 export { StateMachineToggle } from './StateMachineToggle'

@@ -6,7 +6,7 @@
  * Auth: x-internal-secret header (env INTERNAL_SERVICE_SECRET). 401 on
  * missing/wrong secret — fail-closed when env is empty.
  *
- * Spec: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';

@@ -16,7 +16,7 @@
  *   - BedrockProvider — already-canonical toolu_* (Anthropic-on-Bedrock).
  *   - AIF Responses — `call_*` echoes from gpt-5.x.
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *        §"Phase 0.2 — SDK shared canonical invariants"
  */
 

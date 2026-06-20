@@ -10,7 +10,7 @@
  *   2. The runChat.ts file MUST construct the OpenAgenticProxyClient + adapter
  *      so deps.runSubagent is overridden before the v2Deps bundle is built.
  *
- * Spec §7: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md
+ * the design notes
  */
 import { describe, it, expect } from 'vitest';
 import { resolve, dirname } from 'node:path';

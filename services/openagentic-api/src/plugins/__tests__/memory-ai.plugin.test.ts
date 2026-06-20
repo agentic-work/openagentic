@@ -162,7 +162,7 @@ describe('memoryAIRoutesPlugin — Phase 3.5 smoke tests', () => {
     restore('EMBEDDING_MODEL');
   });
 
-  // ── 2. promptTemplateRoutes — RIPPED (Phase E, chatmode-rip, 2026-05-11) ─
+  // ── 2. promptTemplateRoutes — RIPPED (Phase E, the chat-pipeline refactor, 2026-05-11) ─
   // The legacy `/api/prompt-templates/*` CRUD + assignment surface is gone
   // along with the `PromptTemplate` + `UserPromptAssignment` schema models.
   // RBAC prompts are admin-editable via the `rbac_system_prompts` table.
@@ -210,7 +210,7 @@ describe('memoryAIRoutesPlugin — Phase 3.5 smoke tests', () => {
     'Follow-up: integration test with real auth context.'
   );
 
-  // ── 5. advancedPromptingPlugin — RIPPED (Phase E, chatmode-rip, 2026-05-11) ─
+  // ── 5. advancedPromptingPlugin — RIPPED (Phase E, the chat-pipeline refactor, 2026-05-11) ─
   // The `/api/prompts/*` advanced-prompting surface depended on the deleted
   // PromptTemplate model + (already-disabled) prompt-technique services.
 
@@ -222,7 +222,7 @@ describe('memoryAIRoutesPlugin — Phase 3.5 smoke tests', () => {
     expect(resp.statusCode).toBe(404);
   });
 
-  // ── 7. adminTechniqueRoutes — RIPPED (Phase E, chatmode-rip, 2026-05-11) ─
+  // ── 7. adminTechniqueRoutes — RIPPED (Phase E, the chat-pipeline refactor, 2026-05-11) ─
   // Admin technique management surface depended on PromptTemplate + the
   // (already-disabled) prompt-technique services. RBAC prompts have their
   // own admin route at /admin#rbac-system-prompts.

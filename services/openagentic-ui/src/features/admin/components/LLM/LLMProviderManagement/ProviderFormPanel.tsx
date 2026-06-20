@@ -62,7 +62,7 @@ interface ProviderFormData {
    */
   authMode: AuthMode;
   /**
-   * FedRAMP discriminator origin — env + per-type identifiers (account/
+   * discriminator origin — env + per-type identifiers (account/
    * project/tenant + region/hostname). Drives the live display-name
    * preview and is enforced server-side in POST/PUT. Schema lives in
    * shared/llm-providers/ProviderDiscriminatorSchema.
@@ -87,8 +87,8 @@ export function initFormData(provider?: DbProvider | null, _providerDefaults?: R
   // rows default to api-key; existing entra-id rows snap to entra-id.
   const detectedAuthMode: AuthMode =
     (ac as any).type === 'entra-id' ? 'entra-id' : 'api-key';
-  // Hydrate origin from existing provider_config.origin (FedRAMP
-  // discriminator metadata). Existing rows without origin are
+  // Hydrate origin from existing provider_config.origin (discriminator
+  // metadata). Existing rows without origin are
   // grandfathered server-side, so empty {} is fine on edit.
   const origin: Record<string, string> = { ...((pc as any)?.origin || {}) };
   return {
@@ -159,7 +159,7 @@ export function buildPayload(fd: ProviderFormData, _isEdit: boolean, _defaults?:
     }
   }
 
-  // FedRAMP discriminator origin — env + per-type identifiers. Server-side
+  // discriminator origin — env + per-type identifiers. Server-side
   // POST/PUT enforces this (gated by PROVIDER_DISCRIMINATOR_ENFORCED env);
   // we always send what the admin filled in. Empty values are stripped so
   // the server gets a clean `{env, account, region}` shape.
@@ -335,7 +335,7 @@ export const ProviderFormPanel: React.FC<{
         </FormField>
       </div>
 
-      {/* Discriminator origin (FedRAMP per-type identifiers) */}
+      {/* Discriminator origin (discriminator per-type identifiers) */}
       {discriminatorSchema && (
         <div className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>

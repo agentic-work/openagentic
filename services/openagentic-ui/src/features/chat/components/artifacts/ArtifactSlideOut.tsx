@@ -9,7 +9,7 @@
  * editorial-prestige design for analytical-kind artifacts. Phase C
  * renderers can layer their own aesthetic inside the body slot
  * (midnight-blueprint for architecture / Stripe-Linear for mini-apps,
- * see ground rules in `docs/superpowers/plans/2026-05-13-next-gen-artifact-slideouts.md`).
+ * see ground rules in the design notes).
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

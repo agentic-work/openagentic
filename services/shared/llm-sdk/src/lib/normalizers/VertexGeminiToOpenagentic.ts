@@ -239,7 +239,7 @@ export function createVertexGeminiToOpenagenticNormalizer(opts: NormalizerOption
       case 'RECITATION':
         // B8 — Vertex RECITATION = model regurgitated copyrighted /
         // training-set material. Distinct canonical 'recitation'
-        // surfaces the dedicated compliance signal for FedRAMP audit.
+        // surfaces the dedicated compliance signal for audit.
         stopReason = hasToolUse ? 'tool_use' : 'recitation';
         break;
       case 'BLOCKLIST':

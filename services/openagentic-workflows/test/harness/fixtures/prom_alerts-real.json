@@ -5,7 +5,7 @@
       "content": [
         {
           "type": "text",
-          "text": "Active Alerts: 3\n\nFIRING (2):\n  - PostgresHighConnectionCount\n    Severity: critical\n    Summary: postgresql-0 has 192/200 active connections — connection-pool exhaustion imminent for namespace agentic-dev\n\n  - KubeletPodCrashLooping\n    Severity: warning\n    Summary: Pod openagentic-workflows-5c4e8a9b3f-q7n6w (container workflows) is restarting 1.2 times / 5 minutes — likely CrashLoopBackOff\n\nPENDING (1):\n  - HarborRegistryMemoryPressure\n    Severity: warning\n    Summary: harbor-core memory at 91% — pending threshold cross\n\n"
+          "text": "Active Alerts: 3\n\nFIRING (2):\n  - PostgresHighConnectionCount\n    Severity: critical\n    Summary: postgresql-0 has 192/200 active connections — connection-pool exhaustion imminent for namespace openagentic\n\n  - KubeletPodCrashLooping\n    Severity: warning\n    Summary: Pod openagentic-workflows-5c4e8a9b3f-q7n6w (container workflows) is restarting 1.2 times / 5 minutes — likely CrashLoopBackOff\n\nPENDING (1):\n  - HarborRegistryMemoryPressure\n    Severity: warning\n    Summary: harbor-core memory at 91% — pending threshold cross\n\n"
         }
       ],
       "isError": false

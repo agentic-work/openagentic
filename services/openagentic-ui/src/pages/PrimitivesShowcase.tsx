@@ -492,7 +492,7 @@ export default function PrimitivesShowcase(): JSX.Element {
               onFullscreen={() => {}}
             >
               <h1>Production Kubernetes Health · Weekly Summary</h1>
-              <div className="art-sub">omhs-prod-eastus2 · window 2026-03-20 → 2026-04-19 · for CTO review</div>
+              <div className="art-sub">acme-prod-eastus2 · window 2026-03-20 → 2026-04-19 · for CTO review</div>
               <h2>Top 3 incidents this window</h2>
               <p>1. Argo Image Updater pinned to a force-moved tag, repo-server cache stale for 4h.</p>
               <p>2. Milvus replica eviction cascade after node-pool autoscale.</p>
@@ -507,7 +507,7 @@ export default function PrimitivesShowcase(): JSX.Element {
             budget="budget 15m · actual 11m42s"
             steps={[
               { tag: 'T+0', title: 'Detect', body: <>Prometheus alert <code>region_health_us_east_1 == 0</code> fires on &gt;50% AZ packet loss for 60s; paged to on-call.</>, owner: 'auto · no human required', duration: '60s' },
-              { tag: 'T+1', title: 'Confirm', body: 'automated health probe from 3 non-affected regions; if all 3 report primary unreachable, advance.', owner: 'synth-executor · auto', duration: '30s' },
+              { tag: 'T+1', title: 'Confirm', body: 'automated health probe from 3 non-affected regions; if all 3 report primary unreachable, advance.', owner: 'sandbox · auto', duration: '30s' },
               { tag: 'T+1.5', title: 'GSLB withdraw', body: 'Route 53 health-check forces us-east-1 out of the rotation.', owner: 'auto', duration: '90s (TTL)' },
               { tag: 'T+3', title: 'Patroni promote', body: 'etcd quorum in us-west-2 elects local replica; new leader fsync\'ed, pgBouncer reroutes.', owner: 'patroni · auto', duration: '45s' },
               { tag: 'T+4', title: 'Human gate', body: <>SRE on-call confirms via Slack approval (<code>/dr-approve us-west-2</code>). Last chance to abort.</>, owner: 'SRE on-call (human)', duration: '120s cap', severity: 'warn' },

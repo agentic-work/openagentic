@@ -1,7 +1,7 @@
 /**
  * ToolSearchTool — synthetic meta-tool for model-invoked MCP tool discovery.
  *
- * Spec: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  *
  * Sits in the always-injected meta-tool slot. When the model emits
  * `tool_use` with name="tool_search", `executeToolSearch` POSTs the query

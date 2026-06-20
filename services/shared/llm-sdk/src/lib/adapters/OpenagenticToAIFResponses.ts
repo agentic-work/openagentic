@@ -22,7 +22,7 @@
  * cache_control is dropped (Anthropic-only marker; AIF has its own caching
  * that doesn't expose a per-block knob).
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       §"Phase 0.3 — outbound adapters · AIF Responses"
  */
 

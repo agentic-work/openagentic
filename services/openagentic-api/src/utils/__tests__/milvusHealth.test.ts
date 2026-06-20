@@ -2,8 +2,8 @@
  * #1055 Milvus health-classifier — distinguish transient recovery
  * from fatal connection failure.
  *
- * Live evidence captured from the dev environment `openagentic-api` pod
- * `openagentic-api-54d7b6cd6d-jbf4n` 2026-05-22T19:14:48Z:
+ * Live evidence captured from an `openagentic-api` pod
+ * `openagentic-api-<pod>`:
  *
  *   {
  *     "reasons": ["loaded collection do not found any channel in target,

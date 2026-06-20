@@ -43,7 +43,7 @@
  *
  * Spec: https://ai.google.dev/api/generate-content +
  *       https://ai.google.dev/gemini-api/docs/caching +
- *       docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  */
 
 import type {

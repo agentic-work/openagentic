@@ -1,6 +1,6 @@
 /**
  * AnthropicStreamEvent.alias.test — Phase A guard for the model-stream
- * re-export migration (`docs/superpowers/plans/2026-05-01-sdk-stream-event-migration.md`).
+ * re-export migration (see the design notes).
  *
  * The legacy `Anthropic*` model-stream events MUST be structurally
  * assignable to the SDK `agentic-events` types. After Phase A re-writes

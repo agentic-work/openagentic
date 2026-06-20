@@ -80,7 +80,7 @@ describe('arch: tool_call_audit_log is append-only', () => {
 });
 
 /**
- * Source-regression: the SECONDARY audit trails are append-only too (FedRAMP
+ * Source-regression: the SECONDARY audit trails are append-only too (NIST 800-53
  * AU-9, app-enforced). The boot path is `prisma db push`, which runs no DB
  * triggers, so immutability is enforced by the ABSENCE of any update/delete
  * code path — not by a trigger. These tables have zero mutation callsites

@@ -1,7 +1,7 @@
 /**
  * DOM walker for AgenticActivityStream — pure function (Phase 0.2).
  *
- * Plan: docs/superpowers/plans/sprightly-percolating-brook.md §0.2
+ * the design notes
  *
  * Walks an `[data-aas-mounted]` (or `[data-testid="agentic-activity-stream"]`)
  * subtree and emits a structured trace of the chronologically-ordered visible

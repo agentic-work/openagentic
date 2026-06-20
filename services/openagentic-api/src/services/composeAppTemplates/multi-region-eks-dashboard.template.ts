@@ -3,7 +3,7 @@
  * + monthly cost annotations, plus a cost heatmap (cluster × resource type)
  * and right-sizing recommendations table.
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md
+ * the design notes
  *       (mock 06: aws-k8s-aiops)
  *
  * The world map is rendered with d3 via a hand-coded equirectangular projection

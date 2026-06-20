@@ -81,7 +81,7 @@ const storageDataRoutesPluginImpl: FastifyPluginAsync<StorageDataRoutesPluginOpt
   // ── 3. Favicon proxy route ───────────────────────────────────────────────
   // CDC-airgap-safe favicon fetcher with Redis caching (24h TTL).
   // Route defined internally at /api/favicon — no prefix needed.
-  // See openagentic-omhs#330 (Tier 3).
+  // See openagentic#330 (Tier 3).
   try {
     await fastify.register(faviconRoutes, { prefix: '' });
     loggers.routes.info('Favicon proxy registered at /api/favicon (Redis-cached, airgap-safe)');

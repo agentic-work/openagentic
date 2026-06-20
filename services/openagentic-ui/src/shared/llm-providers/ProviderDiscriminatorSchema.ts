@@ -4,7 +4,7 @@
  * tenant + region/hostname) so the Registry can show ${type}·${disc}·${model}
  * everywhere a model surfaces.
  *
- * Spec: docs/superpowers/specs/2026-05-01-ollama-hosts-admin-redesign-design.md
+ * the design notes
  *
  * Pure module — no I/O, no Prisma. Imported by both UI (live preview) and
  * API (POST/PUT validation). Identical behavior on both sides.

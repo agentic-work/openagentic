@@ -1,10 +1,10 @@
 /**
- * B2 (FedRAMP P3) — secrets.config.ts must FAIL CLOSED in production.
+ * B2 (security hardening) — secrets.config.ts must FAIL CLOSED in production.
  *
  * The pre-remediation validator "never crashes": on a missing or placeholder
  * secret it generated an ephemeral random value and continued. Under
  * NODE_ENV=production that is fail-OPEN — the documented `docker compose up`
- * default `openagentic-dev-jwt-secret-change-me` slipped through (the
+ * default `openagentic-example-jwt-secret-change-me` slipped through (the
  * blocklist matched 'change-me' only as an EXACT value, not as a substring),
  * so the API booted signing admin JWTs with a world-readable secret.
  *
@@ -74,7 +74,7 @@ describe('secrets.config — fail-closed in production (B2)', () => {
   it('throws in production on the shipped *-change-me placeholder (substring match)', () => {
     process.env.NODE_ENV = 'production';
     setAll();
-    process.env.JWT_SECRET = 'openagentic-dev-jwt-secret-change-me';
+    process.env.JWT_SECRET = 'openagentic-example-jwt-secret-change-me';
     expect(() => loadSecrets()).toThrow(/JWT_SECRET|placeholder|weak/i);
   });
 

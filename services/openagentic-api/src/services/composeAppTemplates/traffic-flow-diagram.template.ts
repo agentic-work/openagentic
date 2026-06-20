@@ -2,7 +2,7 @@
  * traffic-flow-diagram — Front Door → AppGW → backend pools, with annotations
  * (rps, p50/p99, listeners, health) + WAF rule side panel.
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md
+ * the design notes
  *       (mock 03: frontdoor-appgw-interrogation)
  */
 

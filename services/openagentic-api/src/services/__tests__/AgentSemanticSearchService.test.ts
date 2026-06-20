@@ -19,7 +19,7 @@
  *  4. `search()` degrades gracefully: when not initialized OR Milvus
  *     throws, return [] instead of propagating.
  *
- * Plan: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';

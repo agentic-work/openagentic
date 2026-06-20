@@ -1,7 +1,7 @@
 /**
  * F1.5 — RED test for `resolveModel({taskComplexity})` SmartRouter scoring path
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F1.5)
+ * the design notes
  *
  * When the caller supplies a taskComplexity hint (no explicitRowId/flowNodeId/
  * agentId), resolveModel asks RegistryCandidatePool for all rows of the

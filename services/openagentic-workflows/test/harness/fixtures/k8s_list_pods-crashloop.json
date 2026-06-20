@@ -3,12 +3,12 @@
   "result": {
     "result": {
       "success": true,
-      "namespace": "agentic-dev",
+      "namespace": "openagentic",
       "is_protected": false,
       "pods": [
         {
           "name": "openagentic-api-6b8d4f7c9d-x2k4n",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "status": "Running",
           "ready": "1/1",
           "restarts": 0,
@@ -19,7 +19,7 @@
         },
         {
           "name": "openagentic-ui-7d9f8b6c4d-m5j2p",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "status": "Running",
           "ready": "1/1",
           "restarts": 0,
@@ -30,7 +30,7 @@
         },
         {
           "name": "openagentic-workflows-5c4e8a9b3f-q7n6w",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "status": "CrashLoopBackOff",
           "ready": "0/1",
           "restarts": 27,
@@ -41,7 +41,7 @@
         },
         {
           "name": "openagentic-mcp-proxy-7e9c4d5a8b-r3k9p",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "status": "Running",
           "ready": "1/1",
           "restarts": 12,
@@ -52,7 +52,7 @@
         },
         {
           "name": "oap-openagentic-azure-mcp-697579dff7-s4s6c",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "status": "ImagePullBackOff",
           "ready": "0/1",
           "restarts": 9,

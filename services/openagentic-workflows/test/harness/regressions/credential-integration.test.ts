@@ -100,7 +100,7 @@ describe('credential integration — Slack webhook resolved from {{secret:NAME}}
         ],
         edges: [{ id: 'e1', source: 'trigger', target: 'notify' }],
       },
-      input: { namespace: 'agentic-dev' },
+      input: { namespace: 'openagentic' },
       userId: 'harness-user-cred-1',
     });
 
@@ -109,7 +109,7 @@ describe('credential integration — Slack webhook resolved from {{secret:NAME}}
     // 1. The integration actually fired against the decrypted URL.
     expect(capturedUrl).toBe(SECRET_PLAINTEXT);
     // 2. The payload contains the interpolated message.
-    expect(capturedPayload?.text).toBe('Pod health alert for agentic-dev');
+    expect(capturedPayload?.text).toBe('Pod health alert for openagentic');
     expect(capturedPayload?.channel).toBe('#devops');
 
     // 3. The node output does NOT include the resolved URL.

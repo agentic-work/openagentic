@@ -26,9 +26,9 @@
  *     `streamFormat` (e.g. `'aif-responses' as const`), which is impossible
  *     while `StreamFormat` is the 3-value subset.
  *
- * Plan: docs/superpowers/plans/2026-05-05-chatmode-100-percent-accuracy-implementation.md
+ * the design notes
  *       Workstream D, Phase D-0.
- * Source: docs/research/2026-05-05-sdk-wire-in-plan.md §"Phase D-0: type unification".
+ * Source: the design notes §"Phase D-0: type unification".
  */
 
 import { describe, it, expect } from 'vitest';

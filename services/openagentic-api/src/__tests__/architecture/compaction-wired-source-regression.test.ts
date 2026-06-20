@@ -2,7 +2,7 @@
  * Architecture gate (V3 Phase 8): ConversationCompactionWorker /
  * ContextManagementService is wired into both pre-loop and mid-loop.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §4.4
+ * the design notes
  *
  * Pre-loop: runChat must consult getContextUsage() with a 65% soft threshold.
  * Mid-loop: chatLoop must consult getContextUsage() with an 85% hard threshold

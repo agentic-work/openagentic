@@ -59,7 +59,7 @@ function makeCtx() {
 }
 
 // #482/#491 — same-origin CDN. synth-cdn is the cluster-internal ClusterIP
-// pod (`openagentic-synth-executor:8090`), exposed to browsers via UI nginx
+// sandbox executor pod, exposed to browsers via UI nginx
 // `/api/cdn/lib/*`. There is NO `cdn.openagentic.io` host — that legacy URL
 // form is explicitly banned by CdnAllowList (#491).
 const SAFE_HTML = [

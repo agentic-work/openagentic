@@ -1,14 +1,14 @@
 {
-  "_comment": "Real-shape mcp-proxy /call response for openagentic_kubernetes.k8s_list_deployments — the all-healthy operational default. Mirrors the live agentic-dev cluster state on 2026-05-13 (every deployment ready_replicas === replicas, available_replicas >= replicas). Exercises the empty-case 'no unhealthy deployments' path of the analyze + filter transforms and the conditional 'all healthy' branch of the report HTML.",
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_kubernetes.k8s_list_deployments — the all-healthy operational default. Mirrors the live openagentic cluster state on 2026-05-13 (every deployment ready_replicas === replicas, available_replicas >= replicas). Exercises the empty-case 'no unhealthy deployments' path of the analyze + filter transforms and the conditional 'all healthy' branch of the report HTML.",
   "result": {
     "result": {
       "success": true,
-      "namespace": "agentic-dev",
+      "namespace": "openagentic",
       "is_protected": false,
       "deployments": [
         {
           "name": "openagentic-api",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "replicas": 1,
           "ready_replicas": 1,
           "available_replicas": 1,
@@ -24,7 +24,7 @@
         },
         {
           "name": "openagentic-ui",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "replicas": 1,
           "ready_replicas": 1,
           "available_replicas": 1,
@@ -40,7 +40,7 @@
         },
         {
           "name": "openagentic-mcp-proxy",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "replicas": 1,
           "ready_replicas": 1,
           "available_replicas": 1,

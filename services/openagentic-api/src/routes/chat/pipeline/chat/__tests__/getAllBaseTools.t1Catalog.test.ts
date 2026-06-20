@@ -1,8 +1,8 @@
 /**
  * Phase C.1 — Pin the T1 chatmode catalog to exactly 12 primitives.
  *
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §C.1
- * Spec: docs/superpowers/specs/2026-05-10-chatmode-three-layer-architecture.md §Layer-2
+ * the design notes
+ * the design notes-2
  *
  * Growth log:
  *   - Phase C.1 (2026-05-10): 10 primitives baseline.

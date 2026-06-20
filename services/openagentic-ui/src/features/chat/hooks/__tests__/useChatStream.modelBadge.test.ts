@@ -1,7 +1,7 @@
 /**
  * P0-2 of chatmode UX parity — model badge in assistant message header.
  *
- * Plan ref: docs/superpowers/specs/2026-04-30-chatmode-ux-parity-punchlist.md
+ * Plan ref: the design notes
  *
  * Mock 01 spec (mocks/UX/01-cloud-ops.html:206-212):
  *   <span class="model">

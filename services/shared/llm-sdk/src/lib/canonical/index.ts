@@ -3,7 +3,7 @@
  * (canonical → provider wire) depend on. Mirrors the existing `normalizers/`
  * folder (provider wire → canonical) but for the OUTBOUND direction.
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *        §"Phase 0.2 — SDK shared canonical invariants"
  *
  * Public surface:

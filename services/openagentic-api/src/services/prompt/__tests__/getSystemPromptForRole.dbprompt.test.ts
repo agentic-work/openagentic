@@ -5,7 +5,7 @@
  * primary source when rbacService is injected; disk file remains the emergency
  * fallback on DB failure. File path remains the default when rbacService is absent.
  *
- * Spec: docs/superpowers/specs/2026-05-10-chatmode-prompts-db-editable.md
+ * the design notes
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getSystemPromptForRole } from '../getSystemPromptForRole.js';

@@ -1,7 +1,7 @@
 /**
  * Phase G — Provider DELETE cascade
  *
- * Spec: docs/superpowers/specs/2026-04-30-ollama-split-topology.md §Phase G
+ * the design notes G
  *
  * Bug: DELETE /api/admin/llm-providers/:id soft-deletes the provider row,
  * but does NOT cascade-disable the ModelRoleAssignment rows that reference

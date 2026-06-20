@@ -18,7 +18,7 @@
  * Then `runChat.ts` reads those two fields off `deps` and threads them
  * through `V3DispatchDeps` so `splitEnvelope` actually offloads.
  *
- * Plan: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.2
+ * the design notes
  *       (LargeResultStorage seam) + plan Phase 4 / Task 4.5.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';

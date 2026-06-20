@@ -31,7 +31,7 @@ const SUBSCRIPTIONS_TABLE = [
   '| Subscription ID | Name | State |',
   '|---|---|---|',
   '| 6ed638e7-7deb-4773-b516-a2a2b9dbb948 | Azure subscription 1 | Enabled |',
-  '| 815a115d-bf32-495c-a89f-b5ce6b349b57 | openagentic-dev | Enabled |',
+  '| 815a115d-bf32-495c-a89f-b5ce6b349b57 | openagentic-example | Enabled |',
 ].join('\n');
 
 describe('SharedMarkdownRenderer — markdown tables route through v2 StreamingTable', () => {
@@ -88,7 +88,7 @@ describe('SharedMarkdownRenderer — markdown tables route through v2 StreamingT
     );
     expect(secondCells).toEqual([
       '815a115d-bf32-495c-a89f-b5ce6b349b57',
-      'openagentic-dev',
+      'openagentic-example',
       'Enabled',
     ]);
   });

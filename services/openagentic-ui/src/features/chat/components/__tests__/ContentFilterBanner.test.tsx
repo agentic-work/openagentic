@@ -4,7 +4,7 @@
  * The banner is the compliance signal a user sees when Azure RAI /
  * Vertex SAFETY / Vertex RECITATION trips on the assistant's output.
  * Before B8 these trips silently truncated as canonical end_turn and
- * the UI rendered an empty bubble — hiding a SAFETY event from FedRAMP
+ * the UI rendered an empty bubble — hiding a SAFETY event from the
  * audit. These tests pin the contract: testid, headline-by-kind,
  * verbatim server message, optional model row.
  */

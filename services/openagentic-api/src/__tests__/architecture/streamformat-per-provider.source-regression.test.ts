@@ -13,9 +13,9 @@
  * for per-request dispatch — that overload lands in D-1.2 / D-1.3 / D-1.4
  * and gets pinned by additional describe blocks in this file.
  *
- * Plan: docs/superpowers/plans/2026-05-05-chatmode-100-percent-accuracy-implementation.md
+ * the design notes
  *       Workstream D, Phase D-1.
- * Source: docs/research/2026-05-05-sdk-wire-in-plan.md §"Phase D-1: provider-side correctness pass".
+ * Source: the design notes §"Phase D-1: provider-side correctness pass".
  */
 
 import { describe, it, expect } from 'vitest';

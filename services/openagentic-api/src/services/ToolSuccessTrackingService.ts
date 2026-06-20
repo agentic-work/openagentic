@@ -60,7 +60,7 @@ export interface ToolSuccessSearchOptions {
   tagFilter?: string[];       // Filter by intent/context tags
   limit?: number;             // Max results (default 10)
   minScore?: number;          // Minimum similarity score (default 0.5)
-  /** @deprecated Cross-user pattern access disabled for FedRAMP/HIPAA compliance */
+  /** @deprecated Cross-user pattern access disabled for NIST 800-53 / HIPAA compliance */
   includeAllUsers?: boolean;  // DEPRECATED: Always enforces user isolation
 }
 
@@ -381,7 +381,7 @@ export class ToolSuccessTrackingService {
       let results: ToolSuccessSearchResult[] = [];
       try {
         const vectorSql = `[${queryEmbedding.join(',')}]`;
-        // SECURITY: Always enforce user isolation (FedRAMP/HIPAA compliance)
+        // SECURITY: Always enforce user isolation (NIST 800-53 / HIPAA compliance)
         let whereClause = `WHERE query_embedding IS NOT NULL AND user_id = '${options.userId}'`;
 
         const pgResults = await prisma.$queryRawUnsafe<any[]>(
@@ -423,7 +423,7 @@ export class ToolSuccessTrackingService {
       }
 
       // 2. FALLBACK: Milvus search (historical, user-isolated)
-      // SECURITY: Always enforce user isolation (FedRAMP/HIPAA compliance)
+      // SECURITY: Always enforce user isolation (NIST 800-53 / HIPAA compliance)
       const filters: string[] = [];
       filters.push(`user_id == "${options.userId}"`);
       if (options.serverFilter && options.serverFilter.length > 0) {

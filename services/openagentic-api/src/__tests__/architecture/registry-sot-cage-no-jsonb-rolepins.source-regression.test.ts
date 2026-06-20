@@ -1,8 +1,8 @@
 /**
  * Architecture cage — no model_config.{chatModel,embeddingModel,...} runtime reads.
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F0.2)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * The Registry SoT v1 contract: per-provider JSONB role-pin fields (chatModel,
  * embeddingModel, codeModel, defaultModel, visionModel, imageModel,
@@ -114,7 +114,7 @@ describe('Registry SoT v1 cage — no model_config.*Model JSONB role-pin runtime
       ? ''
       : `\n${violations.length} forbidden JSONB role-pin read(s):\n` +
         violations.map(v => `  ${v.file}:${v.line} reads ${v.field}`).join('\n') +
-        `\n\nFix: route through resolveModel({role: '...'}) per spec docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md\n` +
+        `\n\nFix: route through resolveModel({role: '...'}) the design notes\n` +
         `If this file is genuinely a backfill shim, add it to ALLOW_LIST_PREFIXES with justification.`;
 
     expect(violations, summary).toEqual([]);

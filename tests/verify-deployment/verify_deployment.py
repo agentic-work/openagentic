@@ -9,10 +9,10 @@ credential detection come from KUBERNETES (kubectl / helm) against the target
 namespace. It emits a PASS / FAIL / SKIP matrix and exits non-zero iff any
 non-skipped check failed.
 
-  TARGET (defaults to the open-dev release):
-    --url        ingress base URL          (env DEPLOY_URL, default https://open-dev.agenticwork.io)
-    --namespace  k8s namespace             (env DEPLOY_NAMESPACE, default open-dev)
-    --release    helm release name         (env DEPLOY_RELEASE, default open-dev)
+  TARGET (defaults to the openagentic release):
+    --url        ingress base URL          (env DEPLOY_URL, default https://openagentic.example.com)
+    --namespace  k8s namespace             (env DEPLOY_NAMESPACE, default openagentic)
+    --release    helm release name         (env DEPLOY_RELEASE, default openagentic)
     --context    kubectl context           (env DEPLOY_KUBE_CONTEXT, optional)
     admin creds  --admin-email / --admin-password
                  (env DEPLOY_ADMIN_EMAIL / DEPLOY_ADMIN_PASSWORD,
@@ -99,14 +99,14 @@ class Cfg:
         # local UI port and swaps cluster detection for `docker compose`.
         self.mode = (args.mode or os.environ.get("DEPLOY_MODE") or "helm").lower()
         _default_url = ("http://localhost:8080" if self.mode == "compose"
-                        else "https://open-dev.agenticwork.io")
+                        else "https://openagentic.example.com")
         self.url = (args.url or os.environ.get("DEPLOY_URL") or _default_url).rstrip("/")
         # compose project dir (where docker-compose.yml lives) — repo root by default.
         self.compose_dir = (args.compose_dir or os.environ.get("DEPLOY_COMPOSE_DIR")
                             or os.path.dirname(os.path.dirname(os.path.dirname(
                                 os.path.abspath(__file__)))))
-        self.namespace = args.namespace or os.environ.get("DEPLOY_NAMESPACE") or "open-dev"
-        self.release = args.release or os.environ.get("DEPLOY_RELEASE") or "open-dev"
+        self.namespace = args.namespace or os.environ.get("DEPLOY_NAMESPACE") or "openagentic"
+        self.release = args.release or os.environ.get("DEPLOY_RELEASE") or "openagentic"
         self.context = args.context or os.environ.get("DEPLOY_KUBE_CONTEXT") or None
         self.admin_email = (args.admin_email or os.environ.get("DEPLOY_ADMIN_EMAIL")
                             or "admin@openagentic.local")
@@ -907,10 +907,10 @@ def main(argv: list[str]) -> int:
                          "to http://localhost:8080 and uses `docker compose` for detection.")
     ap.add_argument("--compose-dir", dest="compose_dir",
                     help="dir containing docker-compose.yml (compose mode; default repo root)")
-    ap.add_argument("--url", help="ingress base URL (default https://open-dev.agenticwork.io; "
+    ap.add_argument("--url", help="ingress base URL (default https://openagentic.example.com; "
                     "http://localhost:8080 in compose mode)")
-    ap.add_argument("--namespace", help="k8s namespace (default open-dev)")
-    ap.add_argument("--release", help="helm release (default open-dev)")
+    ap.add_argument("--namespace", help="k8s namespace (default openagentic)")
+    ap.add_argument("--release", help="helm release (default openagentic)")
     ap.add_argument("--context", help="kubectl context")
     ap.add_argument("--admin-email", help="admin email (default admin@openagentic.local)")
     ap.add_argument("--admin-password", help="admin password (or env DEPLOY_ADMIN_PASSWORD)")

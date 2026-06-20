@@ -296,7 +296,7 @@ export async function dispatchChatToolCall(
     return executeAgentSearch(ctx, input as AgentSearchInput);
   }
 
-  // Sub-agent lifecycle primitives (chatmode-rip Phase C tasks C.2-C.4).
+  // Sub-agent lifecycle primitives (the chat-pipeline refactor Phase C tasks C.2-C.4).
   // These talk to the openagentic-proxy service (sibling microservice) so
   // running sub-agents can be nudged, enumerated, or torn down without
   // re-spawning. Auth shared with OpenAgenticProxyClient via

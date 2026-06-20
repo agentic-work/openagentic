@@ -38,7 +38,7 @@ describe('HostAllowList', () => {
       await expect(denyIfPrivate('http://169.254.1.1/')).rejects.toThrow(/imds/);
     });
     it('rejects .svc.cluster.local suffix', async () => {
-      await expect(denyIfPrivate('http://x.agentic-dev.svc.cluster.local/')).rejects.toThrow(/cluster_local/);
+      await expect(denyIfPrivate('http://x.openagentic.svc.cluster.local/')).rejects.toThrow(/cluster_local/);
     });
     it('allows public 8.8.8.8', async () => {
       await expect(denyIfPrivate('http://8.8.8.8/')).resolves.toBeUndefined();
@@ -48,15 +48,15 @@ describe('HostAllowList', () => {
   describe('isAllowedInternalHost', () => {
     it('returns true for exact match', async () => {
       const ok = await isAllowedInternalHost(
-        new URL('http://openagentic-api.agentic-dev.svc.cluster.local:3001/health'),
-        ['openagentic-api.agentic-dev.svc.cluster.local'],
+        new URL('http://openagentic-api.openagentic.svc.cluster.local:3001/health'),
+        ['openagentic-api.openagentic.svc.cluster.local'],
       );
       expect(ok).toBe(true);
     });
     it('returns false for substring-match attempt (foo.evil.com)', async () => {
       const ok = await isAllowedInternalHost(
         new URL('http://openagentic-api.evil.com/'),
-        ['openagentic-api.agentic-dev.svc.cluster.local'],
+        ['openagentic-api.openagentic.svc.cluster.local'],
       );
       expect(ok).toBe(false);
     });

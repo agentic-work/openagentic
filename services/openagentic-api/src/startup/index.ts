@@ -22,7 +22,7 @@ import { INIT_TOOL_CACHE } from './08-tool-cache.js';
 import { INIT_PROMPT_CACHE } from './09-prompt-cache.js';
 import { START_JOB_WATCHER } from './10-job-watcher.js';
 // 11-validate-admin-portal RIPPED — required PromptTemplate + UserPromptAssignment
-// rows that no longer exist post-chatmode-rip. RBAC prompts are file-sourced now.
+// rows that no longer exist post-refactor. RBAC prompts are file-sourced now.
 import { INIT_AGENT_REGISTRY } from './12-agent-registry.js';
 import { INIT_MILVUS_COLLECTION_PROBE } from './13-milvus-collection-probe.js';
 import { SEED_BUILT_IN_AGENTS_MD } from './14-agent-md-to-db-seeder.js';

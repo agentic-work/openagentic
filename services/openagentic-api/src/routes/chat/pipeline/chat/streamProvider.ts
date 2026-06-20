@@ -12,8 +12,8 @@
  * pattern Anthropic Claude Code uses (claude.ts:1997-2111). Providers
  * stay dumb chunk pipes; V3 owns canonicalization via the SDK factory.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §12.1
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
+ * the design notes
  *       Phase 2, Task 2.3.
  *
  * Pinned by:

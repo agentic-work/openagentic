@@ -19,7 +19,7 @@
  *     placeholder wasn't even in the list to paint blocks into.
  * Net: `placeholder.content` stayed '' until a reload hydrated the id.
  *
- * THE FIX (mirrors agenticwork-ui ChatContainer, which keys this mirror on a
+ * THE FIX (mirrors the upstream ChatContainer, which keys this mirror on a
  * render-synchronous active session id): resolve the in-flight session id
  * through the SYNCHRONOUSLY-set `firstSendSessionIdRef.current` (assigned inside
  * sendMessage before the stream starts) — closure → store → ref — so it is

@@ -1,8 +1,8 @@
 /**
  * EnrichedToolService — TDD spec for Phase 5.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §5
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md (Phase 5)
+ * the design notes
+ * the design notes (Phase 5)
  *
  * Per-T1-tool metadata SoT. Service exposes:
  *   - getBySlug(slug)

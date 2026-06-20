@@ -43,7 +43,7 @@ interface ProviderRoutesOptions {
  * Why: the Add-Provider wizard's Test-Connection step runs `discoverModels()`
  * and (incorrectly) stuffs the catalog into modelConfig.{chatModel,
  * embeddingModel, additionalModels, codeModel, defaultModel}. Storing that
- * verbatim violates the FedRAMP "Registry == explicit add" rule (#459) — a
+ * verbatim violates the "Registry == explicit add" rule (#459) — a
  * freshly-added provider then appears to "have" 88 phantom models the user
  * never selected.
  *
@@ -1506,7 +1506,7 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
    * persistence. The Add-Provider wizard's Test-Connection step runs
    * `discoverModels()` and (incorrectly) stuffs the catalog into
    * `modelConfig.{chatModel, embeddingModel, additionalModels}`. Storing
-   * that verbatim violates the FedRAMP "Registry == explicit add" rule —
+   * that verbatim violates the "Registry == explicit add" rule —
    * the user sees phantom models on a provider they never added.
    *
    * Provider creation = creds + non-model config only.
@@ -1556,7 +1556,7 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         });
       }
 
-      // Discriminator enforcement (FedRAMP origin metadata): reject generic
+      // Discriminator enforcement (discriminator origin metadata): reject generic
       // names + require per-type origin fields (env + per-type identifiers).
       // Existing rows are grandfathered; only new POSTs are validated here.
       // Tunable via PROVIDER_DISCRIMINATOR_ENFORCED=false (admin escape hatch
@@ -2197,7 +2197,7 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
 
       // Soft delete by setting deleted_at timestamp + cascade-disable any
       // ModelRoleAssignment rows that reference this provider by name
-      // (Phase G of docs/superpowers/specs/2026-04-30-ollama-split-topology.md).
+      // (Phase G of the design notes).
       //
       // Why cascade in a transaction:
       //   ModelRoleAssignment.provider is a string column with no FK to

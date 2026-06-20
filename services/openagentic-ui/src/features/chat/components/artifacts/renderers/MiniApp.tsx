@@ -2,7 +2,7 @@
  * #781 Phase C6 — MiniApp renderer.
  *
  * Sandbox-backed executable mini-app: iframe sourced from
- * /api/synth/mini-app/<exec_id> (server proxies to synth-executor pod
+ * /api/synth/mini-app/<exec_id> (server proxies to the sandbox executor pod
  * with declared capabilities + CPU/RAM/TTL caps). Provenance panel
  * mirrors mock 10's Stripe/Linear/Figma technical-light aesthetic.
  *

@@ -1,7 +1,7 @@
 /**
  * Phase I — SmartModelRouter availability gate
  *
- * Spec: docs/superpowers/specs/2026-04-30-ollama-split-topology.md §Phase I
+ * the design notes I
  *
  * Bug: candidate filter sites (routeRequest, simulateRouting,
  * getCheapestChatModel) trust `m.metadata.isAvailable`. Nothing in the

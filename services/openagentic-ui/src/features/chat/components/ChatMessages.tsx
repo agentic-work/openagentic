@@ -254,7 +254,7 @@ export default function ChatMessages({
   hitlApprovalsByMessageId,
   onApproveHitl,
   onDenyHitl,
-  // B8 — content_filter compliance banner state (FedRAMP-Hi audit).
+  // B8 — content_filter compliance banner state (audit).
   contentFilterBannerByMessageId,
   onExpandToCanvas,
   onExecuteCode,
@@ -830,7 +830,7 @@ export default function ChatMessages({
                     Rendered when canonical stop_reason was content_filter /
                     safety / recitation. Replaces the silent-truncate
                     end_turn UX so the user sees a distinct compliance
-                    signal per FedRAMP-Hi audit. */}
+                    signal per audit. */}
                 {message.role === 'assistant' &&
                   contentFilterBannerByMessageId?.[message.id] && (
                     <ContentFilterBanner

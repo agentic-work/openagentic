@@ -9,7 +9,7 @@
  * arm at useChatStream.ts:3296 is structurally identical and shares the
  * same ContentBlock shape — it stamps `outputTemplate` the same way.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.3
+ * the design notes
  */
 import { describe, it, expect } from 'vitest';
 import {

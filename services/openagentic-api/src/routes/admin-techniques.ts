@@ -19,7 +19,7 @@ const logger = pino({
 // const techniqueService = new PromptTechniqueService(loggers.services);
 
 // Admin auth middleware
-// SECURITY: AUTH_MODE=development bypass removed in v0.5.0 FedRAMP hardening (Bolt 01)
+// SECURITY: AUTH_MODE=development bypass removed in v0.5.0 security hardening (Bolt 01)
 // All admin access requires proper JWT authentication via Azure AD.
 const requireAdmin = async (request: any, reply: any) => {
   const user = request.user;

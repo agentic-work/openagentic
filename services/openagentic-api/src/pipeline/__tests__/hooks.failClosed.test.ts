@@ -1,8 +1,8 @@
 /**
  * HookRunner — default failureMode = fail_closed (Phase 3).
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §7
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md Phase 3
+ * the design notes
+ * the design notes
  *
  * Default behaviour: a thrown error from any registered hook propagates.
  * Per-hook override: registrations with `failureMode: 'fail_open'` catch their

@@ -7,7 +7,7 @@
  * Mock anatomy: mocks/UX/AI/Chatmode/end-state-04-gcp-cloudrun-interrogation.html
  * Token-driven; no hex literals.
  *
- * Plan: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       §Phase 2.2.3 — A2 UI render pipeline.
  */
 

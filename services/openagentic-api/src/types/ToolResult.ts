@@ -5,8 +5,8 @@
  * summary + optional shaped digest). `_meta` is what the UI + downstream
  * observability see — it never goes to the model.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.1
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
+ * the design notes
  *       Phase 4, Task 4.1.
  */
 

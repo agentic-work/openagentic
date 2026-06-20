@@ -3,7 +3,7 @@
  * inline with an assistant message whose canonical stop_reason was
  * `content_filter`, `safety`, or `recitation`. Before B8 these all
  * collapsed to `end_turn` and the UI showed a truncated bubble with no
- * indication that a safety filter fired. For CDC FedRAMP-Hi audit this
+ * indication that a safety filter fired. For audit this
  * hid a SAFETY event from the operator + audit log.
  *
  * Visual: subtle red/orange border + icon + compliance copy. Sits
@@ -16,7 +16,7 @@
  * assistant message id in `contentFilterBannerByMessageId`. ChatMessages
  * mounts this component when the entry is set for the message.
  *
- * Plan ref: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md §1.4
+ * Plan ref: the design notes
  */
 import React, { memo } from 'react';
 
@@ -24,7 +24,7 @@ export interface ContentFilterBannerProps {
   /** Discriminator the server attached to the frame
    *  ('content_filter' | 'safety' | 'recitation'). Used to vary the
    *  headline; the body copy is the same compliance language for all
-   *  three (the FedRAMP audit doesn't distinguish them in user UX). */
+   *  three (the audit doesn't distinguish them in user UX). */
   kind?: string;
   /** Model that produced the filtered turn — surfaced in the audit row
    *  so the user knows which deployment tripped. */

@@ -1,8 +1,8 @@
 /**
  * Phase 9 — V3 meta-tools dispatch wiring (TDD RED first).
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §10
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
+ * the design notes
  *       Phase 9 (Tasks 9.1-9.10)
  *
  * Asserts that the V3 dispatcher handles the Phase 9 meta-tools:

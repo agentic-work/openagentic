@@ -13,8 +13,8 @@
  * for providers) so it runs without spinning up the api or loading any
  * runtime dependencies.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §12.1
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
+ * the design notes
  *       Phase 2, Task 2.1.
  */
 

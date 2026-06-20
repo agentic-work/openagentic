@@ -5,8 +5,8 @@ import '@testing-library/jest-dom';
 import { ComplianceDashboardRenderer } from '../ComplianceDashboardRenderer';
 
 const example = {
-  title: 'FedRAMP-High readiness',
-  framework: 'FedRAMP-High Rev 5',
+  title: 'NIST 800-53 readiness',
+  framework: 'NIST 800-53 Rev 5',
   families: [
     {
       family: 'AC — Access Control',

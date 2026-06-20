@@ -1,5 +1,5 @@
 /**
- * AgentSendTool — RED test for the executor (chatmode-rip Phase C dispatcher
+ * AgentSendTool — RED test for the executor (the chat-pipeline refactor Phase C dispatcher
  * wire-up). The model invokes `agent_send` to push a follow-up message
  * into a running sub-agent session. `executeAgentSend` POSTs to
  * openagentic-proxy's `/api/agents/executions/:id/send` endpoint (auth shared with
@@ -38,7 +38,7 @@ function makeCtx(overrides: Record<string, any> = {}) {
   } as any;
 }
 
-describe('executeAgentSend (chatmode-rip Phase C dispatcher)', () => {
+describe('executeAgentSend (the chat-pipeline refactor Phase C dispatcher)', () => {
   const ENV_BACKUP = { ...process.env };
 
   beforeEach(() => {
@@ -110,7 +110,7 @@ describe('executeAgentSend (chatmode-rip Phase C dispatcher)', () => {
   });
 });
 
-describe('dispatchChatToolCall — agent_send routing (chatmode-rip Phase C)', () => {
+describe('dispatchChatToolCall — agent_send routing (the chat-pipeline refactor Phase C)', () => {
   const ENV_BACKUP = { ...process.env };
 
   beforeEach(() => {

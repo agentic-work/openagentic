@@ -93,7 +93,7 @@ const EffectivenessView = lazy(() =>
 const PromptMetrics = lazy(() => import('../components/Content/PromptMetrics'))
 
 // Content & Data
-// PromptTemplateManager RIPPED 2026-05-11 (chatmode-rip Phase E final cleanup).
+// PromptTemplateManager RIPPED 2026-05-11 (the chat-pipeline refactor Phase E final cleanup).
 const PipelineSettingsView = lazy(() =>
   import('../components/Content/PipelineSettingsView').then(m => ({ default: m.PipelineSettingsView })),
 )

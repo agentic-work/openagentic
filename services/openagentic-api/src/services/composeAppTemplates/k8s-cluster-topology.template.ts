@@ -2,7 +2,7 @@
  * k8s-cluster-topology — Kubernetes cluster topology with nodes, pods,
  * namespaces. Renders via cytoscape compound nodes (namespace > node > pod).
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md
+ * the design notes
  *       (mock 06: aws-k8s-aiops uses this; mock 05: troubleshoot can too)
  */
 

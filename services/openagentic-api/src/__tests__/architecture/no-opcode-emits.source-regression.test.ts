@@ -1,7 +1,7 @@
 /**
  * Architecture pin — A1 (rip dead opcode emits).
  *
- * Plan: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       Phase 2.1.4 — "Rip dead opcode emits".
  *
  * The dual-wire protocol (named frame + Vercel-AI-SDK opcode character)

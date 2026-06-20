@@ -51,8 +51,7 @@ export const INIT_MCP_INDEX: BootstrapStep = {
       // brittle (ServiceNow / LangGraph / Zapier all proved this).
       // Right abstraction: `learned_patterns` (#767) where the MODEL
       // self-curates successful chains as EXEMPLARS (hints, not
-      // prescriptions). See docs/superpowers/specs/2026-05-11-fedramp-
-      // phi-exfil-capstone.md and the design discussion captured in
+      // prescriptions), per the design discussion captured in
       // task #766 (deleted).
     } catch (pgError: any) {
       loggers.services.warn({ error: pgError.message }, '⚠️ PostgreSQL tool indexing failed (Milvus primary is OK)');

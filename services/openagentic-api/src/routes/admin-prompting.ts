@@ -97,7 +97,7 @@ const adminPromptingRoutes: FastifyPluginAsync = async (fastify, opts) => {
     // Check if user is admin (using groups or email domain)
     const isAdmin = user?.groups?.includes('admins') || 
                     user?.email?.endsWith('@openagentic.io') ||
-                    user?.groups?.includes(process.env.VITE_AZURE_AD_ADMIN_GROUP || '7e3231af-41af-4e5c-abf5-bbc97dec73d3');
+                    user?.groups?.includes(process.env.VITE_AZURE_AD_ADMIN_GROUP || '00000000-0000-0000-0000-000000000000');
     
     // Allow access in development environment or for local testing
     if (process.env.FRONTEND_URL?.includes('localhost') || 

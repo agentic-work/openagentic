@@ -19,7 +19,7 @@
  * sees a 2KB summary instead of a 5MB inline blob; the full payload lives
  * in Redis behind the `artifactHandle`.
  *
- * Plan: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.2
+ * the design notes
  *       (per-tool truncate_summary seeds).
  */
 import { describe, it, expect } from 'vitest';

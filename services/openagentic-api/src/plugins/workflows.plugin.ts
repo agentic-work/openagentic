@@ -108,7 +108,7 @@ const workflowsRoutesPluginImpl: FastifyPluginAsync<WorkflowsRoutesPluginOptions
   });
 
   // ── 4. User Context routes ───────────────────────────────────────────────
-  // Phase 16 — Unified Cross-Mode Memory Layer. Per-user isolation (FedRAMP AC-3).
+  // Phase 16 — Unified Cross-Mode Memory Layer. Per-user isolation (NIST 800-53 AC-3).
   // NOTE: userContextRoutes registers absolute paths (/api/user-context/*) so
   // NO prefix is passed here — matches original server.ts behaviour.
   // Intentionally OUTSIDE the gated inner plugin — this route is shared across

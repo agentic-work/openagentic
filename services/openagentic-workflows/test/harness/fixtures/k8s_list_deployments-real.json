@@ -1,14 +1,14 @@
 {
-  "_comment": "Real-shape mcp-proxy /call response for openagentic_kubernetes.k8s_list_deployments captured 2026-05-13 via kubectl get deployments -n agentic-dev + cross-checked against the python tool source (services/mcps/oap-kubernetes-mcp/src/kubernetes_mcp_server/server.py k8s_list_deployments lines 436-470). The tool returns the native python dict (no FastMCP content[].text wrapping) so the mcp-proxy 3-layer unwrap (proxy.result.result) surfaces the dict verbatim and the mcp_tool node executor returns it as { success, namespace, is_protected, deployments[], count }. The deployments array mixes 1 healthy (replicas=ready=available) with 2 unhealthy: one mid-rollout (replicas=3, ready=1, available=1, updated=1 — typical rolling-update state) and one stuck (replicas=2, ready=0, available=0 — pod spec broken or image pull failing). Exercises the analyze transform's three-way classification.",
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_kubernetes.k8s_list_deployments captured 2026-05-13 via kubectl get deployments -n openagentic + cross-checked against the python tool source (services/mcps/oap-kubernetes-mcp/src/kubernetes_mcp_server/server.py k8s_list_deployments lines 436-470). The tool returns the native python dict (no FastMCP content[].text wrapping) so the mcp-proxy 3-layer unwrap (proxy.result.result) surfaces the dict verbatim and the mcp_tool node executor returns it as { success, namespace, is_protected, deployments[], count }. The deployments array mixes 1 healthy (replicas=ready=available) with 2 unhealthy: one mid-rollout (replicas=3, ready=1, available=1, updated=1 — typical rolling-update state) and one stuck (replicas=2, ready=0, available=0 — pod spec broken or image pull failing). Exercises the analyze transform's three-way classification.",
   "result": {
     "result": {
       "success": true,
-      "namespace": "agentic-dev",
+      "namespace": "openagentic",
       "is_protected": false,
       "deployments": [
         {
           "name": "openagentic-api",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "replicas": 1,
           "ready_replicas": 1,
           "available_replicas": 1,
@@ -29,7 +29,7 @@
         },
         {
           "name": "openagentic-workflows",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "replicas": 3,
           "ready_replicas": 1,
           "available_replicas": 1,
@@ -50,7 +50,7 @@
         },
         {
           "name": "oap-openagentic-azure-mcp",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "replicas": 2,
           "ready_replicas": 0,
           "available_replicas": 0,

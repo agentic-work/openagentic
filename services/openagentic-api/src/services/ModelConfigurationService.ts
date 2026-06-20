@@ -152,7 +152,7 @@ class ModelConfigurationServiceClass {
    * Registry SoT: admin.model_role_assignments row with role='chat' &
    * enabled=true, ordered by priority ASC.
    *
-   * #508 Phase 2 (FedRAMP overhaul §5.3) — NO self-heal, NO write-inside-read.
+   * #508 Phase 2 (security overhaul §5.3) — NO self-heal, NO write-inside-read.
    * The Phase 1 cascade trigger guarantees the registry can never go empty
    * while a provider exists, and the #509 tombstone gate blocks discovery
    * from re-resurrecting admin-deleted rows. The only way to hit "registry

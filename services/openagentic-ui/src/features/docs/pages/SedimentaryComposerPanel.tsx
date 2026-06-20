@@ -53,7 +53,7 @@ const EXAMPLES: Example[] = [
     label: 'plain Azure ask',
     text:  'show me my azure subscriptions and resource groups',
     intents: { mode: 'chat', visualization: false, thinking: true, tools: true },
-    response: 'Here are your subscriptions and resource groups:\n\n• Azure subscription 1 — 0 RGs\n• openagentic-dev — 5 RGs',
+    response: 'Here are your subscriptions and resource groups:\n\n• Azure subscription 1 — 0 RGs\n• openagentic-example — 5 RGs',
     followup: 'Want me to break this down by region, or pull the cost view next?',
   },
   {

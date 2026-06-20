@@ -12,7 +12,7 @@
  * metrics are scraped by Prometheus the moment this module loads —
  * no extra wiring required.
  *
- * The 22 metrics map 1:1 to spec/2026-05-09-v3-enterprise-chatmode-design.md
+ * The 22 metrics map 1:1 to the design notes
  * §13–§15 (Phase 13 added v3_feedback_signals_total for the advisory loop).
  * Don't add a 23rd here without amending the spec; the architecture
  * test at __tests__/architecture/v3-metrics-source-regression.test.ts
@@ -167,7 +167,7 @@ export const v3Metrics = {
   // entirely via system-prompt selection (chat-system-{admin,member}.md).
   // The counter added no signal beyond the model/intent split that
   // chatTurns already covers; ripped to keep the V3 metric surface
-  // aligned with the rev-2 chatmode-rip plan.
+  // aligned with the rev-2 the chat-pipeline refactor plan.
 
   // ── Phase 13 — feedback advisory loop ───────────────────────────────
   feedbackSignals: new Counter({

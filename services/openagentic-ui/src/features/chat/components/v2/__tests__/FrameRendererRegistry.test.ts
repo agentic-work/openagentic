@@ -5,8 +5,8 @@
  * rendering. UI's useChatStream tool_result reducer arm reads the
  * outputTemplate and looks up the component here.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §6.3
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
+ * the design notes
  *       Phase 4, Task 4.5.
  */
 import { describe, it, expect, vi } from 'vitest';

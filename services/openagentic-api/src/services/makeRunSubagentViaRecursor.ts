@@ -2,7 +2,7 @@
  * makeRunSubagentViaRecursor — chatLoopRecursor-backed `deps.runSubagent`
  * for the chat TaskTool.
  *
- * Phase E.8.e of the chatmode-rip plan. The chat path's Task meta-tool
+ * Phase E.8.e of the chat-pipeline refactor plan. The chat path's Task meta-tool
  * dispatches sub-agents through `deps.runSubagent(spec, parentCtx)`.
  * Before this slice, that dep was wired to the legacy `makeRunSubagent(...)`
  * from `buildChatV2Deps.ts`, which wrapped the in-api orchestrator service
@@ -53,7 +53,7 @@
  *        ▼
  *        ▼  Returns ChatLoopRecursorResult → adapter → SubagentRunResult
  *
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §E.8.e
+ * the design notes
  */
 import { chatLoopRecursor } from './chatLoopRecursor.js';
 import type {
@@ -189,7 +189,7 @@ export function makeRunSubagentViaRecursor(
       // No materialized tool defs at dispatch — sub-agent discovers tools
       // mid-turn via tool_search (T1 architecture). The recursor passes
       // an empty `inheritedTools` through to the child chatLoop. Spec
-      // 2026-05-10 chatmode-three-layer §sub-agents.
+      // 2026-05-10 the three-layer prompt architecture §sub-agents.
       inheritedTools: [],
       maxIterations: defaultMaxIterations,
       timeoutMs: defaultTimeoutMs,

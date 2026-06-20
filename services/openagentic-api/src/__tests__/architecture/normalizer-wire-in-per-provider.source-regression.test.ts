@@ -8,9 +8,9 @@
  *
  * Single-accumulator-per-stream pattern, mirrors Anthropic claude.ts:1997-2111.
  *
- * Plan: docs/superpowers/plans/2026-05-05-chatmode-100-percent-accuracy-implementation.md
+ * the design notes
  *       Workstream D, Phase D-2.
- * Source: docs/research/2026-05-05-sdk-wire-in-plan.md §"Phase D-2: provider-side wire-in".
+ * Source: the design notes §"Phase D-2: provider-side wire-in".
  */
 
 import { describe, it, expect } from 'vitest';

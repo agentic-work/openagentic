@@ -2,7 +2,7 @@
  * Architecture pin — every T1 meta-tool description must contain BOTH
  * a "when to use" trigger AND a "when NOT to use" negative example.
  *
- * Spec: docs/superpowers/specs/2026-05-05-tool-grounding-architecture.md §1
+ * the design notes
  *       Stage 4 — per-tool how-to prompt fragments.
  *
  * Production reference: Anthropic Claude Code at

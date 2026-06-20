@@ -1,13 +1,13 @@
 
 
--- FedRAMP AU-9: Prevent modifications to audit log records
+-- NIST 800-53 AU-9: Prevent modifications to audit log records
 -- Audit records must be immutable once written to satisfy AU-9 (Protection of Audit Information)
 
 -- Shared trigger function that blocks UPDATE and DELETE on audit tables
 CREATE OR REPLACE FUNCTION prevent_audit_modification()
 RETURNS TRIGGER AS $$
 BEGIN
-  RAISE EXCEPTION 'Audit records are immutable - modifications are prohibited (FedRAMP AU-9)';
+  RAISE EXCEPTION 'Audit records are immutable - modifications are prohibited (NIST 800-53 AU-9)';
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;

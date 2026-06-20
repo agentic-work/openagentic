@@ -160,7 +160,7 @@ describe('mcp_tool/executor', () => {
       makeCtx(),
     );
     expect(post.mock.calls[0][1]).toMatchObject({
-      arguments: { namespace: 'agentic-dev', deployment_name: 'openagentic-api' },
+      arguments: { namespace: 'openagentic', deployment_name: 'openagentic-api' },
     });
   });
 

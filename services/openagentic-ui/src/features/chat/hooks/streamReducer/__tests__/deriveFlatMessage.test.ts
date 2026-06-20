@@ -1,7 +1,7 @@
 /**
  * deriveFlatMessage — RED tests (Phase 2 helper).
  *
- * Plan: docs/superpowers/plans/sprightly-percolating-brook.md §2.2
+ * the design notes
  *
  * Pure function (ContentBlock[]) => string. Concatenates the `content` field of
  * each `type: 'text'` block in array order. Becomes the source of truth for

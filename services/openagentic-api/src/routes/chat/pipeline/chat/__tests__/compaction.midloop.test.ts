@@ -1,7 +1,7 @@
 /**
  * Phase 8 — V3 chatLoop mid-loop compaction trigger (TDD RED first).
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §4.4
+ * the design notes
  *
  * After tool_results land at the end of a loop iteration, chatLoop must check
  * usage. When `usagePercentage >= 85` (HARD threshold), it awaits

@@ -144,7 +144,7 @@ function buildPodRows(
 // Queries — keep the panel focused (per the spec, do NOT add more)
 // ---------------------------------------------------------------------------
 
-// Namespace is deployment-specific. It was hardcoded to "agentic-dev" — the
+// Namespace is deployment-specific. It was hardcoded to "openagentic" — the
 // wrong namespace for OSS installs (the platform deploys into "openagentic"
 // by default), so every kube_* tile read "—". Drive it from build-time env
 // (VITE_K8S_NAMESPACE) so each deployment scopes these to its own namespace.

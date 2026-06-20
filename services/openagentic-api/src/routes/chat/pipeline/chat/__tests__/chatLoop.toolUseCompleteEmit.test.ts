@@ -1,7 +1,7 @@
 /**
  * Sev-1 / Audit L3-4 (was F0-5) — `tool_use_complete` never fires on wire.
  *
- * Plan: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       §Phase 2.3.3 — "L3-4 wire tool_use_complete emit".
  *
  * Without this emit, if dispatch crashes between tool_use_complete and

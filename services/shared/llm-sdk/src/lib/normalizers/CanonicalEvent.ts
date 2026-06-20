@@ -33,8 +33,7 @@ export type CanonicalStopReason =
   // but Azure AOAI content-filter / Bedrock guardrail / Vertex SAFETY +
   // RECITATION + BLOCKLIST + PROHIBITED_CONTENT + SPII + OpenAI o1+ refusal
   // need representable canonical variants — adapters back-map to provider
-  // wire format. Spec: docs/superpowers/plans/2026-05-11-chatmode-five-
-  // layer-remediation.md §"Phase 0.2 — SDK shared canonical invariants".
+  // wire format (SDK shared canonical invariants).
   | 'content_filter'
   | 'safety'
   | 'recitation'

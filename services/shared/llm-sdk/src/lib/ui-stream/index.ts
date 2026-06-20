@@ -8,7 +8,7 @@
  * renderer) consume these types directly — no UI-local parallel type
  * hierarchy.
  *
- * Spec: docs/superpowers/specs/2026-05-18-streaming-engine-design.md
+ * the design notes
  */
 
 export type {

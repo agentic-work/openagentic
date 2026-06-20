@@ -58,14 +58,14 @@ describe('Phase B-prime · TopBar brand uses shared CompanyLogo', () => {
 })
 
 describe('H7 · TopBar scope chip has no baked-in env/brand default', () => {
-  it('does NOT render the scope chip (or any "agentic-dev" env leak) when no scope is passed', () => {
+  it('does NOT render the scope chip (or any "openagentic" env leak) when no scope is passed', () => {
     companyLogoCalls = []
     const { container } = render(<TopBar crumbs={[{ label: 'admin' }]} />)
     // The live mount (AdminPortalHostV3) passes no scope — the chip must be
     // absent so the shell never bakes in an environment string or the
-    // pre-scrub "agentic-dev" brand name.
+    // pre-scrub "openagentic" brand name.
     expect(container.querySelector('.aw-topbar__chip')).toBeNull()
-    expect(container.textContent ?? '').not.toMatch(/agentic-dev/)
+    expect(container.textContent ?? '').not.toMatch(/openagentic/)
     expect(container.textContent ?? '').not.toMatch(/us-west/)
   })
 

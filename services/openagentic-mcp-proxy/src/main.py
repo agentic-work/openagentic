@@ -82,14 +82,14 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://openagentic-api:8000")  # Inter
 # Local admin users: No token = system admin role with full access (ENABLE_AUTH=false only)
 ENABLE_AUTH = os.getenv("ENABLE_AUTH", "true").lower() in ("true", "1", "yes")
 
-# FedRAMP CM-7 / SA-15 — the MCP Inspector is a dev-only debug surface (unauthenticated
+# NIST 800-53 CM-7 / SA-15 — the MCP Inspector is a dev-only debug surface (unauthenticated
 # UI + an unpinned npx fetch at runtime). It must be explicitly opted into and defaults OFF
 # so production images never expose it.
 ENABLE_MCP_INSPECTOR = os.getenv("ENABLE_MCP_INSPECTOR", "false").lower() in ("true", "1", "yes")
 
 
 # =============================================================================
-# B3 (FedRAMP P3) — fail-closed auth hardening (NIST AC-3, AC-6, IA-2, IA-5)
+# B3 (security hardening) — fail-closed auth hardening (NIST AC-3, AC-6, IA-2, IA-5)
 # =============================================================================
 class BootError(RuntimeError):
     """Raised at boot when a required signing key is missing or a known weak

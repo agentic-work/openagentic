@@ -9,7 +9,7 @@
  * but unused in production: zero callers of `FrameRendererRegistry.lookup`
  * outside test files prior to this commit.
  *
- * Plan: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       §Phase 2.2.3 — A3 tool_result outputTemplate lookup miss.
  */
 import { describe, it, expect } from 'vitest';

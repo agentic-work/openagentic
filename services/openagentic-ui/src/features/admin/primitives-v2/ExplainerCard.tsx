@@ -4,7 +4,7 @@ import { Info, X } from 'lucide-react'
 /**
  * ExplainerCard — drop-in "what does this page do, why does it matter"
  * card. Anchors at the top of confusing pages (Default Models, Tiered FC,
- * Router Tuning) per Mission Control standards §8.
+ * Router Tuning) per Admin console standards §8.
  *
  * Theme-aware: pulls colors from --bg-1, --line-2, --accent, --fg-0/2.
  * Icon is the section's own (passed via `icon`) or a default Info glyph.

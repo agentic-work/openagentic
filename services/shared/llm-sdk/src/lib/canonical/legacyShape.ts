@@ -27,7 +27,7 @@
  * Once chatLoop is migrated to build CanonicalRequest directly (audit §10
  * step 5), this helper is only needed at the legacy boundary.
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *        §"0.4 — Wire api providers as THIN clients"
  */
 

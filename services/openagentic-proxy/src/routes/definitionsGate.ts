@@ -11,7 +11,7 @@
  * `--experimental-strip-types` can import it cleanly without dragging
  * in pino, axios, fastify, or the auth chain.
  *
- * Plan: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  */
 
 export interface AgentDefinitionLike {

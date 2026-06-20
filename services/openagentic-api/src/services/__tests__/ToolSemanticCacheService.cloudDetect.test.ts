@@ -15,7 +15,7 @@
  * recent user-turn text. When user prompt mentions ≥2 clouds, the multi
  * -cloud diversity path fires even if the model's query is single-cloud.
  *
- * Spec: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  */
 import { describe, it, expect } from 'vitest';
 import { detectCloudProvidersInText } from '../ToolSemanticCacheService.js';
@@ -47,7 +47,7 @@ describe('detectCloudProvidersInText — pure cloud-term detector', () => {
   });
 
   it('detects no clouds for unrelated k8s-only prompt', () => {
-    const clouds = detectCloudProvidersInText('list pods in agentic-dev namespace');
+    const clouds = detectCloudProvidersInText('list pods in openagentic namespace');
     // kubectl term counts under the "kubernetes" bucket but not aws/azure/gcp
     const names = Array.from(clouds.keys());
     expect(names).not.toContain('aws');

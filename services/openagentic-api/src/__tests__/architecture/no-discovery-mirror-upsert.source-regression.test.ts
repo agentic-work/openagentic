@@ -2,8 +2,8 @@
  * Architecture cage — ModelRegistrySeeder.ts must not contain discovery-mirror
  * write patterns (upsertDiscoveredModels or prisma.lLMProvider.update mutations).
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F2.4)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * ModelRegistrySeeder was the bulldozer: on every restart it called
  * prisma.lLMProvider.update() to write discovered models back into
@@ -89,7 +89,7 @@ describe('Registry SoT v1 cage — ModelRegistrySeeder must not contain discover
         violations.map(v => `  line ${v.line}: ${v.name}\n    > ${v.text}`).join('\n') +
         `\n\nFix: ModelRegistrySeeder.ts must be informational-only after F2.4.\n` +
         `Discovery writes go through RegistrySyncJob (periodic) or provider-level sync services.\n` +
-        `See docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md for the correct write path.`;
+        `the design notes for the correct write path.`;
 
     expect(violations, summary).toEqual([]);
   });

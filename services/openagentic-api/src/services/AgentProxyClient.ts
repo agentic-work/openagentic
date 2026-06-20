@@ -26,9 +26,9 @@
  * fanouts so the sub-agent calls Azure/AWS/GCP AS the end user.
  *
  * Fail-CLOSED: refuses to construct without OPENAGENTIC_PROXY_INTERNAL_KEY,
- * AND refuses dev-secret literals (FedRAMP — internal-JWT minting contract).
+ * AND refuses dev-secret literals (internal-JWT minting contract).
  *
- * Spec §7: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md
+ * the design notes
  */
 
 export interface OpenAgenticProxyExecuteRequest {
@@ -49,7 +49,7 @@ export interface OpenAgenticProxyExecuteRequest {
   /**
    * Per-tenant OBO token forwarded as `userToken` in the body. The proxy
    * forwards this to MCP fanouts so downstream Azure/AWS/GCP API calls
-   * authenticate AS the end user. Required for FedRAMP — without it the
+   * authenticate AS the end user. Required for fail-closed auth — without it the
    * sub-agent would call Azure as the platform service principal (which
    * has no resource rights).
    */
@@ -84,7 +84,7 @@ export interface OpenAgenticProxyClientOptions {
   /**
    * Shared service-internal key. Mirrors the value the openagentic-proxy auth
    * middleware reads from `OPENAGENTIC_PROXY_INTERNAL_KEY`. Refuses
-   * dev-secret literals (FedRAMP fail-CLOSED).
+   * dev-secret literals (fail-CLOSED).
    */
   internalKey: string;
   logger: {
@@ -132,7 +132,7 @@ export class OpenAgenticProxyClient {
       throw new Error('OpenAgenticProxyClient: baseUrl is required.');
     }
     if (!opts.internalKey || opts.internalKey.trim() === '') {
-      throw new Error('OpenAgenticProxyClient: internalKey is required (FedRAMP fail-CLOSED).');
+      throw new Error('OpenAgenticProxyClient: internalKey is required (fail-CLOSED).');
     }
     if (opts.internalKey.startsWith(DEV_SECRET_PREFIX)) {
       throw new Error(

@@ -19,7 +19,7 @@
  * payload) are intentionally permitted — those execute in the
  * iframe's opaque origin, not in the chat DOM.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3 S7
+ * the design notes
  */
 
 import { describe, it, expect } from 'vitest';

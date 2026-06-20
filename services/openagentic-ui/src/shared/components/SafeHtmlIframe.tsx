@@ -19,7 +19,7 @@
  * marked `format: 'html'` were rendering directly into chat DOM, which
  * is an XSS surface for any tool that emits unfiltered HTML.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3 S6
+ * the design notes
  */
 
 import React, { useEffect, useMemo, useState } from 'react';

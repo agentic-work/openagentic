@@ -126,7 +126,7 @@ const SEED_DIR = resolve(__dirname, '../../../seed/templates');
  *    renders an HTML rollout status report via webhook_response with
  *    the narrative + per-deployment table + non-healthy detail. All-
  *    healthy case (the operational default in stable dev clusters,
- *    per the live agentic-dev capture 2026-05-13 where every deployment
+ *    per the live openagentic capture 2026-05-13 where every deployment
  *    has ready_replicas === replicas) is handled — the report explicitly
  *    renders "All N deployments healthy" instead of a blank table.
  *    Per-node live-verified in the dev environment. Evidence:

@@ -3,7 +3,7 @@
  * symbol the future adapters depend on is reachable from both the subpath
  * (`@agentic-work/llm-sdk/lib/canonical`) and the root entry-point.
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *        §"Phase 0.2 — SDK shared canonical invariants"
  */
 import { describe, it, expect } from 'vitest';

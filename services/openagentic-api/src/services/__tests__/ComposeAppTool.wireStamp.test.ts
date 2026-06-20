@@ -1,7 +1,7 @@
 /**
  * A2/A3 — compose_app wire stamps tool_use_id + _meta.outputTemplate.
  *
- * Plan: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       §2.2.2 + §2.2.3.
  */
 import { describe, it, expect } from 'vitest';

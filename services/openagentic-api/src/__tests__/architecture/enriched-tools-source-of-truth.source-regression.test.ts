@@ -2,7 +2,7 @@
  * Architecture gate (V3 Phase 5): EnrichedTool registry IS the SoT for
  * per-T1-tool outputTemplate + truncate_summary.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §5
+ * the design notes
  *
  * Pins two contracts:
  *   1. outputTemplate string literals appear ONLY in:

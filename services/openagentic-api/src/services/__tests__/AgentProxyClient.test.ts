@@ -15,10 +15,10 @@
  * service caller.
  *
  * Fail-CLOSED: client refuses to construct without OPENAGENTIC_PROXY_INTERNAL_KEY
- * AND refuses dev-secret literals (FedRAMP — same contract as
+ * AND refuses dev-secret literals (same contract as
  * SynthExecuteJwt.mintSynthExecutorJwt).
  *
- * Spec §7: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md
+ * the design notes
  */
 import { describe, it, expect, vi } from 'vitest';
 import { OpenAgenticProxyClient } from '../OpenAgenticProxyClient.js';

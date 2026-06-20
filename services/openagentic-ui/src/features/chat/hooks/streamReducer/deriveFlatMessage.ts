@@ -1,7 +1,7 @@
 /**
  * deriveFlatMessage — pure helper (Phase 2.2).
  *
- * Plan: docs/superpowers/plans/sprightly-percolating-brook.md §2.2
+ * the design notes
  *
  * SoT for the legacy `assistantMessage` flat-string view of an assistant
  * turn. Replaces the stream-time `assistantMessage +=` concat that raced

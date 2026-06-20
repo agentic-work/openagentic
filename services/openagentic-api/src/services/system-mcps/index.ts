@@ -9,7 +9,7 @@
  * and interactive content. This module provides context-aware guidance to encourage
  * LLMs to use artifacts appropriately.
  *
- * NOTE (openagentic-omhs#327): the canonical user-intent gate now lives in
+ * NOTE (openagentic#327): the canonical user-intent gate now lives in
  * `services/prompt/ArtifactIntentGate.ts` and was consumed by the legacy
  * dynamic prompt composer (ripped Phase E.3).
  * `isDiagramRequest` here is retained only as a defence-in-depth check for

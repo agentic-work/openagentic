@@ -1,8 +1,8 @@
 /**
  * dispatchTool — EnrichedTool registry wire-up (Phase 5 / Task 5.4).
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §5
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md (Phase 5)
+ * the design notes
+ * the design notes (Phase 5)
  *
  * Verifies that when `runChat` loads enriched tools from `EnrichedToolService`
  * via `service.toMetadata(row)`, the resulting `enrichedTools` map drives

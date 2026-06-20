@@ -19,7 +19,7 @@
  *     tool name and the start of the description — so semantic discovery still
  *     matches after truncation.
  *
- * Live failure this guards against (open-dev, 2026-06-01): a single oversized
+ * Live failure this guards against (openagentic, 2026-06-01): a single oversized
  * tool description 500'd the batch embed call and left `mcp_tools_cache` empty,
  * so `tool_search` returned nothing and no model could discover/call any MCP
  * tool.

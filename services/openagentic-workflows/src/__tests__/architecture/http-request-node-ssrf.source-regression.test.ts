@@ -36,8 +36,8 @@ import {
  * half drives the live HostAllowList helpers through each of the five
  * URLs to verify the runtime contract holds.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3 S4
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
+ * the design notes
  *       Tasks 1.5 + 1.6
  */
 
@@ -45,7 +45,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const ENGINE_TS = resolve(__dirname, '../../services/WorkflowExecutionEngine.ts');
 
-const ALLOWLIST = ['openagentic-api.agentic-dev.svc.cluster.local'];
+const ALLOWLIST = ['openagentic-api.openagentic.svc.cluster.local'];
 
 describe('arch: HTTPRequestNode SSRF + secret-leak hardening (5 vectors, S4)', () => {
   const content = readFileSync(ENGINE_TS, 'utf8');
@@ -134,7 +134,7 @@ describe('arch: HTTPRequestNode SSRF + secret-leak hardening (5 vectors, S4)', (
 
   it('positive control: exact-match cluster FQDN IS internal', async () => {
     const ok = await isAllowedInternalHost(
-      new URL('http://openagentic-api.agentic-dev.svc.cluster.local:3001/admin/ping'),
+      new URL('http://openagentic-api.openagentic.svc.cluster.local:3001/admin/ping'),
       ALLOWLIST,
     );
     expect(ok).toBe(true);

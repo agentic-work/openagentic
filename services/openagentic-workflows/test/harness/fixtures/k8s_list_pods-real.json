@@ -1,14 +1,14 @@
 {
-  "_comment": "Real-shape mcp-proxy /call response captured live 2026-05-13 in the dev environment (k3s prod, namespace agentic-dev). The openagentic_kubernetes MCP returns the python tool's native dict (server.py k8s_list_pods lines 252-302) WITHOUT FastMCP text-block wrapping — the mcp-proxy passes it through 3 layers of result unwrap (proxy.result.result) and the mcp_tool node executor returns the structured dict directly (no content joining, since there are no content[] blocks to join). The pods array mixes 3 healthy (Running, restarts=0) with 2 unhealthy (one Pending, one Running-with-restarts=12) so downstream filter has real records to flag. Top-level keys: success, namespace, is_protected, pods, count.",
+  "_comment": "Real-shape mcp-proxy /call response captured live 2026-05-13 in the dev environment (k3s prod, namespace openagentic). The openagentic_kubernetes MCP returns the python tool's native dict (server.py k8s_list_pods lines 252-302) WITHOUT FastMCP text-block wrapping — the mcp-proxy passes it through 3 layers of result unwrap (proxy.result.result) and the mcp_tool node executor returns the structured dict directly (no content joining, since there are no content[] blocks to join). The pods array mixes 3 healthy (Running, restarts=0) with 2 unhealthy (one Pending, one Running-with-restarts=12) so downstream filter has real records to flag. Top-level keys: success, namespace, is_protected, pods, count.",
   "result": {
     "result": {
       "success": true,
-      "namespace": "agentic-dev",
+      "namespace": "openagentic",
       "is_protected": false,
       "pods": [
         {
           "name": "openagentic-api-6b8d4f7c9d-x2k4n",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "status": "Running",
           "ready": "1/1",
           "restarts": 0,
@@ -19,7 +19,7 @@
         },
         {
           "name": "openagentic-ui-7d9f8b6c4d-m5j2p",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "status": "Running",
           "ready": "1/1",
           "restarts": 0,
@@ -30,7 +30,7 @@
         },
         {
           "name": "openagentic-workflows-5c4e8a9b3f-q7n6w",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "status": "Pending",
           "ready": "0/1",
           "restarts": 8,
@@ -41,7 +41,7 @@
         },
         {
           "name": "openagentic-mcp-proxy-7e9c4d5a8b-r3k9p",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "status": "Running",
           "ready": "1/1",
           "restarts": 12,
@@ -52,7 +52,7 @@
         },
         {
           "name": "harbor-redis-0",
-          "namespace": "agentic-dev",
+          "namespace": "openagentic",
           "status": "Running",
           "ready": "1/1",
           "restarts": 0,

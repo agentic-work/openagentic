@@ -1,5 +1,5 @@
 /**
- * AgentListTool — RED test for the executor (chatmode-rip Phase C dispatcher
+ * AgentListTool — RED test for the executor (the chat-pipeline refactor Phase C dispatcher
  * wire-up). The model invokes `agent_list` to enumerate live sub-agent
  * sessions tied to this chat. `executeAgentList` GETs from openagentic-proxy's
  * `/api/agents/executions/live?sessionId=:id` endpoint.
@@ -30,7 +30,7 @@ function makeCtx(overrides: Record<string, any> = {}) {
   } as any;
 }
 
-describe('executeAgentList (chatmode-rip Phase C dispatcher)', () => {
+describe('executeAgentList (the chat-pipeline refactor Phase C dispatcher)', () => {
   const ENV_BACKUP = { ...process.env };
 
   beforeEach(() => {
@@ -90,7 +90,7 @@ describe('executeAgentList (chatmode-rip Phase C dispatcher)', () => {
   });
 });
 
-describe('dispatchChatToolCall — agent_list routing (chatmode-rip Phase C)', () => {
+describe('dispatchChatToolCall — agent_list routing (the chat-pipeline refactor Phase C)', () => {
   const ENV_BACKUP = { ...process.env };
 
   beforeEach(() => {

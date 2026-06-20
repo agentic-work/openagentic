@@ -2531,7 +2531,7 @@ model AgentSkill {
   @@schema("admin")
 }
 
-// ─── Agent Audit Log (FedRAMP compliance) ───────────────────────────────────
+// ─── Agent Audit Log (NIST 800-53 compliance) ───────────────────────────────────
 model AgentAuditLog {
   id             String   @id @default(uuid())
   execution_id   String
@@ -3180,7 +3180,7 @@ model VerifiedToolResult {
   @@index([is_verified])
   @@index([quality_score])
   @@index([use_count])
-  @@index([user_id])  // User isolation index for FedRAMP/HIPAA compliance
+  @@index([user_id])  // User isolation index for NIST 800-53 / HIPAA compliance
   @@map("verified_tool_results")
   @@schema("public")
 }
@@ -3393,7 +3393,7 @@ model ToolResultCache {
   @@index([tool_name, args_hash])
   @@index([resource_scope])
   @@index([expires_at])
-  @@index([tenant_id, original_user_id])  // User isolation index for FedRAMP/HIPAA compliance
+  @@index([tenant_id, original_user_id])  // User isolation index for NIST 800-53 / HIPAA compliance
   @@map("tool_result_cache")
   @@schema("public")
 }

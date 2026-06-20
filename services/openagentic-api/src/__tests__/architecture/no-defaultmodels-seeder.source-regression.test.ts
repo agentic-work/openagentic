@@ -2,8 +2,8 @@
  * Architecture cage — DefaultModelsSeeder.ts must not exist and no source file
  * may import it.
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F2.3)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * DefaultModelsSeeder wrote to admin.system_configuration.default_models — the
  * secondary SoT retired by Registry SoT v1. The RegistryBootstrapSeeder

@@ -4,7 +4,7 @@
  * targeting providers other than Anthropic-shape (OpenAI, Ollama, Vertex
  * Gemini, AIF Responses). Audit L5-4.
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *        §"Phase 0.2 — SDK shared canonical invariants"
  */
 import { describe, it, expect } from 'vitest';

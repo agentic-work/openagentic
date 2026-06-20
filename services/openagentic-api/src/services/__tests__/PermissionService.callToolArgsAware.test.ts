@@ -224,7 +224,7 @@ describe('classifyCallTool — pure verb resolution', () => {
   test('auto-approves "kubectl get pods"', () => {
     expect(
       classifyCallTool('call_kubectl', {
-        cli_command: 'kubectl get pods -n agentic-dev',
+        cli_command: 'kubectl get pods -n openagentic',
       }),
     ).toBe('allow');
   });
@@ -232,7 +232,7 @@ describe('classifyCallTool — pure verb resolution', () => {
   test('auto-approves "kubectl describe pod"', () => {
     expect(
       classifyCallTool('call_kubectl', {
-        cli_command: 'kubectl describe pod my-pod -n agentic-dev',
+        cli_command: 'kubectl describe pod my-pod -n openagentic',
       }),
     ).toBe('allow');
   });
@@ -240,7 +240,7 @@ describe('classifyCallTool — pure verb resolution', () => {
   test('auto-approves "kubectl logs"', () => {
     expect(
       classifyCallTool('call_kubectl', {
-        cli_command: 'kubectl logs -f my-pod -n agentic-dev',
+        cli_command: 'kubectl logs -f my-pod -n openagentic',
       }),
     ).toBe('allow');
   });
@@ -256,7 +256,7 @@ describe('classifyCallTool — pure verb resolution', () => {
   test('STILL gates "kubectl delete pod"', () => {
     expect(
       classifyCallTool('call_kubectl', {
-        cli_command: 'kubectl delete pod foo -n agentic-dev',
+        cli_command: 'kubectl delete pod foo -n openagentic',
       }),
     ).toBe('ask');
   });
@@ -272,7 +272,7 @@ describe('classifyCallTool — pure verb resolution', () => {
   test('STILL gates "kubectl rollout restart"', () => {
     expect(
       classifyCallTool('call_kubectl', {
-        cli_command: 'kubectl rollout restart deployment/api -n agentic-dev',
+        cli_command: 'kubectl rollout restart deployment/api -n openagentic',
       }),
     ).toBe('ask');
   });

@@ -19,7 +19,7 @@
  *      D.1 the hook never runs; with D.1 it runs and the emit-channel
  *      captures the approval frame.
  *
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §D.3
+ * the design notes
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import pino from 'pino';

@@ -1,5 +1,5 @@
 /**
- * B4 (FedRAMP P3) — POST /api/setup/probe-ollama must be setup-gated + SSRF-guarded.
+ * B4 (security hardening) — POST /api/setup/probe-ollama must be setup-gated + SSRF-guarded.
  *
  * The route is intentionally unauthenticated (a fresh stack has no admin), but
  * before remediation it (a) stayed live forever — reachable as an SSRF

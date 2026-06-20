@@ -2,7 +2,7 @@
  * build-progress — live build-log tail with phase indicators (build → push
  * → deploy → verify), each phase animated as it lands.
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md
+ * the design notes
  *       (mock 05: troubleshoot-fix-build-validate)
  */
 

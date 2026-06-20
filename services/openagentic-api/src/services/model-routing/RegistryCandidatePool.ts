@@ -3,7 +3,7 @@
  * (provider, model) pairs it's allowed to pick from. Reads directly from
  * admin.model_role_assignments (Registry) where enabled=true.
  *
- * Per task 7 of docs/superpowers/plans/2026-04-22-model-registry-sot.md,
+ * Per task 7 of the design notes,
  * the router previously filtered candidates through
  * ModelConfigurationService.availableModels — which reads from
  * llm_providers.provider_config.models[], a separate write path. That

@@ -16,7 +16,7 @@
  *     definition that has a non-empty description (the embedding requires
  *     content; agents with no description are skipped).
  *
- * Plan: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';

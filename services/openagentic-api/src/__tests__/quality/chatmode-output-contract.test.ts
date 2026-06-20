@@ -1,7 +1,7 @@
 /**
  * Programmatic quality gate for chatmode end-state walkthrough mocks.
  *
- * Spec: docs/superpowers/specs/2026-05-03-chatmode-end-state-design.md (Layer 1).
+ * the design notes (Layer 1).
  *
  * Each mock at `mocks/UX/AI/Chatmode/end-state-{NN}-{slug}.html` has a sibling
  * `.contract.json` pinning the expected NDJSON frame sequence the post-tier-rip

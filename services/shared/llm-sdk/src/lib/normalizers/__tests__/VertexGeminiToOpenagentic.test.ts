@@ -191,7 +191,7 @@ describe('VertexGeminiToOpenagenticNormalizer', () => {
     expect(md && md.type === 'message_delta' && md.delta.stop_reason).toBe('max_tokens');
   });
 
-  it('finishReason SAFETY → stop_reason safety (B8: distinct canonical for FedRAMP audit)', () => {
+  it('finishReason SAFETY → stop_reason safety (B8: distinct canonical for audit)', () => {
     // B8 (2026-05-12) — Vertex SAFETY now maps to canonical 'safety'.
     // Previously this collapsed to 'end_turn' which hid a SAFETY trip
     // from the audit trail and the UI compliance banner.

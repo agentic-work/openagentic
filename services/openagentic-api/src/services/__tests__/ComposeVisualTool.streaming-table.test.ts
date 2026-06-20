@@ -45,12 +45,12 @@ describe('compose_visual table → streaming_table NDJSON emit (#500)', () => {
     const { emits, ctx } = makeCtx();
     const result = await executeComposeVisual(ctx as any, {
       template: 'table',
-      title: 'Pods in agentic-dev',
+      title: 'Pods in openagentic',
       data: {
         columns: ['name', 'status', 'restarts'],
         rows: [
-          ['openagentic-api-647f75f598-24cdr', 'Running', 0],
-          ['openagentic-postgres-extensions-bw7hv', 'Pending', 0],
+          ['openagentic-api-0', 'Running', 0],
+          ['openagentic-postgres-extensions-0', 'Pending', 0],
         ],
       },
     });
@@ -60,7 +60,7 @@ describe('compose_visual table → streaming_table NDJSON emit (#500)', () => {
     expect(streamingTableFrames.length).toBe(1);
     const frame = streamingTableFrames[0].payload;
 
-    expect(frame.title).toBe('Pods in agentic-dev');
+    expect(frame.title).toBe('Pods in openagentic');
     expect(frame.artifact_id).toBe(result.artifact_id);
     expect(frame.columns).toEqual([
       { key: 'name', label: 'name' },
@@ -71,12 +71,12 @@ describe('compose_visual table → streaming_table NDJSON emit (#500)', () => {
     // positional arrays. The keys match `columns[*].key` exactly.
     expect(frame.rows).toEqual([
       {
-        name: 'openagentic-api-647f75f598-24cdr',
+        name: 'openagentic-api-0',
         status: 'Running',
         restarts: 0,
       },
       {
-        name: 'openagentic-postgres-extensions-bw7hv',
+        name: 'openagentic-postgres-extensions-0',
         status: 'Pending',
         restarts: 0,
       },

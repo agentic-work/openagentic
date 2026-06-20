@@ -15,7 +15,7 @@
  * no mock provider responses — real Vertex or skip-with-loud-warn.
  *
  * Test endpoint:    https://us-central1-aiplatform.googleapis.com
- * Test project:     openagentic-dev (or GOOGLE_CLOUD_PROJECT env override)
+ * Test project:     openagentic-example (or GOOGLE_CLOUD_PROJECT env override)
  * Test location:    us-central1 (or VERTEX_LOCATION override)
  * Test model:       gemini-2.5-flash (4k-token min cache size)
  *
@@ -27,7 +27,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execSync } from 'node:child_process';
 import { GeminiCacheManager, type TokenProvider } from '../GeminiCacheManager.js';
 
-const PROJECT = process.env.GOOGLE_CLOUD_PROJECT || 'openagentic-dev';
+const PROJECT = process.env.GOOGLE_CLOUD_PROJECT || 'openagentic-example';
 const LOCATION = process.env.VERTEX_LOCATION || 'us-central1';
 const MODEL = process.env.VERTEX_TEST_MODEL || 'gemini-2.5-flash';
 
@@ -84,7 +84,7 @@ const describeIf = VERTEX_OK ? describe : describe.skip;
 // usageMetadata.totalTokenCount on a manual curl probe 2026-05-12).
 function bigContents(): Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> {
   const paragraph =
-    'OpenAgentic is an enterprise AI platform that orchestrates multi-provider LLM chat with parallel tool use, sub-agent delegation, and FedRAMP-grade auditing. ';
+    'OpenAgentic is an enterprise AI platform that orchestrates multi-provider LLM chat with parallel tool use, sub-agent delegation, and enterprise-grade auditing. ';
   // 157 chars × 400 = 62.8k chars ≈ 14k tokens. Safely above the 4k minimum.
   return [{ role: 'user', parts: [{ text: paragraph.repeat(400) }] }];
 }

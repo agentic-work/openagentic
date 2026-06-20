@@ -11,7 +11,7 @@
  * VertexGeminiToOpenagentic, BedrockToOpenagentic (passthrough),
  * VertexToOpenagentic (passthrough), AIFResponsesToOpenagentic.
  *
- * Spec: docs/superpowers/specs/2026-05-01-canonical-stream-normalizer.md
+ * the design notes
  */
 
 // ---------------------------------------------------------------------------

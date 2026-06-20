@@ -1,6 +1,6 @@
 /**
- * AgentSendTool — meta-tool definition for the chatmode-rip 10-primitive
- * T1 catalog (chatmode-rip plan §Phase C, task C.2).
+ * AgentSendTool — meta-tool definition for the chat-pipeline refactor 10-primitive
+ * T1 catalog (the chat-pipeline refactor plan §Phase C, task C.2).
  *
  * The model invokes `agent_send` to push an additional message into a
  * sub-agent that is already running (was spawned via `Task`). Use cases:
@@ -97,7 +97,7 @@ const AGENT_SEND_TIMEOUT_MS = 10_000;
  * Endpoint: {OPENAGENTIC_PROXY_URL}/api/agents/executions/:agent_session_id/send
  * Auth:     Bearer ${OPENAGENTIC_PROXY_INTERNAL_KEY} + X-Agent-Proxy: true
  *
- * Fail-CLOSED on missing OPENAGENTIC_PROXY_INTERNAL_KEY (FedRAMP — same posture
+ * Fail-CLOSED on missing OPENAGENTIC_PROXY_INTERNAL_KEY (same posture
  * as OpenAgenticProxyClient.constructor). Never throws — network/HTTP errors
  * surface as `{ ok:false, error }` so the chat loop continues.
  */

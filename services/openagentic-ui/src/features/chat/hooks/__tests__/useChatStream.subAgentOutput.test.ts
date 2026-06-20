@@ -33,11 +33,11 @@ describe('sub-agent output threading (Phase 16)', () => {
       tokens: 5485,
       durationMs: 32400,
       toolsUsed: ['azure_subscriptions', 'azure_resource_groups'],
-      output: 'Found 6 resource groups across 2 subscriptions; openagentic-dev has 5, sub-1 has 1.',
+      output: 'Found 6 resource groups across 2 subscriptions; openagentic-example has 5, sub-1 has 1.',
     } as any);
     expect(list[0].status).toBe('ok');
     expect(list[0].output).toBe(
-      'Found 6 resource groups across 2 subscriptions; openagentic-dev has 5, sub-1 has 1.',
+      'Found 6 resource groups across 2 subscriptions; openagentic-example has 5, sub-1 has 1.',
     );
   });
 

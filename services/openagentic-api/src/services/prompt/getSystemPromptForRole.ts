@@ -10,7 +10,7 @@
  * always preferred when rbacService is wired; admins edit prompts at /admin and
  * changes propagate LIVE via redis pubsub without a container rebuild.
  *
- * Spec: docs/superpowers/specs/2026-05-10-chatmode-prompts-db-editable.md
+ * the design notes
  */
 import { loadStaticPromptForRole, type UserRole } from './RoleKeyedSystemPrompt.js';
 import { SessionFactsBuilder } from '../SessionFactsBuilder.js';
@@ -124,7 +124,7 @@ export interface PromptComposeDeps {
    * #51 (2026-06-01) — per-session MCP availability for the
    * <connected-capabilities> dynamic section. `connected` is the live set
    * of MCP servers that returned tools this turn (e.g. ['openagentic_web',
-   * 'aws_knowledge'] on open-dev); `needsAuth` is the known cloud/ops set
+   * 'aws_knowledge'] on openagentic); `needsAuth` is the known cloud/ops set
    * that is NOT connected (requires credentials / Azure OBO). When both are
    * empty/undefined the section is omitted. Lets the model answer "Azure
    * isn't connected (needs Azure login/OBO)" on turn 1 without searching.
@@ -268,7 +268,7 @@ export async function getSystemPromptForRole(
     // BEFORE artifact_dispatch_mechanism so the model checks the user's
     // scope words against its mapping BEFORE planning any tool dispatch.
     // Live trigger: "do a full security audit across all tenants of
-    // openagentic-omhs" — openagentic-omhs is a repo fork, not a tenant;
+    // acme-corp" — acme-corp is an unrecognized proper noun, not a tenant;
     // model used to assume the test user's own dev tenant.
     systemPromptSection('unknown_scope_clarification', () => getUnknownScopeClarificationGate(role)),
     systemPromptSection('artifact_dispatch_mechanism', () => getArtifactDispatchMechanismRule(role)),

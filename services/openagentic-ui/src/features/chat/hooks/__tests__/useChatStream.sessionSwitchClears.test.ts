@@ -1,7 +1,7 @@
 /**
  * P0-1 of chatmode UX parity — session-switch sub-agent state isolation.
  *
- * Punch list ref: docs/superpowers/specs/2026-04-30-chatmode-ux-parity-punchlist.md
+ * the design notes
  *
  * Bug 2026-04-30: switching from session A to session B left the previous
  * session's sub-agent cards visible because the session-switch useEffect

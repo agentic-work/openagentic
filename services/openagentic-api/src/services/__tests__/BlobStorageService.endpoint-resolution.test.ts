@@ -36,14 +36,14 @@ describe('BlobStorageService — minio endpoint resolution', () => {
   const makeLogger = () => ({ info: () => {}, warn: () => {}, error: () => {}, debug: () => {} });
 
   it('prefers STORAGE_ENDPOINT over MINIO_ENDPOINT and strips the http:// scheme', () => {
-    process.env.STORAGE_ENDPOINT = 'http://usermin-minio.agentic-dev.svc.cluster.local:9000';
+    process.env.STORAGE_ENDPOINT = 'http://usermin-minio.openagentic.svc.cluster.local:9000';
     process.env.MINIO_ENDPOINT = 'openagentic-minio:9000'; // dead service — must NOT win
 
     const svc = new BlobStorageService(makeLogger());
     const cfg = svc.getConfig();
 
     expect(cfg.type).toBe('minio');
-    expect(cfg.endpoint).toBe('usermin-minio.agentic-dev.svc.cluster.local:9000');
+    expect(cfg.endpoint).toBe('usermin-minio.openagentic.svc.cluster.local:9000');
     expect(cfg.useSSL).toBe(false);
   });
 
@@ -64,7 +64,7 @@ describe('BlobStorageService — minio endpoint resolution', () => {
   });
 
   it('prefers STORAGE_ACCESS_KEY / STORAGE_SECRET_KEY over MINIO_* for creds', () => {
-    process.env.STORAGE_ENDPOINT = 'http://usermin-minio.agentic-dev.svc.cluster.local:9000';
+    process.env.STORAGE_ENDPOINT = 'http://usermin-minio.openagentic.svc.cluster.local:9000';
     process.env.STORAGE_ACCESS_KEY = 'storage-ak';
     process.env.STORAGE_SECRET_KEY = 'storage-sk';
     process.env.MINIO_ACCESS_KEY = 'minio-ak';
@@ -80,7 +80,7 @@ describe('BlobStorageService — minio endpoint resolution', () => {
     // The original bug: default of `openagentic-minio:9000` in the code path.
     // With STORAGE_ENDPOINT set, the result MUST be the usermin-minio host,
     // not the dead default, regardless of what MINIO_ENDPOINT contains.
-    process.env.STORAGE_ENDPOINT = 'http://usermin-minio.agentic-dev.svc.cluster.local:9000';
+    process.env.STORAGE_ENDPOINT = 'http://usermin-minio.openagentic.svc.cluster.local:9000';
     process.env.MINIO_ENDPOINT = 'openagentic-minio:9000';
 
     const svc = new BlobStorageService(makeLogger());

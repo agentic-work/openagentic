@@ -1,7 +1,7 @@
 /**
  * Phase 8 — V3 pre-loop compaction trigger (TDD RED first).
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §4.4
+ * the design notes
  *
  * `runChat` must consult `contextManagementService.getContextUsage()` BEFORE
  * invoking chatLoop. When `usagePercentage >= 65` (soft threshold), it must

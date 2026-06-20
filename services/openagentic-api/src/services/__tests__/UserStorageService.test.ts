@@ -177,7 +177,7 @@ function setup(opts?: { noSecretWriter?: boolean; iam?: boolean }) {
       throw new Error('test-no-dns');
     },
     logger,
-    namespace: 'agentic-dev',
+    namespace: 'openagentic',
   });
   return { svc, minio, admin, secretWriter, logger };
 }
@@ -218,7 +218,7 @@ describe('hashUserId', () => {
 describe('resolveHostReachableEndpoint', () => {
   it('resolves a cluster DNS host to its ClusterIP', async () => {
     const out = await resolveHostReachableEndpoint(
-      'http://openagentic-minio.agentic-dev.svc.cluster.local:9000',
+      'http://openagentic-minio.openagentic.svc.cluster.local:9000',
       async () => ['10.43.46.174'],
     );
     expect(out).toBe('http://10.43.46.174:9000');
@@ -233,12 +233,12 @@ describe('resolveHostReachableEndpoint', () => {
 
   it('returns the original endpoint when DNS resolution fails (best-effort, never throws)', async () => {
     const out = await resolveHostReachableEndpoint(
-      'http://openagentic-minio.agentic-dev.svc.cluster.local:9000',
+      'http://openagentic-minio.openagentic.svc.cluster.local:9000',
       async () => {
         throw new Error('ENOTFOUND');
       },
     );
-    expect(out).toBe('http://openagentic-minio.agentic-dev.svc.cluster.local:9000');
+    expect(out).toBe('http://openagentic-minio.openagentic.svc.cluster.local:9000');
   });
 
   it('returns the original endpoint when the resolver yields an empty list', async () => {
@@ -290,7 +290,7 @@ describe('UserStorageService.ensureUserBucket (root-creds mode — default)', ()
     expect(secretWriter.write).toHaveBeenCalledTimes(1);
     const call = secretWriter.write.mock.calls[0][0];
     expect(call.name).toBe(info.secretName);
-    expect(call.namespace).toBe('agentic-dev');
+    expect(call.namespace).toBe('openagentic');
     // Exact csi-s3 node-stage Secret shape — any other keys break the driver.
     expect(Object.keys(call.data).sort()).toEqual(['accessKeyID', 'endpoint', 'secretAccessKey']);
     expect(call.data.endpoint).toBe('http://minio.test:9000');
@@ -306,11 +306,11 @@ describe('UserStorageService.ensureUserBucket (root-creds mode — default)', ()
       minioClient: minio.client,
       rootAccessKey: 'ROOT_ACCESS',
       rootSecretKey: 'ROOT_SECRET_KEY_ABC123',
-      storageEndpoint: 'http://openagentic-minio.agentic-dev.svc.cluster.local:9000',
+      storageEndpoint: 'http://openagentic-minio.openagentic.svc.cluster.local:9000',
       k8sSecretWriter: secretWriter,
       endpointResolver: async () => ['10.43.46.174'],
       logger,
-      namespace: 'agentic-dev',
+      namespace: 'openagentic',
     });
 
     await svc.ensureUserBucket('alice@example.com');
@@ -341,7 +341,7 @@ describe('UserStorageService.ensureUserBucket (root-creds mode — default)', ()
       minioClient: minio.client,
       k8sSecretWriter: secretWriter,
       logger,
-      namespace: 'agentic-dev',
+      namespace: 'openagentic',
     });
     await expect(svc.ensureUserBucket('alice@example.com')).rejects.toThrow(
       /rootAccessKey \+ rootSecretKey \+ storageEndpoint/,
@@ -405,7 +405,7 @@ describe('UserStorageService.ensureUserBucket (IAM mode — opt-in)', () => {
     expect(secretWriter.write).toHaveBeenCalledTimes(1);
     const call = secretWriter.write.mock.calls[0][0];
     expect(call.name).toBe(info.secretName);
-    expect(call.namespace).toBe('agentic-dev');
+    expect(call.namespace).toBe('openagentic');
     expect(call.data.accessKey.length).toBeGreaterThan(0);
     // 32-byte hex secret (64 chars) for SOC-2 / modern AWS guidance
     expect(call.data.secretKey).toMatch(/^[0-9a-f]{64}$/);

@@ -21,7 +21,7 @@
  * Reuses UniversalEmbeddingService so the platform's embedding-model
  * choice (Azure / Bedrock / Ollama) flows through automatically.
  *
- * Plan: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  */
 
 import { DataType } from '@zilliz/milvus2-sdk-node';

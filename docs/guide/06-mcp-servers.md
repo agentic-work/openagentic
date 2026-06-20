@@ -243,7 +243,7 @@ everywhere, and each result is tagged with `is_protected`.
 (`load_kube_config()`). On Helm, the mcp-proxy pod's ServiceAccount token plus a
 read-oriented RBAC role (`templates/mcp-proxy-rbac.yaml`) is what authorizes the
 calls — no external creds. The proxy re-injects `KUBERNETES_SERVICE_HOST` /
-`KUBERNETES_SERVICE_PORT` (which the FedRAMP env filter strips) so in-cluster
+`KUBERNETES_SERVICE_PORT` (which the hardened env filter strips) so in-cluster
 auth works. On compose, mount `~/.kube` (the proxy does this read-only) and/or
 set `KUBECONFIG`.
 
@@ -451,7 +451,7 @@ There are two server types:
 
 A few important behaviors:
 
-- **Filtered child environment (FedRAMP SC-4).** Subprocesses do **not** inherit
+- **Filtered child environment (NIST 800-53 SC-4).** Subprocesses do **not** inherit
   the proxy's full environment. Only a small allow-list
   (`PATH`, `HOME`, `USER`, `LANG`, `LC_ALL`, `TZ`, `PYTHONPATH`, `NODE_PATH`,
   `NODE_ENV`, `LOG_LEVEL`) plus each server's explicit per-server env dict is

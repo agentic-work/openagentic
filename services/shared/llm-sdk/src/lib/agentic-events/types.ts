@@ -492,7 +492,7 @@ export interface DlpBlockEvent {
 
 export interface AuditEventEvent {
   type: 'audit_event';
-  /** Audit subsystem name (FedRAMP AU control mapping). */
+  /** Audit subsystem name (NIST 800-53 AU control mapping). */
   subsystem: string;
   action: string;
   actor: string;

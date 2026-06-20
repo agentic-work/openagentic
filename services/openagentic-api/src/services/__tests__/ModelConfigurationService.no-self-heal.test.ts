@@ -3,7 +3,7 @@
  *
  * The #504 self-heal anti-pattern (write-inside-read fallback to
  * llm_providers.model_config.chatModel + auto-INSERT a registry row) is
- * RIPPED. Per FedRAMP overhaul §5.3:
+ * RIPPED. Per the security overhaul §5.3:
  *
  *   "NO fallback to llm_providers.model_config — that was the #504
  *    anti-pattern. The Phase 1 cascade trigger guarantees the registry

@@ -6,8 +6,8 @@
  * the model `memorize`s on turn N can be retrieved by `memory_search` on
  * turn N+1.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §10
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+ * the design notes
+ * the design notes
  *       Phase 9 (Tasks 9.1-9.10)
  *
  * NOTE: AgentMemoryService.recall does substring matching on `key`, scoped

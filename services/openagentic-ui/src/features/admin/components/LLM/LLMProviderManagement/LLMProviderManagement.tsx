@@ -304,10 +304,10 @@ export const LLMProviderManagement: React.FC<LLMProviderManagementProps> = ({ th
     <div className="space-y-5">
       <ToastContainer toasts={toastCtx.toasts} onDismiss={toastCtx.dismiss} />
 
-      {/* Mission Control · SoT enforcement banner — always visible */}
+      {/* Admin console · SoT enforcement banner — always visible */}
       <SoTBanner />
 
-      {/* Mission Control · explainer for the most-confused workflow */}
+      {/* Admin console · explainer for the most-confused workflow */}
       <ExplainerCard
         title="Adding a provider does not import its model catalog."
         body={

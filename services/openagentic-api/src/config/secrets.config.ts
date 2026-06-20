@@ -67,7 +67,7 @@ const runtimeGeneratedSecrets: string[] = [];
  *  - NODE_ENV=production: FAIL CLOSED. A missing or weak/placeholder secret
  *    THROWS, aborting boot. A High system must never sign tokens with a
  *    world-readable default (the documented `docker compose up` shipped
- *    `openagentic-dev-jwt-secret-change-me`, which the old exact-only blocklist
+ *    `openagentic-example-jwt-secret-change-me`, which the old exact-only blocklist
  *    let through).
  *  - Any other env (development/test): for convenience, a missing/weak secret
  *    is replaced by an ephemeral generated value with a CRITICAL log — never in

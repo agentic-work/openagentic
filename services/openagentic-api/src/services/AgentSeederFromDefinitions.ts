@@ -19,7 +19,7 @@
  * run. The intended wire-up site is `src/startup/06-rag.ts`, after
  * the tool semantic cache initializes — see TODO note in this file.
  *
- * Plan: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  */
 
 import type { Logger } from 'pino';

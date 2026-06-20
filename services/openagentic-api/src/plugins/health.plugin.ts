@@ -82,7 +82,7 @@ const healthPlugin: FastifyPluginAsync<HealthPluginOptions> = async (
   }
 
   // /prompt-health and /prompts/debug routes RIPPED 2026-05-11
-  // (chatmode-rip Phase E final). Both depended on the legacy
+  // (the chat-pipeline refactor Phase E final). Both depended on the legacy
   // PromptTemplate / SystemPrompt / UserPromptAssignment Prisma models
   // which have been dropped along with the composable prompt-module
   // system. RBAC system prompts have their own health surface via the

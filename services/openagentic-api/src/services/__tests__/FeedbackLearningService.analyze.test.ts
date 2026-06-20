@@ -1,8 +1,8 @@
 /**
  * FeedbackLearningService.analyze — TDD spec (Phase 13).
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §15
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md Phase 13
+ * the design notes
+ * the design notes
  *
  * ADVISORY ONLY — analyze() returns recommendations a human reviews/applies
  * via /admin#feedback-advisories. It MUST NOT call routerTuning.set/update/upsert.

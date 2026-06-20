@@ -19,7 +19,7 @@
  * Persistence: separate `system_configuration` row keyed by
  *   `tool_read_only_mode`. The `permission_rules` row is untouched.
  *
- * Spec ref: docs/superpowers/plans/2026-05-13-chatmode-industry-bestpractices-followup.md
+ * Spec ref: the design notes
  */
 import { describe, test, expect, vi } from 'vitest';
 import pino from 'pino';

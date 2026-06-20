@@ -1,7 +1,7 @@
 /**
  * A2 — Task tool wire stamps parent_tool_use_id on sub_agent_* emits.
  *
- * Plan: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       §2.2.2.
  *
  * Task can fan out multiple sub-agents from one tool call. Each

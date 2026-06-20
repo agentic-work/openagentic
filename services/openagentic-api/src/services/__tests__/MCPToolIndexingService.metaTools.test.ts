@@ -1,6 +1,6 @@
 /**
  * MCPToolIndexingService — RED test for meta-tool indexing
- * (chatmode-rip Phase C indexer extension).
+ * (the chat-pipeline refactor Phase C indexer extension).
  *
  * The 7 meta-tools that were removed from the T1 catalog (per
  * toolRegistry.ts header comment) MUST be discoverable via `tool_search`,
@@ -27,7 +27,7 @@ import pino from 'pino';
 
 const silentLogger = pino({ level: 'silent' }) as any;
 
-// The 7 meta-tools that should land in the index (per the chatmode-rip
+// The 7 meta-tools that should land in the index (per the chat-pipeline refactor
 // plan + toolRegistry.ts header). delegate_to_agents was already ripped
 // per #412; memory_search and memory_recall both surface the memory
 // search lookup.
@@ -77,7 +77,7 @@ function makeFakePrisma() {
   };
 }
 
-describe('MCPToolIndexingService meta-tool indexing (chatmode-rip Phase C)', () => {
+describe('MCPToolIndexingService meta-tool indexing (the chat-pipeline refactor Phase C)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });

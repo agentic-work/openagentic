@@ -1,7 +1,7 @@
 /**
  * resolveMilvusHealthStatus — accurate /api/health milvus probe.
  *
- * Triage context (open-dev deployment-acceptance harness, HEALTH=FAIL):
+ * Triage context (openagentic deployment-acceptance harness, HEALTH=FAIL):
  *   /api/health reported milvus.status="not_initialized" while Milvus was
  *   actually serving (checkHealth().isHealthy=true, 10 collections, tool
  *   cache LoadStateLoaded, chat MCP tool calls working).

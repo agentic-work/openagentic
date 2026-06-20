@@ -7,7 +7,7 @@
  * its own dispatcher at `services/openagentic-api/src/services/llm-providers/
  * canonicalNormalizer.ts` — the SDK is the SoT, the api consumes from here.
  *
- * Plan: docs/superpowers/plans/2026-05-05-chatmode-100-percent-accuracy-implementation.md
+ * the design notes
  *       Workstream D, Step 1 (SDK consolidation, substep A1).
  */
 import { describe, it, expect } from 'vitest';

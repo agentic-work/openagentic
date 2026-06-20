@@ -2,7 +2,7 @@
  * #51 (2026-06-01) — connected-MCP + needs-auth availability section.
  *
  * The agent must be told which MCP servers are actually CONNECTED this
- * session (open-dev: only openagentic_web + aws_knowledge) vs which are
+ * session (openagentic: only openagentic_web + aws_knowledge) vs which are
  * unavailable / require credentials or Azure AD OBO (azure/gcp/github/…).
  * Then it can answer "Azure isn't connected (needs Azure login/OBO)"
  * immediately instead of looping tool_search forever.

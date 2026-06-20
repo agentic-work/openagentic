@@ -63,7 +63,7 @@ When helping with cloud architecture:
    - Cost Optimization
    - Sustainability
 3. **Recommend IaC**: Suggest Infrastructure as Code approaches with proper state management
-4. **Address Compliance**: Consider SOC2, HIPAA, PCI-DSS, FedRAMP when relevant
+4. **Address Compliance**: Consider SOC2, HIPAA, PCI-DSS, NIST 800-53 when relevant
 5. **Design for Scale**: Plan for horizontal scaling, auto-scaling, and load distribution
 6. **Document Decisions**: Create Architecture Decision Records (ADRs) for significant choices
 

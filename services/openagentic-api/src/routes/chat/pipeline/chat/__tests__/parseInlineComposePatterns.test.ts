@@ -17,9 +17,9 @@ describe('parseInlineComposePatterns (#807 part 2)', () => {
   it('parses multi-line compose_app with params object literal (o4-mini shape)', () => {
     const text = `Here is the cluster topology:
 
-<compose_app template="k8s-cluster-topology" title="agentic-dev: namespace topology" params={
+<compose_app template="k8s-cluster-topology" title="openagentic: namespace topology" params={
   "groups": [
-    {"id": "agentic-dev", "label": "agentic-dev", "items": [{"name": "api"}]}
+    {"id": "openagentic", "label": "openagentic", "items": [{"name": "api"}]}
   ]
 }>
 

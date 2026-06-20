@@ -11,7 +11,7 @@
  * for that turn. That whole machinery exists (since commit `05965e28`) — but
  * NO upstream call site ever set `callerContext` on the request. Result:
  * every Bedrock chat turn fell through to the service-principal singleton
- * client. FedRAMP-Hi compliance gap.
+ * client. compliance gap.
  *
  * Pin: streamProvider (the upstream boundary the chatLoop calls) MUST
  * pass req.callerContext through to providerManager.createCompletion(body)

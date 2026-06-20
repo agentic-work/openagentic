@@ -12,7 +12,7 @@
  *  - Seq-dedupe: posting the same (turnId, runId, seq) tuple twice
  *    results in a single publish. The duplicate POST returns 200 with
  *    `duplicate: true` (idempotent accept-but-no-double-publish). See
- *    Phase C spec in docs/research/2026-04-23-subagent-architecture-survey.md.
+ *    Phase C spec in the design notes.
  *
  * Uses `fastify.inject()` (not a real socket) because this route is a
  * small JSON POST — no streaming involved, unlike stream-tail.

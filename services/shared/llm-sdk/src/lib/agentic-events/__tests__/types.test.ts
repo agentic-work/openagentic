@@ -170,9 +170,9 @@ const fixtures: Record<AgenticEventType, AgenticEvent> = {
   vector_probe: { type: 'vector_probe', collection: 'docs', query_preview: 'azure cost', hits: 5, duration_ms: 80, ts: NOW },
 
   // Layer 10 — MCP fabric
-  mcp_connect: { type: 'mcp_connect', server: 'awp-azure-mcp', tool_count: 74, ts: NOW },
-  mcp_disconnect: { type: 'mcp_disconnect', server: 'awp-azure-mcp', reason: 'restart', ts: NOW },
-  mcp_capability_delta: { type: 'mcp_capability_delta', server: 'awp-azure-mcp', added: ['azure_new_tool'], removed: [], ts: NOW },
+  mcp_connect: { type: 'mcp_connect', server: 'oap-azure-mcp', tool_count: 74, ts: NOW },
+  mcp_disconnect: { type: 'mcp_disconnect', server: 'oap-azure-mcp', reason: 'restart', ts: NOW },
+  mcp_capability_delta: { type: 'mcp_capability_delta', server: 'oap-azure-mcp', added: ['azure_new_tool'], removed: [], ts: NOW },
 
   // Layer 11 — codemode
   ui_open: { type: 'ui_open', ui_id: 'u1', root: { tag: 'div', children: [] }, ts: NOW },

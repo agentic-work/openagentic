@@ -622,10 +622,10 @@ const DefaultModelsView: React.FC = () => {
       />
 
       <div style={{ padding: '24px 28px 0' }}>
-      {/* Mission Control · SoT enforcement banner — registry is the only source */}
+      {/* Admin console · SoT enforcement banner — registry is the only source */}
       <SoTBanner context="The dropdowns below only list models from the registry; pinning a default to a model whose provider is later disabled raises a banner here AND a 503 with retry-from-fallback at runtime — never silent failure." />
 
-      {/* Mission Control · explainer card */}
+      {/* Admin console · explainer card */}
       <ExplainerCard
         title="How a model gets picked, in order."
         body={

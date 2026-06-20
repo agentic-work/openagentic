@@ -1,7 +1,7 @@
 /**
  * WebFetchTool — RED test for the T1 meta-tool definition shape.
  *
- * chatmode-rip plan §Phase C task C.10: web_fetch is the companion to
+ * the chat-pipeline refactor plan §Phase C task C.10: web_fetch is the companion to
  * web_search — it pulls a single URL into context (so the model can
  * read a referenced page rather than re-search). Promoted from MCP-only
  * to T1 always-on.
@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { WEB_FETCH_TOOL, isWebFetchTool } from '../WebFetchTool.js';
 
-describe('WEB_FETCH_TOOL definition (chatmode-rip Phase C.10)', () => {
+describe('WEB_FETCH_TOOL definition (the chat-pipeline refactor Phase C.10)', () => {
   it('declares function-shape with name="web_fetch"', () => {
     expect(WEB_FETCH_TOOL.type).toBe('function');
     expect(WEB_FETCH_TOOL.function.name).toBe('web_fetch');

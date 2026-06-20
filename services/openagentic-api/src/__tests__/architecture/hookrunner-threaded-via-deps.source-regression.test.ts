@@ -20,7 +20,7 @@
  * Failure mode if this regresses: cross-cuts fire inconsistently across
  * dispatch paths. DLP scans skip; HITL gates leak; audit log loses rows.
  *
- * Spec: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §D.2
+ * the design notes
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';

@@ -33,7 +33,7 @@ export type CanonicalStopReason =
   // but Azure AOAI content-filter / Bedrock guardrail / Vertex SAFETY +
   // RECITATION + BLOCKLIST + PROHIBITED_CONTENT + SPII + OpenAI o1+ refusal
   // need representable canonical variants — adapters back-map to provider
-  // wire format. B8 (2026-05-12) chatmode FedRAMP-Hi audit.
+  // wire format. B8 (2026-05-12) chatmode audit.
   | 'content_filter'
   | 'safety'
   | 'recitation'

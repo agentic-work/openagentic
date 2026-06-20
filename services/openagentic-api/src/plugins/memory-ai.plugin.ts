@@ -33,7 +33,7 @@ import type { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import type { UnifiedRedisClient } from '../utils/redis-client.js';
 import { userMemoryRoutes } from '../routes/user-memory.js';
 // prompt-templates + advanced-prompting routes RIPPED 2026-05-11 along with
-// the PromptTemplate + UserPromptAssignment schema models (chatmode-rip Phase E
+// the PromptTemplate + UserPromptAssignment schema models (the chat-pipeline refactor Phase E
 // final cleanup). RBAC prompts are admin-editable via /admin#rbac-system-prompts
 // backed by the `rbac_system_prompts` table.
 import { memoryVectorPlugin } from '../routes/memory-vector/index.js';
@@ -96,7 +96,7 @@ const memoryAIRoutesPluginImpl: FastifyPluginAsync<MemoryAIRoutesPluginOptions> 
     loggers.routes.error({ err: error }, 'Failed to register user memory routes');
   }
 
-  // ── 2. Prompt Templates routes — RIPPED (chatmode-rip Phase E final, 2026-05-11) ─
+  // ── 2. Prompt Templates routes — RIPPED (the chat-pipeline refactor Phase E final, 2026-05-11) ─
   // The legacy `/api/prompt-templates/*` CRUD + assignment surface is gone
   // along with the `PromptTemplate` + `UserPromptAssignment` schema models.
   // RBAC prompts are admin-editable via the rbac_system_prompts table.
@@ -116,11 +116,11 @@ const memoryAIRoutesPluginImpl: FastifyPluginAsync<MemoryAIRoutesPluginOptions> 
     loggers.routes.error({ err: error }, 'Failed to register memory & vector services routes');
   }
 
-  // ── 5. Advanced Prompting Services routes — RIPPED (chatmode-rip Phase E final, 2026-05-11) ─
+  // ── 5. Advanced Prompting Services routes — RIPPED (the chat-pipeline refactor Phase E final, 2026-05-11) ─
   // The `/api/prompts/*` surface depended on CachedPromptService/PromptService
   // which are now deleted. RBAC prompts have their own admin route.
 
-  // ── 6/7. Admin Prompting + Technique routes — RIPPED (chatmode-rip Phase E final, 2026-05-11) ─
+  // ── 6/7. Admin Prompting + Technique routes — RIPPED (the chat-pipeline refactor Phase E final, 2026-05-11) ─
   // Depended on the legacy PromptTemplate Prisma model + (already-disabled)
   // prompt-technique services (FewShot/ReAct/SelfConsistency/Directive). RBAC
   // prompts have their own admin route — see /admin#rbac-system-prompts.

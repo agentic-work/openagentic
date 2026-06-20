@@ -10,7 +10,7 @@
  * be a fastify-formatted 5xx — the LLM has no recourse against that
  * shape, but a structured zero-result it can recover from cleanly.
  *
- * Plan: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  */
 
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';

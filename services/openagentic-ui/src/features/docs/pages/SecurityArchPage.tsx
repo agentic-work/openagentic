@@ -113,7 +113,7 @@ const complianceItems = [
   { framework: 'GDPR / CCPA', status: 'Compliant', desc: 'Data residency controls, right to deletion, consent management, and DLP scanning for PII.' },
   { framework: 'HIPAA', status: 'Available', desc: 'Business Associate Agreement required. PHI scanning rules, audit trails, and encryption at rest.' },
   { framework: 'SOC 2 Type II', status: 'In Progress', desc: 'Security, availability, and confidentiality trust service criteria under active audit preparation.' },
-  { framework: 'FedRAMP', status: 'Planned', desc: 'Path to FedRAMP authorization with RLS (AC-4), immutable audit logs, and FIPS 140-2 encryption.' },
+  { framework: 'NIST 800-53', status: 'Planned', desc: 'NIST 800-53 control mapping with RLS (AC-4), immutable audit logs, and FIPS 140-2 encryption.' },
 ];
 
 // ============================================================================
@@ -291,7 +291,7 @@ const SecurityArchPage: React.FC = () => {
         <h2 style={sectionTitleStyle}>Authorization (RBAC)</h2>
         <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
           Five role levels with increasing privileges. Row-Level Security in
-          PostgreSQL enforces data isolation at the database layer (FedRAMP AC-4).
+          PostgreSQL enforces data isolation at the database layer (NIST 800-53 AC-4).
           Per-user feature flags provide fine-grained permission overrides.
         </p>
 

@@ -2,7 +2,7 @@
  * Bug fix regression — GET /api/admin/mcp/tools-list must forward
  * the user's Authorization bearer to mcp-proxy.
  *
- * LIVE failure observed 2026-05-11 (k3s-local agentic-dev):
+ * LIVE failure observed 2026-05-11 (k3s-local openagentic):
  *   - UI Admin > MCP Fleet click on "tools" tab → request hits
  *     /api/admin/mcp/tools-list → handler at routes/admin/mcp-management.ts:162
  *     forwards to mcp-proxy /tools WITHOUT an Authorization header →

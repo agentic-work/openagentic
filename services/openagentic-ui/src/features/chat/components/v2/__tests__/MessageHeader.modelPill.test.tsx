@@ -2,7 +2,7 @@
  * P0-2 of chatmode UX parity — MessageHeader assistant model pill.
  *
  * Plan refs:
- *   - docs/superpowers/specs/2026-04-30-chatmode-ux-parity-punchlist.md (P0-2)
+ *   - the design notes
  *   - mocks/UX/01-cloud-ops.html lines 184-214 (.msg-asst, .msg-head, .cm-model)
  *
  * Mock pill anatomy:

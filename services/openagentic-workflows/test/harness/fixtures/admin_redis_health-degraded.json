@@ -6,7 +6,7 @@
       "content": [
         {
           "type": "text",
-          "text": "{\"success\": false, \"healthy\": false, \"message\": \"Redis connection failed: Error 111 connecting to redis-master.agentic-dev.svc.cluster.local:6379. Connection refused.\"}"
+          "text": "{\"success\": false, \"healthy\": false, \"message\": \"Redis connection failed: Error 111 connecting to redis-master.openagentic.svc.cluster.local:6379. Connection refused.\"}"
         }
       ]
     }

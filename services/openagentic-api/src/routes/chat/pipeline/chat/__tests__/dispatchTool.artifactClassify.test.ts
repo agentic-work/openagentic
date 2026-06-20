@@ -3,7 +3,7 @@
  * envelope so every tool_result carries `_meta.artifactKind` and the UI
  * never has to re-derive it from the slug.
  *
- * Plan: docs/superpowers/plans/2026-05-13-next-gen-artifact-slideouts.md §A2
+ * the design notes
  *
  * Contract: when an enriched tool entry provides an `outputTemplate`
  * known to `ArtifactRegistry.classify` (e.g. 'sankey' → 'chart'), the

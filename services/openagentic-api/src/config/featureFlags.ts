@@ -50,7 +50,7 @@ export const featureFlags = {
 
   /**
    * RBAC-keyed system prompt (USE_RBAC_PROMPT=true). Rev-2 chatmode
-   * spec (`docs/superpowers/specs/2026-05-10-chatmode-three-layer-architecture.md`):
+   * spec (see the design notes):
    * when true, runChat loads `prompts/chat-system-{admin,member}.md`
    * via getSystemPromptForRole and bypasses the legacy 35-module
    * legacy static + sidecar composer machinery. Default false during
@@ -97,7 +97,7 @@ export const featureFlags = {
     return v;
   })(),
 
-  // (seedOmhsTemplates + seedPlatformTemplates both removed — the
+  // (seedExampleTemplates + seedPlatformTemplates both removed — the
   // showcase templates now seed via the canonical SEED_WORKFLOW_TEMPLATES
   // inline path in routes/workflows.ts, which writes to the `workflow`
   // table that the Templates panel actually reads.)

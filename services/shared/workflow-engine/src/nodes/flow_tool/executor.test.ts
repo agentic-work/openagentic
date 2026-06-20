@@ -72,7 +72,7 @@ describe('flow_tool/executor', () => {
         },
         outputExtract: 'webhook_response.body.summary',
       }),
-      { time_window: '15m', namespace: 'agentic-dev' },
+      { time_window: '15m', namespace: 'openagentic' },
       ctx,
     );
     expect(sub).toHaveBeenCalledOnce();
@@ -80,7 +80,7 @@ describe('flow_tool/executor', () => {
     expect(calledFlowId).toBe('wf-leaf-1');
     expect(calledInput).toMatchObject({
       time_window: '15m',
-      namespace: 'agentic-dev',
+      namespace: 'openagentic',
     });
     const o = out as {
       value: unknown;

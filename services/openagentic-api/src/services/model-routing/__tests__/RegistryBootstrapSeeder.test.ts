@@ -1,8 +1,8 @@
 /**
  * F2.1 — RED unit tests for RegistryBootstrapSeeder.
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F2.1)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * The new RegistryBootstrapSeeder replaces the BULLDOZER pattern in
  * LLMProviderSeeder: it gates on SEEDER_VERSION, skips tombstoned rows,

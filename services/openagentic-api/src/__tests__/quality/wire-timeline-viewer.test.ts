@@ -1,7 +1,7 @@
 /**
  * Wire NDJSON timeline viewer — RED tests (Phase 0.1).
  *
- * Plan: docs/superpowers/plans/sprightly-percolating-brook.md §0.1
+ * the design notes
  *
  * The viewer is a pure replay function: given an array of WIRE-CAPTURE log
  * lines (or raw text from `kubectl logs ... | grep WIRE-CAPTURE`), produce

@@ -1,5 +1,5 @@
 /**
- * extractUserJwt — chat-pipeline JWT accessor (chatmode-rip Phase C.6).
+ * extractUserJwt — chat-pipeline JWT accessor (the chat-pipeline refactor Phase C.6).
  *
  * Surfaces the user's Azure AD ACCESS token from the loose `RunCtx.user`
  * shape so the OBO-aware cloud-MCP dispatch path (chatLoop's Azure OBO

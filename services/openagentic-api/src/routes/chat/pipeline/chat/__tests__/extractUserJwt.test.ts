@@ -1,7 +1,7 @@
 /**
  * extractUserJwt — RED test for the chat-pipeline JWT accessor (Phase C.6).
  *
- * chatmode-rip plan §Phase C task C.6: surface `ctx.userJwt` as a typed
+ * the chat-pipeline refactor plan §Phase C task C.6: surface `ctx.userJwt` as a typed
  * field on RunCtx so the synth dispatcher (Phase C.5) and any future
  * OBO-aware tool can read the user JWT without sniffing the loose
  * `ctx.user` shape that varies across auth providers.
@@ -15,7 +15,7 @@
 import { describe, it, expect } from 'vitest';
 import { extractUserJwt } from '../extractUserJwt.js';
 
-describe('extractUserJwt (chatmode-rip Phase C.6)', () => {
+describe('extractUserJwt (the chat-pipeline refactor Phase C.6)', () => {
   it('returns undefined when user is undefined', () => {
     expect(extractUserJwt(undefined)).toBeUndefined();
   });

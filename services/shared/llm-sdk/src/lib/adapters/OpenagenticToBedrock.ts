@@ -35,7 +35,7 @@
  * Source: AWS Bedrock Converse — prompt-caching wire spec.
  *
  * Spec: AWS Bedrock Converse API docs +
- *       docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  */
 
 import type {

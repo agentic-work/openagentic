@@ -10,7 +10,7 @@
  * SSE sequencer — all LIVE-INACTIVE for the chatmode V3 path that consumes
  * `buildChatV2Deps`.
  *
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md Phase D.1.
+ * the design notes
  *
  * Pin: `deps.hooks` MUST be defined (truthy + has `.run`) after factory
  * construction; `runChat.ts` can rely on the deps-carried runner rather

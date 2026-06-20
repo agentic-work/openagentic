@@ -16,7 +16,7 @@
  * sized by `value`. Theme tokens drive all colors (`--accent`, `--cm-ok`,
  * `--cm-warn`, `--cm-err`, `--cm-info`, `--cm-fg-*`).
  *
- * Plan: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       §Phase 2.2.3 — A2 UI render pipeline.
  */
 
@@ -36,7 +36,7 @@ const payload = {
       nodes: [
         { id: 'agentic-prod', label: 'agentic-prod', sub: '39 resources · 4 RGs', value: 39, tone: 'ok' as const },
         { id: 'agentic-staging', label: 'agentic-staging', sub: '6 resources · 3 RGs', value: 6, tone: 'a' as const },
-        { id: 'omhs-customer-east', label: 'omhs-customer-east', sub: '22 resources · 5 RGs', value: 22, tone: 'warn' as const },
+        { id: 'acme-customer-east', label: 'acme-customer-east', sub: '22 resources · 5 RGs', value: 22, tone: 'warn' as const },
       ],
     },
     {
@@ -46,7 +46,7 @@ const payload = {
         { id: 'prod-west-rg', label: 'prod-west-rg', value: 18, tone: 'ok' as const },
         { id: 'prod-east-rg', label: 'prod-east-rg', value: 11, tone: 'ok' as const },
         { id: 'stg-app-rg', label: 'stg-app-rg', value: 3, tone: 'a' as const },
-        { id: 'omhs-prod-rg', label: 'omhs-prod-rg', value: 9, tone: 'warn' as const },
+        { id: 'acme-prod-rg', label: 'acme-prod-rg', value: 9, tone: 'warn' as const },
       ],
     },
     {
@@ -63,10 +63,10 @@ const payload = {
     { from: 'agentic-prod', to: 'prod-west-rg', value: 18, tone: 'ok' as const },
     { from: 'agentic-prod', to: 'prod-east-rg', value: 11, tone: 'ok' as const },
     { from: 'agentic-staging', to: 'stg-app-rg', value: 3, tone: 'a' as const },
-    { from: 'omhs-customer-east', to: 'omhs-prod-rg', value: 9, tone: 'warn' as const },
+    { from: 'acme-customer-east', to: 'acme-prod-rg', value: 9, tone: 'warn' as const },
     { from: 'prod-west-rg', to: 'aks', value: 8, tone: 'ok' as const },
     { from: 'prod-east-rg', to: 'storage', value: 5, tone: 'ok' as const },
-    { from: 'omhs-prod-rg', to: 'network', value: 4, tone: 'warn' as const },
+    { from: 'acme-prod-rg', to: 'network', value: 4, tone: 'warn' as const },
   ],
 };
 

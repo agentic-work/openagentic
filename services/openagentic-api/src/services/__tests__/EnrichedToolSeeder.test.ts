@@ -1,8 +1,8 @@
 /**
  * EnrichedToolSeeder — TDD spec for Phase 5 seed.
  *
- * Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §5
- * Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md (Phase 5)
+ * the design notes
+ * the design notes (Phase 5)
  *
  * Seeds ~14 default T1 tools (azure_list_*, k8s_list_*, aws_*, gcp_*, web_search,
  * kb_search, tool_search, agent_search, request_clarification, ...).

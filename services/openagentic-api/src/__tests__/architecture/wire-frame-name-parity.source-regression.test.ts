@@ -2,7 +2,7 @@
  * Wire-frame-name parity arch test — Phase 0.1.1 of the five-layer audit
  * remediation plan.
  *
- * Plan: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
+ * the design notes
  *       Phase 0.1.1 ("Frame-name parity test").
  *
  * Audit anchors: L1-5 ("Dual wire protocol with silent fallback") +

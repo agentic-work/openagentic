@@ -1,7 +1,7 @@
 /**
  * DOM interleave 3-state snapshot — Playwright spec (Phase 0.2).
  *
- * Plan: docs/superpowers/plans/sprightly-percolating-brook.md §0.2
+ * the design notes
  *
  * For each scenario in Q1..Q20 (see PROMPTS.md), this spec:
  *   1. Logs in to the dev environment as mcp-tester (Microsoft SSO).
@@ -50,7 +50,7 @@ const SCENARIOS: Scenario[] = [
   },
   {
     qNum: 2,
-    prompt: 'do a full security audit across all tenants of openagentic-omhs',
+    prompt: 'do a full security audit across all tenants of acme-corp',
   },
   {
     qNum: 5,

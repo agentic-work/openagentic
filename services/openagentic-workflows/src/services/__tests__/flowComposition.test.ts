@@ -467,7 +467,7 @@ describe('flow composition — multi-node engine smoke', () => {
             data: {
               toolName: 'k8s_list_pods',
               toolServer: 'oap-k8s-mcp',
-              arguments: { namespace: 'agentic-dev' },
+              arguments: { namespace: 'openagentic' },
             },
           },
           { id: 'after', type: 'text', data: { text: 'done' } },

@@ -8,7 +8,7 @@
 // TODO(S0-11 / engine-dedup): Until services/openagentic-workflows and
 // services/openagentic-api consolidate their WorkflowExecutionEngine,
 // this file is duplicated. Keep both copies byte-for-byte identical.
-// See docs/superpowers/specs/2026-04-25-flows-enterprise-gap-analysis-design.md
+// the design notes
 
 /** Minimum secret value length to redact. Prevents false-positive redaction
  *  of short common strings like "ok", "1", "true". */

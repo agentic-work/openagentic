@@ -58,7 +58,7 @@ describe('webhook_response — artifact persistence (persistAsArtifact flag)', (
         ],
         edges: [{ id: 'e1', source: 'trigger', target: 'report' }],
       },
-      input: { namespace: 'agentic-dev' },
+      input: { namespace: 'openagentic' },
       userId: 'harness-user-42',
     });
 
@@ -69,7 +69,7 @@ describe('webhook_response — artifact persistence (persistAsArtifact flag)', (
     expect(createMock).toHaveBeenCalledOnce();
     const args = createMock.mock.calls[0][0] as { data: Record<string, any> };
     expect(args.data.user_id).toBe('harness-user-42');
-    expect(args.data.title).toBe('K8s Pod Health Report — agentic-dev');
+    expect(args.data.title).toBe('K8s Pod Health Report — openagentic');
     expect(args.data.mime_type).toBe('text/html');
     // Tags include the user-specified tags AND the artifactKind (so the
     // artifacts library can filter by kind via the tag dimension).
@@ -78,7 +78,7 @@ describe('webhook_response — artifact persistence (persistAsArtifact flag)', (
     );
     expect(typeof args.data.extracted_text).toBe('string');
     expect(args.data.extracted_text).toContain(
-      '<h2>K8s Pod Health — agentic-dev</h2>',
+      '<h2>K8s Pod Health — openagentic</h2>',
     );
     expect(typeof args.data.file_size).toBe('number');
     expect(args.data.file_size).toBeGreaterThan(0);

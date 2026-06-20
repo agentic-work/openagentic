@@ -20,8 +20,7 @@
  * at construction. User-added rules sit on top of the seeded defaults; `addRule`
  * persists via upsert. `clearAllUserRules` resets to seed.
  *
- * Wire reference: services/agenticwork-api/CLAUDE.md "V2 Cascade Architecture"
- * + spec docs/superpowers/specs/2026-05-10-chatmode-three-layer-architecture.md.
+ * Wire reference: services/openagentic-api/CLAUDE.md "V2 Cascade Architecture".
  */
 
 import { prisma } from '../utils/prisma.js';

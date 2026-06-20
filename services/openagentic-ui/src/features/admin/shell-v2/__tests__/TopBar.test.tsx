@@ -11,9 +11,9 @@ describe('TopBar', () => {
   })
 
   it('renders brand, env switcher, cmd bar, live badge, theme button, avatar', () => {
-    render(<TopBar user={{ initials: 'MT' }} env="openagentic-dev/agentic-dev" />)
+    render(<TopBar user={{ initials: 'MT' }} env="openagentic-example/openagentic" />)
     expect(screen.getByText(/OpenAgentic/)).toBeInTheDocument()
-    expect(screen.getByText(/openagentic-dev/)).toBeInTheDocument()
+    expect(screen.getByText(/openagentic-example/)).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/command or search/i)).toBeInTheDocument()
     expect(screen.getByTestId('live-badge')).toBeInTheDocument()
     expect(screen.getByTestId('theme-button')).toBeInTheDocument()

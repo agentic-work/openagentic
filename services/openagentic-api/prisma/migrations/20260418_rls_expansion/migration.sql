@@ -1,6 +1,6 @@
 
 
--- 0.6.6 P5 (task #110): expand FedRAMP AC-4 row-level security coverage.
+-- 0.6.6 P5 (task #110): expand NIST 800-53 AC-4 row-level security coverage.
 --
 -- The original 20260218_row_level_security migration enabled RLS on
 -- chat_sessions, chat_messages, llm_request_logs, and code_sessions.

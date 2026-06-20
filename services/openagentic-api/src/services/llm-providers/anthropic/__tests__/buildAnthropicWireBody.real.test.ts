@@ -12,7 +12,7 @@
  * SKIPs when creds are missing (per the user's manual-probe cadence —
  * see `feedback_no_synthetic_chunks_only_real_provider_captures`).
  *
- * Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md §0.4
+ * the design notes
  */
 
 import { describe, it, expect } from 'vitest';

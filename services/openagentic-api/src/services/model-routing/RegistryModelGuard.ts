@@ -3,7 +3,7 @@
  * handler is either (a) a sentinel asking for Smart Router, or (b) a
  * concrete model id present + enabled in admin.model_role_assignments.
  *
- * This is the task-6 gate from docs/superpowers/plans/2026-04-22-model-registry-sot.md.
+ * This is the task-6 gate from the design notes.
  * Keeping the decision logic in its own module makes the handler code
  * a one-liner (`const r = await resolveRequestedModel(body.model, prisma)`)
  * and makes the gate unit-testable without Fastify.

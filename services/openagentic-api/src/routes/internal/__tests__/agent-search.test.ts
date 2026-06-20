@@ -7,7 +7,7 @@
  * missing/wrong secret — fail-closed when env is empty (matches the
  * sibling tool-search route).
  *
- * Spec: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';

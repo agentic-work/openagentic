@@ -1,7 +1,7 @@
 /**
  * P0-1 part 2 of chatmode UX parity — per-message scoping for sub-agent cards.
  *
- * Punch list ref: docs/superpowers/specs/2026-04-30-chatmode-ux-parity-punchlist.md
+ * the design notes
  *
  * User direction (verbatim 2026-04-30):
  * "the agent cards as well as other objects do not STAY in their own fucking

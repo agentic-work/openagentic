@@ -316,7 +316,7 @@ describe('ProviderManager.getProviderForModel — fail-closed routing (2026-04-2
 
     it('AIF hosting claude-* family (Anthropic in MS DC) registers them to AIF', () => {
       // Microsoft hosts Anthropic Claude on AIF in MS datacenters
-      // (FedRAMP/sovereignty-relevant). Bare `claude-*` family names on AIF
+      // (NIST 800-53 / sovereignty-relevant). Bare `claude-*` family names on AIF
       // are NOT caught by the existing `anthropic.` Bedrock prefix table —
       // without trust they would fall through to no provider at all.
       const map = buildMapFromConfig({

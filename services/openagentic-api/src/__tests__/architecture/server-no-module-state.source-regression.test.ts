@@ -158,7 +158,7 @@ describe('Phase 2 quality cleanup — FLAGGED-6: dead promptService check moved 
     expect(ragTs).not.toMatch(/if\s*\(\s*ctx\.promptService\s*\)/);
   });
 
-  // validateSystemPrompts check RIPPED 2026-05-11 (chatmode-rip Phase E
+  // validateSystemPrompts check RIPPED 2026-05-11 (the chat-pipeline refactor Phase E
   // final): the CachedPromptService that backed it is deleted along with
   // the PromptTemplate / UserPromptAssignment / SystemPrompt / PromptUsage
   // Prisma models. 09-prompt-cache.ts is now the RBAC system-prompt seed +

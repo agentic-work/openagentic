@@ -15,7 +15,7 @@
  * model doesn't try to pass an `agents: []` array (the legacy
  * `delegate_to_agents` shape).
  *
- * Plan: docs/superpowers/specs/2026-05-02-tool-selection-at-scale-research.md
+ * the design notes
  */
 
 export const AGENT_SEARCH_TOOL_DEF = {

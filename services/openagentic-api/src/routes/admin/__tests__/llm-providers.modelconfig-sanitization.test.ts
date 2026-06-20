@@ -11,7 +11,7 @@
  *   }
  * The wizard's Test-Connection step runs `discoverModels()` and the UI
  * stuffs the catalog into `modelConfig` before POSTing. The server stores
- * it verbatim, violating the FedRAMP "Registry == explicit add" rule.
+ * it verbatim, violating the "Registry == explicit add" rule.
  *
  * Contract pinned here:
  *   1. Provider-create accepts `modelConfig` in the body but the server

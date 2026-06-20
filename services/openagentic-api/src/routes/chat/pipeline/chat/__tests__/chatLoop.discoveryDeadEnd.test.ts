@@ -1,7 +1,7 @@
 /**
  * #51 (2026-06-01) — discovery dead-end loop guard.
  *
- * LIVE BUG (open-dev, gpt-oss:20b): "show me my azure subscriptions" →
+ * LIVE BUG (openagentic, gpt-oss:20b): "show me my azure subscriptions" →
  * tool_search × 6 in ~14s with VARYING queries ("azure", "azure
  * subscription list tool", "azure list subscriptions"…), each returning
  * the SAME 14 non-azure tools and ZERO usable azure tool. The existing

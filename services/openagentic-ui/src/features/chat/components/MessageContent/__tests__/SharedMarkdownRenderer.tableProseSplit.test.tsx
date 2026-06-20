@@ -32,7 +32,7 @@ const PROSE_THEN_TABLE_SAME_LINE = [
   "I'm checking the Azure subscriptions visible to your signed-in account.| Subscription ID | Name | State |",
   '|---|---|---|',
   '| 6ed638e7-7deb-4773-b516-a2a2b9dbb948 | Azure subscription 1 | Enabled |',
-  '| 815a115d-bf32-495c-a89f-b5ce6b349b57 | openagentic-dev | Enabled |',
+  '| 815a115d-bf32-495c-a89f-b5ce6b349b57 | openagentic-example | Enabled |',
 ].join('\n');
 
 describe('SharedMarkdownRenderer — splits prose from table header on same line', () => {

@@ -1,6 +1,6 @@
 /**
  * Architecture pin — Phase 0.4 wire-in (per audit
- * docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md §0.4).
+ * the design notes).
  *
  * Each LLM provider's outbound request-body construction MUST delegate to the
  * SDK's `selectOutboundAdapter()` (via a thin helper) — providers must NOT

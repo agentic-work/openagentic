@@ -1,7 +1,7 @@
 /**
  * Phase H — Registry GET filter excludes rows whose provider has deleted_at != null.
  *
- * Spec: docs/superpowers/specs/2026-04-30-ollama-split-topology.md §Phase H
+ * the design notes H
  *
  * Bug: GET /api/admin/llm-providers/registry joins ModelRoleAssignment rows
  * to LLMProvider by name string. The handler does NOT filter rows whose

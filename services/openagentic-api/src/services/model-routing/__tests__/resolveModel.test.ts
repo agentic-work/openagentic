@@ -1,8 +1,8 @@
 /**
  * F1.1 — RED test for `resolveModel({explicitRowId})`
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F1.1)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * Universal accessor for model resolution. Every consumer (Smart Router,
  * agents, flow nodes, embeddings, MCP indexer, codemode, synth, memory

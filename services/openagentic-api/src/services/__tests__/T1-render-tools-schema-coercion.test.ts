@@ -129,7 +129,7 @@ describe('cloud-run-grid — GCP native status coercion', () => {
   });
 
   test('RED: rejects missing region (gpt-oss:20b emitted exactly this 2026-05-19)', async () => {
-    // Live wire payload from openagentic-api-7f84785df5-hnnnr:
+    // Live wire payload from openagentic-api-<pod>:
     //   { params: { services: [{ name: "mta-sts", status: "healthy", url: "..." }] },
     //     template: "cloud-run-grid", title: "Cloud Run Service Dashboard" }
     // → "services.0.region: Required" → tool_result is_error → empty Mini app.

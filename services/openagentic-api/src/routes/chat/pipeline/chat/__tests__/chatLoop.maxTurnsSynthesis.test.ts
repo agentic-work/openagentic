@@ -1,7 +1,7 @@
 /**
  * #51 (2026-06-01) — max-turns terminal path must NOT leak raw tool args.
  *
- * LIVE BUG (open-dev): when the discovery loop never converged, the loop
+ * LIVE BUG (openagentic): when the discovery loop never converged, the loop
  * ran to max_turns and returned `{ok:false, error:'hit max-turns cap…'}`
  * with NO synthesis — the last thing the user saw was the model's raw
  * leaked args ({"k":5,"query":"azure_list"}). Belt-and-suspenders on top of

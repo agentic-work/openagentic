@@ -4,13 +4,13 @@
  * dispatching any tools.
  *
  * Live evidence (mock-02 drive, 2026-05-22):
- *   prompt: "do a full security audit across all tenants of openagentic-omhs"
- *   actual: model assumed openagentic-omhs === test user's dev tenant +
+ *   prompt: "do a full security audit across all tenants of acme-corp"
+ *   actual: model assumed acme-corp === test user's dev tenant +
  *           test user's AWS account → dispatched 83 tool_use blocks →
  *           produced a verified-true 5/5 audit, but on the WRONG SCOPE.
- *           Correct customer tenant is 9ce70869-60db-44fd-abe8-d2767077fc8f.
+ *           Correct customer tenant is a different tenant id entirely.
  *   expected: model first emits request_clarification asking "what is
- *             openagentic-omhs — a tenant? subscription? AWS account?
+ *             acme-corp — a tenant? subscription? AWS account?
  *             a repo? — point me at it" then waits.
  *
  * This section is the textual rule that goes into the system prompt
@@ -49,12 +49,12 @@ describe('#1057 unknown-scope clarification gate', () => {
     }
   });
 
-  test('body shows the openagentic-omhs failure mode as the canonical example', () => {
+  test('body shows the acme-corp failure mode as the canonical example', () => {
     // The example is what gets pattern-matched in-context. Without a
     // concrete example, models tend to interpret abstract rules as
     // optional. Lock the live failure case in.
     const body = getUnknownScopeClarificationGate('admin').toLowerCase();
-    expect(body).toMatch(/openagentic-omhs|fictional|made-up|unknown scope name/);
+    expect(body).toMatch(/acme-corp|fictional|made-up|unknown scope name/);
   });
 
   test('body distinguishes unknown-scope from known-scope to avoid over-triggering on lists', () => {

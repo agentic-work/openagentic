@@ -28,7 +28,7 @@
  *     `tool_round_*`). The naming differs from `AgenticEvent` because the
  *     UI's wire dialect predates the AgenticEvent rename pass — see
  *     follow-up rip tickets in
- *     `docs/superpowers/specs/2026-05-18-streaming-engine-design.md`
+ * the design notes
  *     §"Follow-up tickets".
  *
  *   - `UIContentBlock` (this file) — the persistence shape held in
@@ -45,7 +45,7 @@
  *   two text bursts opens a NEW text block (does NOT merge with the
  *   previous one). The reducer enforces this via `closeOpenAccumulators`.
  *
- * Spec: `docs/superpowers/specs/2026-05-18-streaming-engine-design.md`
+ * the design notes
  */
 
 import type { CanonicalContentBlock, CanonicalEvent } from '../normalizers/CanonicalEvent.js';

@@ -6,8 +6,7 @@
  * a child RunCtx (own model + system prompt + sequencer) that shares the
  * parent's tool resolver and AgentEventStore subscription.
  *
- * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §E.8
- * Spec: chatmode three-layer architecture (docs/superpowers/specs/2026-05-10).
+ * See the design notes for the three-layer architecture.
  *
  * TDD red→green. The primitive does NOT exist when this file is written.
  *

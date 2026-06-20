@@ -1,5 +1,5 @@
 /**
- * C1 (FedRAMP P3 / NIST SI-10, IA-2) — every jwt.verify() in src must pin the
+ * C1 (NIST 800-53 SI-10, IA-2) — every jwt.verify() in src must pin the
  * accepted algorithm(s).
  *
  * Without an explicit `algorithms` allow-list, jsonwebtoken accepts whatever

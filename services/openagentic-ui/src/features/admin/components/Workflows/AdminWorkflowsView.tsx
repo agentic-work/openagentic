@@ -137,7 +137,7 @@ export const AdminWorkflowsView: React.FC<AdminWorkflowsViewProps> = ({ theme })
         explainer="Manage all workflows across users — search, filter, and inspect ownership, visibility, and execution metrics."
       />
 
-      {/* Mission Control · SoT enforcement banner */}
+      {/* Admin console · SoT enforcement banner */}
       <SoTBanner context="Workflow nodes that pick a model use the registry; pinning a non-registry model in a node fails build-time AND surfaces a 503 with retry-from-fallback at runtime." />
 
       {/* Stats cards */}

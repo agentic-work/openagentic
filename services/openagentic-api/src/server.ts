@@ -69,7 +69,7 @@ import adminPlugin from './plugins/admin.plugin.js';
 import healthPlugin from './plugins/health.plugin.js';
 import userPlugin from './plugins/user.plugin.js';
 import legacyRedirectsPlugin from './plugins/legacy-redirects.plugin.js';
-// FedRAMP AC-4: Row-Level Security context injection
+// NIST 800-53 AC-4: Row-Level Security context injection
 import { rlsContextHook } from './middleware/rls-context.js';
 // Pipeline Hook System (v0.5.0 hardening)
 import { initializeHookRunner } from './pipeline/hooks.js';
@@ -859,7 +859,7 @@ setupMetrics();
 // Register HTTP metrics middleware to track all requests
 server.addHook('onRequest', httpMetricsMiddleware());
 
-// FedRAMP AC-4: Set Row-Level Security context for every authenticated request.
+// NIST 800-53 AC-4: Set Row-Level Security context for every authenticated request.
 // Runs as preHandler so it executes AFTER auth middleware populates request.user.
 // If no user is set (unauthenticated endpoints), the hook is a no-op.
 server.addHook('preHandler', rlsContextHook);
@@ -1486,7 +1486,7 @@ async function registerAllRoutes() {
           const data: any = await resp.json().catch(() => ({}));
           // The proxy /servers endpoint returns a DICT keyed by server name
           // ({"openagentic_web":{"status":"running",...}, ...}) — verified
-          // live on open-dev 2026-06-01. Also tolerate the legacy
+          // live on openagentic 2026-06-01. Also tolerate the legacy
           // {servers:[{name,status}]} array shape defensively.
           if (Array.isArray(data?.servers)) {
             return (data.servers as any[])

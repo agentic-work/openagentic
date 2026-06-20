@@ -6,8 +6,8 @@
  * into the `rbac_system_prompts` table so admins can edit prompts LIVE
  * via /admin#prompt-templates without rebuilding the container.
  *
- * Spec: docs/superpowers/specs/2026-05-10-chatmode-prompts-db-editable.md
- * State: docs/superpowers/state/db-prompts-rip-state.md
+ * the design notes
+ * the design notes
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {

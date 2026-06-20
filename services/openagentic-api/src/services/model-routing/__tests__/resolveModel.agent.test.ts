@@ -1,8 +1,8 @@
 /**
  * F1.4 — RED test for `resolveModel({agentId})`
  *
- * Plan: docs/superpowers/plans/2026-05-01-registry-sot-v1.md (Task F1.4)
- * Spec: docs/superpowers/specs/2026-05-01-registry-sot-v1-design.md
+ * the design notes
+ * the design notes
  *
  * Per-agent override resolution. When a built-in or user-defined Agent row
  * has its own `model_role_assignment` FK populated, that row wins. Otherwise

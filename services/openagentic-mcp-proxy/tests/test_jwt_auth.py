@@ -2,8 +2,8 @@
 """
 Substrate fix S1 — JWT auth + system-token HMAC verification (Tasks 1.10/1.11).
 
-Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3 S1
-Plan: docs/superpowers/plans/2026-05-09-v3-enterprise-chatmode-implementation.md
+the design notes
+the design notes
       tasks 1.10 (RED) + 1.11 (GREEN).
 
 Six test cases:

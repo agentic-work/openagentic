@@ -1,6 +1,6 @@
 /**
- * AgentListTool — meta-tool definition for the chatmode-rip 10-primitive
- * T1 catalog (chatmode-rip plan §Phase C, task C.3).
+ * AgentListTool — meta-tool definition for the chat-pipeline refactor 10-primitive
+ * T1 catalog (the chat-pipeline refactor plan §Phase C, task C.3).
  *
  * Pairs with `agent_search` (catalog discovery) and `agent_send` /
  * `agent_stop` (lifecycle control). The model invokes `agent_list` to

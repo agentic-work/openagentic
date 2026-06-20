@@ -20,7 +20,7 @@ export async function build(opts = { test: true }): Promise<FastifyInstance> {
     app.post('/api/auth/validate', async (request, reply) => {
       const { token } = request.body as { token: string };
       
-      // SECURITY: AUTH_MODE=test bypass removed in v0.5.0 FedRAMP hardening (Bolt 01)
+      // SECURITY: AUTH_MODE=test bypass removed in v0.5.0 security hardening (Bolt 01)
       // All token validation must go through Azure AD, even in test helpers.
       // Use vi.fn() mocks on azureADAuthService.validateToken for unit tests.
       return reply.status(401).send({ error: 'Invalid token - use Azure AD authentication' });
