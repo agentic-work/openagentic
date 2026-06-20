@@ -975,24 +975,54 @@ export async function runChat(
     // seam. Fail-soft: null on un-inited cache / miss → graceful self-correct.
     resolveMcpToolByExactName: async (name: string) => {
       const cache = getToolSemanticCache();
-      if (!cache) return null;
-      try {
-        const hit = await cache.getTool(name);
-        if (!hit) return null;
-        return {
-          type: 'function' as const,
-          function: {
-            name: hit.name,
-            description: hit.description,
-            parameters: hit.inputSchema,
-            server_name: hit.server_name,
-          },
-          serverId: hit.server_name,
-          originalToolName: hit.name,
-        };
-      } catch {
-        return null;
+      if (cache) {
+        try {
+          const hit = await cache.getTool(name);
+          if (hit) {
+            return {
+              type: 'function' as const,
+              function: {
+                name: hit.name,
+                description: hit.description,
+                parameters: hit.inputSchema,
+                server_name: hit.server_name,
+              },
+              serverId: hit.server_name,
+              originalToolName: hit.name,
+            };
+          }
+        } catch {
+          // fall through to the postgres catalog
+        }
       }
+      // Postgres fallback — mcp_tools is the source of truth. The Milvus semantic
+      // cache drifts from it (exact tool_name not indexed there / server-prefixed),
+      // while tool_search resolves via pgvector — so getTool() misses a REAL tool a
+      // model named directly and #850 drops it. Resolve by exact name here so #47
+      // dispatches it through the audited executeMcpTool seam. server_name is not
+      // load-bearing (the proxy infers the server from the tool-name prefix).
+      try {
+        const row = await deps.prismaLike?.mCPTool?.findFirst({
+          where: { name, is_enabled: true },
+          select: { name: true, description: true, schema: true },
+        });
+        if (row) {
+          return {
+            type: 'function' as const,
+            function: {
+              name: row.name,
+              description: row.description ?? '',
+              parameters: (row.schema as any) ?? {},
+              server_name: undefined,
+            },
+            serverId: undefined,
+            originalToolName: row.name,
+          };
+        }
+      } catch {
+        // catalog miss / db hiccup — graceful self-correct via #850
+      }
+      return null;
     },
   };
 
