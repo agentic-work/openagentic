@@ -48,6 +48,7 @@ import { prisma } from '../utils/prisma.js';
 import { featureFlags } from '../config/featureFlags.js';
 import { getCredentialBroker } from './CredentialBroker.js';
 import { AzureTokenService } from './AzureTokenService.js';
+import { AzureOBOService } from './AzureOBOService.js';
 import { trackMcpToolCall } from '../metrics/index.js';
 
 /**
@@ -621,6 +622,11 @@ function getAzureTokenService(): AzureTokenService {
   }
   return _azureTokenService;
 }
+let _azureOBOService: AzureOBOService | null = null;
+function getAzureOBOService(): AzureOBOService {
+  if (!_azureOBOService) _azureOBOService = new AzureOBOService(azureTokenSilentLogger);
+  return _azureOBOService;
+}
 
 /** Phase-1c: positive opt-in. Returns {} ONLY on the non-Entra path or a
  *  non-cloud tool. On a cloud tool under azure-ad it MUST resolve a real
@@ -637,24 +643,30 @@ async function brokeredCredMeta(ctx: any, toolName: string): Promise<Record<stri
   }
   const azure = getAzureTokenService();
   if (target === 'azure') {
-    // ARM-audience OBO token (management.azure.com), NOT the login/Graph token.
-    const arm = await azure.getValidAzureTokenString(userId);
-    if (!arm) throw new BrokerRunAsUserError('Could not run as you on Azure — connect/permission (ARM OBO token unavailable).');
+    // ARM-audience OBO token (management.azure.com). Prefer the stored token (UI
+    // login flow); fall back to an ON-DEMAND OBO exchange from the request's Entra
+    // token (API/Bearer flow — the request always carries it).
+    let arm = await azure.getValidAzureTokenString(userId);
+    if (!arm) arm = await getAzureOBOService().getAzureManagementToken(userJwt);
+    if (!arm) throw new BrokerRunAsUserError('Could not run as you on Azure — OBO exchange failed (connect/permission).');
     return { brokeredAzure: { AZURE_ACCESS_TOKEN: arm } };
   }
   if (target === 'aws') {
-    // AWS IAM OIDC provider trusts the ID TOKEN (aud=app clientId), not the access token.
+    // AssumeRoleWithWebIdentity. Prefer the stored id_token (login flow); else use
+    // the request's Entra access token (API/Bearer) — its aud is the app clientId
+    // (which the IAM OIDC provider trusts) and its sub matches the role trust.
     const info = await azure.getOrRefreshToken(userId);
-    const idTok = info?.id_token;
-    if (!idTok) throw new BrokerRunAsUserError('Could not run as you on AWS — no Entra id_token (re-auth).');
-    const creds = await getCredentialBroker().brokerFor(idTok, ['aws'], userId);  // broker exchanges id_token->STS
+    const awsToken = info?.id_token || userJwt;
+    const creds = await getCredentialBroker().brokerFor(awsToken, ['aws'], userId);  // → STS web-identity
     if (!creds.aws) throw new BrokerRunAsUserError('Could not run as you on AWS — STS assume-role failed.');
     return { brokeredAws: creds.aws };
   }
-  // gcp: per-user OAuth (the user's own GCP IAM) or the Entra→GCP WIF path. The
-  // broker throws GcpNotConnectedError when neither is available.
+  // gcp: per-user OAuth (the user's own GCP IAM) or the Entra→GCP WIF path. The WIF
+  // subject token is the stored self-audience token (login flow) or, failing that,
+  // the request's Entra access token (API/Bearer). The broker throws when neither a
+  // Google OAuth link nor a WIF exchange is available.
   const entra = await azure.getSelfAudienceToken(userId);
-  const creds = await getCredentialBroker().brokerFor(userJwt, ['gcp'], userId, entra?.access_token);
+  const creds = await getCredentialBroker().brokerFor(userJwt, ['gcp'], userId, entra?.access_token || userJwt);
   if (!creds.gcp?.GOOGLE_OAUTH_ACCESS_TOKEN) {
     throw new BrokerRunAsUserError('Could not run as you on GCP — Connect GCP first.');
   }
