@@ -147,6 +147,12 @@ services:
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-}
+      # tool_search cold/warm budget (G19). On a single Ollama shared by chat +
+      # nomic-embed, a cold embed can take ~30s; if tool_search aborts first it
+      # returns ZERO tools and the model loops "no tools found" forever. Generous
+      # ceilings (a no-op when the embed is fast) so cloud tools resolve.
+      TOOL_SEARCH_TIMEOUT_MS: ${TOOL_SEARCH_TIMEOUT_MS:-35000}
+      TOOL_SEARCH_COLD_TIMEOUT_MS: ${TOOL_SEARCH_COLD_TIMEOUT_MS:-45000}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |

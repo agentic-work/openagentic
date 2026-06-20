@@ -14,6 +14,13 @@ import { Agent } from 'undici';
 export const ollamaAgent = new Agent({
   connections: 64,
   connect: { timeout: 30_000 },
+  // A cold embedding (nomic-embed) on an Ollama shared with the chat model can take
+  // ~30s+ to return its first byte. Without explicit head/body timeouts a slow embed
+  // aborts mid-route ("Headers Timeout Error"), which (combined with the tool_search
+  // budget) starves the discovery path. Generous finite values cover slow embeds and
+  // long chat streams without hanging.
+  headersTimeout: 120_000,
+  bodyTimeout: 120_000,
   keepAliveTimeout: 30_000,
   keepAliveMaxTimeout: 60_000,
   pipelining: 1,

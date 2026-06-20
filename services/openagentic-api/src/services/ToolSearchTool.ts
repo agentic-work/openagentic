@@ -97,7 +97,32 @@ export interface ToolSearchResult {
 }
 
 const DEFAULT_K = 8;
-const FORWARD_TIMEOUT_MS = 5_000;
+
+// G19 — adaptive cold/warm tool_search timeout (ported from upstream, 2026-06-06;
+// landed after the OSS fork, never synced). The FIRST tool_search of the process
+// pays a longer COLD budget so a cold Milvus/embedding path (first query after pod
+// start, or a single Ollama shared by chat + nomic-embed under load) can resolve
+// instead of aborting to ZERO tools — which the model reads as "no tools found" and
+// re-searches forever until DISCOVERY_NO_NEW_THRESHOLD forces synthesis. Warm calls
+// use the normal budget. Both env-overridable (raise on a single-shared-Ollama box).
+const WARM_FORWARD_TIMEOUT_MS = 5_000;
+const COLD_FORWARD_TIMEOUT_MS = 20_000;
+
+// Process-level warmup latch: true until the first forward is attempted.
+let toolSearchIsCold = true;
+
+function envInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw == null || raw === '') return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
+
+function resolveForwardTimeoutMs(isCold: boolean): number {
+  return isCold
+    ? envInt('TOOL_SEARCH_COLD_TIMEOUT_MS', COLD_FORWARD_TIMEOUT_MS)
+    : envInt('TOOL_SEARCH_TIMEOUT_MS', WARM_FORWARD_TIMEOUT_MS);
+}
 
 function apiBaseUrl(): string {
   return (
@@ -171,8 +196,14 @@ export async function executeToolSearch(
     requestBody.userPromptHint = userPromptHint;
   }
 
+  // G19 — first call of the process pays the cold (longer) timeout. Flip the latch
+  // BEFORE the await so a concurrent second call is already treated as warm.
+  const isCold = toolSearchIsCold;
+  toolSearchIsCold = false;
+  const forwardTimeoutMs = resolveForwardTimeoutMs(isCold);
+
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), FORWARD_TIMEOUT_MS);
+  const timer = setTimeout(() => ac.abort(), forwardTimeoutMs);
   try {
     const resp = await fetch(url, {
       method: 'POST',
