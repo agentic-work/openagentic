@@ -80,6 +80,13 @@ spec:
               value: {{ .Values.ollama.chatHost | default "http://ollama:11434" | quote }}
             - name: OLLAMA_BASE_URL
               value: {{ .Values.ollama.chatHost | default "http://ollama:11434" | quote }}
+            # tool_search cold/warm budget (G19) — a cold nomic embed on a CPU
+            # in-cluster Ollama can exceed the 20s code default and abort tool_search
+            # to zero tools. Generous ceilings (no-op when the embed is fast).
+            - name: TOOL_SEARCH_TIMEOUT_MS
+              value: {{ .Values.ollama.toolSearchTimeoutMs | default 35000 | quote }}
+            - name: TOOL_SEARCH_COLD_TIMEOUT_MS
+              value: {{ .Values.ollama.toolSearchColdTimeoutMs | default 45000 | quote }}
             - name: EMBEDDING_OLLAMA_BASE_URL
               value: http://ollama:11434
             - name: EMBEDDING_PROVIDER
