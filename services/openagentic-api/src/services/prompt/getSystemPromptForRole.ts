@@ -30,7 +30,6 @@ import {
 } from './staticSections.js';
 import {
   getToolCatalogSection,
-  getEnvContextSection,
   getReadOnlyModeSection,
   getAvailabilitySection,
 } from './dynamicSections.js';
@@ -298,11 +297,6 @@ export async function getSystemPromptForRole(
     // DYNAMIC — recomputed per turn.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     systemPromptSection('tool_catalog', () => getToolCatalogSection(toolList as any[])),
-    // 2026-05-12 — runtime auth/cloud context (AWS OBO role ARN, Azure
-    // tenant, GCP project) interpolated from env at compose time. Mirrors
-    // Claude Code's computeEnvInfo() dynamic section. Tells the model
-    // credentials are auto-resolved so it never asks the user for ARNs.
-    systemPromptSection('env_context', () => getEnvContextSection()),
     // #51 (2026-06-01) — per-session connected-MCP / needs-auth ground
     // truth. Dynamic-side because connected-server state is per-session.
     // Lets the model say "Azure isn't connected (needs OBO)" on turn 1

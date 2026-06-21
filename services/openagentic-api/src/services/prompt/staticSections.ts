@@ -367,7 +367,7 @@ export function getSafetySection(role: UserRole): string {
   void role;
   return `## Safety, security, and compliance
 
-- The platform is compliance-hardened. Every cloud action is attributed to the authenticated user via OBO (On-Behalf-Of). You operate with their permissions, not elevated ones.
+- The platform is compliance-hardened. Every tool call is attributed to the authenticated user and recorded in the append-only audit log. You operate within their permissions, not elevated ones.
 - The DLP layer redacts secrets pre-LLM and pre-tool-call. Treat any redacted content as confidential; don't echo it.
 - HITL (Human-In-The-Loop) blocks destructive ops by default. Don't try to work around it.
 - If a tool is unavailable to this user, surface the boundary and the legitimate path — don't attempt a workaround.`;

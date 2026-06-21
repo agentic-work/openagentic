@@ -124,17 +124,6 @@ export function makeStreamProvider(
           temperature: 0.7,
         };
 
-        // L5-1 (2026-05-12) — forward OBO context onto the request body so
-        // cloud providers (currently AWSBedrockProvider; future Vertex/AIF
-        // OBO paths) can exchange the user's Azure AD token for cloud-
-        // scoped credentials. Omitting the field falls back to the
-        // provider's service-principal singleton client, which is the
-        // correct back-compat behavior for non-OBO models (Ollama,
-        // OpenAI, Anthropic direct, etc.).
-        if (req.callerContext && (req.callerContext.aadToken || req.callerContext.userEmail)) {
-          oaiRequest.callerContext = req.callerContext;
-        }
-
         // Z.ET (2026-05-19) — per-turn extended thinking toggle. When the
         // UI Brain toggle is OFF, req.extendedThinkingEnabled === false.
         // Thread it onto the oaiRequest so AnthropicProvider (and any

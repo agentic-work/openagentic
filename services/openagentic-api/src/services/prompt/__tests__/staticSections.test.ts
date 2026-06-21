@@ -72,10 +72,10 @@ describe('staticSections — getOutputSection', () => {
 });
 
 describe('staticSections — getSafetySection', () => {
-  it('mentions DLP + HITL + OBO', () => {
+  it('mentions DLP + HITL + audit log', () => {
     const body = getSafetySection('member');
     expect(body).toMatch(/DLP/);
     expect(body).toMatch(/HITL/);
-    expect(body).toMatch(/OBO|On.Behalf.Of/i);
+    expect(body).toMatch(/audit log/i);
   });
 });

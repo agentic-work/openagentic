@@ -85,19 +85,6 @@ export interface ProviderRequest {
   model: string;
   cacheBreakpoint?: 'after_tools' | 'never';
   /**
-   * L5-1 five-layer audit (2026-05-12) — OBO context for cloud providers
-   * that exchange the caller's Azure AD ID/access token for short-lived
-   * cloud credentials. Currently consumed by `AWSBedrockProvider`
-   * (assumeRoleWithAADToken → BedrockRuntimeClient scoped to the user)
-   * and threaded through by `streamProvider`. Optional — when omitted,
-   * providers fall back to the service-principal singleton client
-   * (the back-compat behavior for non-OBO models).
-   */
-  callerContext?: {
-    aadToken?: string;
-    userEmail?: string;
-  };
-  /**
    * Z.ET (2026-05-19) — per-turn extended thinking toggle. When false,
    * the provider skips attaching a thinking budget even for capable models.
    * Undefined = ON (backwards-compatible default).

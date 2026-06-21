@@ -973,19 +973,6 @@ export async function chatLoop(
     // sensitive-data egress before the provider sees it.
     await deps.hooks?.run('before_streaming', { turn, model: input.model, messages }, hookCtx);
 
-    // L5-1 (2026-05-12) — populate OBO callerContext from the chat ctx so
-    // AWSBedrockProvider can exchange the user's AAD token for short-lived
-    // STS credentials (assumeRoleWithAADToken → user-scoped BedrockRuntimeClient).
-    // Falls through (undefined) for non-Azure-authenticated test paths;
-    // streamProvider drops the field from the body when both subfields are
-    // empty, so non-OBO providers (Ollama, OpenAI direct, etc.) are unaffected.
-    const callerContextForObo = (ctx.userJwt || ctx.user?.email)
-      ? {
-          ...(ctx.userJwt ? { aadToken: ctx.userJwt } : {}),
-          ...(ctx.user?.email ? { userEmail: ctx.user.email as string } : {}),
-        }
-      : undefined;
-
     // C3 — pre-turn scenario-pattern detector. Runs on EVERY iteration so
     // scenario prompts (migration/onboarding/incident/compliance) get forced
     // to compose_app / compose_visual on the FIRST model call — before any
@@ -1053,7 +1040,6 @@ export async function chatLoop(
       tool_choice: nextTurnToolChoice,
       model: input.model,
       cacheBreakpoint: 'after_tools',
-      ...(callerContextForObo ? { callerContext: callerContextForObo } : {}),
       // Z.ET (2026-05-19) — per-turn extended thinking toggle. Only set
       // when explicitly false to avoid overriding provider defaults on
       // turns where the UI hasn't set the flag.

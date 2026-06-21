@@ -61,8 +61,7 @@ embeddings (Amazon Titan / Cohere) if you prefer not to use Ollama for that role
 
 Bedrock credentials flow through the standard AWS SDK credential chain
 (`~/.openagentic/cloud-secrets/aws.env`, environment variables, or an instance
-role). The provider also supports AWS OIDC federation
-(`AWSOIDCFederation`) for keyless STS web-identity flows.
+role).
 
 ---
 
