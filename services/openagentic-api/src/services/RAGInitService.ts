@@ -87,13 +87,13 @@ export class RAGInitService {
     // Allow skipping RAG init entirely (useful when Ollama/embedding models are unavailable)
     const skipRag = process.env.SKIP_RAG_INIT === 'true' || process.env.SKIP_TOOL_SEMANTIC_CACHE === 'true';
     if (skipRag) {
-      this.logger.warn('⏭️ Skipping RAG initialization (SKIP_RAG_INIT or SKIP_TOOL_SEMANTIC_CACHE is true)');
-      this.logger.warn('⚠️ System will operate without embedding/vector capabilities');
+      this.logger.warn('Skipping RAG initialization (SKIP_RAG_INIT or SKIP_TOOL_SEMANTIC_CACHE is true)');
+      this.logger.warn('System will operate without embedding/vector capabilities');
       this.initialized = false;
       return false;
     }
 
-    this.logger.info('🚀 Starting RAG services initialization...');
+    this.logger.info('Starting RAG services initialization...');
 
     while (this.retryCount < this.maxRetries) {
       this.retryCount++;
@@ -115,7 +115,7 @@ export class RAGInitService {
 
         if (this.healthStatus.healthy) {
           this.initialized = true;
-          this.logger.info('✅ RAG services initialized successfully');
+          this.logger.info('RAG services initialized successfully');
 
           // -------------------------------------------------------------
           // Docs reconcile (task #157): keeps platform_docs aligned with
@@ -145,7 +145,7 @@ export class RAGInitService {
               );
             });
           } else {
-            this.logger.debug('📚 Docs auto-ingest disabled (DOCS_AUTO_INGEST != "true")');
+            this.logger.debug('Docs auto-ingest disabled (DOCS_AUTO_INGEST != "true")');
           }
 
           return true;
@@ -179,9 +179,9 @@ export class RAGInitService {
     }
 
     // All retries exhausted
-    this.logger.error('❌ RAG services failed to initialize after all retries');
+    this.logger.error('RAG services failed to initialize after all retries');
     this.initializationError = `RAG initialization failed: ${this.healthStatus.errors.join(', ')}`;
-    this.logger.warn('⚠️ System will operate with limited RAG capabilities');
+    this.logger.warn('System will operate with limited RAG capabilities');
 
     return false;
   }
@@ -362,10 +362,10 @@ export class RAGInitService {
       const isOllama = ollamaEnabled && embeddingProvider === 'ollama';
 
       if (isOllama && ollamaModel) {
-        this.logger.info({ ollamaBaseUrl, ollamaModel }, '🔄 Waiting for Ollama embedding model to be ready...');
+        this.logger.info({ ollamaBaseUrl, ollamaModel }, 'Waiting for Ollama embedding model to be ready...');
         await this.waitForOllamaModel(ollamaBaseUrl, ollamaModel);
       } else if (!ollamaEnabled && embeddingProvider === 'ollama') {
-        this.logger.warn('⚠️ EMBEDDING_PROVIDER is set to ollama but OLLAMA_ENABLED is not true - skipping Ollama');
+        this.logger.warn('EMBEDDING_PROVIDER is set to ollama but OLLAMA_ENABLED is not true - skipping Ollama');
       }
 
       this.embeddingService = new UniversalEmbeddingService(this.logger);
@@ -375,9 +375,9 @@ export class RAGInitService {
 
         // Verify embedding actually works with a test call (only if Ollama is enabled)
         if (ollamaEnabled && info.provider === 'ollama') {
-          this.logger.info('🧪 Testing Ollama embedding generation...');
+          this.logger.info('Testing Ollama embedding generation...');
           await this.embeddingService.generateEmbedding('test');
-          this.logger.info('✅ Ollama embedding test successful');
+          this.logger.info('Ollama embedding test successful');
         }
 
         this.healthStatus.components.embeddings.healthy = true;
@@ -399,7 +399,7 @@ export class RAGInitService {
       this.healthStatus.components.embeddings.error = errorMsg;
       this.healthStatus.errors.push(errorMsg);
       this.logger.warn(errorMsg);
-      this.logger.info('💡 Set AZURE_OPENAI_EMBEDDING_DEPLOYMENT or AWS_EMBEDDING_MODEL_ID to enable embeddings');
+      this.logger.info('Set AZURE_OPENAI_EMBEDDING_DEPLOYMENT or AWS_EMBEDDING_MODEL_ID to enable embeddings');
     }
   }
 
@@ -431,7 +431,7 @@ export class RAGInitService {
         );
 
         if (modelFound) {
-          this.logger.info({ modelName, attempt }, '✅ Ollama embedding model is ready');
+          this.logger.info({ modelName, attempt }, 'Ollama embedding model is ready');
           return;
         }
 
@@ -475,7 +475,7 @@ export class RAGInitService {
 
       this.healthStatus.components.milvus.healthy = true;
       this.healthStatus.components.milvus.connected = true;
-      this.logger.info('✅ Milvus vector database connected');
+      this.logger.info('Milvus vector database connected');
 
     } catch (error) {
       const errorMsg = `Milvus connection failed: ${error instanceof Error ? error.message : String(error)}`;
@@ -506,7 +506,7 @@ export class RAGInitService {
         }, '✅ Model capability discovery initialized');
       } else {
         this.healthStatus.warnings.push('Model capability discovery service not initialized');
-        this.logger.warn('⚠️ Model capability discovery service not initialized');
+        this.logger.warn('Model capability discovery service not initialized');
       }
 
     } catch (error) {
@@ -552,7 +552,7 @@ export class RAGInitService {
    * Force re-initialization (useful for testing or recovery)
    */
   async reinitialize(): Promise<boolean> {
-    this.logger.info('🔄 Re-initializing RAG services...');
+    this.logger.info('Re-initializing RAG services...');
     this.initialized = false;
     this.retryCount = 0;
     this.initializationError = undefined;

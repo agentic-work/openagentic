@@ -337,7 +337,7 @@ export class LLMMetricsService {
       };
 
       if (metrics.estimatedTokens) {
-        logger.warn(logData, '⚠️ LLM request logged with ESTIMATED tokens (not from API)');
+        logger.warn(logData, 'LLM request logged with ESTIMATED tokens (not from API)');
       } else {
         logger.debug(logData, 'LLM request logged');
       }

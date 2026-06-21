@@ -211,7 +211,7 @@ export class ResponseStage implements PipelineStage {
         totalMessages: context.messages.length,
         messageRoles: context.messages.map(m => m.role)
       }, '╔═══════════════════════════════════════════════════════════════');
-      this.logger.info('║ [SAVE] 💾 Saving Messages to PostgreSQL');
+      this.logger.info('║ [SAVE] Saving Messages to PostgreSQL');
       this.logger.info('╚═══════════════════════════════════════════════════════════════');
 
       // Step 1: Deduplicate messages by ID (critical for tool calling rounds)
@@ -1099,13 +1099,13 @@ export class ResponseStage implements PipelineStage {
         sessionId: context.session.id,
         userId: context.user.id
       }, '╔═══════════════════════════════════════════════════════════════');
-      this.logger.info('║ [CACHE-UPDATE] 💾 Updating Redis SessionCache');
+      this.logger.info('║ [CACHE-UPDATE] Updating Redis SessionCache');
       this.logger.info('╚═══════════════════════════════════════════════════════════════');
 
       // Get MemoryContextService from context
       const memoryContextService = (context as any).memoryContextService;
       if (!memoryContextService) {
-        this.logger.warn('│ [REDIS] ⚠️  UNAVAILABLE: MemoryContextService not available for cache update');
+        this.logger.warn('│ [REDIS] UNAVAILABLE: MemoryContextService not available for cache update');
         return;
       }
 
@@ -1113,7 +1113,7 @@ export class ResponseStage implements PipelineStage {
       const conversationMessages = context.messages.filter(m => m.role !== 'system');
 
       if (conversationMessages.length === 0) {
-        this.logger.warn('│ [REDIS] ⚠️  SKIP: No messages to cache');
+        this.logger.warn('│ [REDIS] SKIP: No messages to cache');
         return;
       }
 
@@ -1220,7 +1220,7 @@ export class ResponseStage implements PipelineStage {
         userId: context.user?.id,
         totalTimeMs: totalTime
       }, '│ [REDIS] ❌ ERROR: Failed to update SessionCache');
-      this.logger.warn('│ [REDIS] ⚠️  IMPACT: Next request will load from PostgreSQL (slower)');
+      this.logger.warn('│ [REDIS] IMPACT: Next request will load from PostgreSQL (slower)');
     }
   }
 

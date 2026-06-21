@@ -2715,7 +2715,7 @@ export const useChatStream = ({
                   if (safeData.ttftMs) {
                     setTtftMs(safeData.ttftMs);
                     // TTFT logging - disabled in production
-                    // console.log(`[SSE-METRICS] ⏱️ TTFT: ${safeData.ttftMs}ms`);
+                    // console.log(`[SSE-METRICS] TTFT: ${safeData.ttftMs}ms`);
                   }
                   break;
 

@@ -67,13 +67,13 @@ export class MCPStage implements PipelineStage {
       }, '[MCP] 🚀 Starting MCP tool search stage with super verbose logging');
 
       if (!context.config.enableMCP) {
-        context.logger.info('[MCP] ⚠️ MCP disabled in config, skipping tool search');
+        context.logger.info('[MCP] MCP disabled in config, skipping tool search');
         context.availableTools = [];
         return context;
       }
 
       // Get user query for semantic search
-      context.logger.info('[MCP] 📝 Extracting user query for semantic tool search...');
+      context.logger.info('[MCP] Extracting user query for semantic tool search...');
       const userQuery = this.extractUserQuery(context);
 
       context.logger.info({
@@ -85,7 +85,7 @@ export class MCPStage implements PipelineStage {
       }, '[MCP] 🔍 User query extraction results');
 
       if (!userQuery) {
-        context.logger.warn('[MCP] ❌ No user query found for tool search - cannot perform semantic search');
+        context.logger.warn('[MCP] No user query found for tool search - cannot perform semantic search');
         context.availableTools = [];
         return context;
       }
@@ -655,7 +655,7 @@ export class MCPStage implements PipelineStage {
       // Get all tools from Redis cache (populated by MCP indexing service)
       const redisClient = context.redisService;
       if (!redisClient) {
-        context.logger.error('[MCP] ❌ Redis client not available for fallback');
+        context.logger.error('[MCP] Redis client not available for fallback');
         return [];
       }
 
@@ -664,7 +664,7 @@ export class MCPStage implements PipelineStage {
       const cachedTools = await redisClient.get(cacheKey);
 
       if (!cachedTools) {
-        context.logger.error('[MCP] ❌ No cached tools found in Redis - MCP indexing may not have run');
+        context.logger.error('[MCP] No cached tools found in Redis - MCP indexing may not have run');
         return [];
       }
 
@@ -726,7 +726,7 @@ export class MCPStage implements PipelineStage {
         }, '[MCP] 🧠 SUCCESS TRACKING: Found previously successful tools');
       }
     } catch (error: any) {
-      context.logger.warn({ error: error.message }, '[MCP] 🧠 Tool success tracking search failed');
+      context.logger.warn({ error: error.message }, '[MCP] Tool success tracking search failed');
     }
 
     // 2. Get tools from IntentLinkingService (cross-collection intent matching)
@@ -755,14 +755,14 @@ export class MCPStage implements PipelineStage {
         }
       }
     } catch (error: any) {
-      context.logger.warn({ error: error.message }, '[MCP] 🔗 Intent linking search failed');
+      context.logger.warn({ error: error.message }, '[MCP] Intent linking search failed');
     }
 
     // Deduplicate and return
     const uniqueTools = [...new Set(allToolNames)];
 
     if (uniqueTools.length === 0) {
-      context.logger.debug('[MCP] 🧠 No learned tools found from any source');
+      context.logger.debug('[MCP] No learned tools found from any source');
     } else {
       context.logger.info({
         totalUniqueTools: uniqueTools.length,

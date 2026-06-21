@@ -57,8 +57,8 @@ const legacyRedirectsPlugin: FastifyPluginAsync<LegacyRedirectsPluginOptions> = 
     return reply.redirect('/api/v1/mcp/status');
   });
 
-  loggers.routes.info('📌 Legacy /mcp/* redirects configured -> /api/v1/mcp/*');
-  loggers.routes.info('✅ Legacy redirect routes plugin registered successfully');
+  loggers.routes.info('Legacy /mcp/* redirects configured -> /api/v1/mcp/*');
+  loggers.routes.info('Legacy redirect routes plugin registered successfully');
 };
 
 export default fp(legacyRedirectsPlugin, {

@@ -1,7 +1,5 @@
 /**
- * Phase 4 #474 — AppRenderer
- *
- * Plan: <internal-plan>
+ * AppRenderer (#474)
  *
  * Mounts the server's `app_render` NDJSON frame (T3 compose_app payload)
  * inside a sandboxed iframe with srcdoc — same architecture as

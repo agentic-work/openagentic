@@ -1,7 +1,5 @@
 /**
- * AppRenderer — Phase 4 #474 T3 compose_app mount.
- *
- * Plan: <internal-plan>
+ * AppRenderer — T3 compose_app mount (#474).
  *
  * Receives an `app_render` NDJSON frame from the server (validated by
  * composeAppValidator + CdnAllowList) and mounts the HTML payload inside

@@ -1,7 +1,5 @@
 /**
- * CdnAllowList — Phase 4 #474 / #491 server-side script-src URL validator.
- *
- * Plan: <internal-plan>
+ * CdnAllowList — server-side script-src URL validator (#474 / #491).
  *
  * compose_app payloads from the model arrive as HTML/JS strings. Before
  * we mount them in the sandboxed iframe (srcdoc), we validate that every

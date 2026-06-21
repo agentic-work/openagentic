@@ -2,7 +2,7 @@
  * Architecture cage — no UI-local re-declarations of SDK canonical types.
  *
  * REGRESSION pin — Track B Phase 0 of the canonical streaming rip
- * (<internal-plan>, "One SoT" rule).
+ * ("One SoT" rule).
  *
  * `openagentic-sdk` is the single source of truth for chatmode types:
  *   - `UIContentBlock`  (render + persist shape)

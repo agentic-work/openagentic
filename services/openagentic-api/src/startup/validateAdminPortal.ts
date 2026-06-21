@@ -22,17 +22,17 @@ export interface AdminPortalHealth {
  * Validate that admin portal is properly configured as SOT
  */
 export async function validateAdminPortalConfiguration(): Promise<void> {
-  logger.info('🔍 Validating admin portal SOT configuration...');
+  logger.info('Validating admin portal SOT configuration...');
   
   const health = await getAdminPortalHealth();
   
   if (health.status === 'error') {
-    logger.error({ errors: health.errors }, '❌ Admin portal validation failed with errors');
+    logger.error({ errors: health.errors }, 'Admin portal validation failed with errors');
     throw new Error(`FATAL STARTUP ERROR: Admin portal validation failed: ${health.errors.join(', ')}`);
   }
   
   if (health.status === 'unhealthy') {
-    logger.error({ health }, '❌ Admin portal is not properly configured');
+    logger.error({ health }, 'Admin portal is not properly configured');
     throw new Error('FATAL STARTUP ERROR: Admin portal is not configured as source of truth. Initialize with proper prompt templates.');
   }
   

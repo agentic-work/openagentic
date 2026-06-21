@@ -37,7 +37,7 @@ function App() {
 ### 2. Install Dependencies
 
 ```bash
-cd services/openagenticchat-ui
+cd services/openagentic-ui
 pnpm install
 ```
 
@@ -326,7 +326,7 @@ All components respect:
 ## Architecture
 
 ```
-services/openagenticchat-ui/src/features/workflows/
+services/openagentic-ui/src/features/workflows/
 ├── components/
 │   ├── WorkflowBuilder.tsx       # Main editor
 │   ├── WorkflowList.tsx          # Dashboard

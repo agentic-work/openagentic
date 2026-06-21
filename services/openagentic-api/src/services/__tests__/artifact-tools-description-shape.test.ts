@@ -2,7 +2,7 @@
  * Phase A.2 — RED test for imperative description shape on the 3 artifact
  * tools (compose_visual / compose_app / render_artifact).
  *
- * Plan ref: <internal-plan> Track A Phase A.2
+ * Track A Phase A.2.
  *
  * Anthropic best-practice example in tool-use docs leads with imperative
  * verbs ("Retrieves the current stock price for a given ticker

@@ -27,8 +27,8 @@ body:
       label: Component
       description: Which component is affected?
       options:
-        - API Server (openagenticchat-api)
-        - UI Application (openagenticchat-ui)
+        - API Server (openagentic-api)
+        - UI Application (openagentic-ui)
         - MCP Orchestrator
         - MCP Executor
         - Database/Storage

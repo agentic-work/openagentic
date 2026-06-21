@@ -1,9 +1,8 @@
 /**
  * dispatchChatToolCall — single-stage tool-use routing for chatmode.
  *
- * Mirrors Claude Code's main loop in `<claude-code-src>/QueryEngine.ts`:
- * one tool_choice='auto' call into the model, one ReAct loop, one
- * concurrency-aware dispatcher.
+ * Follows Claude Code's main-loop shape: one tool_choice='auto' call into
+ * the model, one ReAct loop, one concurrency-aware dispatcher.
  *
  * NO regex intent gate. NO pre-LLM classifier turn. NO delegation gating.
  * Tool name → handler mapping is pure structural match (`is*Tool(name)`

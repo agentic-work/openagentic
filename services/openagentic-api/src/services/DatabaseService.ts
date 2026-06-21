@@ -38,7 +38,7 @@ export class DatabaseService {
    */
   static async initialize(): Promise<void> {
     try {
-      logger.info('🔄 Starting comprehensive database initialization...');
+      logger.info('Starting comprehensive database initialization...');
 
       // Step 1: Create and initialize MCP Proxy database (separate from our app)
       await DatabaseService.setupMCPProxyDatabase();
@@ -73,9 +73,9 @@ export class DatabaseService {
       // Step 11: Prompt templates are seeded by InitializationService.initializePromptTemplates()
       // await DatabaseService.seedPromptTemplates();
 
-      logger.info('✅ Database initialization completed successfully');
+      logger.info('Database initialization completed successfully');
     } catch (error) {
-      logger.error({ err: error }, '🚨 CRITICAL: Database initialization failed');
+      logger.error({ err: error }, 'CRITICAL: Database initialization failed');
       throw error;
     }
   }
@@ -95,11 +95,11 @@ export class DatabaseService {
     const password = process.env.POSTGRES_PASSWORD;
 
     if (!host || !port || !user || !password) {
-      logger.info('ℹ️  MCP Proxy database provisioning skipped — POSTGRES_* not set; the proxy manages its own schema on the shared database');
+      logger.info('MCP Proxy database provisioning skipped — POSTGRES_* not set; the proxy manages its own schema on the shared database');
       return;
     }
 
-    logger.info('🗄️ Creating MCP Proxy database...');
+    logger.info('Creating MCP Proxy database...');
     try {
       // Connect to postgres database to create mcp_proxy database
       const adminDbUrl = `postgresql://${user}:${password}@${host}:${port}/postgres`;
@@ -124,19 +124,19 @@ export class DatabaseService {
       if (!dbExists[0]?.exists) {
         logger.info('  Creating mcp_proxy database...');
         await adminPrisma.$executeRawUnsafe(`CREATE DATABASE mcp_proxy`);
-        logger.info('  ✅ MCP Proxy database created');
-        logger.info('  ℹ️  MCP Proxy will handle its own schema migrations on startup');
+        logger.info('MCP Proxy database created');
+        logger.info('MCP Proxy will handle its own schema migrations on startup');
       } else {
         logger.info('  MCP Proxy database already exists');
       }
 
       await adminPrisma.$disconnect();
 
-      logger.info('✅ MCP Proxy database ready');
+      logger.info('MCP Proxy database ready');
     } catch (error) {
-      logger.error({ err: error }, '❌ MCP Proxy database creation failed');
+      logger.error({ err: error }, 'MCP Proxy database creation failed');
       // Don't throw - MCP Proxy database is optional
-      logger.warn('⚠️ Continuing without MCP Proxy database - proxy features may be limited');
+      logger.warn('Continuing without MCP Proxy database - proxy features may be limited');
     }
   }
 
@@ -144,16 +144,16 @@ export class DatabaseService {
    * Validate Prisma schema before applying changes
    */
   private static async validatePrismaSchema(): Promise<void> {
-    logger.info('📋 Validating Prisma schema...');
+    logger.info('Validating Prisma schema...');
     try {
       const { stdout, stderr } = await execAsync('npx prisma validate');
       // Filter out npm notices and warnings from stderr
       if (stderr && !stderr.includes('warning') && !stderr.includes('npm notice')) {
         throw new Error(`Schema validation failed: ${stderr}`);
       }
-      logger.info('✅ Prisma schema is valid');
+      logger.info('Prisma schema is valid');
     } catch (error) {
-      logger.error({ err: error }, '❌ Prisma schema validation failed');
+      logger.error({ err: error }, 'Prisma schema validation failed');
       throw error;
     }
   }
@@ -162,7 +162,7 @@ export class DatabaseService {
    * Clean up duplicate prompt template names before applying unique constraint
    */
   private static async cleanupDuplicates(): Promise<void> {
-    logger.info('🧹 Checking for duplicate prompt template names...');
+    logger.info('Checking for duplicate prompt template names...');
     try {
       // Check if admin.prompt_templates table exists
       const tableExists = await prisma.$queryRaw<Array<{ exists: boolean }>>`
@@ -201,7 +201,7 @@ export class DatabaseService {
             )
           `;
           
-          logger.info('  ✅ Duplicates cleaned up successfully');
+          logger.info('Duplicates cleaned up successfully');
         } else {
           logger.info('  No duplicates found');
         }
@@ -218,7 +218,7 @@ export class DatabaseService {
    * This NEVER drops data unless ALLOW_UNSAFE_MIGRATIONS=true
    */
   private static async applySchema(): Promise<void> {
-    logger.info('📊 Applying Prisma schema changes safely...');
+    logger.info('Applying Prisma schema changes safely...');
     try {
       // Drop legacy MCP Proxy views that might block schema changes
       await DatabaseService.dropLegacyMCPViews();
@@ -230,7 +230,7 @@ export class DatabaseService {
       // Prisma multi-schema requires schemas to exist before db push
       logger.info('  Creating admin schema if not exists...');
       await prisma.$executeRawUnsafe('CREATE SCHEMA IF NOT EXISTS admin');
-      logger.info('  ✅ Admin schema ready');
+      logger.info('Admin schema ready');
 
       // Use AutoMigrationService for safe, incremental migrations
       // This will:
@@ -262,7 +262,7 @@ export class DatabaseService {
       // Verify critical admin schema tables were created
       await DatabaseService.verifyAdminSchemaTables();
     } catch (error) {
-      logger.error({ err: error }, '❌ Database schema migration failed');
+      logger.error({ err: error }, 'Database schema migration failed');
       throw error;
     }
   }
@@ -271,7 +271,7 @@ export class DatabaseService {
    * Verify critical admin schema tables exist after schema push
    */
   private static async verifyAdminSchemaTables(): Promise<void> {
-    logger.info('🔍 Verifying admin schema tables...');
+    logger.info('Verifying admin schema tables...');
 
     const criticalAdminTables = [
       'llm_request_logs',
@@ -290,9 +290,9 @@ export class DatabaseService {
       `;
 
       if (!tableExists[0]?.exists) {
-        logger.warn(`  ⚠️ Admin table '${tableName}' not found - may need manual creation`);
+        logger.warn(`Admin table '${tableName}' not found - may need manual creation`);
       } else {
-        logger.info(`  ✅ Admin table '${tableName}' verified`);
+        logger.info(`Admin table '${tableName}' verified`);
       }
     }
   }
@@ -301,7 +301,7 @@ export class DatabaseService {
    * Install required database extensions
    */
   private static async installExtensions(): Promise<void> {
-    logger.info('🔧 Installing required database extensions...');
+    logger.info('Installing required database extensions...');
     try {
       // pgvector: Vector similarity search for ACID-compliant transactional embeddings
       // Used for transactional data (<100K vectors), Milvus for scale (millions)
@@ -310,22 +310,22 @@ export class DatabaseService {
       const pgvectorVersion = await prisma.$queryRaw<Array<{ extversion: string }>>`
         SELECT extversion FROM pg_extension WHERE extname = 'vector'
       `;
-      logger.info({ version: pgvectorVersion[0]?.extversion }, '  ✅ pgvector extension installed');
+      logger.info({ version: pgvectorVersion[0]?.extversion }, 'pgvector extension installed');
 
       // Install pg_trgm for text similarity search
       logger.info('  Installing pg_trgm extension...');
       await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
-      logger.info('  ✅ pg_trgm extension installed');
+      logger.info('pg_trgm extension installed');
 
       // Install btree_gin for composite indexes
       logger.info('  Installing btree_gin extension...');
       await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS btree_gin`);
-      logger.info('  ✅ btree_gin extension installed');
+      logger.info('btree_gin extension installed');
 
       // Install uuid-ossp for UUID generation
       logger.info('  Installing uuid-ossp extension...');
       await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
-      logger.info('  ✅ uuid-ossp extension installed');
+      logger.info('uuid-ossp extension installed');
 
       // Verify extensions are installed
       const extensions = await prisma.$queryRaw<Array<{ extname: string }>>`
@@ -334,7 +334,7 @@ export class DatabaseService {
         ORDER BY extname
       `;
 
-      logger.info({ extensions: extensions.map(e => e.extname) }, '✅ Database extensions installed');
+      logger.info({ extensions: extensions.map(e => e.extname) }, 'Database extensions installed');
 
       // =====================================================================
       // Ensure embedding columns have the correct halfvec dimension for the
@@ -354,7 +354,7 @@ export class DatabaseService {
       await DatabaseService.ensureEmbeddingDimensions();
 
     } catch (error) {
-      logger.error({ err: error }, '❌ Failed to install database extensions');
+      logger.error({ err: error }, 'Failed to install database extensions');
       throw error;
     }
   }
@@ -420,7 +420,7 @@ export class DatabaseService {
    * primary path and Postgres pgvector stays dormant.
    */
   private static async ensureEmbeddingDimensions(): Promise<void> {
-    logger.info('🔄 Ensuring embedding columns match active provider dimensions...');
+    logger.info('Ensuring embedding columns match active provider dimensions...');
 
     // Check pgvector supports halfvec (0.7.0+)
     try {
@@ -430,7 +430,7 @@ export class DatabaseService {
       const version = result[0]?.extversion || '0.0.0';
       const [maj, min] = version.split('.').map((s) => parseInt(s, 10));
       if (!(maj > 0 || (maj === 0 && min >= 7))) {
-        logger.warn({ version }, '⚠️ pgvector version too old for halfvec — skipping (needs 0.7.0+)');
+        logger.warn({ version }, 'pgvector version too old for halfvec — skipping (needs 0.7.0+)');
         return;
       }
       logger.info({ version }, '  pgvector version supports halfvec');
@@ -442,7 +442,7 @@ export class DatabaseService {
     // Resolve target dim
     const rawTargetDim = await DatabaseService.resolveActiveEmbeddingDim();
     if (!rawTargetDim || rawTargetDim < 1) {
-      logger.warn('⚠️ Could not resolve active embedding dimension — skipping column migration');
+      logger.warn('Could not resolve active embedding dimension — skipping column migration');
       return;
     }
     // pgvector caps HNSW on halfvec at 4000d — providers like qwen3-embedding:8b return 4096-d natively.
@@ -532,7 +532,7 @@ export class DatabaseService {
           await prisma.$executeRawUnsafe(
             `UPDATE ${c.schema}.${c.table} SET ${c.column} = NULL WHERE ${c.column} IS NOT NULL`
           );
-          logger.info({ ...c, oldDim: currentDim, targetDim }, '  ⚠️  cleared mismatched embeddings (provider dim changed)');
+          logger.info({ ...c, oldDim: currentDim, targetDim }, 'cleared mismatched embeddings (provider dim changed)');
         }
 
         // ALTER to halfvec(N). If source was `vector` or untyped `halfvec`,
@@ -543,7 +543,7 @@ export class DatabaseService {
           `ALTER COLUMN ${c.column} TYPE halfvec(${targetDim}) ` +
           `USING (${c.column}::halfvec(${targetDim}))`
         );
-        logger.info({ ...c, dim: targetDim, from: fullType }, '  ✅ column → halfvec(N)');
+        logger.info({ ...c, dim: targetDim, from: fullType }, 'column → halfvec(N)');
 
         // HNSW index recreation was removed here 2026-04-11 after a
         // pgvector 0.8.2 SIGILL crash on empty-column HNSW builds took
@@ -560,7 +560,7 @@ export class DatabaseService {
       }
     }
 
-    logger.info({ targetDim }, '✅ embedding dimension migration complete');
+    logger.info({ targetDim }, 'embedding dimension migration complete');
   }
 
   /**
@@ -633,7 +633,7 @@ export class DatabaseService {
         `USING hnsw (${column} halfvec_cosine_ops) ` +
         `WITH (m = 16, ef_construction = 64)`,
       );
-      logger.info({ schema, table, column, indexName }, '  ✅ HNSW index created (data present)');
+      logger.info({ schema, table, column, indexName }, 'HNSW index created (data present)');
       return true;
     } catch (err: any) {
       logger.warn({ schema, table, column, indexName, err: err.message }, '  HNSW index creation failed (non-fatal)');
@@ -645,7 +645,7 @@ export class DatabaseService {
    * Drop legacy MCP Proxy views that might interfere with schema migration
    */
   private static async dropLegacyMCPViews(): Promise<void> {
-    logger.info('🧹 Checking for legacy MCP Proxy views to drop...');
+    logger.info('Checking for legacy MCP Proxy views to drop...');
     try {
       // List of known legacy views that might exist from old architecture
       const legacyViews = [
@@ -669,7 +669,7 @@ export class DatabaseService {
         }
       }
 
-      logger.info('  ✅ Legacy views cleaned up');
+      logger.info('Legacy views cleaned up');
     } catch (error) {
       logger.warn({ err: error }, 'Could not drop legacy views - continuing');
     }
@@ -709,7 +709,7 @@ export class DatabaseService {
    * Verify critical database structure exists
    */
   private static async verifyDatabaseStructure(): Promise<void> {
-    logger.info('🔍 Verifying critical database structure...');
+    logger.info('Verifying critical database structure...');
     
     // Critical tables to verify (only our application tables)
     const criticalTables = [
@@ -731,7 +731,7 @@ export class DatabaseService {
       if (!tableExists[0]?.exists) {
         throw new Error(`Critical table '${tableName}' is missing from database`);
       }
-      logger.info(`  ✅ Table '${tableName}' verified`);
+      logger.info(`Table '${tableName}' verified`);
     }
 
     // Critical columns on users table
@@ -754,11 +754,11 @@ export class DatabaseService {
       if (!columnExists[0]?.exists) {
         logger.warn(`Column '${columnName}' missing from users table - this may cause issues`);
       } else {
-        logger.info(`  ✅ Column 'users.${columnName}' verified`);
+        logger.info(`Column 'users.${columnName}' verified`);
       }
     }
 
-    logger.info('✅ Database structure verification completed');
+    logger.info('Database structure verification completed');
   }
 
   /**
@@ -766,7 +766,7 @@ export class DatabaseService {
    * Addresses N+1 queries and improves overall performance
    */
   private static async createPerformanceIndexes(): Promise<void> {
-    logger.info('📊 Creating performance indexes...');
+    logger.info('Creating performance indexes...');
     
     const indexes = [
       // Session indexes for user queries
@@ -813,13 +813,13 @@ export class DatabaseService {
           await prisma.$executeRawUnsafe(
             `CREATE INDEX CONCURRENTLY IF NOT EXISTS "${index.name}" ON ${tableRef} (${columns})`
           );
-          logger.info(`  ✅ Created index: ${index.name}`);
+          logger.info(`Created index: ${index.name}`);
         } else {
-          logger.info(`  ⏭️  Index already exists: ${index.name}`);
+          logger.info(`Index already exists: ${index.name}`);
         }
       } catch (error) {
         // Log warning but don't fail - indexes are for performance only
-        logger.warn({ error, index: index.name }, `  ⚠️  Failed to create index: ${index.name}`);
+        logger.warn({ error, index: index.name }, `Failed to create index: ${index.name}`);
       }
     }
     
@@ -842,12 +842,12 @@ export class DatabaseService {
     for (const pIndex of partialIndexes) {
       try {
         await prisma.$executeRawUnsafe(pIndex.sql);
-        logger.info(`  ✅ Created partial index: ${pIndex.name}`);
+        logger.info(`Created partial index: ${pIndex.name}`);
       } catch (error: any) {
         if (error.message?.includes('already exists')) {
-          logger.info(`  ⏭️  Partial index already exists: ${pIndex.name}`);
+          logger.info(`Partial index already exists: ${pIndex.name}`);
         } else {
-          logger.warn({ error, index: pIndex.name }, `  ⚠️  Failed to create partial index`);
+          logger.warn({ error, index: pIndex.name }, `Failed to create partial index`);
         }
       }
     }
@@ -857,19 +857,19 @@ export class DatabaseService {
       await prisma.$executeRawUnsafe('ANALYZE sessions');
       await prisma.$executeRawUnsafe('ANALYZE messages');
       await prisma.$executeRawUnsafe('ANALYZE users');
-      logger.info('  ✅ Updated table statistics for query planner');
+      logger.info('Updated table statistics for query planner');
     } catch (error) {
-      logger.warn({ error }, '  ⚠️  Failed to update table statistics');
+      logger.warn({ error }, 'Failed to update table statistics');
     }
     
-    logger.info('✅ Performance index creation completed');
+    logger.info('Performance index creation completed');
   }
 
   /**
    * Initialize secure storage table if not exists
    */
   private static async initializeSecureStorage(): Promise<void> {
-    logger.info('🔐 Initializing secure storage...');
+    logger.info('Initializing secure storage...');
     
     try {
       // Check if secure_storage table exists
@@ -898,7 +898,7 @@ export class DatabaseService {
           )
         `;
         
-        logger.info('  ✅ Secure storage table created');
+        logger.info('Secure storage table created');
       } else {
         logger.info('  Secure storage table already exists');
       }
@@ -911,7 +911,7 @@ export class DatabaseService {
    * Initialize Vault connection if available
    */
   private static async initializeVault(): Promise<void> {
-    logger.info('🔒 Initializing Vault connection...');
+    logger.info('Initializing Vault connection...');
     
     const vaultAddr = process.env.VAULT_ADDR || 'http://vault:8200';
     const vaultToken = process.env.VAULT_TOKEN || process.env.VAULT_DEV_ROOT_TOKEN_ID;
@@ -968,7 +968,7 @@ export class DatabaseService {
           logger.info('  Encryption key already exists or error creating');
         });
         
-        logger.info('  ✅ Vault initialized successfully');
+        logger.info('Vault initialized successfully');
       } else {
         logger.warn('  Vault is not healthy, skipping initialization');
       }
@@ -981,7 +981,7 @@ export class DatabaseService {
    * Migrate old storage tokens to secure storage
    */
   private static async migrateOldStorageTokens(): Promise<void> {
-    logger.info('📦 Checking for old storage tokens to migrate...');
+    logger.info('Checking for old storage tokens to migrate...');
     
     try {
       // Check users table for any tokens stored in columns
@@ -1015,7 +1015,7 @@ export class DatabaseService {
         }
       });
       
-      logger.info('  ✅ Storage migration check completed');
+      logger.info('Storage migration check completed');
     } catch (error) {
       logger.warn({ err: error }, 'Could not check for old storage tokens - continuing');
     }

@@ -176,7 +176,7 @@ export function printResults(results: TestSuiteResult[]): void {
   let totalSkipped = 0;
 
   for (const suite of results) {
-    console.log(`\n📦 ${suite.suite} (${suite.duration}ms)`);
+    console.log(`\n ${suite.suite} (${suite.duration}ms)`);
     console.log('-'.repeat(60));
 
     for (const test of suite.tests) {
@@ -205,10 +205,10 @@ export function printResults(results: TestSuiteResult[]): void {
   console.log('='.repeat(80) + '\n');
 
   if (totalFailed > 0) {
-    console.log('❌ DATA LAYER VALIDATION FAILED\n');
+    console.log('DATA LAYER VALIDATION FAILED\n');
     process.exitCode = 1;
   } else {
-    console.log('✅ DATA LAYER VALIDATION PASSED\n');
+    console.log('DATA LAYER VALIDATION PASSED\n');
   }
 }
 

@@ -88,7 +88,7 @@ const healthPlugin: FastifyPluginAsync<HealthPluginOptions> = async (
   // system. RBAC system prompts have their own health surface via the
   // rbac_system_prompts table.
 
-  loggers.routes.info('✅ Health & monitoring routes plugin registered successfully');
+  loggers.routes.info('Health & monitoring routes plugin registered successfully');
 };
 
 export default fp(healthPlugin, {

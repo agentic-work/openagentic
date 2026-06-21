@@ -1,8 +1,7 @@
 /**
  * Architecture cage — StreamEngine is dead.
  *
- * REGRESSION pin — Track B Phase 0 of the canonical streaming rip
- * (<internal-plan>, Phase 6).
+ * REGRESSION pin — Track B Phase 0 of the canonical streaming rip (Phase 6).
  *
  * StreamEngine is a dark-launched imperative-DOM renderer at
  * `services/openagentic-ui/src/features/chat/streamEngine/StreamEngine.ts`.

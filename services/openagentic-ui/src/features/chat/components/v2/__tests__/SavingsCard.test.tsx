@@ -4,9 +4,8 @@
  * 3-cell KPI tile rendered inline below right-sizing / cost-analysis
  * output so the user sees the headline savings number at a glance.
  *
- * Reference: <internal-upstream>/mocks/UX/01-cloud-ops.html
- * lines 1142-1155 (the `.savings-card` block — 3 cells, each with a
- * `.k` label + a `.v.g` big-number value with optional `<small>` tail).
+ * Reference: the cloud-ops UX mock's `.savings-card` block — 3 cells, each
+ * with a `.k` label + a `.v.g` big-number value with optional `<small>` tail.
  *
  * Inline styles (vs chatmode-v2.css) so parallel-agent rebuild does not
  * collide on the shared stylesheet — see SAVINGS_CARD_STYLES in the .tsx.

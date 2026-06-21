@@ -47,11 +47,11 @@ export async function validateAzureADToken(token: string): Promise<TokenPayload>
   const clientId = process.env.AZURE_CLIENT_ID || process.env.AAD_CLIENT_ID;
   
   if (!tenantId || !clientId) {
-    console.error('❌ Azure AD configuration missing:', { tenantId: !!tenantId, clientId: !!clientId });
+    console.error('Azure AD configuration missing:', { tenantId: !!tenantId, clientId: !!clientId });
     throw new Error('Azure AD configuration missing');
   }
 
-  console.log('🔍 Validating token with config:', { tenantId, clientId });
+  console.log('Validating token with config:', { tenantId, clientId });
 
   try {
     // Create JWKS client
@@ -61,7 +61,7 @@ export async function validateAzureADToken(token: string): Promise<TokenPayload>
     const getKey = (header: any, callback: any) => {
       client.getSigningKey(header.kid, (err, key) => {
         if (err) {
-          console.error('❌ Error fetching signing key:', err.message);
+          console.error('Error fetching signing key:', err.message);
           callback(err);
         } else {
           const signingKey = key?.getPublicKey();
@@ -76,7 +76,7 @@ export async function validateAzureADToken(token: string): Promise<TokenPayload>
       throw new Error('Invalid token format');
     }
 
-    console.log('📋 Token details:', {
+    console.log('Token details:', {
       algorithm: decoded.header.alg,
       keyId: decoded.header.kid,
       issuer: decoded.payload.iss,
@@ -108,7 +108,7 @@ export async function validateAzureADToken(token: string): Promise<TokenPayload>
       '00000003-0000-0000-c000-000000000000'  // Microsoft Graph
     ].filter(Boolean);
 
-    console.log('🔐 Attempting validation with:', {
+    console.log('Attempting validation with:', {
       issuers: validIssuers,
       audiences: validAudiences
     });
@@ -130,7 +130,7 @@ export async function validateAzureADToken(token: string): Promise<TokenPayload>
               if (err) {
                 reject(err);
               } else {
-                console.log('✅ Token verified successfully with:', { issuer, audience });
+                console.log('Token verified successfully with:', { issuer, audience });
                 resolve(decodedToken);
               }
             });
@@ -147,7 +147,7 @@ export async function validateAzureADToken(token: string): Promise<TokenPayload>
     }
 
     if (!verifiedPayload) {
-      console.error('❌ Token validation failed after trying all combinations');
+      console.error('Token validation failed after trying all combinations');
       throw new Error(`Token validation failed: ${lastError?.message || 'invalid signature'}`);
     }
 
@@ -167,11 +167,11 @@ export async function validateAzureADToken(token: string): Promise<TokenPayload>
       ver: verifiedPayload.ver
     };
 
-    console.log('✅ Token validation successful for user:', payload.email || payload.oid);
+    console.log('Token validation successful for user:', payload.email || payload.oid);
     return payload;
     
   } catch (error) {
-    console.error('❌ Token validation error:', error);
+    console.error('Token validation error:', error);
     
     // Provide more specific error messages
     if (error instanceof Error) {

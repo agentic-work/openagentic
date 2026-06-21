@@ -162,13 +162,13 @@ export class LargeResultStorageService {
     if (this.redis) {
       try {
         await this.redis.set(key, stored, this.TTL_SECONDS);
-        this.logger.info({ resultId, key }, '✅ Large result stored in Redis');
+        this.logger.info({ resultId, key }, 'Large result stored in Redis');
       } catch (error) {
-        this.logger.error({ error, resultId }, '❌ Failed to store large result in Redis — result will be lost');
+        this.logger.error({ error, resultId }, 'Failed to store large result in Redis — result will be lost');
         throw new Error(`Failed to store large result in Redis: ${error}`);
       }
     } else {
-      this.logger.error({ resultId }, '❌ Redis not available — cannot store large result (multi-pod requires Redis)');
+      this.logger.error({ resultId }, 'Redis not available — cannot store large result (multi-pod requires Redis)');
       throw new Error('Redis not available — large result storage requires Redis for multi-pod safety');
     }
 

@@ -843,7 +843,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       converseInput.toolConfig = toConverseToolConfig(body.tools) as ConverseCommandInput['toolConfig'];
     }
 
-    this.logger.info({ modelId }, '🔵 [CONVERSE-API] Non-stream request');
+    this.logger.info({ modelId }, '[CONVERSE-API] Non-stream request');
     const command = new ConverseCommand(converseInput);
     const client = await this.getBedrockClient();
     const response = await client.send(command);
@@ -2014,7 +2014,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
 
         // Handle 'signature' blocks (used for thinking verification - ignore these)
         if (blockType === 'signature') {
-          this.logger.debug({ index: blockIndex }, '[AWSBedrockProvider] 🔐 Ignoring signature content_block_start');
+          this.logger.debug({ index: blockIndex }, '[AWSBedrockProvider] Ignoring signature content_block_start');
           return null;
         }
 

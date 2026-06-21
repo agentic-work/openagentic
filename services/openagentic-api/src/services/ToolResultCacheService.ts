@@ -450,7 +450,7 @@ export class ToolResultCacheService {
       }, '[SEMANTIC-CACHE] ✅ Tool Result Cache Service initialized');
 
     } catch (error) {
-      this.logger.error({ error }, '[SEMANTIC-CACHE] ❌ Failed to initialize');
+      this.logger.error({ error }, '[SEMANTIC-CACHE] Failed to initialize');
       // Don't throw - allow graceful degradation
     }
   }
@@ -557,7 +557,7 @@ export class ToolResultCacheService {
     // Wait for indexes to build
     await new Promise(resolve => setTimeout(resolve, INDEX_BUILD_WAIT_MS));
 
-    this.logger.info('[SEMANTIC-CACHE] ✅ Collection created with HNSW index and resource_scope support');
+    this.logger.info('[SEMANTIC-CACHE] Collection created with HNSW index and resource_scope support');
   }
 
   /**
@@ -1131,7 +1131,7 @@ export class ToolResultCacheService {
       const deletedCount = Number(deleteResult.delete_cnt) || 0;
 
       if (deletedCount > 0) {
-        this.logger.info({ deletedCount }, '[SEMANTIC-CACHE] 🧹 Cleaned up expired entries');
+        this.logger.info({ deletedCount }, '[SEMANTIC-CACHE] Cleaned up expired entries');
       }
 
       return deletedCount;

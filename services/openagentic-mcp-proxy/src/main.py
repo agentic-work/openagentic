@@ -341,12 +341,12 @@ async def lifespan(app: FastAPI):
 
     # Log read-only mode status
     if MCP_READ_ONLY_MODE:
-        logger.warning("🛡️ =========================================================")
-        logger.warning("🛡️  MCP READ-ONLY MODE IS ENABLED (Cloud Providers Only)")
-        logger.warning("🛡️  Destructive operations BLOCKED on: AWS, Azure, GCP, K8s")
-        logger.warning("🛡️  Other MCPs (web, admin, etc.) are NOT affected")
-        logger.warning("🛡️  Set MCP_READ_ONLY_MODE=false to disable")
-        logger.warning("🛡️ =========================================================")
+        logger.warning("=========================================================")
+        logger.warning("MCP READ-ONLY MODE IS ENABLED (Cloud Providers Only)")
+        logger.warning("Destructive operations BLOCKED on: AWS, Azure, GCP, K8s")
+        logger.warning("Other MCPs (web, admin, etc.) are NOT affected")
+        logger.warning("Set MCP_READ_ONLY_MODE=false to disable")
+        logger.warning("=========================================================")
     else:
         logger.info("MCP Read-Only Mode: DISABLED (all operations allowed)")
 
@@ -372,18 +372,18 @@ async def lifespan(app: FastAPI):
             break
         except redis.exceptions.RedisError as e:
             if _waited >= _redis_deadline:
-                logger.error(f"❌ Redis not reachable after {_redis_deadline}s at {redis_host}:{redis_port}: {e}")
+                logger.error(f"Redis not reachable after {_redis_deadline}s at {redis_host}:{redis_port}: {e}")
                 raise
             if _waited == 0:
-                logger.info(f"⏳ Waiting for Redis at {redis_host}:{redis_port} (normal on a fresh install)...")
+                logger.info(f"Waiting for Redis at {redis_host}:{redis_port} (normal on a fresh install)...")
             time.sleep(2)
             _waited += 2
-    logger.info(f"✅ Redis connected at {redis_host}:{redis_port}")
+    logger.info(f"Redis connected at {redis_host}:{redis_port}")
 
     # Start MCP Inspector subprocess (dev-only, opt-in via ENABLE_MCP_INSPECTOR;
     # defaults OFF so production images never expose this unauthenticated debug surface)
     if ENABLE_MCP_INSPECTOR:
-        logger.warning("⚠️ MCP Inspector ENABLED (dev-only debug surface) — do not enable in production")
+        logger.warning("MCP Inspector ENABLED (dev-only debug surface) — do not enable in production")
         logger.info("Starting MCP Inspector UI...")
         try:
             inspector_process = subprocess.Popen(
@@ -392,9 +392,9 @@ async def lifespan(app: FastAPI):
                 stderr=subprocess.PIPE,
                 env={**os.environ, "PORT": "6274", "MCPP_PORT": "6277"}
             )
-            logger.info(f"✅ MCP Inspector started on ports 6274/6277 (PID: {inspector_process.pid})")
+            logger.info(f"MCP Inspector started on ports 6274/6277 (PID: {inspector_process.pid})")
         except Exception as e:
-            logger.error(f"⚠️ Failed to start MCP Inspector: {e}")
+            logger.error(f"Failed to start MCP Inspector: {e}")
             inspector_process = None
     else:
         logger.debug("MCP Inspector disabled (set ENABLE_MCP_INSPECTOR=true to enable; dev-only)")
@@ -426,7 +426,7 @@ async def lifespan(app: FastAPI):
                         server.last_error = None
                         await server.start()
                         if server.status == MCPServerStatus.RUNNING:
-                            logger.info(f"[reconnect] ✅ {name} reconnected successfully!")
+                            logger.info(f"[reconnect] {name} reconnected successfully!")
                         else:
                             logger.warning(f"[reconnect] {name} still not running after reconnect attempt")
                     except Exception as e:
@@ -435,7 +435,7 @@ async def lifespan(app: FastAPI):
                         logger.warning(f"[reconnect] {name} reconnect failed: {e}")
 
     reconnect_task = asyncio.create_task(_reconnect_failed_servers())
-    logger.info("✅ Background reconnect loop started (checks every 30s)")
+    logger.info("Background reconnect loop started (checks every 30s)")
 
     yield
 
@@ -449,7 +449,7 @@ async def lifespan(app: FastAPI):
         inspector_process.terminate()
         try:
             inspector_process.wait(timeout=5)
-            logger.info("✅ MCP Inspector stopped")
+            logger.info("MCP Inspector stopped")
         except subprocess.TimeoutExpired:
             logger.warning("Force killing MCP Inspector...")
             inspector_process.kill()
@@ -461,7 +461,7 @@ async def lifespan(app: FastAPI):
     # Close Redis connection
     if redis_client:
         redis_client.close()
-        logger.info("✅ Redis connection closed")
+        logger.info("Redis connection closed")
 
 # FastAPI app with lifespan management
 app = FastAPI(
@@ -910,7 +910,7 @@ async def proxy_mcp_request(
     if not target_server and mcp_request.method == "tools/call":
         tool_name = mcp_request.params.get("name") if mcp_request.params else None
         if tool_name and mcp_manager:
-            logger.warning(f"⚠️ API did not specify server for tool '{tool_name}' - attempting auto-detection (TEMPORARY WORKAROUND)")
+            logger.warning(f"API did not specify server for tool '{tool_name}' - attempting auto-detection (TEMPORARY WORKAROUND)")
             # Try to find which server has this tool by querying all servers
             from mcp_manager import MCPServerStatus
             for server_name, server in mcp_manager.servers.items():
@@ -929,7 +929,7 @@ async def proxy_mcp_request(
                             server_tools = [t["name"] for t in response["result"]["tools"]]
                             if tool_name in server_tools:
                                 target_server = server_name
-                                logger.warning(f"🔍 Auto-detected server '{server_name}' for tool '{tool_name}' - API should have provided this!")
+                                logger.warning(f"Auto-detected server '{server_name}' for tool '{tool_name}' - API should have provided this!")
                                 break
                     except Exception as e:
                         logger.debug(f"Could not list tools for server {server_name}: {e}")
@@ -940,7 +940,7 @@ async def proxy_mcp_request(
     # The MCP proxy should NOT guess or have hardcoded fallbacks
     if not target_server:
         tool_name = mcp_request.params.get("name") if mcp_request.params else "unknown"
-        logger.error(f"❌ CRITICAL: No server specified by API for tool '{tool_name}' and auto-detection failed")
+        logger.error(f"CRITICAL: No server specified by API for tool '{tool_name}' and auto-detection failed")
         raise HTTPException(
             status_code=400,
             detail=f"Server not specified for tool '{tool_name}'. The API must include server information in tool metadata."

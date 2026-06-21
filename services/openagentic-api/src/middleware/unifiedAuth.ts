@@ -196,7 +196,10 @@ export async function unifiedAuthHook(request: FastifyRequest): Promise<void> {
         return;
       }
 
-      // SECURITY: Block if secret doesn't match or isn't configured
+      // SECURITY: the x-request-from identity claim is REJECTED when the
+      // internal secret is missing/wrong. Control is NOT blocked here — it
+      // falls through to the normal token path below (which will reject if no
+      // valid token is present). The log must state that truthfully.
       // IP-only fallback removed in v0.4.0 hardening (F-002)
       loggers.auth.warn({
         requestId,
@@ -204,7 +207,7 @@ export async function unifiedAuthHook(request: FastifyRequest): Promise<void> {
         requestFrom,
         hasSecret: !!providedSecret,
         secretConfigured: !!internalSecret,
-      }, '[AUTH] BLOCKED: x-request-from without valid internal secret');
+      }, '[AUTH] x-request-from internal-service identity rejected (no valid internal secret); falling back to normal token auth');
     }
 
     // Check for API key first (X-API-Key header)

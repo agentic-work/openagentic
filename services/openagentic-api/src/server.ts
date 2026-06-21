@@ -130,7 +130,7 @@ async function connectToMilvus(retries = 3, delay = 2000): Promise<MilvusClient>
         `${process.env.MILVUS_HOST || 'milvus-standalone'}:${process.env.MILVUS_PORT || '19530'}`;
       
       if (attempt === 1 || attempt % 5 === 0) {
-        loggers.services.info(`🔄 Attempting to connect to Milvus at: ${milvusAddress} (attempt ${attempt}/${retries})`);
+        loggers.services.info(`Attempting to connect to Milvus at: ${milvusAddress} (attempt ${attempt}/${retries})`);
       }
       
       const client = new MilvusClient({
@@ -143,7 +143,7 @@ async function connectToMilvus(retries = 3, delay = 2000): Promise<MilvusClient>
       // Test connection with health check
       const healthCheck = await client.checkHealth();
       if (healthCheck.isHealthy) {
-        loggers.services.info(`✅ Milvus connected successfully on attempt ${attempt}`);
+        loggers.services.info(`Milvus connected successfully on attempt ${attempt}`);
         return client;
       } else {
         throw new Error(`Milvus health check failed: ${JSON.stringify(healthCheck)}`);
@@ -160,7 +160,7 @@ async function connectToMilvus(retries = 3, delay = 2000): Promise<MilvusClient>
       }
       
       if (attempt === retries) {
-        loggers.services.error({ err: error }, '🚨 CRITICAL: Failed to connect to Milvus after all retry attempts');
+        loggers.services.error({ err: error }, 'CRITICAL: Failed to connect to Milvus after all retry attempts');
         throw new Error(`Milvus connection failed after ${retries} attempts: ${error.message}`);
       }
       
@@ -186,19 +186,19 @@ const userService = new UserService(loggers.services);
 async function initializeServices() {
   try {
     // Database schema is already initialized in start() function
-    loggers.services.info('📋 Initializing system services and configurations...');
+    loggers.services.info('Initializing system services and configurations...');
     
     // Initialize Redis client connection
-    loggers.services.info('🔄 Initializing Redis client connection...');
+    loggers.services.info('Initializing Redis client connection...');
     await initializeRedis(loggers.services);
     if (redisClient.isConnected()) {
-      loggers.services.info('✅ Redis client connected successfully');
+      loggers.services.info('Redis client connected successfully');
 
       // Start JobCompletionWatcher for autonomous job monitoring
-      loggers.services.info('🔄 Starting JobCompletionWatcher for autonomous monitoring...');
+      loggers.services.info('Starting JobCompletionWatcher for autonomous monitoring...');
       jobCompletionWatcher = new JobCompletionWatcher(redisClient, loggers.services);
       jobCompletionWatcher.start();
-      loggers.services.info('✅ JobCompletionWatcher started - AI will auto-detect completed jobs');
+      loggers.services.info('JobCompletionWatcher started - AI will auto-detect completed jobs');
 
       // Wire watcher events to SSE broadcasts for real-time notifications
       jobCompletionWatcher.on('job:completed', async (statusChange: any) => {
@@ -231,11 +231,11 @@ async function initializeServices() {
         }
       });
     } else {
-      loggers.services.warn('⚠️ Redis client failed to connect - continuing without cache');
+      loggers.services.warn('Redis client failed to connect - continuing without cache');
     }
 
     // System prompts will be initialized by InitializationService in correct order
-    loggers.services.info('📋 Prompt initialization will be handled by InitializationService');
+    loggers.services.info('Prompt initialization will be handled by InitializationService');
 
     // Initialize CachedPromptService early (without Milvus initially)
     // Will be re-initialized with Milvus support later if Milvus connects
@@ -246,7 +246,7 @@ async function initializeServices() {
       cacheTemplates: true,
       milvusService: undefined // No Milvus yet
     });
-    loggers.services.info('✅ CachedPromptService initialized (Milvus semantic search will be enabled if Milvus connects)');
+    loggers.services.info('CachedPromptService initialized (Milvus semantic search will be enabled if Milvus connects)');
 
     // Create InitializationService to handle first-time deployment
     const initService = new InitializationService(prisma, loggers.services);
@@ -254,9 +254,9 @@ async function initializeServices() {
     // Vault already initialized at startup - just verify it's available
     const vaultService = (global as any).vaultService;
     if (vaultService) {
-      loggers.services.info('✅ Using Vault service initialized at startup');
+      loggers.services.info('Using Vault service initialized at startup');
     } else {
-      loggers.services.warn('⚠️ Vault service not available - using environment variables');
+      loggers.services.warn('Vault service not available - using environment variables');
     }
     
     // Check if system has been initialized
@@ -269,7 +269,7 @@ async function initializeServices() {
     }, 'Current system initialization status');
 
     // Initialize RAG services (embedding models, vector DBs, etc.)
-    loggers.services.info('🚀 Initializing RAG services...');
+    loggers.services.info('Initializing RAG services...');
     const ragInitialized = await ragInitService.initialize();
     
     if (ragInitialized) {
@@ -283,12 +283,12 @@ async function initializeServices() {
 
       // Semantic template routing is now handled by PromptTemplateSemanticService
       // (integrated into ChatPromptService and indexed during Milvus init)
-      loggers.services.info('✅ Semantic template routing ready (Milvus-based)');
+      loggers.services.info('Semantic template routing ready (Milvus-based)');
 
     } else {
       const ragError = ragInitService.getInitializationError();
-      loggers.services.warn({ error: ragError }, '⚠️ RAG services failed to initialize - system will operate with limited capabilities');
-      loggers.services.warn('💡 Set AZURE_OPENAI_EMBEDDING_DEPLOYMENT or AWS_EMBEDDING_MODEL_ID to enable embeddings');
+      loggers.services.warn({ error: ragError }, 'RAG services failed to initialize - system will operate with limited capabilities');
+      loggers.services.warn('Set AZURE_OPENAI_EMBEDDING_DEPLOYMENT or AWS_EMBEDDING_MODEL_ID to enable embeddings');
     }
 
     // Initialize Adaptive Memory Services (UserMemory, UserProfile, FeedbackLearning)
@@ -304,14 +304,14 @@ async function initializeServices() {
       initUserProfileService(prisma, redisClient.isConnected() ? redisClient as any : null, loggers.services);
       initFeedbackLearningService(prisma, loggers.services);
 
-      loggers.services.info('✅ Adaptive Memory services initialized (UserMemory, UserProfile, FeedbackLearning)');
+      loggers.services.info('Adaptive Memory services initialized (UserMemory, UserProfile, FeedbackLearning)');
     } catch (err) {
-      loggers.services.warn({ err }, '⚠️ Adaptive Memory services failed to initialize - memory features will be limited');
+      loggers.services.warn({ err }, 'Adaptive Memory services failed to initialize - memory features will be limited');
     }
 
     // Initialize Bedrock Pricing Service (fetches live pricing from AWS API)
     if (process.env.AWS_BEDROCK_ENABLED === 'true') {
-      loggers.services.info('💰 Initializing Bedrock Pricing Service...');
+      loggers.services.info('Initializing Bedrock Pricing Service...');
       try {
         const { bedrockPricingService } = await import('./services/BedrockPricingService.js');
         await bedrockPricingService.initialize();
@@ -319,12 +319,12 @@ async function initializeServices() {
           cachedModels: bedrockPricingService.getAllPricing().length
         }, '✅ Bedrock Pricing Service initialized (live AWS pricing)');
       } catch (err) {
-        loggers.services.warn({ err }, '⚠️ Bedrock Pricing Service failed - using fallback pricing');
+        loggers.services.warn({ err }, 'Bedrock Pricing Service failed - using fallback pricing');
       }
     }
 
     // Initialize Azure AI Foundry Metrics Service (optional)
-    loggers.services.info('📊 Initializing Azure AI Foundry Metrics Service...');
+    loggers.services.info('Initializing Azure AI Foundry Metrics Service...');
     try {
       const azureSubscriptionId = process.env.AZURE_SUBSCRIPTION_ID;
       const azureResourceGroup = process.env.AZURE_RESOURCE_GROUP;
@@ -348,11 +348,11 @@ async function initializeServices() {
           account: azureOpenAIAccount
         }, '✅ Azure AI Foundry Metrics Service initialized and collecting metrics');
       } else {
-        loggers.services.info('⏭️  Azure AI Foundry Metrics Service not configured (optional)');
-        loggers.services.info('💡 Set AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, and AZURE_OPENAI_ACCOUNT_NAME to enable AIF metrics');
+        loggers.services.info('Azure AI Foundry Metrics Service not configured (optional)');
+        loggers.services.info('Set AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, and AZURE_OPENAI_ACCOUNT_NAME to enable AIF metrics');
       }
     } catch (error) {
-      loggers.services.warn({ error }, '⚠️ Failed to initialize Azure AI Foundry Metrics Service - continuing without AIF metrics');
+      loggers.services.warn({ error }, 'Failed to initialize Azure AI Foundry Metrics Service - continuing without AIF metrics');
     }
 
     // MCP tool indexing will be initialized later after Milvus connection
@@ -404,7 +404,7 @@ async function initializeServices() {
         await promptService.ensureDefaultTemplates();
         promptValidation = await promptService.validateSystemPrompts();
       } catch (seedErr: any) {
-        loggers.services.error({ err: seedErr?.message }, '❌ Seeding default prompt templates failed');
+        loggers.services.error({ err: seedErr?.message }, 'Seeding default prompt templates failed');
       }
       if (!promptValidation.healthy) {
         loggers.services.error({
@@ -416,7 +416,7 @@ async function initializeServices() {
     }
     
     // Embedding models are discovered dynamically from providers
-    loggers.services.info('🔄 Embedding models will be discovered from configured providers...');
+    loggers.services.info('Embedding models will be discovered from configured providers...');
 
     // Milvus is the default vector store for the heavy embedding workloads
     // (large user-memory + document/artifact collections). It can be turned OFF
@@ -431,17 +431,17 @@ async function initializeServices() {
       // Milvus ON: connect with retry, exit(1) after 10 failed attempts — when
       // it's enabled it's required, so a misconfigured vector store fails loud
       // rather than silently degrading. Start the stack with `--profile milvus`.
-      loggers.services.info('🔄 Connecting to Milvus vector database...');
+      loggers.services.info('Connecting to Milvus vector database...');
       let milvusConnectAttempt = 0;
       while (true) {
         try {
           milvusConnectAttempt++;
           milvusClient = await connectToMilvus();
-          loggers.services.info(`✅ Milvus connected (attempt ${milvusConnectAttempt})`);
+          loggers.services.info(`Milvus connected (attempt ${milvusConnectAttempt})`);
           break;
         } catch (error: any) {
           if (milvusConnectAttempt >= 10) {
-            loggers.services.fatal({ error: error.message }, '🚨 FATAL: Cannot connect to Milvus after 10 attempts (set MILVUS_ENABLED=false for pgvector-only mode)');
+            loggers.services.fatal({ error: error.message }, 'FATAL: Cannot connect to Milvus after 10 attempts (set MILVUS_ENABLED=false for pgvector-only mode)');
             process.exit(1);
           }
           loggers.services.warn({ error: error.message, attempt: milvusConnectAttempt },
@@ -459,16 +459,16 @@ async function initializeServices() {
         const syncFn = (ragService as any).syncAllTemplates;
         if (typeof syncFn === 'function') {
           const syncResult = await syncFn.call(ragService);
-          loggers.services.info(`✅ RAG collection initialized, ${syncResult.synced || 0} templates synced`);
+          loggers.services.info(`RAG collection initialized, ${syncResult.synced || 0} templates synced`);
         } else {
-          loggers.services.info('✅ RAG collection initialized (lazy template sync)');
+          loggers.services.info('RAG collection initialized (lazy template sync)');
         }
       }
 
       // Initialize MilvusVectorService for user artifacts and embeddings
       milvusVectorService = new MilvusVectorService(providerManager);
       await milvusVectorService.initialize();
-      loggers.services.info('✅ MilvusVectorService initialized');
+      loggers.services.info('MilvusVectorService initialized');
 
       // Re-initialize CachedPromptService with Milvus semantic search
       promptService = new CachedPromptService(loggers.services, {
@@ -482,7 +482,7 @@ async function initializeServices() {
       // pgvector-only mode: skip Milvus entirely. Tool search uses pgvector
       // (ToolPgvectorSearchService, below); Milvus-backed RAG/artifact features
       // stay off. Lower footprint, one fewer datastore to operate.
-      loggers.services.info('ℹ️ MILVUS_ENABLED=false — running pgvector-only. Skipping Milvus connect; MCP tool search uses pgvector. (Enable Milvus for large embedding/RAG workloads.)');
+      loggers.services.info('MILVUS_ENABLED=false — running pgvector-only. Skipping Milvus connect; MCP tool search uses pgvector. (Enable Milvus for large embedding/RAG workloads.)');
     }
 
     // Document Indexing Service (non-critical)
@@ -490,9 +490,9 @@ async function initializeServices() {
       const { DocumentIndexingService } = await import('./services/DocumentIndexingService.js');
       documentIndexingService = new DocumentIndexingService(milvusClient, prisma, loggers.services);
       await documentIndexingService.initializeCollection();
-      loggers.services.info('✅ Document Indexing Service initialized');
+      loggers.services.info('Document Indexing Service initialized');
     } catch (error: any) {
-      loggers.services.warn({ error: error.message }, '⚠️ Document Indexing Service init failed (non-critical)');
+      loggers.services.warn({ error: error.message }, 'Document Indexing Service init failed (non-critical)');
       documentIndexingService = null;
     }
 
@@ -503,9 +503,9 @@ async function initializeServices() {
         logger: loggers.services,
         cache: { defaultTTL: 3600, keyPrefix: 'repo', enableCaching: true }
       });
-      loggers.services.info('✅ Repository Container initialized');
+      loggers.services.info('Repository Container initialized');
     } catch (error: any) {
-      loggers.services.warn({ error: error.message }, '⚠️ Repository Container init failed');
+      loggers.services.warn({ error: error.message }, 'Repository Container init failed');
       repositoryContainer = null;
     }
 
@@ -524,9 +524,9 @@ async function initializeServices() {
       });
       await compactionWorker.start();
       global.compactionWorker = compactionWorker;
-      loggers.services.info('✅ Conversation Compaction Worker started');
+      loggers.services.info('Conversation Compaction Worker started');
     } catch (error: any) {
-      loggers.services.warn({ error: error.message }, '⚠️ Compaction Worker init failed (non-critical)');
+      loggers.services.warn({ error: error.message }, 'Compaction Worker init failed (non-critical)');
       global.compactionWorker = null;
     }
 
@@ -573,7 +573,7 @@ async function initializeServices() {
       loggers.services.warn({ error: sharedKbErr.message }, '[INIT] SharedKB table init failed (non-fatal)');
     }
 
-    loggers.services.info('🚀 All services initialized successfully');
+    loggers.services.info('All services initialized successfully');
   } catch (error) {
     loggers.services.error({ err: error }, 'Service initialization failed - this is critical');
     throw error; // Re-throw to prevent service startup
@@ -798,7 +798,7 @@ try {
 // Register Swagger/OpenAPI documentation
 await server.register(swagger, swaggerOptions);
 await server.register(swaggerUi, swaggerUiOptions);
-loggers.server.info('📚 Swagger/OpenAPI documentation registered at /api/swagger');
+loggers.server.info('Swagger/OpenAPI documentation registered at /api/swagger');
 
 // Register shared schemas with Fastify so $ref works in route schemas
 // These schemas are also defined in swagger.config.ts for OpenAPI spec
@@ -810,7 +810,7 @@ if (sharedSchemas) {
       ...(schemaDefinition as object)
     });
   }
-  loggers.server.info(`📐 Registered ${Object.keys(sharedSchemas).length} shared schemas with Fastify`);
+  loggers.server.info(`Registered ${Object.keys(sharedSchemas).length} shared schemas with Fastify`);
 }
 
 // NOTE: OpenAPI spec generation moved to after all routes are registered
@@ -824,7 +824,7 @@ async function generateOpenAPISpec() {
     mkdirSync(outputDir, { recursive: true });
     const outputPath = join(outputDir, 'openapi.json');
     writeFileSync(outputPath, JSON.stringify(spec, null, 2), 'utf-8');
-    loggers.server.info({ path: outputPath, paths: Object.keys(spec.paths || {}).length }, '📄 OpenAPI spec generated');
+    loggers.server.info({ path: outputPath, paths: Object.keys(spec.paths || {}).length }, 'OpenAPI spec generated');
   } catch (error) {
     loggers.server.warn({ error }, 'Failed to generate static OpenAPI spec - will be available at /api/swagger/json');
   }
@@ -898,7 +898,7 @@ server.addHook('preHandler', rlsContextHook);
 
 // Create function to register all routes after database is ready
 async function registerAllRoutes() {
-  loggers.routes.info('📝 Registering all application routes...');
+  loggers.routes.info('Registering all application routes...');
 
   // Register Auth routes via modular plugin (HIGH-001 refactoring)
   try {
@@ -1763,7 +1763,7 @@ async function registerAllRoutes() {
   try {
     const { default: dataSourceRoutes } = await import('./routes/data-sources.js');
     await server.register(dataSourceRoutes, { prefix: '/api' });
-    loggers.routes.info('✅ Data Source routes registered');
+    loggers.routes.info('Data Source routes registered');
   } catch (error: any) {
     loggers.routes.error({ err: error }, 'Failed to register data source routes');
   }
@@ -1909,14 +1909,14 @@ async function registerAllRoutes() {
   try {
     const { v1Router } = await import('./routes/v1/index.js');
     await server.register(v1Router, { prefix: '/api/v1' });
-    loggers.routes.info('✅ API v1 router registered at /api/v1/*');
+    loggers.routes.info('API v1 router registered at /api/v1/*');
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register API v1 router');
   }
 
   // NOTE: Legacy MCP redirects moved to legacy-redirects.plugin.ts (HIGH-001 refactoring)
 
-  loggers.routes.info('✅ All application routes registered successfully');
+  loggers.routes.info('All application routes registered successfully');
 }
 
 // API v1 is now the standard - legacy routes redirect to v1
@@ -1924,44 +1924,44 @@ async function registerAllRoutes() {
 // Start server
 const start = async () => {
   // Load and validate secrets configuration FIRST
-  loggers.services.info('🔐 Loading secrets configuration...');
+  loggers.services.info('Loading secrets configuration...');
   try {
     const secrets = getSecrets(loggers.services);
     logSecrets(secrets, loggers.services);
 
     // Store secrets globally for other services to use
     (global as any).appSecrets = secrets;
-    loggers.services.info('✅ Secrets configuration loaded and validated');
+    loggers.services.info('Secrets configuration loaded and validated');
   } catch (error) {
-    loggers.services.warn({ err: error }, '⚠️ Secrets configuration partially loaded — some secrets may use runtime-generated values. Server will continue starting.');
+    loggers.services.warn({ err: error }, 'Secrets configuration partially loaded — some secrets may use runtime-generated values. Server will continue starting.');
   }
   
   // Initialize Vault for additional secret management
-  loggers.services.info('🔐 Initializing Vault for secret rotation...');
+  loggers.services.info('Initializing Vault for secret rotation...');
   try {
     const { VaultInitService } = await import('./services/VaultInitService.js');
     const vaultService = new VaultInitService(loggers.services);
     await vaultService.initialize();
     // Store vault service globally for other services to use
     (global as any).vaultService = vaultService;
-    loggers.services.info('✅ Vault service initialized for secret rotation');
+    loggers.services.info('Vault service initialized for secret rotation');
   } catch (error) {
-    loggers.services.warn({ err: error }, '⚠️ Vault initialization failed - using static secrets only');
+    loggers.services.warn({ err: error }, 'Vault initialization failed - using static secrets only');
   }
 
   // NOW initialize database schema after secrets are loaded
-  loggers.database.info('🔄 Initializing database schema and structure...');
+  loggers.database.info('Initializing database schema and structure...');
   try {
     const { DatabaseService } = await import('./services/DatabaseService.js');
     await DatabaseService.initialize();
-    loggers.database.info('✅ Database schema initialization completed successfully');
+    loggers.database.info('Database schema initialization completed successfully');
     } catch (error) {
-    loggers.database.error({ err: error }, '🚨 CRITICAL: Database schema initialization failed');
+    loggers.database.error({ err: error }, 'CRITICAL: Database schema initialization failed');
     process.exit(1); // Exit - we can't continue without the database schema
   }
 
   // Initialize LLM Provider Manager (needed for title generation)
-  loggers.services.info('🤖 Initializing LLM Provider Manager...');
+  loggers.services.info('Initializing LLM Provider Manager...');
   try {
     const configService = new ProviderConfigService(loggers.services);
     const config = await configService.loadProviderConfig();
@@ -1978,11 +1978,11 @@ const start = async () => {
     // Subscribe to Redis provider:reload for multi-replica instant propagation
     subscribeProviderReload(loggers.services).catch(() => {});
 
-    loggers.services.info('✅ LLM Provider Manager initialized successfully');
+    loggers.services.info('LLM Provider Manager initialized successfully');
 
     // Initialize Model Capability Registry for dynamic model pricing and capabilities
     // CRITICAL: This is needed for LLMMetricsService to calculate costs properly
-    loggers.services.info('📊 Initializing Model Capability Registry for pricing and capabilities...');
+    loggers.services.info('Initializing Model Capability Registry for pricing and capabilities...');
     try {
       const modelCapabilityRegistry = new ModelCapabilityRegistry(loggers.services, prisma);
       await modelCapabilityRegistry.initialize();
@@ -1994,12 +1994,12 @@ const start = async () => {
         modelsWithPricing: allModels.filter(m => m.inputCostPer1k !== undefined).length
       }, '✅ Model Capability Registry initialized - costs will be tracked accurately');
     } catch (registryError) {
-      loggers.services.warn({ err: registryError }, '⚠️ Model Capability Registry initialization failed - using fallback pricing');
+      loggers.services.warn({ err: registryError }, 'Model Capability Registry initialization failed - using fallback pricing');
     }
 
     // Initialize model health check with providerManager
     modelHealthCheck = new ModelHealthCheckService(loggers.services, providerManager);
-    loggers.services.info('✅ Model Health Check Service initialized with ProviderManager');
+    loggers.services.info('Model Health Check Service initialized with ProviderManager');
 
     // Initialize Smart Model Router for intelligent model selection
     // Routes simple queries to Ollama (FREE), complex/tool queries to Vertex AI
@@ -2039,12 +2039,12 @@ const start = async () => {
             max_tokens: 1,
             stream: false,
           });
-          loggers.services.info({ warmupMs: Date.now() - warmStart, warmupModel }, '🔥 Default chat model pre-warmed — first user request will be fast');
+          loggers.services.info({ warmupMs: Date.now() - warmStart, warmupModel }, 'Default chat model pre-warmed — first user request will be fast');
         } else {
-          loggers.services.info('⏭️ Model pre-warm skipped — no default chat model configured yet');
+          loggers.services.info('Model pre-warm skipped — no default chat model configured yet');
         }
       } catch (warmErr: any) {
-        loggers.services.warn({ error: warmErr?.message }, '⚠️ Model warm-up failed (non-fatal) — first request will be slower');
+        loggers.services.warn({ error: warmErr?.message }, 'Model warm-up failed (non-fatal) — first request will be slower');
       }
 
       // Schedule periodic feedback ingestion for self-improving routing
@@ -2056,10 +2056,10 @@ const start = async () => {
       }, 30 * 60_000); // Then every 30 minutes
 
     } catch (routerError) {
-      loggers.services.warn({ err: routerError }, '⚠️ Smart Model Router initialization failed - using default model selection');
+      loggers.services.warn({ err: routerError }, 'Smart Model Router initialization failed - using default model selection');
     }
   } catch (error) {
-    loggers.services.warn({ err: error }, '⚠️ LLM Provider Manager initialization failed - title generation will be disabled');
+    loggers.services.warn({ err: error }, 'LLM Provider Manager initialization failed - title generation will be disabled');
   }
 
   // ========================================================================
@@ -2069,9 +2069,9 @@ const start = async () => {
     const { AgentRegistry } = await import('./services/AgentRegistry.js');
     const agentRegistry = new AgentRegistry();
     await agentRegistry.initialize();
-    loggers.services.info('✅ AgentRegistry initialized — default agents seeded to database');
+    loggers.services.info('AgentRegistry initialized — default agents seeded to database');
   } catch (agentErr) {
-    loggers.services.warn({ err: agentErr }, '⚠️ AgentRegistry initialization failed — agents may need manual seeding');
+    loggers.services.warn({ err: agentErr }, 'AgentRegistry initialization failed — agents may need manual seeding');
   }
 
   // ========================================================================
@@ -2094,7 +2094,7 @@ const start = async () => {
       );
     }
   } catch (tplErr) {
-    loggers.services.warn({ err: tplErr }, '⚠️ Workflow template auto-seed failed — flows workspace may be empty');
+    loggers.services.warn({ err: tplErr }, 'Workflow template auto-seed failed — flows workspace may be empty');
   }
 
   // ========================================================================
@@ -2106,9 +2106,9 @@ const start = async () => {
     (global as any).dlpScanner = dlpScanner;
     const rules = dlpScanner.getRules();
     const enabled = rules.filter(r => r.enabled).length;
-    loggers.services.info({ totalRules: rules.length, enabledRules: enabled }, '✅ DLP Scanner initialized with persisted config');
+    loggers.services.info({ totalRules: rules.length, enabledRules: enabled }, 'DLP Scanner initialized with persisted config');
   } catch (dlpErr) {
-    loggers.services.warn({ err: dlpErr }, '⚠️ DLP Scanner initialization failed — scanning disabled');
+    loggers.services.warn({ err: dlpErr }, 'DLP Scanner initialization failed — scanning disabled');
   }
 
   // ========================================================================
@@ -2121,7 +2121,7 @@ const start = async () => {
   // halfvec columns — NO Milvus connect, NO exit(1).
   // ========================================================================
   if (isMilvusEnabled()) {
-    loggers.services.info('🔄 Initializing Tool Semantic Cache for MCP tools (Milvus)...');
+    loggers.services.info('Initializing Tool Semantic Cache for MCP tools (Milvus)...');
 
     // Retry Milvus connection with exponential backoff (entrypoint already waited for health)
     let milvusConnected = false;
@@ -2131,7 +2131,7 @@ const start = async () => {
         await toolSemanticCache.initialize();
         toolSemanticCacheInitialized = true;
         milvusConnected = true;
-        loggers.services.info(`✅ Tool Semantic Cache connected to Milvus (attempt ${attempt})`);
+        loggers.services.info(`Tool Semantic Cache connected to Milvus (attempt ${attempt})`);
         break;
       } catch (error: any) {
         loggers.services.warn({ error: error.message, attempt },
@@ -2141,7 +2141,7 @@ const start = async () => {
     }
 
     if (!milvusConnected) {
-      loggers.services.fatal('🚨 FATAL: Cannot connect to Milvus after 10 attempts (set MILVUS_ENABLED=false for pgvector-only mode) — shutting down');
+      loggers.services.fatal('FATAL: Cannot connect to Milvus after 10 attempts (set MILVUS_ENABLED=false for pgvector-only mode) — shutting down');
       process.exit(1);
     }
 
@@ -2159,18 +2159,18 @@ const start = async () => {
     // effort and runs in the BACKGROUND. The server starts listening immediately;
     // the first-chat + periodic re-index finish the replica. (Fixes the boot hang
     // at "tool_tags collection already at correct dimension".)
-    loggers.services.info('🔄 Indexing ALL MCP tools into Milvus… (background — not blocking boot)');
+    loggers.services.info('Indexing ALL MCP tools into Milvus… (background — not blocking boot)');
     void (async () => {
       try {
         await toolSemanticCache!.autoIndexToolsWhenReady();
-        loggers.services.info('✅ MCP tools indexed in Milvus (background)');
+        loggers.services.info('MCP tools indexed in Milvus (background)');
       } catch (error: any) {
-        loggers.services.warn({ error: error?.message }, '⚠️ background Milvus tool indexing incomplete (non-fatal)');
+        loggers.services.warn({ error: error?.message }, 'background Milvus tool indexing incomplete (non-fatal)');
       }
       try {
         const testResults = await toolSemanticCache!.searchToolsAsOpenAIFunctions('kubernetes pods logs', 5);
         if (!testResults || testResults.length === 0) {
-          loggers.services.warn('⚠️ Post-indexing verification: 0 tools found — will reindex on first chat request');
+          loggers.services.warn('Post-indexing verification: 0 tools found — will reindex on first chat request');
         } else {
           const stats = await toolSemanticCache!.getCacheStats?.() || {} as any;
           loggers.services.info({
@@ -2180,7 +2180,7 @@ const start = async () => {
           }, '✅ POST-INDEX VERIFICATION: Semantic search returning results');
         }
       } catch (verifyError: any) {
-        loggers.services.warn({ error: verifyError?.message }, '⚠️ Post-indexing verification failed (non-fatal)');
+        loggers.services.warn({ error: verifyError?.message }, 'Post-indexing verification failed (non-fatal)');
       }
       try {
         const { MilvusClient } = await import('@zilliz/milvus2-sdk-node');
@@ -2191,11 +2191,11 @@ const start = async () => {
         const redis = getRedisClient();
         const pgIndexingService = new MCPToolIndexingService(loggers.services as any, milvus, redis, prisma);
         await pgIndexingService.indexAllMCPTools(false);
-        loggers.services.info('✅ MCP tools synced to PostgreSQL with pgvector embeddings (background)');
+        loggers.services.info('MCP tools synced to PostgreSQL with pgvector embeddings (background)');
         pgIndexingService.startPeriodicIndexing?.();
-        loggers.services.info('🔄 Periodic MCP tool re-indexing started (30-min interval)');
+        loggers.services.info('Periodic MCP tool re-indexing started (30-min interval)');
       } catch (pgError: any) {
-        loggers.services.warn({ error: pgError?.message }, '⚠️ background PostgreSQL tool indexing failed (Milvus primary is OK)');
+        loggers.services.warn({ error: pgError?.message }, 'background PostgreSQL tool indexing failed (Milvus primary is OK)');
       }
     })();
   } else {
@@ -2208,7 +2208,7 @@ const start = async () => {
     // Milvus client makes it skip the Milvus sink and write ONLY pgvector. The
     // periodic re-index keeps the catalog fresh. Background + best-effort so
     // server.listen() is never blocked.
-    loggers.services.info('ℹ️ MILVUS_ENABLED=false (or MILVUS_HOST unset) — pgvector-only tool search. Skipping Milvus tool cache; indexing MCP tools into pgvector in background.');
+    loggers.services.info('MILVUS_ENABLED=false (or MILVUS_HOST unset) — pgvector-only tool search. Skipping Milvus tool cache; indexing MCP tools into pgvector in background.');
     void (async () => {
       try {
         const { getRedisClient } = await import('./utils/redis-client.js');
@@ -2217,16 +2217,16 @@ const start = async () => {
         // Milvus sink no-ops when this.milvusClient is falsy).
         const pgIndexingService = new MCPToolIndexingService(loggers.services as any, null, redis, prisma);
         await pgIndexingService.indexAllMCPTools(false);
-        loggers.services.info('✅ MCP tools indexed into PostgreSQL pgvector (background, pgvector-only mode)');
+        loggers.services.info('MCP tools indexed into PostgreSQL pgvector (background, pgvector-only mode)');
         pgIndexingService.startPeriodicIndexing?.();
-        loggers.services.info('🔄 Periodic MCP tool re-indexing started (30-min interval)');
+        loggers.services.info('Periodic MCP tool re-indexing started (30-min interval)');
         const pgSearch = getToolPgvectorSearchService();
         if (pgSearch) {
           await pgSearch.refreshReadiness();
-          loggers.services.info({ ready: pgSearch.isReady() }, '✅ pgvector tool search readiness refreshed after indexing');
+          loggers.services.info({ ready: pgSearch.isReady() }, 'pgvector tool search readiness refreshed after indexing');
         }
       } catch (pgError: any) {
-        loggers.services.warn({ error: pgError?.message }, '⚠️ background pgvector-only tool indexing failed (will retry on next periodic cycle / first chat)');
+        loggers.services.warn({ error: pgError?.message }, 'background pgvector-only tool indexing failed (will retry on next periodic cycle / first chat)');
       }
     })();
   }
@@ -2246,23 +2246,23 @@ const start = async () => {
   }
 
   // Initialize Tool Success Tracking Service
-  loggers.services.info('🔄 Initializing Tool Success Tracking Service...');
+  loggers.services.info('Initializing Tool Success Tracking Service...');
   try {
     const toolSuccessTracker = getToolSuccessTrackingService();
     await toolSuccessTracker.initialize();
-    loggers.services.info('✅ Tool Success Tracking Service initialized');
+    loggers.services.info('Tool Success Tracking Service initialized');
   } catch (error) {
-    loggers.services.warn({ error: error.message }, '⚠️ Tool Success Tracking init failed (non-critical)');
+    loggers.services.warn({ error: error.message }, 'Tool Success Tracking init failed (non-critical)');
   }
 
   // Initialize Intent Linking Service
-  loggers.services.info('🔄 Initializing Intent Linking Service...');
+  loggers.services.info('Initializing Intent Linking Service...');
   try {
     const intentLinking = getIntentLinkingService();
     await intentLinking.initialize();
-    loggers.services.info('✅ Intent Linking Service initialized');
+    loggers.services.info('Intent Linking Service initialized');
   } catch (error) {
-    loggers.services.warn({ error: error.message }, '⚠️ Intent Linking init failed (non-critical)');
+    loggers.services.warn({ error: error.message }, 'Intent Linking init failed (non-critical)');
     // Non-critical - continue without intent linking
   }
 
@@ -2309,7 +2309,7 @@ const start = async () => {
   
   // Check prompt templates in database
   console.log('\n' + '='.repeat(80));
-  console.log('📝 PROMPT_HEALTHCHECK: DATABASE PROMPT VERIFICATION');
+  console.log('PROMPT_HEALTHCHECK: DATABASE PROMPT VERIFICATION');
   console.log('='.repeat(80));
   
   try {
@@ -2327,23 +2327,23 @@ const start = async () => {
       orderBy: { is_default: 'desc' }
     });
     
-    console.log(`📊 Found ${systemPrompts.length} system prompts and ${promptTemplates.length} prompt templates in database`);
-    console.log('\n🔍 SYSTEM PROMPTS FROM DATABASE:');
+    console.log(`Found ${systemPrompts.length} system prompts and ${promptTemplates.length} prompt templates in database`);
+    console.log('\n SYSTEM PROMPTS FROM DATABASE:');
     console.log('-'.repeat(80));
     
     if (systemPrompts.length === 0) {
-      console.log('⏳ No system prompts yet — defaults will be seeded during initialization (normal on a fresh install).');
+      console.log('No system prompts yet — defaults will be seeded during initialization (normal on a fresh install).');
     } else {
       systemPrompts.forEach((prompt, index) => {
         console.log(`  ${index + 1}. [${prompt.id}] ${prompt.name} (Default: ${prompt.is_default}, Active: ${prompt.is_active})`);
       });
     }
 
-    console.log('\n🎯 PROMPT TEMPLATES FROM DATABASE:');
+    console.log('\n PROMPT TEMPLATES FROM DATABASE:');
     console.log('-'.repeat(80));
 
     if (promptTemplates.length === 0) {
-      console.log('⏳ No prompt templates yet — defaults will be seeded during initialization (normal on a fresh install).');
+      console.log('No prompt templates yet — defaults will be seeded during initialization (normal on a fresh install).');
     } else {
       promptTemplates.forEach((template, index) => {
         console.log(`  ${index + 1}. [${template.id}] ${template.name} (Category: ${template.category || 'N/A'}, Default: ${template.is_default}, Active: ${template.is_active})`);
@@ -2355,12 +2355,12 @@ const start = async () => {
     const defaultTemplate = promptTemplates.find(t => t.is_default);
     const seedPending = systemPrompts.length === 0 || promptTemplates.length === 0;
 
-    console.log('\n📋 PROMPT HEALTH SUMMARY:');
+    console.log('\n PROMPT HEALTH SUMMARY:');
     console.log('-'.repeat(40));
-    console.log(`✅ System Prompts: ${systemPrompts.length} found`);
-    console.log(`✅ Prompt Templates: ${promptTemplates.length} found`);
-    console.log(`${defaultSystemPrompt ? '✅' : '⏳'} Default System Prompt: ${defaultSystemPrompt ? defaultSystemPrompt.name : 'pending seed'}`);
-    console.log(`${defaultTemplate ? '✅' : '⏳'} Default Template: ${defaultTemplate ? defaultTemplate.name : 'pending seed'}`);
+    console.log(`System Prompts: ${systemPrompts.length} found`);
+    console.log(`Prompt Templates: ${promptTemplates.length} found`);
+    console.log(`${defaultSystemPrompt ? '' : ''} Default System Prompt: ${defaultSystemPrompt ? defaultSystemPrompt.name : 'pending seed'}`);
+    console.log(`${defaultTemplate ? '' : ''} Default Template: ${defaultTemplate ? defaultTemplate.name : 'pending seed'}`);
     console.log(seedPending
       ? '✨ PROMPT_HEALTHCHECK COMPLETED — defaults will be seeded during initialization.\n'
       : '✨ PROMPT_HEALTHCHECK COMPLETED - Database content verified!\n');
@@ -2374,7 +2374,7 @@ const start = async () => {
     }, 'Prompt healthcheck completed successfully');
     
     } catch (error) {
-    console.log(`❌ PROMPT_HEALTHCHECK ERROR: ${error}`);
+    console.log(`PROMPT_HEALTHCHECK ERROR: ${error}`);
     console.log('='.repeat(80) + '\n');
     loggers.services.error({ err: error }, 'Prompt healthcheck failed');
   }
@@ -2385,9 +2385,9 @@ const start = async () => {
   // CRITICAL FIX: Initialize all system services FIRST (including Redis and Milvus)
   // Routes depend on these services being initialized
   try {
-    loggers.services.info('🔄 Initializing all system services (Redis, Milvus, etc.)...');
+    loggers.services.info('Initializing all system services (Redis, Milvus, etc.)...');
     await initializeServices();
-    loggers.services.info('✅ All system services initialized successfully');
+    loggers.services.info('All system services initialized successfully');
   } catch (err) {
     loggers.services.error({ err }, 'Service initialization failed - server cannot start');
     process.exit(1); // Exit if services can't initialize
@@ -2396,20 +2396,20 @@ const start = async () => {
   // Initialize Pipeline Hook System (v0.5.0 hardening)
   // Hooks enable DLP scanning, HITL gates, cost tracking, event sequencing as pluggable observers
   try {
-    loggers.services.info('🔄 Initializing Pipeline Hook System...');
+    loggers.services.info('Initializing Pipeline Hook System...');
     const hookRunner = initializeHookRunner(loggers.services);
     registerBuiltInHooks(hookRunner, loggers.services);
-    loggers.services.info('✅ Pipeline Hook System initialized — hooks active');
+    loggers.services.info('Pipeline Hook System initialized — hooks active');
   } catch (err) {
-    loggers.services.warn({ err }, '⚠️ Pipeline Hook System init failed — continuing without hooks');
+    loggers.services.warn({ err }, 'Pipeline Hook System init failed — continuing without hooks');
   }
 
   // Register all routes AFTER services are initialized
   // Routes can now access initialized milvusClient and redisClient
   try {
-    loggers.routes.info('🔄 Registering all routes with initialized services...');
+    loggers.routes.info('Registering all routes with initialized services...');
     await registerAllRoutes();
-    loggers.routes.info('✅ All routes registered successfully');
+    loggers.routes.info('All routes registered successfully');
   } catch (err) {
     loggers.routes.error({ err }, 'Route registration failed - server cannot start');
     process.exit(1); // Exit if routes can't register
@@ -2420,7 +2420,7 @@ const start = async () => {
   try {
     const { seedLLMProviders, seedSecondaryOllamaProvider } = await import('./services/LLMProviderSeeder.js');
     await seedLLMProviders();
-    loggers.services.info('✅ LLM provider seeding complete');
+    loggers.services.info('LLM provider seeding complete');
 
     // Secondary Ollama chat provider (wizard "Both" strategy). Additive +
     // idempotent: lands an Ollama provider row + role='chat' assignment at a
@@ -2431,9 +2431,9 @@ const start = async () => {
     // startup/04-providers.ts only runs under the decomposed runStartup()
     // orchestrator, which this entrypoint does NOT use.
     try {
-      loggers.services.info('▶️ Invoking seedSecondaryOllamaProvider (server.ts boot) — second chat model under "Both"');
+      loggers.services.info('Invoking seedSecondaryOllamaProvider (server.ts boot) — second chat model under "Both"');
       await seedSecondaryOllamaProvider();
-      loggers.services.info('✅ seedSecondaryOllamaProvider boot step returned');
+      loggers.services.info('seedSecondaryOllamaProvider boot step returned');
     } catch (secondaryErr) {
       loggers.services.warn({ err: secondaryErr }, 'seedSecondaryOllamaProvider failed — second chat model absent; admin can add via UI');
     }
@@ -2522,16 +2522,16 @@ const start = async () => {
       loggers.services.debug({ err: dbEmbErr }, 'Could not load DB embedding config (will use env vars)');
     }
   } catch (err) {
-    loggers.services.warn({ err }, '⚠️ LLM provider seeding failed - continuing with existing DB config');
+    loggers.services.warn({ err }, 'LLM provider seeding failed - continuing with existing DB config');
   }
 
   // CRITICAL: Validate admin portal SOT configuration BEFORE starting server
   try {
-    loggers.services.info('🔍 Validating admin portal SOT configuration...');
+    loggers.services.info('Validating admin portal SOT configuration...');
     await validateAdminPortalConfiguration();
-    loggers.services.info('✅ Admin portal SOT validation passed');
+    loggers.services.info('Admin portal SOT validation passed');
   } catch (err) {
-    loggers.services.error({ err }, '❌ Admin portal SOT validation failed - server cannot start');
+    loggers.services.error({ err }, 'Admin portal SOT validation failed - server cannot start');
     loggers.services.error('SOLUTION: Initialize admin portal with proper prompt templates using initialization services');
     process.exit(1); // Exit if admin portal is not properly configured
   }
@@ -2562,9 +2562,9 @@ const start = async () => {
     try {
       const { startWorkflowScheduler } = await import('./services/WorkflowScheduler.js');
       await startWorkflowScheduler();
-      loggers.services.info('✅ WorkflowScheduler started');
+      loggers.services.info('WorkflowScheduler started');
     } catch (schedulerErr) {
-      loggers.services.warn({ err: schedulerErr }, '⚠️ WorkflowScheduler failed to start (non-fatal)');
+      loggers.services.warn({ err: schedulerErr }, 'WorkflowScheduler failed to start (non-fatal)');
     }
 
     // Start Ollama model sync service (every 60s — keeps DB in sync with Ollama hosts)
@@ -2573,9 +2573,9 @@ const start = async () => {
         const { getOllamaModelSyncService } = await import('./services/OllamaModelSyncService.js');
         const ollamaSyncService = getOllamaModelSyncService();
         ollamaSyncService.start();
-        loggers.services.info('✅ OllamaModelSyncService started (60s interval)');
+        loggers.services.info('OllamaModelSyncService started (60s interval)');
       } catch (ollamaSyncErr) {
-        loggers.services.warn({ err: ollamaSyncErr }, '⚠️ OllamaModelSyncService failed to start (non-fatal)');
+        loggers.services.warn({ err: ollamaSyncErr }, 'OllamaModelSyncService failed to start (non-fatal)');
       }
     }
 
@@ -2667,9 +2667,9 @@ const start = async () => {
         runMemoryCompaction().catch(() => {});
       }, MEMORY_COMPACTION_INTERVAL);
 
-      loggers.services.info('✅ Memory compaction scheduler started (every 6h, threshold >100 entries)');
+      loggers.services.info('Memory compaction scheduler started (every 6h, threshold >100 entries)');
     } catch (compactionErr) {
-      loggers.services.warn({ err: compactionErr }, '⚠️ Memory compaction scheduler failed to start (non-fatal)');
+      loggers.services.warn({ err: compactionErr }, 'Memory compaction scheduler failed to start (non-fatal)');
     }
 
     loggers.server.info({

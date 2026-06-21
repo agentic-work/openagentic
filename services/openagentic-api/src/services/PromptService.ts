@@ -82,20 +82,20 @@ export class PromptService {
     this.useSemanticSearch = process.env.ENABLE_PROMPT_SEMANTIC_SEARCH !== 'false' && !!milvusService;
 
     if (this.redisClient && this.redisClient.isConnected()) {
-      this.logger.info('✅ PromptService initialized with Redis caching (TTL: 5 minutes)');
+      this.logger.info('PromptService initialized with Redis caching (TTL: 5 minutes)');
     } else {
-      this.logger.warn('⚠️ PromptService initialized WITHOUT caching - will hit PostgreSQL on every request');
+      this.logger.warn('PromptService initialized WITHOUT caching - will hit PostgreSQL on every request');
     }
 
     if (this.useSemanticSearch && this.milvusService) {
-      this.logger.info('🔍 PromptService initialized with Milvus semantic search for prompt templates');
+      this.logger.info('PromptService initialized with Milvus semantic search for prompt templates');
       // Initialize prompt templates in Milvus asynchronously
       this.initializePromptTemplatesInMilvus().catch(err => {
         this.logger.warn({ err }, 'Failed to initialize prompt templates in Milvus, falling back to keyword search');
         this.useSemanticSearch = false;
       });
     } else {
-      this.logger.info('ℹ️ PromptService using keyword-based search (set ENABLE_PROMPT_SEMANTIC_SEARCH=true and provide MilvusVectorService to enable)');
+      this.logger.info('PromptService using keyword-based search (set ENABLE_PROMPT_SEMANTIC_SEARCH=true and provide MilvusVectorService to enable)');
     }
   }
 
@@ -109,14 +109,14 @@ export class PromptService {
     }
 
     try {
-      this.logger.info('🚀 Initializing prompt templates in Milvus...');
+      this.logger.info('Initializing prompt templates in Milvus...');
 
       // Get all active templates from database
       const templates = await prisma.promptTemplate.findMany({
         where: { is_active: true }
       });
 
-      this.logger.info(`📚 Found ${templates.length} active prompt templates to index`);
+      this.logger.info(`Found ${templates.length} active prompt templates to index`);
 
       // Store each template in Milvus as a "knowledge" artifact
       // We use the knowledge type because prompt templates are reusable knowledge
@@ -144,7 +144,7 @@ export class PromptService {
       }
 
       this.semanticSearchInitialized = true;
-      this.logger.info(`✅ Successfully indexed ${indexed}/${templates.length} prompt templates in Milvus`);
+      this.logger.info(`Successfully indexed ${indexed}/${templates.length} prompt templates in Milvus`);
     } catch (error) {
       this.logger.error({ error }, 'Failed to initialize prompt templates in Milvus');
       throw error;
@@ -219,7 +219,7 @@ export class PromptService {
       // 🔥 PRIORITY 1: Use semantic search if message provided and Milvus available
       // This allows dynamic template selection based on query + context/memories
       if (userMessage && this.useSemanticSearch) {
-        this.logger.info({ userId, message: userMessage.substring(0, 100) }, '🎯 Using semantic search for dynamic template selection');
+        this.logger.info({ userId, message: userMessage.substring(0, 100) }, 'Using semantic search for dynamic template selection');
 
         const bestTemplate = await this.findBestTemplateForMessage(userMessage, userId, userGroups);
         if (bestTemplate) {
@@ -337,7 +337,7 @@ export class PromptService {
         // Cache the result
         if (this.redisClient && this.redisClient.isConnected()) {
           await this.redisClient.set(`prompt:user:${userId}`, result, this.cacheTTL);
-          this.logger.debug({ userId }, '💾 Cached default template prompt');
+          this.logger.debug({ userId }, 'Cached default template prompt');
         }
         
         return result;
@@ -351,7 +351,7 @@ export class PromptService {
       // Even cache the fallback
       if (this.redisClient && this.redisClient.isConnected()) {
         await this.redisClient.set(`prompt:user:${userId}`, fallbackResult, this.cacheTTL);
-        this.logger.debug({ userId }, '💾 Cached fallback prompt');
+        this.logger.debug({ userId }, 'Cached fallback prompt');
       }
       
       return fallbackResult;
@@ -405,7 +405,7 @@ export class PromptService {
 
       // Use Milvus semantic search if available and initialized
       if (this.useSemanticSearch && this.milvusService && this.semanticSearchInitialized) {
-        this.logger.debug({ message: message.substring(0, 100), userId, isAdmin }, '🔍 Using Milvus semantic search for prompt selection');
+        this.logger.debug({ message: message.substring(0, 100), userId, isAdmin }, 'Using Milvus semantic search for prompt selection');
 
         const templates = await this.searchPromptTemplatesMilvus(message, 3);
 
@@ -489,7 +489,7 @@ export class PromptService {
    */
   private async findBestTemplateKeywordSearch(message: string, isAdmin: boolean = false): Promise<PromptTemplate | null> {
     try {
-      this.logger.debug({ isAdmin }, '🔤 Using legacy keyword search for prompt selection');
+      this.logger.debug({ isAdmin }, 'Using legacy keyword search for prompt selection');
 
       // Get all active templates, filtering admin templates for non-admins
       const templatesResult = await prisma.promptTemplate.findMany({
@@ -556,7 +556,7 @@ export class PromptService {
             if (message.toLowerCase().includes(pattern)) {
               const categoryTemplate = templates.find(t => t.category === category);
               if (categoryTemplate) {
-                this.logger.debug({ category, pattern }, '🔤 Found template via category pattern');
+                this.logger.debug({ category, pattern }, 'Found template via category pattern');
                 return categoryTemplate;
               }
             }
@@ -606,7 +606,7 @@ export class PromptService {
   async ensureDefaultTemplates(): Promise<void> {
     try {
       // First, ensure system prompts exist
-      this.logger.info('🔄 Ensuring system prompts exist...');
+      this.logger.info('Ensuring system prompts exist...');
       
       // Create default system prompt
       await prisma.systemPrompt.upsert({
@@ -626,7 +626,7 @@ export class PromptService {
           is_default: true
         }
       });
-      this.logger.info('✅ Created/updated default system prompt');
+      this.logger.info('Created/updated default system prompt');
 
       // Create additional system prompts
       const additionalSystemPrompts = [
@@ -651,13 +651,13 @@ export class PromptService {
           },
           create: prompt
         });
-        this.logger.info(`✅ Created/updated system prompt: ${prompt.name}`);
+        this.logger.info(`Created/updated system prompt: ${prompt.name}`);
       }
 
       // Now create prompt templates from our comprehensive list
       const systemTemplates = PROMPT_TEMPLATES;
       
-      this.logger.info(`📚 Creating ${systemTemplates.length} prompt templates from source code...`);
+      this.logger.info(`Creating ${systemTemplates.length} prompt templates from source code...`);
 
       // Create all templates with detailed error logging
       for (const template of systemTemplates) {
@@ -682,7 +682,7 @@ export class PromptService {
             }
           });
           
-          this.logger.info(`✅ Successfully created/updated prompt template: ${template.name}`);
+          this.logger.info(`Successfully created/updated prompt template: ${template.name}`);
         } catch (templateError) {
           this.logger.error({
             err: templateError,
@@ -697,7 +697,7 @@ export class PromptService {
         }
       }
 
-      this.logger.info('✅ All system prompts and templates are now in the database');
+      this.logger.info('All system prompts and templates are now in the database');
       
       // Create global assignment for all users to use default template
       // Use the admin user defined in environment variables as the owner of global settings
@@ -746,22 +746,22 @@ export class PromptService {
                 assigned_at: new Date()
               }
             });
-            this.logger.info(`✅ Assigned Admin Mode template to admin user ${adminUser.email}`);
+            this.logger.info(`Assigned Admin Mode template to admin user ${adminUser.email}`);
           } catch (err) {
-            this.logger.warn({ err }, '⚠️ Failed to create prompt assignment for admin user - continuing');
+            this.logger.warn({ err }, 'Failed to create prompt assignment for admin user - continuing');
             // Don't throw - continue with initialization even if assignment fails
           }
-          this.logger.info('✅ Created global prompt assignment for all users');
+          this.logger.info('Created global prompt assignment for all users');
         } else {
-          this.logger.warn('⚠️ No default template found for global assignment');
+          this.logger.warn('No default template found for global assignment');
         }
       } catch (assignmentError) {
         // Log but don't fail - fallback logic will handle this
-        this.logger.warn({ err: assignmentError }, '⚠️ Could not create global assignment - using fallback logic');
-        this.logger.info('ℹ️  Default prompts will be resolved dynamically per user via fallback mechanism');
+        this.logger.warn({ err: assignmentError }, 'Could not create global assignment - using fallback logic');
+        this.logger.info('Default prompts will be resolved dynamically per user via fallback mechanism');
       }
     } catch (error) {
-      this.logger.error({ message: { err: error }, error: '❌ CRITICAL ERROR ensuring default templates - re-throwing' });
+      this.logger.error({ message: { err: error }, error: 'CRITICAL ERROR ensuring default templates - re-throwing' });
       throw error; // Re-throw so server.ts can handle it properly
     }
   }
@@ -1002,9 +1002,9 @@ export class PromptService {
             await this.redisClient.del(`prompt:user:${user.id}`);
           }
           
-          this.logger.info(`🗑️ Invalidated ${allUsers.length} user prompt caches (default template updated)`);
+          this.logger.info(`Invalidated ${allUsers.length} user prompt caches (default template updated)`);
         } else {
-          this.logger.info(`🗑️ Invalidated ${assignments.length} user prompt caches for template ${id}`);
+          this.logger.info(`Invalidated ${assignments.length} user prompt caches for template ${id}`);
         }
       }
 
@@ -1063,7 +1063,7 @@ export class PromptService {
         for (const userId of affectedUsers) {
           await this.redisClient.del(`prompt:user:${userId}`);
         }
-        this.logger.info(`🗑️ Invalidated ${affectedUsers.length} user prompt caches after deleting template ${id}`);
+        this.logger.info(`Invalidated ${affectedUsers.length} user prompt caches after deleting template ${id}`);
       }
 
       this.logger.info(`Deleted prompt template: ${template.name}`);
@@ -1107,7 +1107,7 @@ export class PromptService {
       // Invalidate cache for this user
       if (this.redisClient && this.redisClient.isConnected()) {
         await this.redisClient.del(`prompt:user:${data.userId}`);
-        this.logger.debug({ userId: data.userId }, '🗑️ Invalidated prompt cache after assignment');
+        this.logger.debug({ userId: data.userId }, 'Invalidated prompt cache after assignment');
       }
 
       this.logger.info(`Assigned template ${data.templateId} to user ${data.userId}`);

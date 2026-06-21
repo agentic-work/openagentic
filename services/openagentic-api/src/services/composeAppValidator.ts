@@ -1,7 +1,5 @@
 /**
- * composeAppValidator — Phase 4 #474 server-side gate for compose_app HTML.
- *
- * Plan: <internal-plan>
+ * composeAppValidator — server-side gate for compose_app HTML (#474).
  *
  * Pipeline (in order, ALL violations reported together):
  *   1. Size cap          — DoS / cost control

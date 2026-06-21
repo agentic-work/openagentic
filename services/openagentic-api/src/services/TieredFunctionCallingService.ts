@@ -232,7 +232,7 @@ export class TieredFunctionCallingService {
       }, '🎯 Loaded tiered function calling config');
 
     } catch (error: any) {
-      this.logger.warn({ error: error.message }, '⚠️ Failed to load config from DB, using env defaults');
+      this.logger.warn({ error: error.message }, 'Failed to load config from DB, using env defaults');
       this.config = this.getEnvConfig();
     }
 
@@ -250,7 +250,7 @@ export class TieredFunctionCallingService {
           premiumModel: this.config.premiumModel,
         }, '🎯 Loaded tier models from DB registry via ModelConfigurationService');
       } catch (e: any) {
-        this.logger.warn({ error: e.message }, '🎯 Failed to load tier models from MCS');
+        this.logger.warn({ error: e.message }, 'Failed to load tier models from MCS');
       }
     }
 
@@ -497,7 +497,7 @@ export class TieredFunctionCallingService {
     this.configLastLoaded = null;
     await this.loadConfig();
 
-    this.logger.info({ updates }, '✅ Updated tiered function calling config');
+    this.logger.info({ updates }, 'Updated tiered function calling config');
   }
 
   /**

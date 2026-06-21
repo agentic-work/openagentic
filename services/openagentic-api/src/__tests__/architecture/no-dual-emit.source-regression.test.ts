@@ -2,8 +2,7 @@
  * Architecture cage — no dual-emit of `stream` legacy envelope + canonical
  * `content_block_delta` from the same code site.
  *
- * REGRESSION pin — Track B Phase 0 of the canonical streaming rip
- * (<internal-plan>).
+ * REGRESSION pin — Track B Phase 0 of the canonical streaming rip.
  *
  * Smoking gun: services/openagentic-api/src/routes/chat/handlers/stream.handler.ts
  * around lines 1100-1140 emits EVERY text delta TWICE on the wire — once as

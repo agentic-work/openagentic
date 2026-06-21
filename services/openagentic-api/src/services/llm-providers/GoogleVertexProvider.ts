@@ -428,7 +428,7 @@ export class GoogleVertexProvider extends BaseLLMProvider {
       // CRITICAL DEBUG: Show exactly what we're sending to Google
       if (config.thinkingConfig) {
         console.log('\n' + '*'.repeat(60));
-        console.log('📤 SENDING TO GOOGLE GENAI API');
+        console.log('SENDING TO GOOGLE GENAI API');
         console.log('*'.repeat(60));
         console.log('Final thinkingConfig:', JSON.stringify(config.thinkingConfig, null, 2));
         console.log('Model:', modelName);
@@ -694,7 +694,7 @@ export class GoogleVertexProvider extends BaseLLMProvider {
       // CRITICAL DEBUG: Log first chunk in detail to see if thinking is present
       if (chunkCount === 1) {
         console.log('\n' + '#'.repeat(60));
-        console.log('📥 FIRST CHUNK FROM GOOGLE');
+        console.log('FIRST CHUNK FROM GOOGLE');
         console.log('#'.repeat(60));
         console.log('Raw chunk keys:', Object.keys(chunk));
         console.log('Candidate keys:', candidate ? Object.keys(candidate) : 'NO CANDIDATE');
@@ -1016,18 +1016,18 @@ export class GoogleVertexProvider extends BaseLLMProvider {
 
     // Log final thinking status - CRITICAL DEBUG
     console.log('\n' + '~'.repeat(60));
-    console.log('📊 GEMINI STREAM COMPLETE SUMMARY');
+    console.log('GEMINI STREAM COMPLETE SUMMARY');
     console.log('~'.repeat(60));
     console.log('Total chunks processed:', chunkCount);
-    console.log('Thinking content yielded:', hasYieldedThinking ? '✅ YES' : '❌ NO');
+    console.log('Thinking content yielded:', hasYieldedThinking ? 'YES' : 'NO');
     console.log('Total tokens:', totalTokens);
     console.log('Model:', modelName);
     console.log('~'.repeat(60) + '\n');
 
     if (hasYieldedThinking) {
-      this.logger.info('[GoogleVertexProvider] 🧠 Successfully streamed thinking content');
+      this.logger.info('[GoogleVertexProvider] Successfully streamed thinking content');
     } else {
-      this.logger.warn('[GoogleVertexProvider] ⚠️ No thinking content was yielded during streaming');
+      this.logger.warn('[GoogleVertexProvider] No thinking content was yielded during streaming');
     }
 
     // Send final chunk with usage metadata for cost tracking

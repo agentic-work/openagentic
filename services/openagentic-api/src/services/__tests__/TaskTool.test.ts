@@ -1,8 +1,7 @@
 /**
  * TaskTool — TDD for the sub-agent dispatch tool.
  *
- * Mirrors the canonical AgentTool from
- * `<claude-code-src>/tools/AgentTool/AgentTool.tsx`. The model
+ * Follows the same shape as Claude Code's AgentTool. The model
  * picks one specialized sub-agent from a description-driven catalog;
  * each sub-agent runs in its own ReAct loop with a filtered tool list
  * and its own system prompt.

@@ -84,9 +84,9 @@ async function ensureSemanticCacheInitialized(logger: Logger): Promise<void> {
       const service = getToolResultCacheService(logger);
       await service.initialize();
       semanticCacheInitialized = true;
-      logger.info('[SEMANTIC-CACHE] ✅ Milvus semantic cache initialized successfully');
+      logger.info('[SEMANTIC-CACHE] Milvus semantic cache initialized successfully');
     } catch (error) {
-      logger.warn({ error }, '[SEMANTIC-CACHE] ⚠️ Failed to initialize Milvus semantic cache - using Redis only');
+      logger.warn({ error }, '[SEMANTIC-CACHE] Failed to initialize Milvus semantic cache - using Redis only');
       semanticCacheInitialized = true; // Mark as attempted to avoid retry loops
     }
   })();
@@ -1352,7 +1352,7 @@ export async function executeToolCalls(
           continue;
         } catch (error: any) {
           const executionTimeMs = Date.now() - startTime;
-          logger.error({ toolCallId: toolCall.id, error: error.message }, '[TOOL-EXEC] ❌ Memory tool failed');
+          logger.error({ toolCallId: toolCall.id, error: error.message }, '[TOOL-EXEC] Memory tool failed');
           resultsMap.set(pp.originalIndex, {
             toolCallId: toolCall.id, toolName: resolvedToolName,
             result: JSON.stringify({ error: error.message }),

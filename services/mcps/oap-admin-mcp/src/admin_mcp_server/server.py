@@ -84,11 +84,11 @@ async def lifespan(app):
         try:
             await asyncio.to_thread(_init_connections_blocking)
         except Exception as e:
-            logger.warning(f"⚠️ Background connection init failed: {e} - tools degrade gracefully")
+            logger.warning(f"Background connection init failed: {e} - tools degrade gracefully")
 
     asyncio.create_task(_init_connections_background())
 
-    logger.info("✅ Admin MCP Server ready - waiting for requests (connections initializing in background)")
+    logger.info("Admin MCP Server ready - waiting for requests (connections initializing in background)")
 
     yield  # Server runs here
 
@@ -167,9 +167,9 @@ def _init_connections_blocking():
 
         # Test Redis connection
         redis_client.ping()
-        logger.info("✅ Redis connected successfully")
+        logger.info("Redis connected successfully")
     except Exception as e:
-        logger.warning(f"⚠️ Redis connection failed: {e} - continuing without Redis")
+        logger.warning(f"Redis connection failed: {e} - continuing without Redis")
         redis_client = None
 
     # Initialize Milvus
@@ -183,16 +183,16 @@ def _init_connections_blocking():
             user=milvus_config["user"] if milvus_config["user"] else None,
             password=milvus_config["password"] if milvus_config["password"] else None
         )
-        logger.info("✅ Milvus connected successfully")
+        logger.info("Milvus connected successfully")
     except Exception as e:
         # On a fresh install Milvus often isn't accepting connections yet when the
         # admin MCP starts. This is non-fatal: vector tools degrade gracefully and
         # reconnect on first use. Log it calmly so it doesn't read as a failure.
         msg = str(e).lower()
         if any(k in msg for k in ("unavailable", "connect", "refused", "timeout", "deadline", "not ready", "19530")):
-            logger.info("ℹ️ Milvus not ready yet — vector tools will connect on first use (normal on a fresh install)")
+            logger.info("Milvus not ready yet — vector tools will connect on first use (normal on a fresh install)")
         else:
-            logger.warning(f"⚠️ Milvus connection issue: {e} - continuing without Milvus")
+            logger.warning(f"Milvus connection issue: {e} - continuing without Milvus")
 
     # Initialize PostgreSQL via psycopg2 (direct driver, no Prisma dependency)
     try:
@@ -203,16 +203,16 @@ def _init_connections_blocking():
             prisma_client.autocommit = True
             with prisma_client.cursor() as cur:
                 cur.execute("SELECT 1")
-            logger.info("✅ PostgreSQL connected successfully (psycopg2)")
+            logger.info("PostgreSQL connected successfully (psycopg2)")
         else:
-            logger.warning("⚠️ DATABASE_URL not set — PostgreSQL unavailable")
+            logger.warning("DATABASE_URL not set — PostgreSQL unavailable")
             prisma_client = None
     except Exception as e:
-        logger.warning(f"⚠️ PostgreSQL connection failed: {e} - continuing without PostgreSQL")
+        logger.warning(f"PostgreSQL connection failed: {e} - continuing without PostgreSQL")
         prisma_client = None
 
     _connections_initialized = True
-    logger.info("✅ Connection initialization complete")
+    logger.info("Connection initialization complete")
 
 async def init_connections():
     """Async wrapper around the blocking connection initializer.
@@ -263,7 +263,7 @@ def validate_admin_access(user_context: Optional[Dict[str, Any]] = None) -> User
     The MCP proxy should already filter this, but we validate again as defense in depth.
     """
     if not user_context:
-        logger.error("❌ SECURITY: No user context provided - rejecting request")
+        logger.error("SECURITY: No user context provided - rejecting request")
         raise PermissionError("Authentication required. Admin access only.")
 
     # Extract user info
@@ -272,13 +272,13 @@ def validate_admin_access(user_context: Optional[Dict[str, Any]] = None) -> User
     user_id = user_context.get("user_id", "unknown")
 
     if not is_admin:
-        logger.error(f"❌ SECURITY: Non-admin user '{user_name}' ({user_id}) attempted to access admin-mcp")
+        logger.error(f"SECURITY: Non-admin user '{user_name}' ({user_id}) attempted to access admin-mcp")
         raise PermissionError(
             f"Access denied. Admin privileges required. "
             f"User '{user_name}' does not have admin access."
         )
 
-    logger.info(f"✅ Admin access validated for user: {user_name} ({user_id})")
+    logger.info(f"Admin access validated for user: {user_name} ({user_id})")
 
     return UserContext(
         user_id=user_id,
@@ -1165,7 +1165,7 @@ try:
     from . import user_tools
     from . import audit_tools
     from . import workflow_tools
-    logger.info("✅ Tool modules loaded successfully (user, audit, workflow)")
+    logger.info("Tool modules loaded successfully (user, audit, workflow)")
 except ImportError as e:
     logger.warning(f"Some tool modules could not be loaded: {e}")
 

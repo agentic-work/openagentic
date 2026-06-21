@@ -337,7 +337,7 @@ export class PromptTemplateSemanticService {
       const availableTemplates = templates.filter(t => {
         if (!t.isActive) return false;
         if (!isAdmin && (t.category === 'admin' || t.tags?.includes('admin') || t.tags?.includes('privileged'))) {
-          this.logger.warn({ templateName: t.name, category: t.category }, '🔒 SECURITY: Blocked non-admin from accessing admin template in error fallback');
+          this.logger.warn({ templateName: t.name, category: t.category }, 'SECURITY: Blocked non-admin from accessing admin template in error fallback');
           return false;
         }
         return true;

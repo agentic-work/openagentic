@@ -524,7 +524,7 @@ export function updateTierUtilization(tierStats: Record<string, number>) {
  * We don't clear the registry here to preserve them.
  */
 export function setupMetrics() {
-  logger.info('📊 Setting up metrics collection');
+  logger.info('Setting up metrics collection');
 
   // Custom metrics are already registered at module load time
   // Just ensure default metrics are collected (they're already added at top of file)
@@ -566,7 +566,7 @@ export function setupMetrics() {
  * Start periodic metrics updates
  */
 export function startMetricsUpdates() {
-  logger.info('📈 Starting periodic metrics updates');
+  logger.info('Starting periodic metrics updates');
   
   // Update active users every 30 seconds
   setInterval(async () => {

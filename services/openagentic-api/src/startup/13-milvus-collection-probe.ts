@@ -19,7 +19,7 @@ export const INIT_MILVUS_COLLECTION_PROBE: BootstrapStep = {
   critical: false,
   async run({ ctx }) {
     const required = process.env.MILVUS_BOOT_GATE_REQUIRED === 'true';
-    loggers.services.info({ required }, '🔄 [#605] Probing Milvus collection sizes...');
+    loggers.services.info({ required }, '[#605] Probing Milvus collection sizes...');
 
     let MilvusClient: any;
     try {

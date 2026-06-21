@@ -104,7 +104,7 @@ const storageDataRoutesPluginImpl: FastifyPluginAsync<StorageDataRoutesPluginOpt
   // Prefix: /api → routes at /api/data-sources/*.
   try {
     await fastify.register(dataSourceRoutes, { prefix: '/api' });
-    loggers.routes.info('✅ Data Source routes registered at /api/data-sources/*');
+    loggers.routes.info('Data Source routes registered at /api/data-sources/*');
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register data source routes');
   }

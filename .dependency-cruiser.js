@@ -71,10 +71,10 @@ module.exports = {
       severity: 'error',
       comment: 'API service should not import from UI service',
       from: {
-        path: '^services/openagenticchat-api',
+        path: '^services/openagentic-api',
       },
       to: {
-        path: '^services/openagenticchat-ui',
+        path: '^services/openagentic-ui',
       },
     },
     {
@@ -82,7 +82,7 @@ module.exports = {
       severity: 'error',
       comment: 'UI service should not directly import from MCP orchestrator',
       from: {
-        path: '^services/openagenticchat-ui',
+        path: '^services/openagentic-ui',
       },
       to: {
         path: '^services/mcp-orchestrator',
@@ -96,7 +96,7 @@ module.exports = {
         path: '^services/mcp-orchestrator',
       },
       to: {
-        path: '^services/openagenticchat-ui',
+        path: '^services/openagentic-ui',
       },
     },
   ],
@@ -142,11 +142,11 @@ module.exports = {
           },
           modules: [
             {
-              criteria: { source: '^services/openagenticchat-api' },
+              criteria: { source: '^services/openagentic-api' },
               attributes: { fillcolor: '#e8f4fd' },
             },
             {
-              criteria: { source: '^services/openagenticchat-ui' },
+              criteria: { source: '^services/openagentic-ui' },
               attributes: { fillcolor: '#f0e6ff' },
             },
             {

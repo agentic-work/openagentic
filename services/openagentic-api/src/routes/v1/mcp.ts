@@ -530,7 +530,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =>
     }
   });
 
-  logger.info('✅ MCP v1 routes registered');
+  logger.info('MCP v1 routes registered');
 };
 
 export default mcpRoutes;

@@ -271,7 +271,7 @@ export class RAGService {
    */
   private async discoverEmbeddingModel(): Promise<void> {
     // Model discovery not needed - EmbeddingService handles Azure OpenAI configuration
-    this.logger.info('✅ Using Azure OpenAI embeddings via EmbeddingService');
+    this.logger.info('Using Azure OpenAI embeddings via EmbeddingService');
   }
 
   /**

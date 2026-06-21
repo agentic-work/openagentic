@@ -208,7 +208,7 @@ const userPlugin: FastifyPluginAsync<UserPluginOptions> = async (
         connectedServers: servers.length
       };
 
-      loggers.routes.info(`✅ Fetched ${allFunctions.length} tools from ${servers.length} MCP servers via MCP Proxy (filtered for user ${userId})`);
+      loggers.routes.info(`Fetched ${allFunctions.length} tools from ${servers.length} MCP servers via MCP Proxy (filtered for user ${userId})`);
       return reply.send(transformedData);
 
     } catch (error: any) {
@@ -223,7 +223,7 @@ const userPlugin: FastifyPluginAsync<UserPluginOptions> = async (
   });
 
   loggers.routes.info('MCP Tools API endpoint registered at /api/user/available-tools');
-  loggers.routes.info('✅ User routes plugin registered successfully');
+  loggers.routes.info('User routes plugin registered successfully');
 };
 
 export default fp(userPlugin, {

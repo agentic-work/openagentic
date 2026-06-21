@@ -115,7 +115,17 @@ module.exports = {
 
     // ===== TYPESCRIPT BEST PRACTICES =====
     '@typescript-eslint/explicit-function-return-type': 'warn',
-    '@typescript-eslint/no-explicit-any': 'warn',
+    // no-explicit-any RATCHET. Promoted from 'warn' to 'error' so NEW `any`
+    // fails the lint. The large existing burden is grandfathered: CI only lints
+    // files CHANGED in a PR/push (see the eslint-ratchet job in
+    // .github/workflows/ci.yml), so untouched legacy files never trip this and
+    // the count can only go down.
+    //
+    // Burndown baseline (services/openagentic-ui/src, 2026-06-21):
+    //   ~917 `as any` casts and ~2651 total `any` occurrences. Of those, 339
+    //   `as any` lived in NodePropertiesPanel.tsx alone; this pass cut that file
+    //   to well under 40 (see its updateData<K> helper). Do NOT add `any` to new code.
+    '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/prefer-nullish-coalescing': 'error',
     '@typescript-eslint/prefer-optional-chain': 'error',

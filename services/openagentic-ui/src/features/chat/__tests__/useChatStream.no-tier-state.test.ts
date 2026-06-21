@@ -1,8 +1,6 @@
 /**
  * RED gate — RIP the viz-tier ladder.
  *
- * Plan: <internal-plan>
- *
  * `useChatStream` today returns `tierHints` and `handoffOffers` in its
  * destructured return value (useChatStream.ts:5907-5908), wired to the
  * `applyTierHintFrame` and `applyHandoffOfferFrame` reducers. The plan

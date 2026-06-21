@@ -17,12 +17,12 @@ import { PROMPT_TEMPLATES } from '../src/services/prompts/PromptTemplates.js';
 const prisma = new PrismaClient();
 
 async function seedPromptTemplates() {
-  console.log('🌱 Starting prompt template seeding...');
+  console.log('Starting prompt template seeding...');
 
   try {
     // Count existing templates
     const existingCount = await prisma.promptTemplate.count();
-    console.log(`📊 Found ${existingCount} existing templates in database`);
+    console.log(`Found ${existingCount} existing templates in database`);
 
     let created = 0;
     let updated = 0;
@@ -57,17 +57,17 @@ async function seedPromptTemplates() {
             }
           });
           updated++;
-          console.log(`✅ Updated: ${template.name}`);
+          console.log(`Updated: ${template.name}`);
         } else {
           // Create new template
           await prisma.promptTemplate.create({
             data: templateData
           });
           created++;
-          console.log(`✨ Created: ${template.name}`);
+          console.log(`Created: ${template.name}`);
         }
       } catch (error: any) {
-        console.error(`❌ Error processing template "${template.name}":`, error.message);
+        console.error(`Error processing template "${template.name}":`, error.message);
         skipped++;
       }
     }
@@ -78,7 +78,7 @@ async function seedPromptTemplates() {
     });
 
     if (defaultTemplates.length > 1) {
-      console.log(`⚠️  Found ${defaultTemplates.length} default templates, fixing...`);
+      console.log(`Found ${defaultTemplates.length} default templates, fixing...`);
 
       // Keep the first one, unset others
       for (let i = 1; i < defaultTemplates.length; i++) {
@@ -88,7 +88,7 @@ async function seedPromptTemplates() {
         });
       }
 
-      console.log(`✅ Fixed default templates - kept "${defaultTemplates[0].name}" as default`);
+      console.log(`Fixed default templates - kept "${defaultTemplates[0].name}" as default`);
     } else if (defaultTemplates.length === 0) {
       // No default template, set the first active one as default
       const firstActive = await prisma.promptTemplate.findFirst({
@@ -101,21 +101,21 @@ async function seedPromptTemplates() {
           where: { id: firstActive.id },
           data: { is_default: true }
         });
-        console.log(`✅ Set "${firstActive.name}" as default template`);
+        console.log(`Set "${firstActive.name}" as default template`);
       }
     }
 
     // Summary
     const finalCount = await prisma.promptTemplate.count();
-    console.log('\n📈 Seeding Summary:');
+    console.log('\n Seeding Summary:');
     console.log(`   Created: ${created}`);
     console.log(`   Updated: ${updated}`);
     console.log(`   Skipped: ${skipped}`);
     console.log(`   Total templates in DB: ${finalCount}`);
-    console.log('\n✅ Prompt template seeding completed successfully!');
+    console.log('\n Prompt template seeding completed successfully!');
 
   } catch (error: any) {
-    console.error('❌ Fatal error during seeding:', error);
+    console.error('Fatal error during seeding:', error);
     throw error;
   } finally {
     await prisma.$disconnect();
@@ -125,6 +125,6 @@ async function seedPromptTemplates() {
 // Run the seed function
 seedPromptTemplates()
   .catch((error) => {
-    console.error('❌ Seeding failed:', error);
+    console.error('Seeding failed:', error);
     process.exit(1);
   });

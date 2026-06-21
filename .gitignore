@@ -216,7 +216,7 @@ docker-compose.override.yml
 .terraform/
 
 # Helm secrets
-helm/openagenticchat-v3/values-*.yaml
+helm/openagentic/values-*.yaml
 helm-secrets.txt
 *-secret.yaml
 *-secrets.yaml

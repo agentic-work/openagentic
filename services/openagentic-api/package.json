@@ -1,5 +1,5 @@
 {
-  "name": "openagenticchat-api",
+  "name": "openagentic-api",
   "version": "1.0.0",
   "description": "TypeScript API for OpenAgentic Platform",
   "type": "module",

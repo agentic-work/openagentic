@@ -270,7 +270,7 @@ export class InitializationService {
       if (config.components.databaseSchema) {
         await this.initializeDatabaseSchema();
         completedComponents.push('databaseSchema');
-        this.logger.info('✅ Database schema optimized');
+        this.logger.info('Database schema optimized');
       }
 
       // 2. PgVector initialization removed - all vector operations now use Milvus
@@ -281,21 +281,21 @@ export class InitializationService {
         await this.initializeAdminUser();
         await this.initializeTestUser();  // Also create test non-admin user
         completedComponents.push('adminUser');
-        this.logger.info('✅ System, admin, and test users created');
+        this.logger.info('System, admin, and test users created');
       }
 
       // 3. Initialize system prompts and templates (after admin user exists)
       if (config.components.prompts) {
         await this.initializePrompts();
         completedComponents.push('prompts');
-        this.logger.info('✅ Prompts and assignments initialized');
+        this.logger.info('Prompts and assignments initialized');
       }
 
       // 4. Initialize MCP server configurations from environment
       if (config.components.mcpServers) {
         await this.initializeMCPServers();
         completedComponents.push('mcpServers');
-        this.logger.info('✅ MCP server configs initialized');
+        this.logger.info('MCP server configs initialized');
       }
 
       // 5. Initialize Milvus collections for RAG and vector storage
@@ -303,7 +303,7 @@ export class InitializationService {
       if (config.components.milvusCollections) {
         await this.initializeMilvusCollections();
         completedComponents.push('milvusCollections');
-        this.logger.info('✅ Milvus collections and RAG initialized');
+        this.logger.info('Milvus collections and RAG initialized');
       }
 
       // 5b. Prompt-template Milvus indexing RIPPED 2026-05-11 (the chat-pipeline refactor
@@ -314,46 +314,46 @@ export class InitializationService {
       if (config.components.mcpToolIndexing && config.components.milvusCollections) {
         await this.indexMCPToolsInMilvus();
         completedComponents.push('mcpToolIndexing');
-        this.logger.info('✅ MCP tools indexed from MCP Proxy into Milvus');
+        this.logger.info('MCP tools indexed from MCP Proxy into Milvus');
       }
 
       // 7. Initialize core system settings and feature flags
       if (config.components.systemSettings) {
         await this.initializeSystemSettings();
         completedComponents.push('systemSettings');
-        this.logger.info('✅ System settings and feature flags configured');
+        this.logger.info('System settings and feature flags configured');
       }
 
       // 7b. CRITICAL: Seed LLM provider models from .env to database
       // This ensures all models configured in .env are available in Admin Portal
       await this.seedLLMProviderModels();
       completedComponents.push('llmProviderModels');
-      this.logger.info('✅ LLM provider models seeded from environment');
+      this.logger.info('LLM provider models seeded from environment');
 
       // 8. Discover and test model capabilities (NEW)
       if (config.components.modelDiscovery) {
         await this.initializeModelDiscovery();
         completedComponents.push('modelDiscovery');
-        this.logger.info('✅ Model capabilities discovered and indexed');
+        this.logger.info('Model capabilities discovered and indexed');
       }
 
       // 10. COMPREHENSIVE VALIDATION - Validate everything is working before marking as initialized
-      this.logger.info('🔍 Running comprehensive system validation...');
+      this.logger.info('Running comprehensive system validation...');
 
       // Validate LLM providers connectivity
       await this.validateLLMProviders();
       completedComponents.push('llmProviderValidation');
-      this.logger.info('✅ LLM providers validated and accessible');
+      this.logger.info('LLM providers validated and accessible');
       
       // Validate Admin Portal configuration
       await this.validateAdminPortal();
       completedComponents.push('adminPortalValidation');
-      this.logger.info('✅ Admin portal fully configured');
+      this.logger.info('Admin portal fully configured');
       
       // Validate all critical services are healthy
       await this.validateAllServices();
       completedComponents.push('servicesValidation');
-      this.logger.info('✅ All critical services validated');
+      this.logger.info('All critical services validated');
 
       // Only mark as completed if EVERYTHING passes
       await this.markInitialized(completedComponents);
@@ -408,7 +408,7 @@ export class InitializationService {
       });
 
       if (existingSystemUser) {
-        this.logger.info('✅ System user already exists');
+        this.logger.info('System user already exists');
         return;
       }
 
@@ -428,7 +428,7 @@ export class InitializationService {
         }
       });
 
-      this.logger.info(`✅ Created system user: ${systemUser.email} (ID: ${systemUser.id})`);
+      this.logger.info(`Created system user: ${systemUser.email} (ID: ${systemUser.id})`);
     } catch (error) {
       this.logger.error({ error, systemUserId, systemEmail }, 'Failed to create system user');
       throw error;
@@ -559,7 +559,7 @@ export class InitializationService {
       }
     });
     
-    this.logger.info(`✅ Created local_users entry for admin: ${adminEmail}`);
+    this.logger.info(`Created local_users entry for admin: ${adminEmail}`);
     
     // Create Azure auth token if environment variables are provided
     if (adminAadUuid && adminAadAssociation) {
@@ -768,7 +768,7 @@ export class InitializationService {
       }
     });
 
-    this.logger.info(`✅ Created test non-admin user: ${testUserEmail} (password: same as admin)`);
+    this.logger.info(`Created test non-admin user: ${testUserEmail} (password: same as admin)`);
   }
 
   /**
@@ -777,7 +777,7 @@ export class InitializationService {
    */
   private async initializePgVector(): Promise<void> {
     // This method is no longer used - all vector operations moved to Milvus
-    this.logger.info('⚠️ pgvector initialization skipped - using Milvus for all vector operations');
+    this.logger.info('pgvector initialization skipped - using Milvus for all vector operations');
     return;
   }
 
@@ -785,7 +785,7 @@ export class InitializationService {
    * Validate Azure MCP configuration
    */
   private async testAzureMCPForAdmin(): Promise<void> {
-    this.logger.info('⏭️ Using direct LLM provider integration - Azure MCP tools managed by provider manager');
+    this.logger.info('Using direct LLM provider integration - Azure MCP tools managed by provider manager');
   }
 
   /**
@@ -807,7 +807,7 @@ export class InitializationService {
       const del = await this.prisma.mCPServerConfig.deleteMany({ where: { id: { in: LEGACY_MEMORY_MCP_IDS } } });
       await this.prisma.mCPInstance.deleteMany({ where: { server_id: { in: LEGACY_MEMORY_MCP_IDS } } });
       if (del.count > 0) {
-        this.logger.info({ removed: del.count }, '🧹 Removed legacy/phantom MCP rows on boot');
+        this.logger.info({ removed: del.count }, 'Removed legacy/phantom MCP rows on boot');
       }
     } catch (err) {
       this.logger.warn({ err }, 'Legacy MCP row cleanup failed (non-fatal)');
@@ -815,7 +815,7 @@ export class InitializationService {
   }
 
   private async initializeMCPServers(): Promise<void> {
-    this.logger.info('🔧 Initializing MCP server configurations from environment...');
+    this.logger.info('Initializing MCP server configurations from environment...');
     
     try {
       // Parse environment variables
@@ -841,7 +841,7 @@ export class InitializationService {
       const LEGACY_MEMORY_MCP_IDS = [
         'memory-mcp', 'memory-simple', 'memory-builtin', 'memory-external', 'agentic-memory-mcp',
       ];
-      this.logger.info('🧹 Cleaning up old memory MCP configurations...');
+      this.logger.info('Cleaning up old memory MCP configurations...');
       await this.prisma.mCPServerConfig.deleteMany({
         where: {
           id: { in: LEGACY_MEMORY_MCP_IDS }
@@ -1004,7 +1004,7 @@ export class InitializationService {
         }
       }
       
-      this.logger.info(`✅ MCP server configuration completed - ${configs.length} configs active`);
+      this.logger.info(`MCP server configuration completed - ${configs.length} configs active`);
     } catch (error) {
       this.logger.error({ error }, 'Failed to initialize MCP servers');
       throw error;
@@ -1069,7 +1069,7 @@ export class InitializationService {
       });
     }
 
-    this.logger.info('✅ All system settings initialized');
+    this.logger.info('All system settings initialized');
   }
 
   /**
@@ -1082,7 +1082,7 @@ export class InitializationService {
    * the initial seeding from environment configuration.
    */
   private async seedLLMProviderModels(): Promise<void> {
-    this.logger.info('🔄 Seeding LLM provider models from environment to database...');
+    this.logger.info('Seeding LLM provider models from environment to database...');
 
     try {
       // Collect all AWS Bedrock models from environment
@@ -1378,7 +1378,7 @@ export class InitializationService {
    * Uses Prisma's built-in methods to verify schema without raw SQL
    */
   private async initializeDatabaseSchema(): Promise<void> {
-    this.logger.info('🗄️ Verifying database schema with retry logic...');
+    this.logger.info('Verifying database schema with retry logic...');
     
     const maxRetries = 30;
     let lastError: any;
@@ -1404,7 +1404,7 @@ export class InitializationService {
         const mcpConfigCount = await this.prisma.mCPServerConfig.count();
         this.logger.debug(`MCP configs table verified (${mcpConfigCount} configs)`);
         
-        this.logger.info('✅ Database schema verified - all critical tables exist');
+        this.logger.info('Database schema verified - all critical tables exist');
         return; // Success - exit retry loop
         
       } catch (error: any) {
@@ -1427,14 +1427,14 @@ export class InitializationService {
         
         // If it's a schema error, fail immediately
         if (errorMessage.includes('column') || errorMessage.includes('relation')) {
-          this.logger.error({ err: error }, '❌ Database schema verification failed - tables missing');
+          this.logger.error({ err: error }, 'Database schema verification failed - tables missing');
           throw new Error('Database schema not initialized. Run: npx prisma db push');
         }
       }
     }
     
     // If we get here, all retries failed
-    this.logger.error({ err: lastError }, '❌ Database connection failed after all retries');
+    this.logger.error({ err: lastError }, 'Database connection failed after all retries');
     throw new Error(`Database connection failed after ${maxRetries} attempts: ${lastError?.message}`);
   }
 
@@ -1442,7 +1442,7 @@ export class InitializationService {
    * Initialize Milvus collections for RAG and vector storage with retry logic
    */
   private async initializeMilvusCollections(): Promise<void> {
-    this.logger.info('🔍 Initializing Milvus collections with retry logic...');
+    this.logger.info('Initializing Milvus collections with retry logic...');
     
     // Connect to Milvus using service discovery
     const milvusAddress = process.env.MILVUS_ADDRESS || 
@@ -1468,7 +1468,7 @@ export class InitializationService {
           throw new Error('Milvus is not healthy');
         }
         
-        this.logger.info(`✅ Connected to Milvus at ${milvusAddress}`);
+        this.logger.info(`Connected to Milvus at ${milvusAddress}`);
         break; // Success - exit retry loop
         
       } catch (error: any) {
@@ -1492,7 +1492,7 @@ export class InitializationService {
     }
     
     if (!milvus) {
-      this.logger.error({ err: lastError, milvusAddress }, '❌ Milvus connection failed after all retries');
+      this.logger.error({ err: lastError, milvusAddress }, 'Milvus connection failed after all retries');
       throw new Error(`Milvus connection failed after ${maxRetries} attempts: ${lastError?.message}`);
     }
 
@@ -1532,13 +1532,13 @@ export class InitializationService {
   private async initializeModelDiscovery(): Promise<void> {
     // Check if model discovery is disabled (RECOMMENDED for production to avoid rate limits)
     if (process.env.DISABLE_MODEL_DISCOVERY === 'true') {
-      this.logger.info('⏭️ Model discovery DISABLED (DISABLE_MODEL_DISCOVERY=true) - using pre-configured models');
+      this.logger.info('Model discovery DISABLED (DISABLE_MODEL_DISCOVERY=true) - using pre-configured models');
       this.logger.info('   This prevents excessive API calls that can cause rate limiting with Azure AI Foundry');
       return;
     }
 
-    this.logger.info('🤖 Starting model discovery and capability testing...');
-    this.logger.warn('⚠️ Model discovery makes API calls to LLM providers - set DISABLE_MODEL_DISCOVERY=true to prevent rate limiting');
+    this.logger.info('Starting model discovery and capability testing...');
+    this.logger.warn('Model discovery makes API calls to LLM providers - set DISABLE_MODEL_DISCOVERY=true to prevent rate limiting');
 
     try {
       const { ModelCapabilityDiscoveryService, setModelCapabilityDiscoveryService } = await import('./ModelCapabilityDiscoveryService.js');
@@ -1597,7 +1597,7 @@ export class InitializationService {
       // Set as singleton for global access
       setModelCapabilityDiscoveryService(discoveryService);
 
-      this.logger.info('✅ Model discovery complete - capabilities indexed in Milvus');
+      this.logger.info('Model discovery complete - capabilities indexed in Milvus');
 
     } catch (error) {
       // Model discovery is non-critical - system can work with defaults
@@ -1610,12 +1610,12 @@ export class InitializationService {
    * This allows the LLM to know how to use Azure tools without MCP calls
    */
   private async initializeAzureSDKKnowledge(): Promise<void> {
-    this.logger.info('📚 Starting Azure SDK documentation ingestion...');
+    this.logger.info('Starting Azure SDK documentation ingestion...');
 
     try {
       // Check if Milvus is available
       if (process.env.DISABLE_MILVUS === 'true' || process.env.SKIP_MILVUS_INIT === 'true') {
-        this.logger.info('⏭️ Skipping Azure SDK knowledge ingestion (Milvus disabled)');
+        this.logger.info('Skipping Azure SDK knowledge ingestion (Milvus disabled)');
         return;
       }
 
@@ -1700,11 +1700,11 @@ export class InitializationService {
    * Validate LLM providers are accessible
    */
   private async validateLLMProviders(): Promise<void> {
-    this.logger.info('🔍 Validating LLM providers...');
+    this.logger.info('Validating LLM providers...');
 
     // TEMPORARILY SKIP VALIDATION - direct LLM integration is working but validation is timing out
     // This allows the system to start up faster
-    this.logger.warn('⏭️ Skipping LLM provider validation to speed up startup - LLM provider connectivity will be validated on first use');
+    this.logger.warn('Skipping LLM provider validation to speed up startup - LLM provider connectivity will be validated on first use');
     return;
   }
 
@@ -1720,7 +1720,7 @@ export class InitializationService {
    * boot-time gate on prompt rows.
    */
   private async validateAdminPortal(): Promise<void> {
-    this.logger.info('🔍 Validating Admin Portal configuration...');
+    this.logger.info('Validating Admin Portal configuration...');
 
     try {
       const adminCount = await this.prisma.user.count({
@@ -1745,7 +1745,7 @@ export class InitializationService {
       }, '✅ Admin Portal fully configured');
 
     } catch (error: any) {
-      this.logger.error({ err: error }, '❌ Admin Portal validation failed');
+      this.logger.error({ err: error }, 'Admin Portal validation failed');
       throw new Error(`Admin Portal validation failed: ${error.message}`);
     }
   }
@@ -1760,7 +1760,7 @@ export class InitializationService {
    * Index MCP tools from MCP Proxy into Milvus for semantic search
    */
   private async indexMCPToolsInMilvus(): Promise<void> {
-    this.logger.info('🔧 Starting MCP tool indexing from MCP Proxy into Milvus...');
+    this.logger.info('Starting MCP tool indexing from MCP Proxy into Milvus...');
 
     // Check if we should skip re-indexing
     const skipReindexEnv = process.env.SKIP_MCP_TOOL_REINDEX !== 'false'; // Default to skip
@@ -1798,7 +1798,7 @@ export class InitializationService {
       const milvusAddress = process.env.MILVUS_ADDRESS ||
         `${serviceDiscovery.milvus.host}:${serviceDiscovery.milvus.port}`;
 
-      this.logger.info(`🔌 Connecting to Milvus at ${milvusAddress} for MCP tool indexing...`);
+      this.logger.info(`Connecting to Milvus at ${milvusAddress} for MCP tool indexing...`);
 
       const milvus = new MilvusClient({
         address: milvusAddress,
@@ -1818,7 +1818,7 @@ export class InitializationService {
         // Run the indexing process
         await mcpIndexingService.indexAllMCPTools();
 
-        this.logger.info('✅ MCP tools successfully indexed from MCP Proxy into Milvus');
+        this.logger.info('MCP tools successfully indexed from MCP Proxy into Milvus');
 
         // Start periodic indexing (every 30 minutes by default)
         const indexingInterval = parseInt(process.env.MCP_INDEXING_INTERVAL_MINUTES || '30');
@@ -1836,7 +1836,7 @@ export class InitializationService {
         // Close Milvus connection
         try {
           await milvus.closeConnection();
-          this.logger.info('✅ Milvus connection closed after MCP indexing');
+          this.logger.info('Milvus connection closed after MCP indexing');
         } catch (error) {
           this.logger.warn({ error }, 'Failed to close Milvus connection after MCP indexing');
         }
@@ -1849,7 +1849,7 @@ export class InitializationService {
       }, '❌ Failed to index MCP tools from MCP Proxy into Milvus');
 
       // Don't throw - this is not critical for system operation, just means no semantic tool search
-      this.logger.warn('⚠️ System will continue without MCP semantic tool search - tools will use fallback');
+      this.logger.warn('System will continue without MCP semantic tool search - tools will use fallback');
     }
   }
 
@@ -1857,7 +1857,7 @@ export class InitializationService {
    * Validate all critical services are healthy
    */
   private async validateAllServices(): Promise<void> {
-    this.logger.info('🔍 Validating all critical services...');
+    this.logger.info('Validating all critical services...');
     
     const validationResults = {
       database: false,
@@ -1872,9 +1872,9 @@ export class InitializationService {
         // Use Prisma's built-in connection test
         await this.prisma.user.count();
         validationResults.database = true;
-        this.logger.info('✅ Database connection healthy');
+        this.logger.info('Database connection healthy');
       } catch (error) {
-        this.logger.error({ err: error }, '❌ Database connection failed');
+        this.logger.error({ err: error }, 'Database connection failed');
         throw new Error('Database connection validation failed');
       }
       
@@ -1901,14 +1901,14 @@ export class InitializationService {
             await redis.quit();
             validationResults.redis = true;
             redisConnected = true;
-            this.logger.info(`✅ Redis connection healthy at ${serviceDiscovery.redis.url}`);
+            this.logger.info(`Redis connection healthy at ${serviceDiscovery.redis.url}`);
           } catch (error: any) {
             if (attempt < maxRedisRetries) {
               const waitTime = Math.min(attempt * 1000, 5000);
               this.logger.warn(`Redis not ready (attempt ${attempt}/${maxRedisRetries}). Retrying in ${waitTime}ms...`);
               await new Promise(resolve => setTimeout(resolve, waitTime));
             } else {
-              this.logger.warn({ err: error, redis: serviceDiscovery.redis.url }, '⚠️ Redis connection failed after retries - continuing without caching');
+              this.logger.warn({ err: error, redis: serviceDiscovery.redis.url }, 'Redis connection failed after retries - continuing without caching');
               // Don't throw - Redis is optional
             }
           }
@@ -1933,7 +1933,7 @@ export class InitializationService {
             if (health.isHealthy) {
               validationResults.milvus = true;
               milvusConnected = true;
-              this.logger.info(`✅ Milvus vector database healthy at ${serviceDiscovery.milvus.url}`);
+              this.logger.info(`Milvus vector database healthy at ${serviceDiscovery.milvus.url}`);
             } else {
               throw new Error('Milvus reported unhealthy status');
             }
@@ -1943,7 +1943,7 @@ export class InitializationService {
               this.logger.warn(`Milvus not ready (attempt ${attempt}/${maxMilvusRetries}). Retrying in ${waitTime}ms...`);
               await new Promise(resolve => setTimeout(resolve, waitTime));
             } else {
-              this.logger.warn({ err: error, milvus: serviceDiscovery.milvus.url }, '⚠️ Milvus connection failed after retries - vector features disabled');
+              this.logger.warn({ err: error, milvus: serviceDiscovery.milvus.url }, 'Milvus connection failed after retries - vector features disabled');
               // Don't throw - Milvus is optional for basic functionality
             }
           }
@@ -1952,7 +1952,7 @@ export class InitializationService {
       
       // 4. MCP Orchestrator
       validationResults.mcpOrchestrator = true;
-      this.logger.info('✅ MCP Orchestrator service validation passed')
+      this.logger.info('MCP Orchestrator service validation passed')
       
       // Log final validation summary
       this.logger.info({
@@ -1967,7 +1967,7 @@ export class InitializationService {
       }
       
     } catch (error) {
-      this.logger.error({ err: error }, '❌ Service validation failed');
+      this.logger.error({ err: error }, 'Service validation failed');
       throw error;
     }
   }

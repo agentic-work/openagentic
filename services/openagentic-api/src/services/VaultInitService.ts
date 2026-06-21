@@ -37,38 +37,38 @@ export class VaultInitService {
     try {
       if (!this.vaultEnabled) {
         if (process.env.VAULT_ENABLED === 'true' && this.vaultToken === '') {
-          this.logger.warn('🔐 Vault is enabled but VAULT_TOKEN is not set — treating Vault as disabled and falling back to environment secrets');
+          this.logger.warn('Vault is enabled but VAULT_TOKEN is not set — treating Vault as disabled and falling back to environment secrets');
         } else {
-          this.logger.info('🔐 Vault is disabled (VAULT_ENABLED=false), skipping Vault initialization');
+          this.logger.info('Vault is disabled (VAULT_ENABLED=false), skipping Vault initialization');
         }
         return;
       }
 
-      this.logger.info('🔐 Initializing Vault connection...');
+      this.logger.info('Initializing Vault connection...');
 
       // Check Vault health
       const healthCheck = await this.checkVaultHealth();
       if (!healthCheck) {
-        this.logger.warn('⚠️ Vault is not healthy, skipping secret initialization');
+        this.logger.warn('Vault is not healthy, skipping secret initialization');
         return;
       }
 
       // Check if secrets already exist
       const secretsExist = await this.checkSecretsExist();
       if (!secretsExist) {
-        this.logger.info('📝 Populating initial secrets to Vault from environment...');
+        this.logger.info('Populating initial secrets to Vault from environment...');
         // First-time setup: populate secrets from environment
         await this.populateSecrets();
       }
       
       // ALWAYS load secrets from Vault (single source of truth)
-      this.logger.info('🔑 Loading secrets from Vault...');
+      this.logger.info('Loading secrets from Vault...');
       await this.loadSecretsFromVault();
       
       this.initialized = true;
-      this.logger.info('✅ Vault initialization complete - secrets loaded');
+      this.logger.info('Vault initialization complete - secrets loaded');
     } catch (error) {
-      this.logger.error({ err: error }, '❌ Failed to initialize Vault');
+      this.logger.error({ err: error }, 'Failed to initialize Vault');
       throw error;
     }
   }
@@ -226,7 +226,7 @@ export class VaultInitService {
         throw new Error(`Failed to write secret to ${secret.path}: ${error}`);
       }
 
-      this.logger.info(`✅ Secret written to ${secret.path}`);
+      this.logger.info(`Secret written to ${secret.path}`);
     } catch (error) {
       this.logger.error({ err: error, path: secret.path }, 'Failed to write secret');
       throw error;
@@ -276,7 +276,7 @@ export class VaultInitService {
         process.env.POSTGRES_PASSWORD = dbSecrets.password || process.env.POSTGRES_PASSWORD;
         process.env.DATABASE_URL = dbSecrets.url || process.env.DATABASE_URL;
         process.env.DATABASE_ENCRYPTION_KEY = dbSecrets.encryption_key || process.env.DATABASE_ENCRYPTION_KEY;
-        this.logger.info('✅ Database secrets loaded from Vault');
+        this.logger.info('Database secrets loaded from Vault');
       }
 
       // Load Azure secrets
@@ -291,7 +291,7 @@ export class VaultInitService {
         process.env.AZURE_OPENAI_DEPLOYMENT = azureSecrets.openai_deployment || process.env.AZURE_OPENAI_DEPLOYMENT;
         process.env.AZURE_OPENAI_API_VERSION = azureSecrets.openai_api_version || process.env.AZURE_OPENAI_API_VERSION;
         process.env.AZURE_AD_ADMIN_GROUP = azureSecrets.ad_admin_group || process.env.AZURE_AD_ADMIN_GROUP;
-        this.logger.info('✅ Azure secrets loaded from Vault');
+        this.logger.info('Azure secrets loaded from Vault');
       }
 
       // Load API secrets
@@ -303,7 +303,7 @@ export class VaultInitService {
         process.env.JWT_SECRET = apiSecrets.jwt_secret || process.env.JWT_SECRET;
         process.env.SESSION_SECRET = apiSecrets.session_secret || process.env.SESSION_SECRET;
         process.env.INTERNAL_MCP_API_KEY = apiSecrets.internal_mcp_api_key || process.env.INTERNAL_MCP_API_KEY;
-        this.logger.info('✅ API secrets loaded from Vault');
+        this.logger.info('API secrets loaded from Vault');
       }
 
       // Load admin credentials
@@ -311,7 +311,7 @@ export class VaultInitService {
       if (adminSecrets) {
         process.env.ADMIN_USER_EMAIL = adminSecrets.email || process.env.ADMIN_USER_EMAIL;
         process.env.ADMIN_USER_PASSWORD = adminSecrets.password || process.env.ADMIN_USER_PASSWORD;
-        this.logger.info('✅ Admin credentials loaded from Vault');
+        this.logger.info('Admin credentials loaded from Vault');
       }
 
       // Load Redis secrets
@@ -321,10 +321,10 @@ export class VaultInitService {
         process.env.REDIS_PORT = redisSecrets.port || process.env.REDIS_PORT;
         process.env.REDIS_PASSWORD = redisSecrets.password || process.env.REDIS_PASSWORD;
         process.env.REDIS_URL = redisSecrets.url || process.env.REDIS_URL;
-        this.logger.info('✅ Redis secrets loaded from Vault');
+        this.logger.info('Redis secrets loaded from Vault');
       }
 
-      this.logger.info('🔐 All secrets loaded from Vault successfully');
+      this.logger.info('All secrets loaded from Vault successfully');
     } catch (error) {
       this.logger.error({ err: error }, 'Failed to load secrets from Vault');
       throw error;

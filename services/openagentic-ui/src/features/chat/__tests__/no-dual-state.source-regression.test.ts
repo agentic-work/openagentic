@@ -3,7 +3,7 @@
  * outside the canonical reducer.
  *
  * REGRESSION pin — Track B Phase 0 of the canonical streaming rip
- * (<internal-plan>, Phases 3+4).
+ * (Phases 3+4).
  *
  * Smoking gun in useChatStream.ts:
  *   - `let assistantMessage = ''` at line ~2575, appended in 6 sites

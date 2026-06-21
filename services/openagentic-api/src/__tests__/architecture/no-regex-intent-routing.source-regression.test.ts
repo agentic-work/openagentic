@@ -1,14 +1,13 @@
 /**
  * Architecture gate: no regex / keyword-based intent routing in chat pipeline.
  *
- * Plan reference: <internal-plan>
  * Branch: chatmode-ux-mock-parity
  *
  * The user demonstrated the failure mode three times in a row on the same
  * prompt — "show me cloud resources and give me a sankey cost diagram for
  * the last 6 months" — because of stacked regex classifiers gating the
- * routing. The reference architecture is Claude Code's actual source at
- * <claude-code-src>: static prompt + full ~40-tool array + model
+ * routing. The reference architecture follows Claude Code's approach:
+ * static prompt + full ~40-tool array + model
  * decides. NO regex routing, NO LLM-classifier gate, NO delegation
  * filter, NO artifact-fence post-strip.
  *

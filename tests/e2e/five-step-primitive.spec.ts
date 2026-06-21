@@ -23,11 +23,11 @@
  * also run via `npx playwright test` for human-driven verification.
  *
  *   Re-auth (when token expired):
- *     cd <internal-upstream>/tests/e2e
+ *     cd tests/e2e
  *     npx playwright test auth.setup.ts --project=auth-setup --headed
  *
  *   Run this spec:
- *     cd <internal-upstream>/tests/e2e
+ *     cd tests/e2e
  *     BASE_URL=https://chat.example.com npx playwright test five-step-primitive.spec.ts
  *
  * Evidence captured to:

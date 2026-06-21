@@ -1,7 +1,7 @@
 /**
  * Phase A.1 — RED test for `input_examples` on the 3 artifact tools.
  *
- * Plan ref: <internal-plan> Track A Phase A.1
+ * Track A Phase A.1.
  *
  * Anthropic tool-use docs identify `input_examples` as a first-class schema
  * field: "Examples are included in the prompt alongside your tool schema,

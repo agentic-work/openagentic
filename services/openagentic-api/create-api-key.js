@@ -49,7 +49,7 @@ async function main() {
       }
     });
 
-    console.log('\n✅ API Key created successfully!');
+    console.log('\n API Key created successfully!');
     console.log(`\nAPI Key ID: ${apiKeyRecord.id}`);
     console.log(`Name: ${apiKeyRecord.name}`);
     console.log(`\nAPI Key (save this - shown only once):\n${apiKey}\n`);

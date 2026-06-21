@@ -15,9 +15,25 @@ import { prisma } from '../utils/prisma.js';
 
 import crypto from 'crypto';
 
-// Resolve JWT_SECRET: use env var if set and not a placeholder, otherwise generate a runtime secret
+// Resolve JWT_SECRET at module load.
+//   - A real secret is used as-is.
+//   - A missing or placeholder secret is a fail-fast error IN PRODUCTION: a
+//     random ephemeral per-replica secret causes cross-pod 401s and wipes
+//     sessions on restart, so we refuse to boot rather than silently degrade.
+//   - In non-production (dev/test) a missing/placeholder secret falls back to
+//     an ephemeral runtime secret so a fresh local checkout just works.
 const rawJwtSecret = process.env.JWT_SECRET;
 const isPlaceholder = !rawJwtSecret || rawJwtSecret.toLowerCase().includes('placeholder');
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isPlaceholder && isProduction) {
+  throw new Error(
+    '[CRITICAL] JWT_SECRET is missing or contains a placeholder value in production. ' +
+      'Refusing to boot with an ephemeral per-replica secret (it causes cross-pod 401s ' +
+      'and wipes sessions on restart). Fix: set a real JWT_SECRET in Helm values or Vault ESO.',
+  );
+}
+
 const JWT_SECRET = isPlaceholder
   ? crypto.randomBytes(64).toString('hex')
   : rawJwtSecret;

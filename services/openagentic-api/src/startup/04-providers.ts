@@ -13,7 +13,7 @@ export const INIT_PROVIDERS: BootstrapStep = {
   name: 'providers-init',
   critical: false,
   async run({ ctx }) {
-    loggers.services.info('🤖 Initializing LLM Provider Manager...');
+    loggers.services.info('Initializing LLM Provider Manager...');
     try {
       const configService = new ProviderConfigService(loggers.services);
       const config = await configService.loadProviderConfig();
@@ -23,19 +23,19 @@ export const INIT_PROVIDERS: BootstrapStep = {
       setProviderManager(ctx.providerManager);
       subscribeProviderReload(loggers.services).catch(() => {});
 
-      loggers.services.info('✅ LLM Provider Manager initialized successfully');
+      loggers.services.info('LLM Provider Manager initialized successfully');
 
       // ModelRouter shadow mode
       try {
         const { initializeModelRouter } = await import('../services/model-routing/index.js');
         initializeModelRouter({ prisma, logger: loggers.services });
-        loggers.services.info('✅ ModelRouter (shadow mode) initialized');
+        loggers.services.info('ModelRouter (shadow mode) initialized');
       } catch (err) {
-        loggers.services.warn({ err }, '⚠️ ModelRouter init failed — shadow mode disabled (routing unaffected)');
+        loggers.services.warn({ err }, 'ModelRouter init failed — shadow mode disabled (routing unaffected)');
       }
 
       // Model Capability Registry
-      loggers.services.info('📊 Initializing Model Capability Registry for pricing and capabilities...');
+      loggers.services.info('Initializing Model Capability Registry for pricing and capabilities...');
       try {
         const modelCapabilityRegistry = new ModelCapabilityRegistry(loggers.services, prisma);
         await modelCapabilityRegistry.initialize();
@@ -46,12 +46,12 @@ export const INIT_PROVIDERS: BootstrapStep = {
           modelsWithPricing: allModels.filter(m => m.inputCostPer1k !== undefined).length
         }, '✅ Model Capability Registry initialized - costs will be tracked accurately');
       } catch (registryError) {
-        loggers.services.warn({ err: registryError }, '⚠️ Model Capability Registry initialization failed - using fallback pricing');
+        loggers.services.warn({ err: registryError }, 'Model Capability Registry initialization failed - using fallback pricing');
       }
 
       // Model Health Check
       ctx.modelHealthCheck = new ModelHealthCheckService(loggers.services, ctx.providerManager!);
-      loggers.services.info('✅ Model Health Check Service initialized with ProviderManager');
+      loggers.services.info('Model Health Check Service initialized with ProviderManager');
 
       // Phase E.1 (2026-05-10) — classifier-instantiation REMOVED.
       // Spec §50: "Three plain functions. No registry. No composer. No
@@ -103,7 +103,7 @@ export const INIT_PROVIDERS: BootstrapStep = {
               '⚠️ Ollama warm-up failed (non-fatal) — first request will be slower');
           }
         } else {
-          loggers.services.info('⏭️  Ollama warm-up skipped (OLLAMA_WARMUP_MODEL not set)');
+          loggers.services.info('Ollama warm-up skipped (OLLAMA_WARMUP_MODEL not set)');
         }
 
         // Schedule periodic feedback ingestion
@@ -115,7 +115,7 @@ export const INIT_PROVIDERS: BootstrapStep = {
         }, 30 * 60_000);
 
       } catch (routerError) {
-        loggers.services.warn({ err: routerError }, '⚠️ Smart Model Router initialization failed - using default model selection');
+        loggers.services.warn({ err: routerError }, 'Smart Model Router initialization failed - using default model selection');
       }
 
       // RegistrySyncJob
@@ -131,13 +131,13 @@ export const INIT_PROVIDERS: BootstrapStep = {
         });
         syncJob.start();
         setRegistrySyncJob(syncJob);
-        loggers.services.info('✅ RegistrySyncJob started (30s interval, Ollama + AIF only)');
+        loggers.services.info('RegistrySyncJob started (30s interval, Ollama + AIF only)');
       } catch (syncErr) {
-        loggers.services.warn({ err: syncErr }, '⚠️ RegistrySyncJob start failed — Registry will not auto-sync');
+        loggers.services.warn({ err: syncErr }, 'RegistrySyncJob start failed — Registry will not auto-sync');
       }
 
     } catch (error) {
-      loggers.services.warn({ err: error }, '⚠️ LLM Provider Manager initialization failed - title generation will be disabled');
+      loggers.services.warn({ err: error }, 'LLM Provider Manager initialization failed - title generation will be disabled');
     }
 
     // AgentRegistry — seed default agents
@@ -145,18 +145,18 @@ export const INIT_PROVIDERS: BootstrapStep = {
       const { AgentRegistry } = await import('../services/AgentRegistry.js');
       const agentRegistry = new AgentRegistry();
       await agentRegistry.initialize();
-      loggers.services.info('✅ AgentRegistry initialized — default agents seeded to database');
+      loggers.services.info('AgentRegistry initialized — default agents seeded to database');
     } catch (agentErr) {
-      loggers.services.warn({ err: agentErr }, '⚠️ AgentRegistry initialization failed — agents may need manual seeding');
+      loggers.services.warn({ err: agentErr }, 'AgentRegistry initialization failed — agents may need manual seeding');
     }
 
     // Flows Expert meta-agent — seeded into SOT, available to flows + AI right-rail.
     try {
       const { seedFlowsExpertAgent } = await import('../services/__seed__/agents/flowsExpertAgent.js');
       const id = await seedFlowsExpertAgent();
-      if (id) loggers.services.info({ agentId: id }, '✅ Flows Expert agent seeded');
+      if (id) loggers.services.info({ agentId: id }, 'Flows Expert agent seeded');
     } catch (fxErr) {
-      loggers.services.warn({ err: fxErr }, '⚠️ Flows Expert agent seed failed — meta-agent unavailable');
+      loggers.services.warn({ err: fxErr }, 'Flows Expert agent seed failed — meta-agent unavailable');
     }
 
     // Workflow templates auto-seed
@@ -170,7 +170,7 @@ export const INIT_PROVIDERS: BootstrapStep = {
         );
       }
     } catch (tplErr) {
-      loggers.services.warn({ err: tplErr }, '⚠️ Workflow template auto-seed failed — flows workspace may be empty');
+      loggers.services.warn({ err: tplErr }, 'Workflow template auto-seed failed — flows workspace may be empty');
     }
 
     // DLP Scanner
@@ -180,16 +180,16 @@ export const INIT_PROVIDERS: BootstrapStep = {
       // getDLPScannerInstance() returns the same instance (set by initializeDLPScanner)
       const rules = dlpScanner.getRules();
       const enabled = rules.filter((r: any) => r.enabled).length;
-      loggers.services.info({ totalRules: rules.length, enabledRules: enabled }, '✅ DLP Scanner initialized with persisted config');
+      loggers.services.info({ totalRules: rules.length, enabledRules: enabled }, 'DLP Scanner initialized with persisted config');
     } catch (dlpErr) {
-      loggers.services.warn({ err: dlpErr }, '⚠️ DLP Scanner initialization failed — scanning disabled');
+      loggers.services.warn({ err: dlpErr }, 'DLP Scanner initialization failed — scanning disabled');
     }
 
     // LLM provider seeding (runs after route registration; kept here as post-provider step)
     try {
       const { seedLLMProviders } = await import('../services/LLMProviderSeeder.js');
       await seedLLMProviders();
-      loggers.services.info('✅ LLM provider seeding complete');
+      loggers.services.info('LLM provider seeding complete');
 
       // Registry SoT v1 — idempotent bootstrap seeder (F2.5).
       // Replaces the legacy boot-time write seeders (retired in F2.3/F2.4).
@@ -199,7 +199,7 @@ export const INIT_PROVIDERS: BootstrapStep = {
         const { seedRegistryFromHelm } = await import('../services/model-routing/RegistryBootstrapSeeder.js');
         const { prisma: p } = await import('../utils/prisma.js');
         const result = await seedRegistryFromHelm({ prisma: p as any, logger: loggers.services });
-        loggers.services.info(result, '✅ Registry bootstrap seeding complete (RegistryBootstrapSeeder)');
+        loggers.services.info(result, 'Registry bootstrap seeding complete (RegistryBootstrapSeeder)');
       } catch (err: any) {
         loggers.services.warn({ error: err?.message }, 'RegistryBootstrapSeeder failed — Registry will show only admin-added rows; admin UI can seed manually');
       }
@@ -211,10 +211,10 @@ export const INIT_PROVIDERS: BootstrapStep = {
       // second chat model. No-op unless OLLAMA_ENABLED=true + OLLAMA_CHAT_MODEL
       // set + a non-Ollama bootstrap provider exists.
       try {
-        loggers.services.info('▶️ Invoking seedSecondaryOllamaProvider (boot step) — second chat model under "Both"');
+        loggers.services.info('Invoking seedSecondaryOllamaProvider (boot step) — second chat model under "Both"');
         const { seedSecondaryOllamaProvider } = await import('../services/LLMProviderSeeder.js');
         await seedSecondaryOllamaProvider();
-        loggers.services.info('✅ seedSecondaryOllamaProvider boot step returned');
+        loggers.services.info('seedSecondaryOllamaProvider boot step returned');
       } catch (err: any) {
         loggers.services.warn({ error: err?.message }, 'seedSecondaryOllamaProvider failed — second chat model absent; admin can add via UI');
       }
@@ -356,19 +356,19 @@ export const INIT_PROVIDERS: BootstrapStep = {
         loggers.services.debug({ err: dbEmbErr }, 'Could not load DB embedding config (will use env vars)');
       }
     } catch (err) {
-      loggers.services.warn({ err }, '⚠️ LLM provider seeding failed - continuing with existing DB config');
+      loggers.services.warn({ err }, 'LLM provider seeding failed - continuing with existing DB config');
     }
 
     // Pipeline Hook System
     try {
-      loggers.services.info('🔄 Initializing Pipeline Hook System...');
+      loggers.services.info('Initializing Pipeline Hook System...');
       const { initializeHookRunner } = await import('../pipeline/hooks.js');
       const { registerBuiltInHooks } = await import('../pipeline/built-in-hooks.js');
       const hookRunner = initializeHookRunner(loggers.services);
       registerBuiltInHooks(hookRunner, loggers.services);
-      loggers.services.info('✅ Pipeline Hook System initialized — hooks active');
+      loggers.services.info('Pipeline Hook System initialized — hooks active');
     } catch (err) {
-      loggers.services.warn({ err }, '⚠️ Pipeline Hook System init failed — continuing without hooks');
+      loggers.services.warn({ err }, 'Pipeline Hook System init failed — continuing without hooks');
     }
   },
 };

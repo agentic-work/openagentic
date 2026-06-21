@@ -29,7 +29,7 @@ async function connectToMilvus() {
       const healthCheck = await client.checkHealth();
       const state = classifyMilvusHealth(healthCheck);
       if (state === 'ready') {
-        loggers.services.info(`✅ Milvus connected (fatalAttempt=${fatalAttempt}, recoveryAttempt=${recoveryAttempt})`);
+        loggers.services.info(`Milvus connected (fatalAttempt=${fatalAttempt}, recoveryAttempt=${recoveryAttempt})`);
         return client;
       }
       if (state === 'recovering') {
@@ -40,16 +40,16 @@ async function connectToMilvus() {
       if (error?.name === 'MilvusRecoveringError') {
         recoveryAttempt++;
         if (recoveryAttempt >= RECOVERY_MAX_ATTEMPTS) {
-          loggers.services.fatal({ error: error.message }, `🚨 FATAL: Milvus still recovering after ${RECOVERY_MAX_ATTEMPTS} attempts (${(RECOVERY_MAX_ATTEMPTS * RECOVERY_INTERVAL_MS) / 1000}s)`);
+          loggers.services.fatal({ error: error.message }, `FATAL: Milvus still recovering after ${RECOVERY_MAX_ATTEMPTS} attempts (${(RECOVERY_MAX_ATTEMPTS * RECOVERY_INTERVAL_MS) / 1000}s)`);
           throw error;
         }
-        loggers.services.warn({ recoveryAttempt }, `⏳ Milvus collections still loading — waiting ${RECOVERY_INTERVAL_MS / 1000}s (recovery ${recoveryAttempt}/${RECOVERY_MAX_ATTEMPTS})`);
+        loggers.services.warn({ recoveryAttempt }, `Milvus collections still loading — waiting ${RECOVERY_INTERVAL_MS / 1000}s (recovery ${recoveryAttempt}/${RECOVERY_MAX_ATTEMPTS})`);
         await new Promise(resolve => setTimeout(resolve, RECOVERY_INTERVAL_MS));
         continue;
       }
       fatalAttempt++;
       if (fatalAttempt >= FATAL_MAX_ATTEMPTS) {
-        loggers.services.fatal({ error: error.message }, `🚨 FATAL: Cannot connect to Milvus after ${FATAL_MAX_ATTEMPTS} fatal attempts`);
+        loggers.services.fatal({ error: error.message }, `FATAL: Cannot connect to Milvus after ${FATAL_MAX_ATTEMPTS} fatal attempts`);
         throw new Error(`Milvus connection failed after ${FATAL_MAX_ATTEMPTS} attempts: ${error.message}`);
       }
       loggers.services.warn({ error: error.message, attempt: fatalAttempt },
@@ -63,7 +63,7 @@ export const INIT_MILVUS: BootstrapStep = {
   name: 'milvus-init',
   critical: true,
   async run({ ctx }) {
-    loggers.services.info('🔄 Connecting to Milvus vector database (MANDATORY)...');
+    loggers.services.info('Connecting to Milvus vector database (MANDATORY)...');
 
     ctx.milvusClient = await connectToMilvus();
     setMilvusClient(ctx.milvusClient);
@@ -72,7 +72,7 @@ export const INIT_MILVUS: BootstrapStep = {
     const { MilvusVectorService } = await import('../services/MilvusVectorService.js');
     ctx.milvusVectorService = new MilvusVectorService(ctx.providerManager as any);
     await ctx.milvusVectorService.initialize();
-    loggers.services.info('✅ MilvusVectorService initialized');
+    loggers.services.info('MilvusVectorService initialized');
 
     // Export global (Phase 4 removes)
     global.milvusVectorService = ctx.milvusVectorService;

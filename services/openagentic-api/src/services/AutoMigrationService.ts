@@ -101,7 +101,7 @@ export class AutoMigrationService {
     };
 
     try {
-      logger.info('🔄 Starting auto-migration check...');
+      logger.info('Starting auto-migration check...');
 
       // Step 1: Check database connectivity
       await this.ensureDatabaseConnection();
@@ -113,7 +113,7 @@ export class AutoMigrationService {
       const isFreshDatabase = await this.isFreshDatabase();
 
       if (isFreshDatabase) {
-        logger.info('🆕 Fresh database detected - running initial schema creation...');
+        logger.info('Fresh database detected - running initial schema creation...');
         await this.runFreshInstall();
         result.appliedChanges.push({
           type: 'safe',
@@ -129,7 +129,7 @@ export class AutoMigrationService {
           description: 'Seeded initial data',
         });
 
-        logger.info('✅ Fresh database initialization completed');
+        logger.info('Fresh database initialization completed');
         return result;
       }
 
@@ -137,7 +137,7 @@ export class AutoMigrationService {
       const plan = await this.analyzeSchemaDrift();
 
       if (plan.safeChanges.length === 0 && plan.unsafeChanges.length === 0) {
-        logger.info('✅ Database schema is up to date - no migration needed');
+        logger.info('Database schema is up to date - no migration needed');
         return result;
       }
 
@@ -152,9 +152,9 @@ export class AutoMigrationService {
           const backupName = await this.createBackupCheckpoint();
           result.backupCreated = true;
           result.backupName = backupName;
-          logger.info({ backupName }, '💾 Backup checkpoint created');
+          logger.info({ backupName }, 'Backup checkpoint created');
         } catch (backupError: any) {
-          logger.warn({ error: backupError.message }, '⚠️ Could not create backup - continuing');
+          logger.warn({ error: backupError.message }, 'Could not create backup - continuing');
         }
       }
 
@@ -172,7 +172,7 @@ export class AutoMigrationService {
 
       return result;
     } catch (error: any) {
-      logger.error({ error: error.message, stack: error.stack }, '🚨 Auto-migration failed');
+      logger.error({ error: error.message, stack: error.stack }, 'Auto-migration failed');
       result.success = false;
       result.errors.push(error.message);
       return result;
@@ -209,7 +209,7 @@ export class AutoMigrationService {
    * Uses prisma db push with --accept-data-loss for clean slate
    */
   private async runFreshInstall(): Promise<void> {
-    logger.info('🏗️ Running fresh database installation...');
+    logger.info('Running fresh database installation...');
 
     try {
       // For fresh installs, use --accept-data-loss since there's no data to lose
@@ -224,9 +224,9 @@ export class AutoMigrationService {
         throw new Error(`Fresh install failed: ${stderr}`);
       }
 
-      logger.info('✅ Fresh database schema created successfully');
+      logger.info('Fresh database schema created successfully');
     } catch (error: any) {
-      logger.error({ error: error.message }, '❌ Fresh install failed');
+      logger.error({ error: error.message }, 'Fresh install failed');
       throw new Error(`Fresh database installation failed: ${error.message}`);
     }
   }
@@ -261,7 +261,7 @@ export class AutoMigrationService {
    * behavior — destructive changes always apply when there is drift.
    */
   private async runIncrementalMigration(_forceUnsafe: boolean): Promise<void> {
-    logger.info('📈 Applying incremental schema changes with --accept-data-loss...');
+    logger.info('Applying incremental schema changes with --accept-data-loss...');
 
     try {
       const { stdout, stderr } = await execAsync(
@@ -279,7 +279,7 @@ export class AutoMigrationService {
         throw new Error(`Incremental migration failed: ${stderr.substring(0, 2000)}`);
       }
 
-      logger.info('✅ Incremental migration completed');
+      logger.info('Incremental migration completed');
     } catch (error: any) {
       logger.error({
         error: error.message,
@@ -295,7 +295,7 @@ export class AutoMigrationService {
    * Delegates to existing seeder services - no hardcoded values
    */
   private async runSeeding(): Promise<void> {
-    logger.info('🌱 Running database seeding...');
+    logger.info('Running database seeding...');
 
     try {
       // Seed system configuration defaults
@@ -311,9 +311,9 @@ export class AutoMigrationService {
       // Prompt templates are seeded by InitializationService
       // Both read from environment variables, not hardcoded values
 
-      logger.info('✅ Database seeding completed');
+      logger.info('Database seeding completed');
     } catch (error: any) {
-      logger.warn({ error: error.message }, '⚠️ Seeding partially failed - continuing');
+      logger.warn({ error: error.message }, 'Seeding partially failed - continuing');
     }
   }
 
@@ -322,7 +322,7 @@ export class AutoMigrationService {
    * Prices are in USD per 1K tokens (updated as of 2025-01)
    */
   private async seedModelPricing(): Promise<void> {
-    logger.info('  💰 Seeding model pricing data...');
+    logger.info('Seeding model pricing data...');
 
     const pricingData = [
       // Anthropic Claude models
@@ -386,18 +386,18 @@ export class AutoMigrationService {
           },
         });
       } catch (error: any) {
-        logger.warn({ error: error.message, model: pricing.model }, `  ⚠️ Could not seed pricing for: ${pricing.model}`);
+        logger.warn({ error: error.message, model: pricing.model }, `Could not seed pricing for: ${pricing.model}`);
       }
     }
 
-    logger.info(`  ✅ Seeded ${pricingData.length} model pricing entries`);
+    logger.info(`Seeded ${pricingData.length} model pricing entries`);
   }
 
   /**
    * Seed default ESO secret store for Kubernetes deployments
    */
   private async seedESOSecretStore(): Promise<void> {
-    logger.info('  🔐 Seeding ESO secret store configuration...');
+    logger.info('Seeding ESO secret store configuration...');
 
     try {
       await prisma.eSOSecretStore.upsert({
@@ -419,9 +419,9 @@ export class AutoMigrationService {
           is_active: true,
         },
       });
-      logger.info('  ✅ Default ESO secret store configured');
+      logger.info('Default ESO secret store configured');
     } catch (error: any) {
-      logger.warn({ error: error.message }, '  ⚠️ Could not seed ESO secret store');
+      logger.warn({ error: error.message }, 'Could not seed ESO secret store');
     }
   }
 
@@ -449,9 +449,9 @@ export class AutoMigrationService {
             description: config.description,
           },
         });
-        logger.info(`  ✅ Seeded: ${config.key}`);
+        logger.info(`Seeded: ${config.key}`);
       } catch (error: any) {
-        logger.warn({ error: error.message, key: config.key }, `  ⚠️ Could not seed: ${config.key}`);
+        logger.warn({ error: error.message, key: config.key }, `Could not seed: ${config.key}`);
       }
     }
   }
@@ -462,7 +462,7 @@ export class AutoMigrationService {
   private async ensureDatabaseConnection(): Promise<void> {
     try {
       await prisma.$queryRaw`SELECT 1`;
-      logger.info('✅ Database connection verified');
+      logger.info('Database connection verified');
     } catch (error: any) {
       throw new Error(`Database connection failed: ${error.message}`);
     }
@@ -476,9 +476,9 @@ export class AutoMigrationService {
     for (const schema of schemas) {
       try {
         await prisma.$executeRawUnsafe(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
-        logger.info(`✅ Schema '${schema}' ensured`);
+        logger.info(`Schema '${schema}' ensured`);
       } catch (error: any) {
-        logger.warn({ error: error.message, schema }, `⚠️ Could not create schema`);
+        logger.warn({ error: error.message, schema }, `Could not create schema`);
       }
     }
   }
@@ -767,14 +767,14 @@ export class AutoMigrationService {
 
       if (migration[0]?.rollback_sql) {
         await prisma.$executeRawUnsafe(migration[0].rollback_sql);
-        logger.info({ migrationName }, '✅ Rollback completed');
+        logger.info({ migrationName }, 'Rollback completed');
         return true;
       } else {
-        logger.warn({ migrationName }, '⚠️ No rollback SQL available for this migration');
+        logger.warn({ migrationName }, 'No rollback SQL available for this migration');
         return false;
       }
     } catch (error: any) {
-      logger.error({ error: error.message, migrationName }, '❌ Rollback failed');
+      logger.error({ error: error.message, migrationName }, 'Rollback failed');
       return false;
     }
   }

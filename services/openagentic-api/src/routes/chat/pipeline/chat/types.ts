@@ -4,8 +4,6 @@
  * Mirrors Anthropic Messages content blocks + ProviderManager turn shape,
  * but kept ISOLATED from V2's existing types so V3 can iterate without
  * dragging V2 along during the strangler cutover.
- *
- * Plan: <internal-plan>
  */
 
 export interface TextBlock {

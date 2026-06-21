@@ -3,7 +3,7 @@
  * `applyCanonicalFrame` for every wire frame the pipeline emits.
  *
  * REGRESSION pin — Track B Phase 0 of the canonical streaming rip
- * (<internal-plan>, Phases 7+8).
+ * (Phases 7+8).
  *
  * Why: the server persists `chat_messages.content_blocks` (Json column)
  * by feeding the same wire NDJSON through `contentBlocksAccumulator.ts`

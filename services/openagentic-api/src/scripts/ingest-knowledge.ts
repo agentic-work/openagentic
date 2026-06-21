@@ -42,7 +42,7 @@ async function main() {
   const last30Days = args.includes('--last-30-days');
   const lastNDays = args.find(arg => arg.startsWith('--last-'))?.replace('--last-', '').replace('-days', '');
   
-  logger.info('🚀 Starting knowledge ingestion...');
+  logger.info('Starting knowledge ingestion...');
   
   // Initialize connections
   const milvus = new MilvusClient({
@@ -58,25 +58,25 @@ async function main() {
   
   try {
     // Initialize collections
-    logger.info('📦 Initializing Milvus collections...');
+    logger.info('Initializing Milvus collections...');
     await ingestionService.initializeCollections();
     
     // Ingest documentation
     if (!chatsOnly) {
-      logger.info('📚 Ingesting project documentation...');
+      logger.info('Ingesting project documentation...');
       await ingestionService.ingestDocumentation();
     }
     
     // Ingest chat logs
     if (!docsOnly) {
-      logger.info('💬 Ingesting chat conversations...');
+      logger.info('Ingesting chat conversations...');
       
       const options: any = {};
       
       if (last30Days || lastNDays) {
         const days = lastNDays ? parseInt(lastNDays) : 30;
         options.startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-        logger.info(`📅 Ingesting chats from last ${days} days`);
+        logger.info(`Ingesting chats from last ${days} days`);
       }
       
       await ingestionService.ingestChatLogs(options);
@@ -84,8 +84,8 @@ async function main() {
     
     // Display statistics
     const stats = ingestionService.getStats();
-    logger.info('✅ Ingestion complete!');
-    logger.info('📊 Statistics:');
+    logger.info('Ingestion complete!');
+    logger.info('Statistics:');
     logger.info(`  Total documents: ${stats.totalDocuments}`);
     logger.info(`  Total chunks: ${stats.totalChunks}`);
     logger.info(`  Successful: ${stats.successfulChunks}`);
@@ -97,7 +97,7 @@ async function main() {
     
     // Test search
     if (!args.includes('--no-test')) {
-      logger.info('\n🔍 Testing search functionality...');
+      logger.info('\n Testing search functionality...');
       
       const testQueries = [
         'How does authentication work?',
@@ -113,18 +113,18 @@ async function main() {
         
         for (const result of results) {
           const metadata = JSON.parse(result.metadata || '{}');
-          logger.info(`  📄 ${metadata.title || metadata.source} (score: ${result.score?.toFixed(3)})`);
+          logger.info(`${metadata.title || metadata.source} (score: ${result.score?.toFixed(3)})`);
           logger.info(`     ${result.content.substring(0, 100)}...`);
         }
       }
     }
     
   } catch (error) {
-    logger.error({ error }, '❌ Ingestion failed');
+    logger.error({ error }, 'Ingestion failed');
     process.exit(1);
   } finally {
     await prisma.$disconnect();
-    logger.info('👋 Done!');
+    logger.info('Done!');
   }
 }
 

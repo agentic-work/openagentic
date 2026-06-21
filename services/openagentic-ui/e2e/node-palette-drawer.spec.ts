@@ -72,7 +72,7 @@ test('Node palette opens as floating drawer over canvas', async ({ page }) => {
   // Look for the Nodes section header in sidebar
   const nodesHeader = page.locator('button:has-text("Nodes")').first();
   await expect(nodesHeader).toBeVisible({ timeout: 10000 });
-  console.log('✓ Nodes header visible in sidebar');
+  console.log('Nodes header visible in sidebar');
 
   // Click Nodes to open the floating drawer
   await nodesHeader.click();
@@ -81,26 +81,26 @@ test('Node palette opens as floating drawer over canvas', async ({ page }) => {
   // Verify the floating drawer appeared (Node Palette title)
   const drawerTitle = page.locator('text=Node Palette');
   await expect(drawerTitle).toBeVisible({ timeout: 5000 });
-  console.log('✓ Node Palette floating drawer opened');
+  console.log('Node Palette floating drawer opened');
 
   // Verify it has search input
   const searchInput = page.locator('input[placeholder="Search nodes..."]');
   await expect(searchInput).toBeVisible({ timeout: 3000 });
-  console.log('✓ Search input visible in drawer');
+  console.log('Search input visible in drawer');
 
   // Verify category headers are present
   const triggersHeader = page.locator('text=Triggers').first();
   await expect(triggersHeader).toBeVisible({ timeout: 3000 });
-  console.log('✓ Triggers category visible');
+  console.log('Triggers category visible');
 
   const aiHeader = page.locator('text=AI / LLM').first();
   await expect(aiHeader).toBeVisible({ timeout: 3000 });
-  console.log('✓ AI / LLM category visible');
+  console.log('AI / LLM category visible');
 
   // Verify "Drag items onto the canvas" footer hint
   const hint = page.locator('text=Drag items onto the canvas');
   await expect(hint).toBeVisible({ timeout: 3000 });
-  console.log('✓ Drag hint visible');
+  console.log('Drag hint visible');
 
   // Verify the Annotation category with Text Note
   const annotationHeader = page.locator('text=Annotation').first();
@@ -108,14 +108,14 @@ test('Node palette opens as floating drawer over canvas', async ({ page }) => {
   await page.waitForTimeout(500);
   const isAnnotationVisible = await annotationHeader.isVisible({ timeout: 3000 }).catch(() => false);
   if (isAnnotationVisible) {
-    console.log('✓ Annotation category visible');
+    console.log('Annotation category visible');
   } else {
     // Scroll within the drawer to find it
     const drawerScroll = page.locator('.wf-scrollbar').last();
     await drawerScroll.evaluate(el => el.scrollTop = el.scrollHeight);
     await page.waitForTimeout(300);
     const isNowVisible = await annotationHeader.isVisible({ timeout: 2000 }).catch(() => false);
-    console.log(isNowVisible ? '✓ Annotation category visible after scroll' : '⚠ Annotation category not found');
+    console.log(isNowVisible ? 'Annotation category visible after scroll' : 'Annotation category not found');
   }
 
   // Close drawer by clicking X
@@ -126,7 +126,7 @@ test('Node palette opens as floating drawer over canvas', async ({ page }) => {
 
   // Verify drawer closed
   const drawerGone = await drawerTitle.isVisible({ timeout: 1000 }).catch(() => false);
-  console.log(drawerGone ? '⚠ Drawer still visible after Escape' : '✓ Drawer closed on Escape');
+  console.log(drawerGone ? 'Drawer still visible after Escape' : 'Drawer closed on Escape');
 
   console.log('\n=== Node Palette Drawer Test PASSED ===');
 });

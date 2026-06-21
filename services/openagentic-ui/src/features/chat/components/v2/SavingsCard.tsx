@@ -6,10 +6,10 @@ import React from 'react';
  * 3-cell KPI tile rendered inline below right-sizing / cost-analysis
  * output so the user sees the headline savings number at a glance.
  *
- * Reference mock: <internal-upstream>/mocks/UX/01-cloud-ops.html
- * lines 1142-1155 (the `.savings-card` block — 3 cells, each with a
- * `.k` label + a `.v.g` big-number value + an optional `<small>` decimal
- * tail). Mock-01 always emits 3 cells (Monthly, Annual, % reduction); we
+ * Reference mock: the cloud-ops UX mock's `.savings-card` block — 3 cells,
+ * each with a `.k` label + a `.v.g` big-number value + an optional
+ * `<small>` decimal tail. The mock always emits 3 cells (Monthly, Annual,
+ * % reduction); we
  * accept 2..4 here for future flexibility (over-budget warnings, fleet
  * splits, etc.).
  *

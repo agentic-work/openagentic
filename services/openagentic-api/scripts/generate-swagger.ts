@@ -64,7 +64,7 @@ async function generateSwagger() {
     const outputPath = join(outputDir, 'openapi.json');
     writeFileSync(outputPath, JSON.stringify(spec, null, 2), 'utf-8');
 
-    console.log(`✅ OpenAPI specification generated successfully!`);
+    console.log(`OpenAPI specification generated successfully!`);
     console.log(`   Location: ${outputPath}`);
     console.log(`   API Title: ${spec.info?.title || 'N/A'}`);
     console.log(`   API Version: ${spec.info?.version || 'N/A'}`);
@@ -78,7 +78,7 @@ async function generateSwagger() {
     console.log(`   YAML version: ${yamlPath}`);
 
   } catch (error) {
-    console.error('❌ Error generating OpenAPI specification:', error);
+    console.error('Error generating OpenAPI specification:', error);
     process.exit(1);
   } finally {
     await fastify.close();

@@ -9,8 +9,8 @@ import { join } from 'node:path'
  * regression — any future PR that flips Geist back to primary or removes
  * the tabular-figures rule will fail this test before it lands.
  *
- * The rules tested here are documented in
- * <internal-plan> §2 + §14.
+ * The rules tested here lock the admin typography signature (§2 + §14 of
+ * the admin shell design notes).
  */
 
 const accentsCss = readFileSync(

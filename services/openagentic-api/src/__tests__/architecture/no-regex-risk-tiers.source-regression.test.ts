@@ -108,8 +108,7 @@ describe('PermissionService — no regex risk tiers in production code', () => {
       throw new Error(
         `Legacy ToolApprovalGate regex-tier references found:\n${report}\n\n` +
           'Replace with PermissionService.evaluate / classifyName / addRule. ' +
-          'See <claude-code-src>/types/permissions.ts for the canonical ' +
-          'Claude-Code-style allow/deny/ask + 5-mode shape.',
+          'Use the Claude-Code-style allow/deny/ask + 5-mode permission shape.',
       );
     }
   });

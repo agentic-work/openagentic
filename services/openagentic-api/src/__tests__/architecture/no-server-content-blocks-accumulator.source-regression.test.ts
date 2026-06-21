@@ -1,8 +1,7 @@
 /**
  * Architecture cage — no server-side `contentBlocksAccumulator.ts`.
  *
- * REGRESSION pin — Track B Phase 0 of the canonical streaming rip
- * (<internal-plan>, Phase 7).
+ * REGRESSION pin — Track B Phase 0 of the canonical streaming rip (Phase 7).
  *
  * `services/openagentic-api/src/routes/chat/handlers/contentBlocksAccumulator.ts`
  * is a 370-line near-copy of the UI's `applyCanonicalFrame` reducer

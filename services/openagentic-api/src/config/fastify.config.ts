@@ -294,7 +294,7 @@ export async function createServer(): Promise<FastifyInstance> {
   // Register Swagger/OpenAPI documentation
   await server.register(swagger, swaggerOptions);
   await server.register(swaggerUi, swaggerUiOptions);
-  loggers.server.info('📚 Swagger/OpenAPI documentation registered at /api/swagger');
+  loggers.server.info('Swagger/OpenAPI documentation registered at /api/swagger');
 
   // Register shared schemas with Fastify so $ref works in route schemas
   // These schemas are also defined in swagger.config.ts for OpenAPI spec
@@ -306,7 +306,7 @@ export async function createServer(): Promise<FastifyInstance> {
         ...(schemaDefinition as object)
       });
     }
-    loggers.server.info(`📐 Registered ${Object.keys(sharedSchemas).length} shared schemas with Fastify`);
+    loggers.server.info(`Registered ${Object.keys(sharedSchemas).length} shared schemas with Fastify`);
   }
 
   return server;

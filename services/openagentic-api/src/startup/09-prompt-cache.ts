@@ -41,7 +41,7 @@ export const INIT_PROMPT_CACHE: BootstrapStep = {
 
       if (redisLike) {
         await svc.subscribeInvalidations();
-        loggers.services.info('✅ RbacSystemPromptService subscribed to prompt:invalidate redis channel');
+        loggers.services.info('RbacSystemPromptService subscribed to prompt:invalidate redis channel');
       } else {
         loggers.services.warn(
           'RbacSystemPromptService: redis not connected at boot — cache invalidation degrades to TTL-only single-pod',
@@ -77,7 +77,7 @@ export const INIT_PROMPT_CACHE: BootstrapStep = {
 
       if (redisLike) {
         await svcPromptSvc.subscribeInvalidations();
-        loggers.services.info('✅ ServicePromptService subscribed to service-prompt:invalidate redis channel');
+        loggers.services.info('ServicePromptService subscribed to service-prompt:invalidate redis channel');
       }
     } catch (error) {
       loggers.services.warn(

@@ -1,7 +1,8 @@
 /**
  * V3 tool orchestration — partitionToolCalls + runConcurrent + runSerial.
  *
- * Ported from <claude-code-src>/services/tools/toolOrchestration.ts:91.
+ * Implements the read-parallel / write-serial tool orchestration pattern
+ * used by Claude Code.
  *
  * The model emits multiple tool_use blocks per turn; this module decides
  * which can run in parallel (read-only) and which must run alone (writes).

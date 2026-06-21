@@ -10,8 +10,6 @@
  *
  * Auth: same `.auth/user.json` as release-readiness.spec.ts — JWT in
  * localStorage `auth_token` and `openagentic_token` cookie.
- *
- * Plan reference: <internal-plan>
  */
 
 import { test, expect, Page } from '@playwright/test';

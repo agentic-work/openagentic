@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import type { ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, Trash2, AlertCircle, Info, ChevronDown, Check } from '@/shared/icons';
 import type { Node } from 'reactflow';
@@ -17,12 +18,31 @@ import { useNodeSchemas } from '../hooks/useNodeSchemas';
 import { NodeDocsPanel } from './NodeDocsPanel';
 import { fetchAgents as fetchAgentRegistry } from '../services/agentRegistryApi';
 import { MultiAgentSlotEditor } from './MultiAgentSlotEditor';
+import type { MultiAgentAgentSpec } from './MultiAgentSlotEditor';
+
+// Shape of an agent record returned by /api/admin/agents. The endpoint mixes
+// snake_case and camelCase keys depending on source, so fields are optional and
+// the index signature keeps it permissive without resorting to `any`.
+interface AgentRecord {
+  id?: string;
+  agent_type?: string;
+  agentType?: string;
+  model?: string;
+  model_config?: Record<string, unknown>;
+  modelConfig?: Record<string, unknown>;
+  tools_whitelist?: string[];
+  tools?: string[];
+  system_prompt?: string;
+  systemPrompt?: string;
+  skills?: Array<string | { name?: string }>;
+  [key: string]: unknown;
+}
 
 // Fetch full agent config from the DB (SOT) — includes system_prompt, tools, model_config, thinking
-const _agentConfigCache = new Map<string, { data: any; ts: number }>();
-let _fullAgentListCache: { agents: any[]; ts: number } | null = null;
+const _agentConfigCache = new Map<string, { data: AgentRecord; ts: number }>();
+let _fullAgentListCache: { agents: AgentRecord[]; ts: number } | null = null;
 
-async function fetchFullAgentConfig(agentId: string): Promise<any | null> {
+async function fetchFullAgentConfig(agentId: string): Promise<AgentRecord | null> {
   if (!agentId) return null;
   const cached = _agentConfigCache.get(agentId);
   if (cached && Date.now() - cached.ts < 120000) return cached.data;
@@ -33,8 +53,11 @@ async function fetchFullAgentConfig(agentId: string): Promise<any | null> {
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch('/api/admin/agents', { headers, credentials: 'include' });
       if (res.ok) {
-        const data = await res.json();
-        _fullAgentListCache = { agents: Array.isArray(data) ? data : (data.agents || []), ts: Date.now() };
+        const data = await res.json() as AgentRecord[] | { agents?: AgentRecord[] };
+        _fullAgentListCache = {
+          agents: Array.isArray(data) ? data : (data.agents ?? []),
+          ts: Date.now(),
+        };
         // Cache each agent individually
         for (const agent of _fullAgentListCache.agents) {
           if (agent.id) _agentConfigCache.set(agent.id, { data: agent, ts: Date.now() });
@@ -48,7 +71,7 @@ async function fetchFullAgentConfig(agentId: string): Promise<any | null> {
 
 /** Inline component showing the full agent config from the DB (SOT) */
 const AgentSOTConfig: React.FC<{ agentId: string }> = ({ agentId }) => {
-  const [config, setConfig] = React.useState<any>(null);
+  const [config, setConfig] = React.useState<AgentRecord | null>(null);
   const [expanded, setExpanded] = React.useState(false);
 
   React.useEffect(() => {
@@ -57,9 +80,15 @@ const AgentSOTConfig: React.FC<{ agentId: string }> = ({ agentId }) => {
 
   if (!config) return null;
 
-  const modelConfig = config.model_config || config.modelConfig || {};
-  const tools = config.tools_whitelist || config.tools || [];
-  const systemPrompt = config.system_prompt || config.systemPrompt || '';
+  const modelConfig: Record<string, unknown> =
+    config.model_config || config.modelConfig || {};
+  const tools: string[] = config.tools_whitelist || config.tools || [];
+  const systemPrompt: string = config.system_prompt || config.systemPrompt || '';
+  // Coerce a dynamic model-config value to a renderable string with a dash fallback.
+  const mc = (key: string): string => {
+    const v = modelConfig[key];
+    return v == null || v === '' ? '—' : String(v);
+  };
 
   return (
     <div className="glass-surface-subtle" style={{
@@ -81,10 +110,10 @@ const AgentSOTConfig: React.FC<{ agentId: string }> = ({ agentId }) => {
       {expanded && (
         <div style={{ padding: '0 12px 10px', fontSize: 11, color: 'var(--color-text-tertiary)', lineHeight: 1.6 }}>
           <div><strong>Type:</strong> {config.agent_type || config.agentType || '—'}</div>
-          <div><strong>Model:</strong> {modelConfig.primaryModel || modelConfig.defaultModel || config.model || 'auto'}</div>
-          <div><strong>Temperature:</strong> {modelConfig.temperature ?? '—'}</div>
-          <div><strong>Max Tokens:</strong> {modelConfig.maxTokens ?? '—'}</div>
-          <div><strong>Thinking:</strong> {modelConfig.enableThinking ? `Enabled (budget: ${modelConfig.thinkingBudget || '—'})` : 'Disabled'}</div>
+          <div><strong>Model:</strong> {String(modelConfig.primaryModel || modelConfig.defaultModel || config.model || 'auto')}</div>
+          <div><strong>Temperature:</strong> {mc('temperature')}</div>
+          <div><strong>Max Tokens:</strong> {mc('maxTokens')}</div>
+          <div><strong>Thinking:</strong> {modelConfig.enableThinking ? `Enabled (budget: ${mc('thinkingBudget')})` : 'Disabled'}</div>
           {tools.length > 0 && (
             <div><strong>Tools ({tools.length}):</strong> {tools.slice(0, 5).join(', ')}{tools.length > 5 ? ` +${tools.length - 5} more` : ''}</div>
           )}
@@ -101,7 +130,7 @@ const AgentSOTConfig: React.FC<{ agentId: string }> = ({ agentId }) => {
             </div>
           )}
           {config.skills && config.skills.length > 0 && (
-            <div><strong>Skills:</strong> {config.skills.map((s: any) => s.name || s).join(', ')}</div>
+            <div><strong>Skills:</strong> {config.skills.map((s) => (typeof s === 'string' ? s : s.name ?? '')).join(', ')}</div>
           )}
         </div>
       )}
@@ -109,13 +138,26 @@ const AgentSOTConfig: React.FC<{ agentId: string }> = ({ agentId }) => {
   );
 };
 
+// Minimal JSON-Schema shapes for the MCP tool argument builder. `default` is
+// genuinely arbitrary (any JSON value), so it is typed `unknown` rather than `any`.
+interface JsonSchemaProp {
+  type?: string;
+  description?: string;
+  enum?: string[];
+  default?: unknown;
+}
+interface JsonSchema {
+  properties?: Record<string, JsonSchemaProp>;
+  required?: string[];
+}
+
 interface NodePropertiesPanelProps {
   node: Node<NodeData> | null;
   onClose: () => void;
   onUpdate: (nodeId: string, data: Partial<NodeData>) => void;
   onDelete: (nodeId: string) => void;
   availableModels?: string[];
-  availableTools?: Array<{ name: string; server: string; description?: string; inputSchema?: any }>;
+  availableTools?: Array<{ name: string; server: string; description?: string; inputSchema?: JsonSchema }>;
   theme?: 'light' | 'dark';
 }
 
@@ -317,10 +359,57 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     }
   };
 
-  const updateData = (key: keyof NodeData, value: any) => {
+  // Typed setter. `NodeData` carries a `[key: string]: unknown` index signature,
+  // so `keyof NodeData` admits both the declared fields (typed precisely) and any
+  // extended string key (typed `unknown`). That lets every call site pass the
+  // real value with no cast:
+  //   - declared field  -> value is checked against its exact type
+  //   - extended field  -> value widens to `unknown`, so anything is accepted
+  // The only sites that still need a hint are <select> handlers whose
+  // `e.target.value` is a raw `string` feeding a string-literal union — those use
+  // `selectValue()` below, which asserts once, in one place, instead of per site.
+  const updateData = <K extends keyof NodeData>(key: K, value: NodeData[K]) => {
     setNodeData(prev => ({ ...prev, [key]: value }));
     setHasChanges(true);
   };
+
+  // Narrow a change/select event's string value to a declared union field type.
+  // Centralises the single unavoidable assertion (a `<select>` always yields a
+  // raw `string`) so call sites read `updateData('operator', selectValue(e, 'operator'))`
+  // rather than an untyped cast on `e.target.value` at every handler.
+  const selectValue = <K extends keyof NodeData>(
+    e: ChangeEvent<HTMLSelectElement | HTMLInputElement | HTMLTextAreaElement>,
+    _key: K,
+  ): NodeData[K] => e.target.value as NodeData[K];
+
+  // Same single-assertion idea for custom select components whose onChange hands
+  // back a raw `string` (not a DOM event) destined for a string-literal union field.
+  const asField = <K extends keyof NodeData>(value: string, _key: K): NodeData[K] =>
+    value as NodeData[K];
+
+  // Typed reads off `nodeData` for fields the interface exposes only via the
+  // `unknown` index signature (extended node-type fields like `webhookUrl`,
+  // `message`, `expression`, …). These replace untyped `nodeData` field reads
+  // with a single narrowed accessor and never widen to `any`. Each preserves the
+  // original `field || fallback` read semantics exactly: the helper
+  // returns `fallback` for ANY falsy stored value (the same truthiness test `||`
+  // applied), so swapping the cast for the helper is behaviour-preserving.
+  const fieldStr = (key: string, fallback = ''): string => {
+    const v = (nodeData as Record<string, unknown>)[key];
+    return v ? (typeof v === 'string' ? v : String(v)) : fallback;
+  };
+  const fieldNum = (key: string, fallback: number): number => {
+    const v = (nodeData as Record<string, unknown>)[key];
+    if (!v) return fallback;
+    if (typeof v === 'number') return v;
+    const n = Number(v);
+    return Number.isNaN(n) ? fallback : n;
+  };
+  const fieldBool = (key: string): boolean =>
+    Boolean((nodeData as Record<string, unknown>)[key]);
+  // Raw escape hatch for the few reads consumed as `unknown` (Array.isArray,
+  // JSON.stringify, comparisons) — still typed, never `any`.
+  const fieldRaw = (key: string): unknown => (nodeData as Record<string, unknown>)[key];
 
   const renderTriggerConfig = () => (
     <div className="space-y-4">
@@ -330,7 +419,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         </label>
         <select
           value={nodeData.triggerType || 'manual'}
-          onChange={(e) => updateData('triggerType', e.target.value as any)}
+          onChange={(e) => updateData('triggerType', selectValue(e, 'triggerType'))}
           className="glass-field px-3 py-2 focus:outline-none"
         >
           <option value="manual">Manual</option>
@@ -400,8 +489,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
               updateData('toolServer', selectedTool.server);
               // Build default arguments from schema with default values
               if (selectedTool.inputSchema?.properties) {
-                const defaults: Record<string, any> = {};
-                for (const [k, v] of Object.entries(selectedTool.inputSchema.properties) as [string, any][]) {
+                const defaults: Record<string, unknown> = {};
+                for (const [k, v] of Object.entries(selectedTool.inputSchema.properties)) {
                   if (v.default != null) defaults[k] = v.default;
                 }
                 updateData('arguments', defaults);
@@ -448,9 +537,9 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
               <label className="block text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
                 Arguments
               </label>
-              {Object.entries(properties).map(([key, prop]: [string, any]) => {
+              {Object.entries(properties).map(([key, prop]) => {
                 const isRequired = required.includes(key);
-                const value = (args as Record<string, any>)[key] ?? prop.default ?? '';
+                const value = (args as Record<string, unknown>)[key] ?? prop.default ?? '';
                 return (
                   <div key={key}>
                     <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
@@ -490,7 +579,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                     ) : prop.type === 'number' || prop.type === 'integer' ? (
                       <input
                         type="number"
-                        value={value}
+                        value={typeof value === 'number' ? value : String(value ?? '')}
                         onChange={(e) => {
                           const newArgs = { ...args, [key]: e.target.value ? Number(e.target.value) : '' };
                           updateData('arguments', newArgs);
@@ -533,7 +622,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                   const parsed = JSON.parse(e.target.value);
                   updateData('arguments', parsed);
                 } catch {
-                  updateData('arguments', e.target.value as any);
+                  updateData('arguments', selectValue(e, 'arguments'));
                 }
               }}
               rows={6}
@@ -641,7 +730,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         </label>
         <select
           value={nodeData.language || 'javascript'}
-          onChange={(e) => updateData('language', e.target.value as any)}
+          onChange={(e) => updateData('language', selectValue(e, 'language'))}
           className="glass-field px-3 py-2 focus:outline-none"
         >
           <option value="javascript">JavaScript</option>
@@ -676,7 +765,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         placeholder="e.g., $input.value > 100"
         helpText="Expression evaluated against the input data. Use $input to reference the previous node's output."
         required={isFieldRequired('condition', 'condition')}
-        error={isFieldRequired('condition', 'condition') && !(nodeData.condition || (nodeData as any).expression)}
+        error={isFieldRequired('condition', 'condition') && !(nodeData.condition || fieldStr('expression'))}
       />
 
       <div>
@@ -685,7 +774,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         </label>
         <select
           value={nodeData.operator || 'equals'}
-          onChange={(e) => updateData('operator', e.target.value as any)}
+          onChange={(e) => updateData('operator', selectValue(e, 'operator'))}
           className="glass-field px-3 py-2 focus:outline-none"
         >
           <option value="equals">Equals</option>
@@ -709,7 +798,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         </label>
         <select
           value={nodeData.transformType || 'map'}
-          onChange={(e) => updateData('transformType', e.target.value as any)}
+          onChange={(e) => updateData('transformType', selectValue(e, 'transformType'))}
           className="glass-field px-3 py-2 focus:outline-none"
         >
           <option value="map">Map</option>
@@ -733,7 +822,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           ? 'JSONPath expression to extract data. Example: $.data.results[0].name'
           : 'JavaScript arrow function. Example: item => item.value * 2'}
         required={isFieldRequired('transform', 'transform')}
-        error={isFieldRequired('transform', 'transform') && !(nodeData.transformExpression || (nodeData as any).transform || (nodeData as any).expression || (nodeData as any).template || nodeData.code)}
+        error={isFieldRequired('transform', 'transform') && !(nodeData.transformExpression || fieldStr('transform') || fieldStr('expression') || fieldStr('template') || nodeData.code)}
       />
     </div>
   );
@@ -756,8 +845,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     <div className="space-y-4">
       <FormSelect
         label="Method"
-        value={(nodeData as any).method || 'GET'}
-        onChange={(v) => updateData('method' as any, v)}
+        value={fieldStr('method', 'GET')}
+        onChange={(v) => updateData('method', v)}
         options={[
           { value: 'GET', label: 'GET' },
           { value: 'POST', label: 'POST' },
@@ -770,19 +859,19 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       />
       <FormInput
         label="URL"
-        value={(nodeData as any).url || ''}
-        onChange={(v) => updateData('url' as any, v)}
+        value={fieldStr('url')}
+        onChange={(v) => updateData('url', v)}
         placeholder="https://api.example.com/endpoint"
         isDark={isDark}
         helpText="Use {{variable}} for dynamic values"
         required={isFieldRequired('http_request', 'url')}
-        error={isFieldRequired('http_request', 'url') && !(nodeData as any).url?.trim()}
+        error={isFieldRequired('http_request', 'url') && !fieldStr('url').trim()}
       />
       <AdvancedToggle>
         <FormTextarea
           label="Headers (JSON)"
-          value={(nodeData as any).headers || '{}'}
-          onChange={(v) => updateData('headers' as any, v)}
+          value={fieldStr('headers', '{}')}
+          onChange={(v) => updateData('headers', v)}
           rows={4}
           placeholder={'{\n  "Content-Type": "application/json",\n  "Authorization": "Bearer {{token}}"\n}'}
           isDark={isDark}
@@ -791,8 +880,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         />
         <FormTextarea
           label="Body"
-          value={(nodeData as any).body || ''}
-          onChange={(v) => updateData('body' as any, v)}
+          value={fieldStr('body')}
+          onChange={(v) => updateData('body', v)}
           rows={6}
           placeholder={'{\n  "key": "value"\n}'}
           isDark={isDark}
@@ -801,8 +890,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         />
         <FormInput
           label="Timeout (ms)"
-          value={(nodeData as any).timeout || 30000}
-          onChange={(v) => updateData('timeout' as any, v)}
+          value={fieldNum('timeout', 30000)}
+          onChange={(v) => updateData('timeout', v)}
           type="number"
           isDark={isDark}
           min={1000}
@@ -817,8 +906,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     <div className="space-y-4">
       <FormTextarea
         label="Approval Message"
-        value={(nodeData as any).message || ''}
-        onChange={(v) => updateData('message' as any, v)}
+        value={fieldStr('message')}
+        onChange={(v) => updateData('message', v)}
         rows={3}
         placeholder="Please review and approve this workflow step..."
         isDark={isDark}
@@ -826,19 +915,19 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       />
       <FormInput
         label="Approvers"
-        value={(nodeData as any).approvers || ''}
-        onChange={(v) => updateData('approvers' as any, v)}
+        value={fieldStr('approvers')}
+        onChange={(v) => updateData('approvers', v)}
         placeholder="user@example.com, team-lead@example.com"
         isDark={isDark}
         helpText="Comma-separated email addresses"
         required={isFieldRequired('approval', 'approvers')}
-        error={isFieldRequired('approval', 'approvers') && !((nodeData as any).approvers || (nodeData as any).approverRole || (nodeData as any).notifyChannel)}
+        error={isFieldRequired('approval', 'approvers') && !(fieldStr('approvers') || fieldStr('approverRole') || fieldStr('notifyChannel'))}
       />
       <AdvancedToggle>
         <FormInput
           label="Timeout (hours)"
-          value={(nodeData as any).approvalTimeout || 24}
-          onChange={(v) => updateData('approvalTimeout' as any, v)}
+          value={fieldNum('approvalTimeout', 24)}
+          onChange={(v) => updateData('approvalTimeout', v)}
           type="number"
           isDark={isDark}
           min={1}
@@ -847,8 +936,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         />
         <FormInput
           label="Escalation Email"
-          value={(nodeData as any).escalationEmail || ''}
-          onChange={(v) => updateData('escalationEmail' as any, v)}
+          value={fieldStr('escalationEmail')}
+          onChange={(v) => updateData('escalationEmail', v)}
           placeholder="manager@example.com"
           isDark={isDark}
           helpText="Notified if approval times out"
@@ -861,8 +950,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     <div className="space-y-4">
       <FormInput
         label="Duration"
-        value={(nodeData as any).duration || 5}
-        onChange={(v) => updateData('duration' as any, v)}
+        value={fieldNum('duration', 5)}
+        onChange={(v) => updateData('duration', v)}
         type="number"
         isDark={isDark}
         min={1}
@@ -870,8 +959,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       />
       <FormSelect
         label="Unit"
-        value={(nodeData as any).durationUnit || 'seconds'}
-        onChange={(v) => updateData('durationUnit' as any, v)}
+        value={fieldStr('durationUnit', 'seconds')}
+        onChange={(v) => updateData('durationUnit', v)}
         options={[
           { value: 'ms', label: 'Milliseconds' },
           { value: 'seconds', label: 'Seconds' },
@@ -885,15 +974,15 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   );
 
   const renderAgentSpawnConfig = () => {
-    const toolPolicyMode = (nodeData as any).toolPolicyMode || 'allow_all';
-    const selectedTools: string[] = (nodeData as any).selectedTools || [];
+    const toolPolicyMode = fieldStr('toolPolicyMode', 'allow_all');
+    const selectedTools: string[] = (fieldRaw('selectedTools') as string[] | undefined) ?? [];
 
     return (
     <div className="space-y-4">
       <FormSelect
         label="Agent Type"
-        value={(nodeData as any).agentType || 'chat'}
-        onChange={(v) => updateData('agentType' as any, v)}
+        value={fieldStr('agentType', 'chat')}
+        onChange={(v) => updateData('agentType', v)}
         options={[
           { value: 'chat', label: 'Chat Agent' },
           { value: 'code', label: 'Code Agent' },
@@ -913,20 +1002,20 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         </button>
         {showPersona && (
           <div className="px-3 pb-3 space-y-3">
-            <FormSelect label="Tone" value={(nodeData as any).tone || 'professional'}
+            <FormSelect label="Tone" value={fieldStr('tone', 'professional')}
               options={[
                 { value: 'professional', label: 'Professional' },
                 { value: 'casual', label: 'Casual' },
                 { value: 'technical', label: 'Technical' },
               ]}
-              onChange={(v) => updateData('tone' as any, v)}
+              onChange={(v) => updateData('tone', v)}
               helpText="Communication style for agent responses." />
-            <FormTextarea label="Boundaries" value={(nodeData as any).boundaries || ''}
-              onChange={(v) => updateData('boundaries' as any, v)} rows={2}
+            <FormTextarea label="Boundaries" value={fieldStr('boundaries')}
+              onChange={(v) => updateData('boundaries', v)} rows={2}
               placeholder="e.g., Do not access production databases..."
               helpText="What the agent should NOT do." />
-            <FormTextarea label="Bootstrap Instructions" value={(nodeData as any).bootstrapInstructions || ''}
-              onChange={(v) => updateData('bootstrapInstructions' as any, v)} rows={3}
+            <FormTextarea label="Bootstrap Instructions" value={fieldStr('bootstrapInstructions')}
+              onChange={(v) => updateData('bootstrapInstructions', v)} rows={3}
               placeholder="Initial instructions before the main task..."
               helpText="Prepended to the agent's system prompt." />
           </div>
@@ -938,23 +1027,23 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           chosen by SmartModelRouter; per-user × per-model spend caps live
           in UserModelBudgetService. Leave Model field for explicit override. */}
       <SectionLabel label="Model" />
-      <FormInput label="Model Override" value={(nodeData as any).model || ''}
-        onChange={(v) => updateData('model' as any, v)} placeholder="Leave empty for auto routing"
+      <FormInput label="Model Override" value={fieldStr('model')}
+        onChange={(v) => updateData('model', v)} placeholder="Leave empty for auto routing"
         helpText="Pin a specific model for this node; leave blank for Smart Router." />
-      <FormInput label="Max Turns" value={(nodeData as any).maxIterations || 10}
-        onChange={(v) => updateData('maxIterations' as any, parseInt(v) || 10)} type="number" min={1} max={50}
+      <FormInput label="Max Turns" value={fieldNum('maxIterations', 10)}
+        onChange={(v) => updateData('maxIterations', parseInt(v) || 10)} type="number" min={1} max={50}
         helpText="Maximum reasoning/tool-use turns." />
       <div className="flex items-center gap-3 py-1">
-        <input type="checkbox" checked={(nodeData as any).enableThinking || false}
-          onChange={(e) => updateData('enableThinking' as any, e.target.checked)}
+        <input type="checkbox" checked={fieldBool('enableThinking')}
+          onChange={(e) => updateData('enableThinking', e.target.checked)}
           className="rounded" id="spawn-enable-thinking" />
         <label htmlFor="spawn-enable-thinking" className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           Enable extended thinking
         </label>
       </div>
-      {(nodeData as any).enableThinking && (
-        <FormInput label="Thinking Budget (tokens)" value={(nodeData as any).thinkingBudget || 8192}
-          onChange={(v) => updateData('thinkingBudget' as any, parseInt(v) || 8192)} type="number"
+      {fieldBool('enableThinking') && (
+        <FormInput label="Thinking Budget (tokens)" value={fieldNum('thinkingBudget', 8192)}
+          onChange={(v) => updateData('thinkingBudget', parseInt(v) || 8192)} type="number"
           min={1024} max={32000} helpText="Token budget for the thinking phase." />
       )}
 
@@ -986,7 +1075,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 { value: 'allow_selected', label: 'Allow Selected Only' },
                 { value: 'deny_selected', label: 'Deny Selected' },
               ]}
-              onChange={(v) => updateData('toolPolicyMode' as any, v)} />
+              onChange={(v) => updateData('toolPolicyMode', v)} />
             {toolPolicyMode !== 'allow_all' && (
               <div className="glass-surface-subtle max-h-40 overflow-y-auto rounded-lg p-2 space-y-1" style={{ border: '1px solid var(--glass-border)' }}>
                 {availableTools.map(tool => (
@@ -997,7 +1086,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                         const newTools = e.target.checked
                           ? [...selectedTools, tool.name]
                           : selectedTools.filter((t: string) => t !== tool.name);
-                        updateData('selectedTools' as any, newTools);
+                        updateData('selectedTools', newTools);
                       }} />
                     <span style={{ color: 'var(--color-text)' }}>{tool.name}</span>
                   </label>
@@ -1010,19 +1099,19 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
       {/* Budgets & Approval */}
       <SectionLabel label="Budgets" />
-      <FormInput label="Cost Budget ($)" value={(nodeData as any).costBudget || ''}
-        onChange={(v) => updateData('costBudget' as any, parseFloat(v) || undefined)} type="number" min={0}
+      <FormInput label="Cost Budget ($)" value={fieldStr('costBudget')}
+        onChange={(v) => updateData('costBudget', parseFloat(v) || undefined)} type="number" min={0}
         placeholder="No limit" helpText="Maximum cost this agent can spend." />
-      <FormInput label="Tool Call Limit" value={(nodeData as any).toolCallLimit || ''}
-        onChange={(v) => updateData('toolCallLimit' as any, parseInt(v) || undefined)} type="number" min={1}
+      <FormInput label="Tool Call Limit" value={fieldStr('toolCallLimit')}
+        onChange={(v) => updateData('toolCallLimit', parseInt(v) || undefined)} type="number" min={1}
         placeholder="25 (default)" helpText="Maximum tool calls before forcing a final answer." />
-      <FormSelect label="Approval Policy" value={(nodeData as any).approvalPolicy || 'none'}
+      <FormSelect label="Approval Policy" value={fieldStr('approvalPolicy', 'none')}
         options={[
           { value: 'none', label: 'None' },
           { value: 'high_risk', label: 'High-Risk Tools Only' },
           { value: 'all', label: 'All Tool Calls' },
         ]}
-        onChange={(v) => updateData('approvalPolicy' as any, v)} />
+        onChange={(v) => updateData('approvalPolicy', v)} />
 
       {/* Memory */}
       <div className="border rounded-lg" style={{ borderColor: 'var(--color-border)' }}>
@@ -1035,21 +1124,21 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         {showAgentMemory && (
           <div className="px-3 pb-3 space-y-3">
             <div className="flex items-center gap-3 py-1">
-              <input type="checkbox" checked={(nodeData as any).persistMemory || false}
-                onChange={(e) => updateData('persistMemory' as any, e.target.checked)}
+              <input type="checkbox" checked={fieldBool('persistMemory')}
+                onChange={(e) => updateData('persistMemory', e.target.checked)}
                 className="rounded" id="spawn-persist-memory" />
               <label htmlFor="spawn-persist-memory" className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                 Persist Memory
               </label>
             </div>
-            {(nodeData as any).persistMemory && (
-              <FormSelect label="Memory Scope" value={(nodeData as any).memoryScope || 'node'}
+            {fieldBool('persistMemory') && (
+              <FormSelect label="Memory Scope" value={fieldStr('memoryScope', 'node')}
                 options={[
                   { value: 'node', label: 'Node' },
                   { value: 'workflow', label: 'Workflow' },
                   { value: 'global', label: 'Global' },
                 ]}
-                onChange={(v) => updateData('memoryScope' as any, v)} />
+                onChange={(v) => updateData('memoryScope', asField(v, 'memoryScope'))} />
             )}
           </div>
         )}
@@ -1087,8 +1176,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     <div className="space-y-4">
       <FormSelect
         label="Strategy"
-        value={(nodeData as any).strategy || 'concat'}
-        onChange={(v) => updateData('strategy' as any, v)}
+        value={fieldStr('strategy', 'concat')}
+        onChange={(v) => updateData('strategy', v)}
         options={[
           { value: 'concat', label: 'Concatenate' },
           { value: 'summarize', label: 'Summarize' },
@@ -1100,8 +1189,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       <AdvancedToggle>
         <FormTextarea
           label="Synthesis Prompt"
-          value={(nodeData as any).synthPrompt || ''}
-          onChange={(v) => updateData('synthPrompt' as any, v)}
+          value={fieldStr('synthPrompt')}
+          onChange={(v) => updateData('synthPrompt', v)}
           rows={4}
           placeholder="Combine the following outputs into a single coherent response..."
           isDark={isDark}
@@ -1115,16 +1204,16 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     <div className="space-y-4">
       <FormInput
         label="Iterate Over"
-        value={(nodeData as any).iterateOver || ''}
-        onChange={(v) => updateData('iterateOver' as any, v)}
+        value={fieldStr('iterateOver')}
+        onChange={(v) => updateData('iterateOver', v)}
         placeholder="$input.items"
         isDark={isDark}
         helpText="Expression that resolves to an array to iterate over"
       />
       <FormInput
         label="Item Variable Name"
-        value={(nodeData as any).itemVariable || 'item'}
-        onChange={(v) => updateData('itemVariable' as any, v)}
+        value={fieldStr('itemVariable', 'item')}
+        onChange={(v) => updateData('itemVariable', v)}
         placeholder="item"
         isDark={isDark}
         helpText="Variable name to reference each item (e.g. $item)"
@@ -1136,8 +1225,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     <div className="space-y-4">
       <FormSelect
         label="Merge Strategy"
-        value={(nodeData as any).mergeStrategy || 'array'}
-        onChange={(v) => updateData('mergeStrategy' as any, v)}
+        value={fieldStr('mergeStrategy', 'array')}
+        onChange={(v) => updateData('mergeStrategy', v)}
         options={[
           { value: 'array', label: 'Array - Collect into array' },
           { value: 'object', label: 'Object - Merge key-value pairs' },
@@ -1153,16 +1242,16 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     <div className="space-y-4">
       <FormInput
         label="Model ID"
-        value={(nodeData as any).modelId || ''}
-        onChange={(v) => updateData('modelId' as any, v)}
+        value={fieldStr('modelId')}
+        onChange={(v) => updateData('modelId', v)}
         placeholder="us.anthropic.claude-opus-4-6-v1"
         isDark={isDark}
         helpText="Bedrock model identifier"
       />
       <FormSelect
         label="Region"
-        value={(nodeData as any).region || 'us-east-1'}
-        onChange={(v) => updateData('region' as any, v)}
+        value={fieldStr('region', 'us-east-1')}
+        onChange={(v) => updateData('region', v)}
         options={[
           { value: 'us-east-1', label: 'US East (N. Virginia)' },
           { value: 'us-west-2', label: 'US West (Oregon)' },
@@ -1222,16 +1311,16 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     <div className="space-y-4">
       <FormInput
         label="Model ID"
-        value={(nodeData as any).modelId || ''}
-        onChange={(v) => updateData('modelId' as any, v)}
+        value={fieldStr('modelId')}
+        onChange={(v) => updateData('modelId', v)}
         placeholder="gemini-2.0-flash"
         isDark={isDark}
         helpText="Vertex AI model identifier"
       />
       <FormInput
         label="Location"
-        value={(nodeData as any).location || 'us-central1'}
-        onChange={(v) => updateData('location' as any, v)}
+        value={fieldStr('location', 'us-central1')}
+        onChange={(v) => updateData('location', v)}
         placeholder="us-central1"
         isDark={isDark}
         helpText="GCP region for the Vertex AI endpoint"
@@ -1287,13 +1376,13 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     <div className="space-y-4">
       <FormInput
         label="Deployment Name"
-        value={(nodeData as any).deploymentName || ''}
-        onChange={(v) => updateData('deploymentName' as any, v)}
+        value={fieldStr('deploymentName')}
+        onChange={(v) => updateData('deploymentName', v)}
         placeholder="gpt-4o-deployment"
         isDark={isDark}
         helpText="Azure OpenAI deployment name"
         required={isFieldRequired('azure_ai', 'deploymentName')}
-        error={isFieldRequired('azure_ai', 'deploymentName') && !((nodeData as any).deploymentName || (nodeData as any).deployment)}
+        error={isFieldRequired('azure_ai', 'deploymentName') && !(fieldStr('deploymentName') || fieldStr('deployment'))}
       />
       <FormTextarea
         label="Prompt"
@@ -1370,8 +1459,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       />
       <FormSelect
         label="Model Override"
-        value={(nodeData as any).modelOverride || 'auto'}
-        onChange={(v) => updateData('modelOverride' as any, v)}
+        value={fieldStr('modelOverride', 'auto')}
+        onChange={(v) => updateData('modelOverride', v)}
         options={[
           { value: 'auto', label: 'Auto (Smart Router)' },
           ...availableModels.map(m => ({ value: m, label: m })),
@@ -1397,8 +1486,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           onChange={(v) => updateData('maxTokens', parseInt(v) || 4096)} type="number" isDark={isDark} min={1} max={32000}
           helpText="Maximum tokens the model can generate. Higher values allow longer outputs but cost more." />
         <div className="flex items-center gap-3 py-1">
-          <input type="checkbox" checked={(nodeData as any).enableThinking || false}
-            onChange={(e) => updateData('enableThinking' as any, e.target.checked)}
+          <input type="checkbox" checked={fieldBool('enableThinking')}
+            onChange={(e) => updateData('enableThinking', e.target.checked)}
             className="rounded" id="enable-thinking" />
           <label htmlFor="enable-thinking" className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
             Enable extended thinking
@@ -1407,9 +1496,9 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <p className="text-xs -mt-2 ml-7" style={{ color: 'var(--color-text-tertiary)' }}>
           Allows the model to reason step-by-step before responding. Improves accuracy on complex tasks.
         </p>
-        {(nodeData as any).enableThinking && (
-          <FormInput label="Thinking Budget (tokens)" value={(nodeData as any).thinkingBudget || 8192}
-            onChange={(v) => updateData('thinkingBudget' as any, parseInt(v) || 8192)} type="number" isDark={isDark}
+        {fieldBool('enableThinking') && (
+          <FormInput label="Thinking Budget (tokens)" value={fieldNum('thinkingBudget', 8192)}
+            onChange={(v) => updateData('thinkingBudget', parseInt(v) || 8192)} type="number" isDark={isDark}
             min={1024} max={32000} helpText="Token budget for the thinking phase" />
         )}
       </AdvancedToggle>
@@ -1418,12 +1507,15 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   };
 
   const renderMultiAgentConfig = () => {
-    const agents: any[] = Array.isArray((nodeData as any).agents) ? (nodeData as any).agents : [];
-    const pattern: string = (nodeData as any).pattern || 'parallel';
-    const updateAgents = (next: any[]) => updateData('agents' as any, next);
+    const agentsRaw = fieldRaw('agents');
+    const agents: MultiAgentAgentSpec[] = Array.isArray(agentsRaw)
+      ? (agentsRaw as MultiAgentAgentSpec[])
+      : [];
+    const pattern: string = fieldStr('pattern', 'parallel');
+    const updateAgents = (next: MultiAgentAgentSpec[]) => updateData('agents', next);
     const addAgent = () => updateAgents([...agents, { agentId: '', taskDescription: '' }]);
     const removeAgent = (i: number) => updateAgents(agents.filter((_, idx) => idx !== i));
-    const updateAgent = (i: number, patch: Partial<any>) =>
+    const updateAgent = (i: number, patch: Partial<MultiAgentAgentSpec>) =>
       updateAgents(agents.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
 
     return (
@@ -1435,7 +1527,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <FormSelect
           label="Orchestration Pattern"
           value={pattern}
-          onChange={(v) => updateData('pattern' as any, v)}
+          onChange={(v) => updateData('pattern', v)}
           options={[
             { value: 'parallel', label: 'Parallel — fan out, aggregate' },
             { value: 'sequential', label: 'Sequential — handoff chain' },
@@ -1478,14 +1570,14 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           </button>
         </div>
 
-        <FormInput label="Max Concurrency" value={(nodeData as any).maxConcurrency || 5}
-          onChange={(v) => updateData('maxConcurrency' as any, parseInt(v) || 5)} type="number" isDark={isDark}
+        <FormInput label="Max Concurrency" value={fieldNum('maxConcurrency', 5)}
+          onChange={(v) => updateData('maxConcurrency', parseInt(v) || 5)} type="number" isDark={isDark}
           min={1} max={20} helpText="Cap on simultaneous agents (parallel pattern only)." />
 
         <FormSelect
           label="Aggregation Strategy"
-          value={(nodeData as any).aggregationStrategy || 'merge'}
-          onChange={(v) => updateData('aggregationStrategy' as any, v)}
+          value={fieldStr('aggregationStrategy', 'merge')}
+          onChange={(v) => updateData('aggregationStrategy', asField(v, 'aggregationStrategy'))}
           options={[
             { value: 'merge', label: 'Merge — combine all outputs' },
             { value: 'first', label: 'First — fastest agent wins' },
@@ -1496,13 +1588,13 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         />
 
         <AdvancedToggle>
-          <FormInput label="Total Timeout (ms)" value={(nodeData as any).timeoutMs || 120000}
-            onChange={(v) => updateData('timeoutMs' as any, parseInt(v) || 120000)} type="number" isDark={isDark}
+          <FormInput label="Total Timeout (ms)" value={fieldNum('timeoutMs', 120000)}
+            onChange={(v) => updateData('timeoutMs', parseInt(v) || 120000)} type="number" isDark={isDark}
             min={5000} max={600000} helpText="Wall-clock cap across all agents." />
           <FormSelect
             label="Share context across agents"
-            value={(nodeData as any).sharedContext === false ? 'false' : 'true'}
-            onChange={(v) => updateData('sharedContext' as any, v === 'true')}
+            value={fieldRaw('sharedContext') === false ? 'false' : 'true'}
+            onChange={(v) => updateData('sharedContext', v === 'true')}
             options={[
               { value: 'true', label: 'Yes — prepend upstream input as context' },
               { value: 'false', label: 'No — agents see only their task' },
@@ -1520,9 +1612,9 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   const [showAgentMemory, setShowAgentMemory] = useState(false);
 
   const renderAgentSingleConfig = () => {
-    const toolPolicyMode = (nodeData as any).toolPolicyMode || 'allow_all';
-    const selectedTools: string[] = (nodeData as any).selectedTools || [];
-    const currentAgentId = (nodeData as any).agentId || '';
+    const toolPolicyMode = fieldStr('toolPolicyMode', 'allow_all');
+    const selectedTools: string[] = (fieldRaw('selectedTools') as string[] | undefined) ?? [];
+    const currentAgentId = fieldStr('agentId');
     const filteredAgents = agentOptions.filter(a =>
       !agentSearchQuery || a.display_name.toLowerCase().includes(agentSearchQuery.toLowerCase()) || a.id.toLowerCase().includes(agentSearchQuery.toLowerCase())
     );
@@ -1579,7 +1671,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 <div
                   key={agent.id}
                   onClick={() => {
-                    updateData('agentId' as any, agent.id);
+                    updateData('agentId', agent.id);
                     setAgentDropdownOpen(false);
                     setAgentSearchQuery('');
                   }}
@@ -1600,7 +1692,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
               {/* Manual entry option */}
               <div style={{ padding: '6px 12px', borderTop: '1px solid var(--color-border)' }}>
                 <FormInput label="" value={currentAgentId}
-                  onChange={(v) => updateData('agentId' as any, v)}
+                  onChange={(v) => updateData('agentId', v)}
                   placeholder="Or enter custom agent ID..."
                 />
               </div>
@@ -1627,7 +1719,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         </button>
         {showPersona && (
           <div className="px-3 pb-3 space-y-3">
-            <FormSelect label="Role" value={(nodeData as any).role || 'custom'}
+            <FormSelect label="Role" value={fieldStr('role', 'custom')}
               options={[
                 { value: 'reasoning', label: 'Reasoning' },
                 { value: 'data_query', label: 'Data Query' },
@@ -1639,22 +1731,22 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 { value: 'synthesis', label: 'Synthesis' },
                 { value: 'custom', label: 'Custom' },
               ]}
-              onChange={(v) => updateData('role' as any, v)}
+              onChange={(v) => updateData('role', v)}
               helpText="The agent's specialization." />
-            <FormSelect label="Tone" value={(nodeData as any).tone || 'professional'}
+            <FormSelect label="Tone" value={fieldStr('tone', 'professional')}
               options={[
                 { value: 'professional', label: 'Professional' },
                 { value: 'casual', label: 'Casual' },
                 { value: 'technical', label: 'Technical' },
               ]}
-              onChange={(v) => updateData('tone' as any, v)}
+              onChange={(v) => updateData('tone', v)}
               helpText="Communication style for agent responses." />
-            <FormTextarea label="Boundaries" value={(nodeData as any).boundaries || ''}
-              onChange={(v) => updateData('boundaries' as any, v)} rows={2}
+            <FormTextarea label="Boundaries" value={fieldStr('boundaries')}
+              onChange={(v) => updateData('boundaries', v)} rows={2}
               placeholder="e.g., Do not access production databases, do not generate executable code..."
               helpText="What the agent should NOT do. Enforced in the system prompt." />
-            <FormTextarea label="Bootstrap Instructions" value={(nodeData as any).bootstrapInstructions || ''}
-              onChange={(v) => updateData('bootstrapInstructions' as any, v)} rows={3}
+            <FormTextarea label="Bootstrap Instructions" value={fieldStr('bootstrapInstructions')}
+              onChange={(v) => updateData('bootstrapInstructions', v)} rows={3}
               placeholder="Initial instructions or context given before the main task..."
               helpText="Prepended to the agent's system prompt for additional context." />
           </div>
@@ -1666,24 +1758,24 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           chosen by SmartModelRouter unless an override is set; per-user
           × per-model spend caps live in UserModelBudgetService. */}
       <SectionLabel label="Model" />
-      <FormInput label="Model Override" value={(nodeData as any).model || ''}
-        onChange={(v) => updateData('model' as any, v)}
+      <FormInput label="Model Override" value={fieldStr('model')}
+        onChange={(v) => updateData('model', v)}
         placeholder="Leave empty for auto routing"
         helpText="Pin a specific model for this node; leave blank for Smart Router." />
-      <FormInput label="Max Turns" value={(nodeData as any).maxTurns || 5}
-        onChange={(v) => updateData('maxTurns' as any, parseInt(v) || 5)} type="number" min={1} max={50}
+      <FormInput label="Max Turns" value={fieldNum('maxTurns', 5)}
+        onChange={(v) => updateData('maxTurns', parseInt(v) || 5)} type="number" min={1} max={50}
         helpText="Maximum reasoning/tool-use turns before returning." />
       <div className="flex items-center gap-3 py-1">
-        <input type="checkbox" checked={(nodeData as any).enableThinking || false}
-          onChange={(e) => updateData('enableThinking' as any, e.target.checked)}
+        <input type="checkbox" checked={fieldBool('enableThinking')}
+          onChange={(e) => updateData('enableThinking', e.target.checked)}
           className="rounded" id="agent-enable-thinking" />
         <label htmlFor="agent-enable-thinking" className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           Enable extended thinking
         </label>
       </div>
-      {(nodeData as any).enableThinking && (
-        <FormInput label="Thinking Budget (tokens)" value={(nodeData as any).thinkingBudget || 8192}
-          onChange={(v) => updateData('thinkingBudget' as any, parseInt(v) || 8192)} type="number"
+      {fieldBool('enableThinking') && (
+        <FormInput label="Thinking Budget (tokens)" value={fieldNum('thinkingBudget', 8192)}
+          onChange={(v) => updateData('thinkingBudget', parseInt(v) || 8192)} type="number"
           min={1024} max={32000} helpText="Token budget for the thinking phase." />
       )}
 
@@ -1703,7 +1795,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 { value: 'allow_selected', label: 'Allow Selected Only' },
                 { value: 'deny_selected', label: 'Deny Selected' },
               ]}
-              onChange={(v) => updateData('toolPolicyMode' as any, v)}
+              onChange={(v) => updateData('toolPolicyMode', v)}
               helpText="Controls which tools the agent can use." />
             {toolPolicyMode !== 'allow_all' && (
               <div>
@@ -1722,7 +1814,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                             const newTools = e.target.checked
                               ? [...selectedTools, tool.name]
                               : selectedTools.filter((t: string) => t !== tool.name);
-                            updateData('selectedTools' as any, newTools);
+                            updateData('selectedTools', newTools);
                           }} />
                         <span style={{ color: 'var(--color-text)' }}>{tool.name}</span>
                         <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>({tool.server})</span>
@@ -1738,24 +1830,24 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
       {/* Budgets */}
       <SectionLabel label="Budgets" />
-      <FormInput label="Cost Budget ($)" value={(nodeData as any).costBudget || ''}
-        onChange={(v) => updateData('costBudget' as any, parseFloat(v) || undefined)} type="number" min={0}
+      <FormInput label="Cost Budget ($)" value={fieldStr('costBudget')}
+        onChange={(v) => updateData('costBudget', parseFloat(v) || undefined)} type="number" min={0}
         placeholder="No limit"
         helpText="Maximum cost this agent can spend on LLM calls." />
-      <FormInput label="Tool Call Limit" value={(nodeData as any).toolCallLimit || ''}
-        onChange={(v) => updateData('toolCallLimit' as any, parseInt(v) || undefined)} type="number" min={1}
+      <FormInput label="Tool Call Limit" value={fieldStr('toolCallLimit')}
+        onChange={(v) => updateData('toolCallLimit', parseInt(v) || undefined)} type="number" min={1}
         placeholder="25 (default)"
         helpText="Maximum number of tool calls before forcing a final answer." />
 
       {/* Approval */}
       <SectionLabel label="Approval" />
-      <FormSelect label="Approval Policy" value={(nodeData as any).approvalPolicy || 'none'}
+      <FormSelect label="Approval Policy" value={fieldStr('approvalPolicy', 'none')}
         options={[
           { value: 'none', label: 'None' },
           { value: 'high_risk', label: 'High-Risk Tools Only' },
           { value: 'all', label: 'All Tool Calls' },
         ]}
-        onChange={(v) => updateData('approvalPolicy' as any, v)}
+        onChange={(v) => updateData('approvalPolicy', v)}
         helpText="When to require human approval for tool calls." />
 
       {/* Memory (collapsible) */}
@@ -1769,21 +1861,21 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         {showAgentMemory && (
           <div className="px-3 pb-3 space-y-3">
             <div className="flex items-center gap-3 py-1">
-              <input type="checkbox" checked={(nodeData as any).persistMemory || false}
-                onChange={(e) => updateData('persistMemory' as any, e.target.checked)}
+              <input type="checkbox" checked={fieldBool('persistMemory')}
+                onChange={(e) => updateData('persistMemory', e.target.checked)}
                 className="rounded" id="agent-persist-memory" />
               <label htmlFor="agent-persist-memory" className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                 Persist Memory
               </label>
             </div>
-            {(nodeData as any).persistMemory && (
-              <FormSelect label="Memory Scope" value={(nodeData as any).memoryScope || 'node'}
+            {fieldBool('persistMemory') && (
+              <FormSelect label="Memory Scope" value={fieldStr('memoryScope', 'node')}
                 options={[
                   { value: 'node', label: 'Node - This node only' },
                   { value: 'workflow', label: 'Workflow - Shared across workflow' },
                   { value: 'global', label: 'Global - Persists across executions' },
                 ]}
-                onChange={(v) => updateData('memoryScope' as any, v)}
+                onChange={(v) => updateData('memoryScope', asField(v, 'memoryScope'))}
                 helpText="How broadly the agent's memory is shared." />
             )}
           </div>
@@ -1791,13 +1883,13 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       </div>
 
       {/* System Prompt Override */}
-      <FormTextarea label="System Prompt Override" value={(nodeData as any).systemPrompt || ''}
-        onChange={(v) => updateData('systemPrompt' as any, v)}
+      <FormTextarea label="System Prompt Override" value={fieldStr('systemPrompt')}
+        onChange={(v) => updateData('systemPrompt', v)}
         placeholder="Override the agent's system prompt (optional)"
         helpText="Custom system prompt. Overrides the role-based default. Use {{input}} for dynamic values." />
 
-      <FormInput label="Timeout (ms)" value={(nodeData as any).timeout || 60000}
-        onChange={(v) => updateData('timeout' as any, parseInt(v) || 60000)} type="number" min={5000}
+      <FormInput label="Timeout (ms)" value={fieldNum('timeout', 60000)}
+        onChange={(v) => updateData('timeout', parseInt(v) || 60000)} type="number" min={5000}
         helpText="Maximum execution time in milliseconds. Agent is terminated if exceeded." />
     </div>
     );
@@ -1806,20 +1898,20 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   const renderAgentPoolConfig = () => (
     <div className="space-y-4">
       <SectionLabel label="Agent Pool Configuration" />
-      <FormInput label="Concurrency" value={(nodeData as any).concurrency || 5}
-        onChange={(v) => updateData('concurrency' as any, parseInt(v) || 5)} type="number" min={1} max={20}
+      <FormInput label="Concurrency" value={fieldNum('concurrency', 5)}
+        onChange={(v) => updateData('concurrency', parseInt(v) || 5)} type="number" min={1} max={20}
         helpText="Maximum agents running in parallel." />
-      <FormSelect label="Aggregation Strategy" value={(nodeData as any).aggregation || 'merge'}
+      <FormSelect label="Aggregation Strategy" value={fieldStr('aggregation', 'merge')}
         options={[
           { value: 'first', label: 'First - Fastest agent wins' },
           { value: 'vote', label: 'Vote - Majority consensus' },
           { value: 'merge', label: 'Merge - Concatenate all outputs' },
           { value: 'supervisor_synthesis', label: 'Supervisor Synthesis - LLM combines results' },
         ]}
-        onChange={(v) => updateData('aggregation' as any, v)}
+        onChange={(v) => updateData('aggregation', v)}
         helpText="How to combine results from all agents." />
-      <FormInput label="Timeout Per Agent (s)" value={(nodeData as any).timeoutPerAgent || 60}
-        onChange={(v) => updateData('timeoutPerAgent' as any, parseInt(v) || 60)} type="number" min={5} max={600}
+      <FormInput label="Timeout Per Agent (s)" value={fieldNum('timeoutPerAgent', 60)}
+        onChange={(v) => updateData('timeoutPerAgent', parseInt(v) || 60)} type="number" min={5} max={600}
         helpText="Maximum time each agent can run before being terminated." />
       <div className="glass-surface-subtle text-[12px] p-2 rounded" style={{ color: 'var(--color-text-secondary)' }}>
         Configure individual agents by connecting Agent nodes to this pool's input handles.
@@ -1830,20 +1922,20 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   const renderAgentSupervisorConfig = () => (
     <div className="space-y-4">
       <SectionLabel label="Supervisor Configuration" />
-      <FormTextarea label="Supervisor Instructions" value={(nodeData as any).supervisorPrompt || ''}
-        onChange={(v) => updateData('supervisorPrompt' as any, v)} rows={4}
+      <FormTextarea label="Supervisor Instructions" value={fieldStr('supervisorPrompt')}
+        onChange={(v) => updateData('supervisorPrompt', v)} rows={4}
         placeholder="You are a supervisor managing a team of worker agents. Delegate tasks based on each worker's specialization..."
         helpText="Instructions for how the supervisor should plan, delegate, and quality-check worker outputs." />
-      <FormInput label="Supervisor Model" value={(nodeData as any).supervisorModel || ''}
-        onChange={(v) => updateData('supervisorModel' as any, v)}
+      <FormInput label="Supervisor Model" value={fieldStr('supervisorModel')}
+        onChange={(v) => updateData('supervisorModel', v)}
         placeholder="e.g., claude-sonnet-4-6"
         helpText="Should be a capable model (e.g., Claude Sonnet or GPT-4o) for planning and delegation." />
-      <FormInput label="Max Delegation Rounds" value={(nodeData as any).maxDelegationRounds || 5}
-        onChange={(v) => updateData('maxDelegationRounds' as any, parseInt(v) || 5)} type="number" min={1} max={20}
+      <FormInput label="Max Delegation Rounds" value={fieldNum('maxDelegationRounds', 5)}
+        onChange={(v) => updateData('maxDelegationRounds', parseInt(v) || 5)} type="number" min={1} max={20}
         helpText="Maximum number of delegation cycles before the supervisor must finalize." />
       <div className="flex items-center gap-3 py-1">
-        <input type="checkbox" checked={(nodeData as any).allowDynamicWorkers || false}
-          onChange={(e) => updateData('allowDynamicWorkers' as any, e.target.checked)}
+        <input type="checkbox" checked={fieldBool('allowDynamicWorkers')}
+          onChange={(e) => updateData('allowDynamicWorkers', e.target.checked)}
           className="rounded" id="allow-dynamic-workers" />
         <label htmlFor="allow-dynamic-workers" className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           Allow dynamic worker creation
@@ -1852,8 +1944,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       <p className="text-xs -mt-2 ml-7" style={{ color: 'var(--color-text-tertiary)' }}>
         When enabled, the supervisor can spawn new worker agents on-the-fly for tasks not covered by connected workers.
       </p>
-      <FormTextarea label="Worker Agents (JSON)" value={(nodeData as any).workers ? JSON.stringify((nodeData as any).workers, null, 2) : ''}
-        onChange={(v) => { try { updateData('workers' as any, JSON.parse(v)); } catch { /* wait for valid JSON */ } }}
+      <FormTextarea label="Worker Agents (JSON)" value={fieldRaw('workers') ? JSON.stringify(fieldRaw('workers'), null, 2) : ''}
+        onChange={(v) => { try { updateData('workers', JSON.parse(v)); } catch { /* wait for valid JSON */ } }}
         rows={5} monospace
         placeholder={'[\n  { "id": "researcher", "role": "research", "model": "auto" },\n  { "id": "writer", "role": "summarization", "model": "auto" }\n]'}
         helpText="JSON array of worker agent definitions. Each needs at least an id and role." />
@@ -1867,8 +1959,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     <div className="space-y-4">
       <FormTextarea
         label="Text Content"
-        value={(nodeData as any).text || ''}
-        onChange={(v) => updateData('text' as any, v)}
+        value={fieldStr('text')}
+        onChange={(v) => updateData('text', v)}
         rows={6}
         placeholder="Describe what this part of the flow does..."
         isDark={isDark}
@@ -1876,8 +1968,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       />
       <FormInput
         label="Font Size"
-        value={(nodeData as any).fontSize || 13}
-        onChange={(v) => updateData('fontSize' as any, v)}
+        value={fieldNum('fontSize', 13)}
+        onChange={(v) => updateData('fontSize', v)}
         type="number"
         isDark={isDark}
         min={10}
@@ -1886,15 +1978,15 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       />
       <FormInput
         label="Text Color"
-        value={(nodeData as any).textColor || 'var(--color-fg)'}
-        onChange={(v) => updateData('textColor' as any, v)}
+        value={fieldStr('textColor', 'var(--color-fg)')}
+        onChange={(v) => updateData('textColor', v)}
         isDark={isDark}
         helpText="Hex color for the text (e.g., #c9d1d9)"
       />
       <FormInput
         label="Background Color"
-        value={(nodeData as any).bgColor || 'transparent'}
-        onChange={(v) => updateData('bgColor' as any, v)}
+        value={fieldStr('bgColor', 'transparent')}
+        onChange={(v) => updateData('bgColor', v)}
         isDark={isDark}
         helpText="Background color. Use 'transparent' for no background."
       />
@@ -1902,8 +1994,20 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   );
 
   const renderUniversalAdvancedConfig = () => {
-    const retryPolicy = (nodeData as any).retryPolicy || {};
-    const onError = (nodeData as any).onError || 'stop';
+    type RetryPolicy = NonNullable<NodeData['retryPolicy']>;
+    const retryPolicy: Partial<RetryPolicy> =
+      (fieldRaw('retryPolicy') as Partial<RetryPolicy> | undefined) ?? {};
+    // Merge a patch onto the current policy, filling required fields with the
+    // same defaults the inputs display, so the result satisfies NodeData['retryPolicy'].
+    const writeRetryPolicy = (patch: Partial<RetryPolicy>) =>
+      updateData('retryPolicy', {
+        maxRetries: 3,
+        delayMs: 1000,
+        backoff: 'fixed',
+        ...retryPolicy,
+        ...patch,
+      });
+    const onError = fieldStr('onError', 'stop');
 
     return (
       <div className="pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
@@ -1922,8 +2026,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
               <input
                 type="checkbox"
                 id="node-disabled"
-                checked={(nodeData as any).disabled || false}
-                onChange={(e) => updateData('disabled' as any, e.target.checked)}
+                checked={fieldBool('disabled')}
+                onChange={(e) => updateData('disabled', e.target.checked)}
                 className="rounded"
               />
               <label htmlFor="node-disabled" className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
@@ -1934,8 +2038,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             {/* Timeout */}
             <FormInput
               label="Timeout (seconds)"
-              value={(nodeData as any).timeoutMs ? Math.round((nodeData as any).timeoutMs / 1000) : ''}
-              onChange={(v) => updateData('timeoutMs' as any, v ? parseInt(v) * 1000 : undefined)}
+              value={fieldNum('timeoutMs', 0) ? Math.round(fieldNum('timeoutMs', 0) / 1000) : ''}
+              onChange={(v) => updateData('timeoutMs', v ? parseInt(v) * 1000 : undefined)}
               type="number"
               placeholder="30"
               isDark={isDark}
@@ -1947,7 +2051,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             <FormSelect
               label="On Error"
               value={onError}
-              onChange={(v) => updateData('onError' as any, v)}
+              onChange={(v) => updateData('onError', asField(v, 'onError'))}
               options={[
                 { value: 'stop', label: 'Stop Workflow' },
                 { value: 'continue', label: 'Continue' },
@@ -1966,7 +2070,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 <FormInput
                   label="Max Retries"
                   value={retryPolicy.maxRetries ?? 3}
-                  onChange={(v) => updateData('retryPolicy' as any, { ...retryPolicy, maxRetries: parseInt(v) || 3 })}
+                  onChange={(v) => writeRetryPolicy({ maxRetries: parseInt(v) || 3 })}
                   type="number"
                   isDark={isDark}
                   min={1}
@@ -1975,7 +2079,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 <FormInput
                   label="Delay (ms)"
                   value={retryPolicy.delayMs ?? 1000}
-                  onChange={(v) => updateData('retryPolicy' as any, { ...retryPolicy, delayMs: parseInt(v) || 1000 })}
+                  onChange={(v) => writeRetryPolicy({ delayMs: parseInt(v) || 1000 })}
                   type="number"
                   isDark={isDark}
                   min={100}
@@ -1983,7 +2087,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 <FormSelect
                   label="Backoff Strategy"
                   value={retryPolicy.backoff || 'fixed'}
-                  onChange={(v) => updateData('retryPolicy' as any, { ...retryPolicy, backoff: v })}
+                  onChange={(v) => writeRetryPolicy({ backoff: v as RetryPolicy['backoff'] })}
                   options={[
                     { value: 'fixed', label: 'Fixed' },
                     { value: 'exponential', label: 'Exponential' },
@@ -1999,8 +2103,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 <input
                   type="checkbox"
                   id="use-pinned-data"
-                  checked={(nodeData as any).usePinnedData || false}
-                  onChange={(e) => updateData('usePinnedData' as any, e.target.checked)}
+                  checked={fieldBool('usePinnedData')}
+                  onChange={(e) => updateData('usePinnedData', e.target.checked)}
                   className="rounded"
                 />
                 <label htmlFor="use-pinned-data" className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
@@ -2009,8 +2113,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
               </div>
               <FormTextarea
                 label="Pinned Test Output"
-                value={(nodeData as any).pinnedData || ''}
-                onChange={(v) => updateData('pinnedData' as any, v)}
+                value={fieldStr('pinnedData')}
+                onChange={(v) => updateData('pinnedData', v)}
                 rows={4}
                 placeholder='{"result": "sample output"}'
                 isDark={isDark}
@@ -2022,8 +2126,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             {/* Output Format */}
             <FormSelect
               label="Output Format"
-              value={(nodeData as any).outputFormat || 'auto'}
-              onChange={(v) => updateData('outputFormat' as any, v === 'auto' ? undefined : v)}
+              value={fieldStr('outputFormat', 'auto')}
+              onChange={(v) => updateData('outputFormat', v === 'auto' ? undefined : v)}
               options={[
                 { value: 'auto', label: 'Auto-detect' },
                 { value: 'markdown', label: 'Markdown' },
@@ -2040,8 +2144,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
               <input
                 type="checkbox"
                 id="persist-to-milvus"
-                checked={(nodeData as any).persistToMilvus || false}
-                onChange={(e) => updateData('persistToMilvus' as any, e.target.checked)}
+                checked={fieldBool('persistToMilvus')}
+                onChange={(e) => updateData('persistToMilvus', e.target.checked)}
                 className="rounded"
               />
               <label htmlFor="persist-to-milvus" className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
@@ -2052,8 +2156,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             {/* Notes */}
             <FormTextarea
               label="Notes"
-              value={(nodeData as any).notes || ''}
-              onChange={(v) => updateData('notes' as any, v)}
+              value={fieldStr('notes')}
+              onChange={(v) => updateData('notes', v)}
               rows={3}
               placeholder="Internal documentation about this node..."
               isDark={isDark}
@@ -2067,8 +2171,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
   const renderErrorHandlerConfig = () => (
     <div className="space-y-4">
-      <FormSelect label="Error Action" value={(nodeData as any).errorAction || 'log'}
-        onChange={(v) => updateData('errorAction' as any, v)}
+      <FormSelect label="Error Action" value={fieldStr('errorAction', 'log')}
+        onChange={(v) => updateData('errorAction', asField(v, 'errorAction'))}
         options={[
           { value: 'log', label: 'Log - Record and continue' },
           { value: 'retry', label: 'Retry - Re-execute failed node' },
@@ -2076,19 +2180,19 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           { value: 'transform', label: 'Transform - Convert error to output' },
         ]}
         helpText="What to do when an error reaches this handler." />
-      <FormTextarea label="Error Message Template" value={(nodeData as any).errorMessage || ''}
-        onChange={(v) => updateData('errorMessage' as any, v)} rows={3}
+      <FormTextarea label="Error Message Template" value={fieldStr('errorMessage')}
+        onChange={(v) => updateData('errorMessage', v)} rows={3}
         placeholder="Error in {{nodeId}}: {{error.message}}"
         helpText="Template for error output. Use {{error.message}}, {{error.stack}}, {{nodeId}}." />
       <AdvancedToggle>
-        <FormInput label="Max Retries" value={(nodeData as any).maxRetries || 3}
-          onChange={(v) => updateData('maxRetries' as any, parseInt(v) || 3)} type="number"
+        <FormInput label="Max Retries" value={fieldNum('maxRetries', 3)}
+          onChange={(v) => updateData('maxRetries', parseInt(v) || 3)} type="number"
           min={0} max={10} helpText="Number of retry attempts (for retry action)." />
-        <FormInput label="Retry Delay (ms)" value={(nodeData as any).retryDelay || 1000}
-          onChange={(v) => updateData('retryDelay' as any, parseInt(v) || 1000)} type="number"
+        <FormInput label="Retry Delay (ms)" value={fieldNum('retryDelay', 1000)}
+          onChange={(v) => updateData('retryDelay', parseInt(v) || 1000)} type="number"
           min={100} max={60000} helpText="Delay between retries." />
-        <FormSelect label="Backoff" value={(nodeData as any).backoff || 'exponential'}
-          onChange={(v) => updateData('backoff' as any, v)}
+        <FormSelect label="Backoff" value={fieldStr('backoff', 'exponential')}
+          onChange={(v) => updateData('backoff', v)}
           options={[
             { value: 'fixed', label: 'Fixed' },
             { value: 'exponential', label: 'Exponential' },
@@ -2100,21 +2204,21 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
   const renderSlackConfig = () => (
     <div className="space-y-4">
-      <FormInput label="Channel" value={(nodeData as any).channel || ''}
-        onChange={(v) => updateData('channel' as any, v)}
+      <FormInput label="Channel" value={fieldStr('channel')}
+        onChange={(v) => updateData('channel', v)}
         placeholder="#general or C01234567"
         helpText="Slack channel name or ID."
-        required error={!(nodeData as any).channel?.trim()} />
-      <FormTextarea label="Message" value={(nodeData as any).message || ''}
-        onChange={(v) => updateData('message' as any, v)} rows={4}
+        required error={!fieldStr('channel').trim()} />
+      <FormTextarea label="Message" value={fieldStr('message')}
+        onChange={(v) => updateData('message', v)} rows={4}
         placeholder="Workflow {{workflowName}} completed: {{input}}"
         helpText="Supports Slack mrkdwn and {{variable}} templates."
-        required error={!(nodeData as any).message?.trim()} />
+        required error={!fieldStr('message').trim()} />
       <AdvancedToggle>
-        <FormInput label="Bot Name" value={(nodeData as any).botName || 'OpenAgentic'}
-          onChange={(v) => updateData('botName' as any, v)} helpText="Display name for the bot." />
-        <FormInput label="Thread TS" value={(nodeData as any).threadTs || ''}
-          onChange={(v) => updateData('threadTs' as any, v)}
+        <FormInput label="Bot Name" value={fieldStr('botName', 'OpenAgentic')}
+          onChange={(v) => updateData('botName', v)} helpText="Display name for the bot." />
+        <FormInput label="Thread TS" value={fieldStr('threadTs')}
+          onChange={(v) => updateData('threadTs', v)}
           placeholder="Optional - reply in thread"
           helpText="Thread timestamp to reply in an existing thread." />
       </AdvancedToggle>
@@ -2123,19 +2227,19 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
   const renderTeamsConfig = () => (
     <div className="space-y-4">
-      <FormInput label="Webhook URL" value={(nodeData as any).webhookUrl || ''}
-        onChange={(v) => updateData('webhookUrl' as any, v)}
+      <FormInput label="Webhook URL" value={fieldStr('webhookUrl')}
+        onChange={(v) => updateData('webhookUrl', v)}
         placeholder="https://outlook.office.com/webhook/..."
         helpText="Microsoft Teams incoming webhook URL. Use {{secret:teams_webhook}} for secrets."
-        required error={!(nodeData as any).webhookUrl?.trim()} />
-      <FormTextarea label="Message" value={(nodeData as any).message || ''}
-        onChange={(v) => updateData('message' as any, v)} rows={4}
+        required error={!fieldStr('webhookUrl').trim()} />
+      <FormTextarea label="Message" value={fieldStr('message')}
+        onChange={(v) => updateData('message', v)} rows={4}
         placeholder="Workflow completed with result: {{input}}"
         helpText="Message body. Supports {{variable}} templates."
-        required error={!(nodeData as any).message?.trim()} />
+        required error={!fieldStr('message').trim()} />
       <AdvancedToggle>
-        <FormInput label="Title" value={(nodeData as any).title || ''}
-          onChange={(v) => updateData('title' as any, v)}
+        <FormInput label="Title" value={fieldStr('title')}
+          onChange={(v) => updateData('title', v)}
           placeholder="Workflow Notification"
           helpText="Card title shown in the Teams message." />
       </AdvancedToggle>
@@ -2144,27 +2248,27 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
   const renderEmailConfig = () => (
     <div className="space-y-4">
-      <FormInput label="To" value={(nodeData as any).to || ''}
-        onChange={(v) => updateData('to' as any, v)}
+      <FormInput label="To" value={fieldStr('to')}
+        onChange={(v) => updateData('to', v)}
         placeholder="user@example.com"
         helpText="Recipient email address(es), comma-separated."
-        required error={!(nodeData as any).to?.trim()} />
-      <FormInput label="Subject" value={(nodeData as any).subject || ''}
-        onChange={(v) => updateData('subject' as any, v)}
+        required error={!fieldStr('to').trim()} />
+      <FormInput label="Subject" value={fieldStr('subject')}
+        onChange={(v) => updateData('subject', v)}
         placeholder="Workflow Result: {{workflowName}}"
         helpText="Email subject line. Supports {{variable}} templates."
-        required error={!(nodeData as any).subject?.trim()} />
-      <FormTextarea label="Body" value={(nodeData as any).body || ''}
-        onChange={(v) => updateData('body' as any, v)} rows={6}
+        required error={!fieldStr('subject').trim()} />
+      <FormTextarea label="Body" value={fieldStr('body')}
+        onChange={(v) => updateData('body', v)} rows={6}
         placeholder="The workflow completed with the following output:\n\n{{input}}"
         helpText="Email body. Supports HTML and {{variable}} templates."
-        required error={!(nodeData as any).body?.trim()} />
+        required error={!fieldStr('body').trim()} />
       <AdvancedToggle>
-        <FormInput label="CC" value={(nodeData as any).cc || ''}
-          onChange={(v) => updateData('cc' as any, v)} placeholder="cc@example.com"
+        <FormInput label="CC" value={fieldStr('cc')}
+          onChange={(v) => updateData('cc', v)} placeholder="cc@example.com"
           helpText="CC recipients, comma-separated." />
-        <FormSelect label="Format" value={(nodeData as any).bodyFormat || 'html'}
-          onChange={(v) => updateData('bodyFormat' as any, v)}
+        <FormSelect label="Format" value={fieldStr('bodyFormat', 'html')}
+          onChange={(v) => updateData('bodyFormat', v)}
           options={[{ value: 'html', label: 'HTML' }, { value: 'text', label: 'Plain Text' }]}
           helpText="Email body format." />
       </AdvancedToggle>
@@ -2173,18 +2277,18 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
   const renderPagerDutyConfig = () => (
     <div className="space-y-4">
-      <FormInput label="Service ID" value={(nodeData as any).serviceId || ''}
-        onChange={(v) => updateData('serviceId' as any, v)}
+      <FormInput label="Service ID" value={fieldStr('serviceId')}
+        onChange={(v) => updateData('serviceId', v)}
         placeholder="P1234567"
         helpText="PagerDuty service ID to create the incident on."
-        required error={!(nodeData as any).serviceId?.trim()} />
-      <FormInput label="Title" value={(nodeData as any).title || ''}
-        onChange={(v) => updateData('title' as any, v)}
+        required error={!fieldStr('serviceId').trim()} />
+      <FormInput label="Title" value={fieldStr('title')}
+        onChange={(v) => updateData('title', v)}
         placeholder="[OpenAgentic] {{error.message}}"
         helpText="Incident title. Supports {{variable}} templates."
-        required error={!(nodeData as any).title?.trim()} />
-      <FormSelect label="Severity" value={(nodeData as any).severity || 'warning'}
-        onChange={(v) => updateData('severity' as any, v)}
+        required error={!fieldStr('title').trim()} />
+      <FormSelect label="Severity" value={fieldStr('severity', 'warning')}
+        onChange={(v) => updateData('severity', v)}
         options={[
           { value: 'critical', label: 'Critical' },
           { value: 'error', label: 'Error' },
@@ -2192,8 +2296,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           { value: 'info', label: 'Info' },
         ]}
         helpText="Incident severity level." />
-      <FormTextarea label="Details" value={(nodeData as any).details || ''}
-        onChange={(v) => updateData('details' as any, v)} rows={3}
+      <FormTextarea label="Details" value={fieldStr('details')}
+        onChange={(v) => updateData('details', v)} rows={3}
         placeholder="Workflow {{workflowName}} failed at node {{nodeId}}"
         helpText="Incident body/details." />
     </div>
@@ -2201,8 +2305,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
   const renderServiceNowConfig = () => (
     <div className="space-y-4">
-      <FormSelect label="Table" value={(nodeData as any).table || 'incident'}
-        onChange={(v) => updateData('table' as any, v)}
+      <FormSelect label="Table" value={fieldStr('table', 'incident')}
+        onChange={(v) => updateData('table', v)}
         options={[
           { value: 'incident', label: 'Incident' },
           { value: 'change_request', label: 'Change Request' },
@@ -2210,18 +2314,18 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           { value: 'sc_request', label: 'Service Request' },
         ]}
         helpText="ServiceNow table to create the record in." />
-      <FormInput label="Short Description" value={(nodeData as any).shortDescription || ''}
-        onChange={(v) => updateData('shortDescription' as any, v)}
+      <FormInput label="Short Description" value={fieldStr('shortDescription')}
+        onChange={(v) => updateData('shortDescription', v)}
         placeholder="Automated ticket from workflow"
         helpText="Ticket short description."
-        required error={!(nodeData as any).shortDescription?.trim()} />
-      <FormTextarea label="Description" value={(nodeData as any).description || ''}
-        onChange={(v) => updateData('description' as any, v)} rows={4}
+        required error={!fieldStr('shortDescription').trim()} />
+      <FormTextarea label="Description" value={fieldStr('description')}
+        onChange={(v) => updateData('description', v)} rows={4}
         placeholder="Workflow output:\n{{input}}"
         helpText="Full ticket description. Supports {{variable}} templates." />
       <AdvancedToggle>
-        <FormSelect label="Priority" value={(nodeData as any).priority || '3'}
-          onChange={(v) => updateData('priority' as any, v)}
+        <FormSelect label="Priority" value={fieldStr('priority', '3')}
+          onChange={(v) => updateData('priority', v)}
           options={[
             { value: '1', label: '1 - Critical' },
             { value: '2', label: '2 - High' },
@@ -2229,8 +2333,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             { value: '4', label: '4 - Low' },
           ]}
           helpText="Ticket priority level." />
-        <FormInput label="Assignment Group" value={(nodeData as any).assignmentGroup || ''}
-          onChange={(v) => updateData('assignmentGroup' as any, v)}
+        <FormInput label="Assignment Group" value={fieldStr('assignmentGroup')}
+          onChange={(v) => updateData('assignmentGroup', v)}
           placeholder="IT Operations"
           helpText="ServiceNow assignment group." />
       </AdvancedToggle>
@@ -2239,13 +2343,13 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
   const renderJiraConfig = () => (
     <div className="space-y-4">
-      <FormInput label="Project Key" value={(nodeData as any).projectKey || ''}
-        onChange={(v) => updateData('projectKey' as any, v)}
+      <FormInput label="Project Key" value={fieldStr('projectKey')}
+        onChange={(v) => updateData('projectKey', v)}
         placeholder="PROJ"
         helpText="Jira project key."
-        required error={!(nodeData as any).projectKey?.trim()} />
-      <FormSelect label="Issue Type" value={(nodeData as any).issueType || 'Task'}
-        onChange={(v) => updateData('issueType' as any, v)}
+        required error={!fieldStr('projectKey').trim()} />
+      <FormSelect label="Issue Type" value={fieldStr('issueType', 'Task')}
+        onChange={(v) => updateData('issueType', v)}
         options={[
           { value: 'Bug', label: 'Bug' },
           { value: 'Task', label: 'Task' },
@@ -2253,22 +2357,22 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           { value: 'Epic', label: 'Epic' },
         ]}
         helpText="Jira issue type." />
-      <FormInput label="Summary" value={(nodeData as any).summary || ''}
-        onChange={(v) => updateData('summary' as any, v)}
+      <FormInput label="Summary" value={fieldStr('summary')}
+        onChange={(v) => updateData('summary', v)}
         placeholder="[OpenAgentic] {{workflowName}} result"
         helpText="Issue summary/title."
-        required error={!(nodeData as any).summary?.trim()} />
-      <FormTextarea label="Description" value={(nodeData as any).jiraDescription || ''}
-        onChange={(v) => updateData('jiraDescription' as any, v)} rows={4}
+        required error={!fieldStr('summary').trim()} />
+      <FormTextarea label="Description" value={fieldStr('jiraDescription')}
+        onChange={(v) => updateData('jiraDescription', v)} rows={4}
         placeholder="Workflow output:\n\n{{input}}"
         helpText="Issue description. Supports Jira wiki markup and {{variable}} templates." />
       <AdvancedToggle>
-        <FormInput label="Labels" value={(nodeData as any).labels || ''}
-          onChange={(v) => updateData('labels' as any, v)}
+        <FormInput label="Labels" value={fieldStr('labels')}
+          onChange={(v) => updateData('labels', v)}
           placeholder="openagentic, automated"
           helpText="Comma-separated labels." />
-        <FormInput label="Assignee" value={(nodeData as any).assignee || ''}
-          onChange={(v) => updateData('assignee' as any, v)}
+        <FormInput label="Assignee" value={fieldStr('assignee')}
+          onChange={(v) => updateData('assignee', v)}
           placeholder="user@example.com"
           helpText="Jira user to assign the issue to." />
       </AdvancedToggle>
@@ -2277,19 +2381,19 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
   const renderDiscordConfig = () => (
     <div className="space-y-4">
-      <FormInput label="Webhook URL" value={(nodeData as any).webhookUrl || ''}
-        onChange={(v) => updateData('webhookUrl' as any, v)}
+      <FormInput label="Webhook URL" value={fieldStr('webhookUrl')}
+        onChange={(v) => updateData('webhookUrl', v)}
         placeholder="https://discord.com/api/webhooks/..."
         helpText="Discord webhook URL. Use {{secret:discord_webhook}} for secrets."
-        required error={!(nodeData as any).webhookUrl?.trim()} />
-      <FormTextarea label="Message" value={(nodeData as any).message || ''}
-        onChange={(v) => updateData('message' as any, v)} rows={4}
+        required error={!fieldStr('webhookUrl').trim()} />
+      <FormTextarea label="Message" value={fieldStr('message')}
+        onChange={(v) => updateData('message', v)} rows={4}
         placeholder="Workflow completed: {{input}}"
         helpText="Message content. Supports Discord markdown and {{variable}} templates."
-        required error={!(nodeData as any).message?.trim()} />
+        required error={!fieldStr('message').trim()} />
       <AdvancedToggle>
-        <FormInput label="Username" value={(nodeData as any).username || 'OpenAgentic'}
-          onChange={(v) => updateData('username' as any, v)} helpText="Bot display name." />
+        <FormInput label="Username" value={fieldStr('username', 'OpenAgentic')}
+          onChange={(v) => updateData('username', v)} helpText="Bot display name." />
       </AdvancedToggle>
     </div>
   );
@@ -2299,42 +2403,42 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       <div className="p-2.5 rounded-lg text-xs" style={{ background: 'color-mix(in srgb, var(--color-info) 8%, transparent)', color: 'var(--color-info)', border: '1px solid color-mix(in srgb, var(--color-info) 20%, transparent)' }}>
         Loads cross-mode user context (chat history, preferences, recent interactions) to enrich downstream nodes.
       </div>
-      <FormSelect label="Context Scope" value={(nodeData as any).contextScope || 'recent'}
-        onChange={(v) => updateData('contextScope' as any, v)}
+      <FormSelect label="Context Scope" value={fieldStr('contextScope', 'recent')}
+        onChange={(v) => updateData('contextScope', v)}
         options={[
           { value: 'recent', label: 'Recent - Last 24h interactions' },
           { value: 'session', label: 'Session - Current session only' },
           { value: 'full', label: 'Full - All available context' },
         ]}
         helpText="How much user context to load." />
-      <FormInput label="Max Items" value={(nodeData as any).maxItems || 10}
-        onChange={(v) => updateData('maxItems' as any, parseInt(v) || 10)} type="number"
+      <FormInput label="Max Items" value={fieldNum('maxItems', 10)}
+        onChange={(v) => updateData('maxItems', parseInt(v) || 10)} type="number"
         min={1} max={100} helpText="Maximum context items to include." />
     </div>
   );
 
   const renderRagQueryConfig = () => (
     <div className="space-y-4">
-      <FormInput label="Collection Name" value={(nodeData as any).collectionName || ''}
-        onChange={(v) => updateData('collectionName' as any, v)}
+      <FormInput label="Collection Name" value={fieldStr('collectionName')}
+        onChange={(v) => updateData('collectionName', v)}
         placeholder="my_knowledge_base"
         helpText="Milvus collection to query."
-        required error={!(nodeData as any).collectionName?.trim()} />
-      <FormTextarea label="Query" value={(nodeData as any).queryText || ''}
-        onChange={(v) => updateData('queryText' as any, v)} rows={3}
+        required error={!fieldStr('collectionName').trim()} />
+      <FormTextarea label="Query" value={fieldStr('queryText')}
+        onChange={(v) => updateData('queryText', v)} rows={3}
         placeholder="{{input.message}}"
         helpText="Search query text. Supports {{input}} template variables."
-        required error={!(nodeData as any).queryText?.trim()} />
-      <FormInput label="Top K" value={(nodeData as any).topK || 10}
-        onChange={(v) => updateData('topK' as any, parseInt(v) || 10)} type="number"
+        required error={!fieldStr('queryText').trim()} />
+      <FormInput label="Top K" value={fieldNum('topK', 10)}
+        onChange={(v) => updateData('topK', parseInt(v) || 10)} type="number"
         min={1} max={100} helpText="Number of results to return." />
-      <FormTextarea label="Filters (JSON)" value={(nodeData as any).filters || '{}'}
-        onChange={(v) => updateData('filters' as any, v)} rows={2} monospace
+      <FormTextarea label="Filters (JSON)" value={fieldStr('filters', '{}')}
+        onChange={(v) => updateData('filters', v)} rows={2} monospace
         placeholder='{"category": "docs"}'
         helpText="Optional Milvus filter expression as JSON." />
       <AdvancedToggle>
-        <FormSelect label="Embedding Model" value={(nodeData as any).embeddingModel || 'auto'}
-          onChange={(v) => updateData('embeddingModel' as any, v)}
+        <FormSelect label="Embedding Model" value={fieldStr('embeddingModel', 'auto')}
+          onChange={(v) => updateData('embeddingModel', v)}
           options={[
             { value: 'auto', label: 'Auto (platform default)' },
             ...availableModels.filter(m => m.includes('embed')).map(m => ({ value: m, label: m })),
@@ -2346,28 +2450,28 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
   const renderFileUploadConfig = () => (
     <div className="space-y-4">
-      <FormInput label="Collection Name" value={(nodeData as any).collectionName || ''}
-        onChange={(v) => updateData('collectionName' as any, v)}
+      <FormInput label="Collection Name" value={fieldStr('collectionName')}
+        onChange={(v) => updateData('collectionName', v)}
         placeholder="my_knowledge_base"
         helpText="Target Milvus collection for ingestion."
-        required error={!(nodeData as any).collectionName?.trim()} />
-      <FormSelect label="Source Type" value={(nodeData as any).fileSource || 'input_data'}
-        onChange={(v) => updateData('fileSource' as any, v)}
+        required error={!fieldStr('collectionName').trim()} />
+      <FormSelect label="Source Type" value={fieldStr('fileSource', 'input_data')}
+        onChange={(v) => updateData('fileSource', v)}
         options={[
           { value: 'input_data', label: 'Input Data - From upstream node' },
           { value: 'url', label: 'URL - Fetch from remote URL' },
           { value: 'file_path', label: 'File Path - Local/mounted path' },
         ]}
         helpText="Where to read the file from." />
-      <FormInput label="Chunk Size" value={(nodeData as any).chunkSize || 512}
-        onChange={(v) => updateData('chunkSize' as any, parseInt(v) || 512)} type="number"
+      <FormInput label="Chunk Size" value={fieldNum('chunkSize', 512)}
+        onChange={(v) => updateData('chunkSize', parseInt(v) || 512)} type="number"
         min={64} max={8192} helpText="Characters per chunk for splitting." />
-      <FormInput label="Chunk Overlap" value={(nodeData as any).chunkOverlap || 50}
-        onChange={(v) => updateData('chunkOverlap' as any, parseInt(v) || 50)} type="number"
+      <FormInput label="Chunk Overlap" value={fieldNum('chunkOverlap', 50)}
+        onChange={(v) => updateData('chunkOverlap', parseInt(v) || 50)} type="number"
         min={0} max={1024} helpText="Overlap between adjacent chunks." />
       <AdvancedToggle>
-        <FormSelect label="Embedding Model" value={(nodeData as any).embeddingModel || 'auto'}
-          onChange={(v) => updateData('embeddingModel' as any, v)}
+        <FormSelect label="Embedding Model" value={fieldStr('embeddingModel', 'auto')}
+          onChange={(v) => updateData('embeddingModel', v)}
           options={[
             { value: 'auto', label: 'Auto (platform default)' },
             ...availableModels.filter(m => m.includes('embed')).map(m => ({ value: m, label: m })),
@@ -2379,29 +2483,29 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
   const renderWebhookResponseConfig = () => (
     <div className="space-y-4">
-      <FormInput label="Status Code" value={(nodeData as any).statusCode || 200}
-        onChange={(v) => updateData('statusCode' as any, parseInt(v) || 200)} type="number"
+      <FormInput label="Status Code" value={fieldNum('statusCode', 200)}
+        onChange={(v) => updateData('statusCode', parseInt(v) || 200)} type="number"
         min={100} max={599} helpText="HTTP status code to return (e.g. 200, 201, 400)." />
-      <FormTextarea label="Headers (JSON)" value={(nodeData as any).headers || '{}'}
-        onChange={(v) => updateData('headers' as any, v)} rows={3} monospace
+      <FormTextarea label="Headers (JSON)" value={fieldStr('headers', '{}')}
+        onChange={(v) => updateData('headers', v)} rows={3} monospace
         placeholder='{"Content-Type": "application/json"}'
         helpText="Response headers as JSON object." />
-      <FormTextarea label="Body Template" value={(nodeData as any).bodyTemplate || ''}
-        onChange={(v) => updateData('bodyTemplate' as any, v)} rows={4} monospace
+      <FormTextarea label="Body Template" value={fieldStr('bodyTemplate')}
+        onChange={(v) => updateData('bodyTemplate', v)} rows={4} monospace
         placeholder='{"result": "{{input}}"}'
         helpText="Response body. Supports {{input}} template variables." />
     </div>
   );
 
   const renderSwitchConfig = () => {
-    const cases: Array<{ value: string; label: string }> = (nodeData as any).cases || [];
+    const cases = (fieldRaw('cases') as Array<{ value: string; label: string }> | undefined) ?? [];
     return (
       <div className="space-y-4">
-        <FormInput label="Expression" value={(nodeData as any).expression || ''}
-          onChange={(v) => updateData('expression' as any, v)}
+        <FormInput label="Expression" value={fieldStr('expression')}
+          onChange={(v) => updateData('expression', v)}
           placeholder="$input.status"
           helpText="Expression to evaluate. Each case matches against this value."
-          required error={!(nodeData as any).expression?.trim()} />
+          required error={!fieldStr('expression').trim()} />
         <div>
           <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
             Cases
@@ -2415,7 +2519,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                   onChange={(e) => {
                     const updated = [...cases];
                     updated[i] = { ...updated[i], value: e.target.value };
-                    updateData('cases' as any, updated);
+                    updateData('cases', updated);
                   }}
                   placeholder="Value"
                   className="glass-field flex-1 px-2 py-1.5 text-sm focus:outline-none"
@@ -2426,7 +2530,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                   onChange={(e) => {
                     const updated = [...cases];
                     updated[i] = { ...updated[i], label: e.target.value };
-                    updateData('cases' as any, updated);
+                    updateData('cases', updated);
                   }}
                   placeholder="Label"
                   className="glass-field flex-1 px-2 py-1.5 text-sm focus:outline-none"
@@ -2434,7 +2538,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 <button
                   onClick={() => {
                     const updated = cases.filter((_, idx) => idx !== i);
-                    updateData('cases' as any, updated);
+                    updateData('cases', updated);
                   }}
                   className="p-1 rounded hover:bg-[color-mix(in_srgb,var(--color-error)_20%,transparent)] transition-colors"
                   style={{ color: 'var(--color-error)' }}
@@ -2448,7 +2552,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           <button
             onClick={() => {
               const updated = [...cases, { value: `case_${cases.length + 1}`, label: `Case ${cases.length + 1}` }];
-              updateData('cases' as any, updated);
+              updateData('cases', updated);
             }}
             className="mt-2 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors hover:opacity-80"
             style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
@@ -2465,8 +2569,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
   const renderParallelConfig = () => (
     <div className="space-y-4">
-      <FormSelect label="Mode" value={(nodeData as any).mode || 'split'}
-        onChange={(v) => updateData('mode' as any, v)}
+      <FormSelect label="Mode" value={fieldStr('mode', 'split')}
+        onChange={(v) => updateData('mode', v)}
         options={[
           { value: 'split', label: 'Split - Fan-out to parallel branches' },
           { value: 'join', label: 'Join - Fan-in and aggregate results' },
@@ -2476,8 +2580,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
-            checked={(nodeData as any).waitForAll !== false}
-            onChange={(e) => updateData('waitForAll' as any, e.target.checked)}
+            checked={fieldRaw('waitForAll') !== false}
+            onChange={(e) => updateData('waitForAll', e.target.checked)}
             className="rounded"
           />
           <span className="text-sm" style={{ color: 'var(--color-text)' }}>Wait for All</span>
@@ -2486,31 +2590,31 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           When enabled, waits for all branches before continuing. When disabled, continues when any branch completes.
         </p>
       </div>
-      <FormInput label="Timeout (ms)" value={(nodeData as any).timeoutMs || 60000}
-        onChange={(v) => updateData('timeoutMs' as any, parseInt(v) || 60000)} type="number"
+      <FormInput label="Timeout (ms)" value={fieldNum('timeoutMs', 60000)}
+        onChange={(v) => updateData('timeoutMs', parseInt(v) || 60000)} type="number"
         min={1000} max={600000} helpText="Max time to wait for branches to complete." />
     </div>
   );
 
   const renderReasoningConfig = () => (
     <div className="space-y-4">
-      <FormTextarea label="Prompt" value={(nodeData as any).prompt || ''}
-        onChange={(v) => updateData('prompt' as any, v)} rows={5}
+      <FormTextarea label="Prompt" value={fieldStr('prompt')}
+        onChange={(v) => updateData('prompt', v)} rows={5}
         placeholder="Analyze the following data and provide a detailed reasoning..."
         helpText="The reasoning prompt. Supports {{input}} template variables."
-        required error={!(nodeData as any).prompt?.trim()} />
-      <FormInput label="Thinking Budget (tokens)" value={(nodeData as any).thinkingBudget || 16384}
-        onChange={(v) => updateData('thinkingBudget' as any, parseInt(v) || 16384)} type="number"
+        required error={!fieldStr('prompt').trim()} />
+      <FormInput label="Thinking Budget (tokens)" value={fieldNum('thinkingBudget', 16384)}
+        onChange={(v) => updateData('thinkingBudget', parseInt(v) || 16384)} type="number"
         min={1024} max={131072} helpText="Maximum tokens allocated for chain-of-thought reasoning." />
-      <FormSelect label="Model" value={(nodeData as any).model || 'auto'}
-        onChange={(v) => updateData('model' as any, v)}
+      <FormSelect label="Model" value={fieldStr('model', 'auto')}
+        onChange={(v) => updateData('model', v)}
         options={[
           { value: 'auto', label: 'Auto (platform routing)' },
           ...availableModels.map(m => ({ value: m, label: m })),
         ]}
         helpText="Model to use for reasoning. Auto uses platform model routing." />
-      <FormSelect label="Output Format" value={(nodeData as any).outputFormat || 'text'}
-        onChange={(v) => updateData('outputFormat' as any, v)}
+      <FormSelect label="Output Format" value={fieldStr('outputFormat', 'text')}
+        onChange={(v) => updateData('outputFormat', v)}
         options={[
           { value: 'text', label: 'Text - Plain text output' },
           { value: 'json', label: 'JSON - Structured JSON output' },
@@ -2634,7 +2738,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     return (
       <div className="space-y-4">
         {schemaSettings.settings.map((setting) => {
-          const value = (nodeData as any)[setting.name] ?? '';
+          const value = (nodeData as Record<string, unknown>)[setting.name] ?? '';
           const isRequired = setting.required === true;
           const hasError = isRequired && (value === '' || value == null);
           const labelText = setting.label || setting.name;
@@ -2646,7 +2750,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 key={setting.name}
                 label={labelText + (isRequired ? ' *' : '')}
                 value={String(value || setting.default || '')}
-                onChange={(v) => updateData(setting.name as any, v)}
+                onChange={(v) => updateData(setting.name, v)}
                 options={setting.values.map((v) => ({ value: v, label: v }))}
                 helpText={helpText}
               />
@@ -2662,7 +2766,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 <input
                   type="checkbox"
                   checked={!!value}
-                  onChange={(e) => updateData(setting.name as any, e.target.checked)}
+                  onChange={(e) => updateData(setting.name, e.target.checked)}
                   style={{ width: 16, height: 16, cursor: 'pointer' }}
                 />
               </div>
@@ -2674,7 +2778,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 key={setting.name}
                 label={labelText}
                 value={value as number}
-                onChange={(v) => updateData(setting.name as any, Number(v))}
+                onChange={(v) => updateData(setting.name, Number(v))}
                 type="number"
                 placeholder={setting.placeholder}
                 helpText={helpText}
@@ -2691,7 +2795,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 key={setting.name}
                 label={labelText}
                 value={typeof value === 'string' ? value : JSON.stringify(value ?? {}, null, 2)}
-                onChange={(v) => updateData(setting.name as any, v)}
+                onChange={(v) => updateData(setting.name, v)}
                 rows={6}
                 placeholder={setting.placeholder || '{ }'}
                 helpText={helpText}
@@ -2707,7 +2811,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 key={setting.name}
                 label={labelText}
                 value={String(value || '')}
-                onChange={(v) => updateData(setting.name as any, v)}
+                onChange={(v) => updateData(setting.name, v)}
                 rows={8}
                 placeholder={setting.placeholder}
                 helpText={helpText}
@@ -2723,7 +2827,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 key={setting.name}
                 label={labelText}
                 value={String(value || '')}
-                onChange={(v) => updateData(setting.name as any, v)}
+                onChange={(v) => updateData(setting.name, v)}
                 placeholder={setting.placeholder || '{{secret:NAME}}'}
                 helpText={helpText || 'Reference a secret with `{{secret:NAME}}` syntax — never paste literal credentials.'}
                 required={isRequired}
@@ -2743,7 +2847,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 key={setting.name}
                 label={labelText}
                 value={String(value || '')}
-                onChange={(v) => updateData(setting.name as any, v)}
+                onChange={(v) => updateData(setting.name, v)}
                 rows={4}
                 placeholder={setting.placeholder}
                 helpText={helpText}
@@ -2757,7 +2861,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
               key={setting.name}
               label={labelText}
               value={String(value || '')}
-              onChange={(v) => updateData(setting.name as any, v)}
+              onChange={(v) => updateData(setting.name, v)}
               placeholder={setting.placeholder}
               helpText={helpText}
               required={isRequired}
@@ -2813,7 +2917,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
       <div className="p-4 space-y-6">
         {/* Validation Errors Banner */}
-        {node.data?.validationErrors && (node.data.validationErrors as any[]).length > 0 && (
+        {node.data?.validationErrors && (node.data.validationErrors as Array<{ field?: string; message: string }>).length > 0 && (
           <div style={{
             background: 'color-mix(in srgb, var(--color-warning) 8%, transparent)',
             border: '1px solid color-mix(in srgb, var(--color-warning) 25%, transparent)',
@@ -2822,9 +2926,9 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-warning)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
               <AlertCircle style={{ width: 12, height: 12 }} />
-              {(node.data.validationErrors as any[]).length} validation {(node.data.validationErrors as any[]).length === 1 ? 'issue' : 'issues'}
+              {(node.data.validationErrors as Array<{ field?: string; message: string }>).length} validation {(node.data.validationErrors as Array<{ field?: string; message: string }>).length === 1 ? 'issue' : 'issues'}
             </div>
-            {(node.data.validationErrors as any[]).map((err: any, i: number) => (
+            {(node.data.validationErrors as Array<{ field?: string; message: string }>).map((err: { field?: string; message: string }, i: number) => (
               <div key={i} style={{ fontSize: 11, color: 'var(--color-warning)', lineHeight: 1.5, paddingLeft: 16 }}>
                 {err.field ? `${err.field}: ` : ''}{err.message}
               </div>
@@ -2873,7 +2977,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 className="glass-btn glass-btn-secondary"
                 onClick={() => {
                   if (node?.id) {
-                    onUpdate(node.id, { executionState: undefined, executionError: undefined } as any);
+                    onUpdate(node.id, { executionState: undefined, executionError: undefined });
                   }
                 }}
                 style={{ padding: '4px 12px', fontSize: 11, fontWeight: 500, cursor: 'pointer' }}

@@ -16,7 +16,7 @@ export const INIT_TOOL_CACHE: BootstrapStep = {
   name: 'tool-cache-init',
   critical: true,
   async run({ ctx }) {
-    loggers.services.info('🔄 Initializing Tool Semantic Cache for MCP tools (MANDATORY)...');
+    loggers.services.info('Initializing Tool Semantic Cache for MCP tools (MANDATORY)...');
 
     // Lazy imports to avoid loading native milvus bindings at module parse time
     const ToolSemanticCacheService = (await import('../services/ToolSemanticCacheService.js')).default;
@@ -33,13 +33,13 @@ export const INIT_TOOL_CACHE: BootstrapStep = {
         await ctx.toolSemanticCache.initialize();
         ctx.toolSemanticCacheInitialized = true;
         milvusConnected = true;
-        loggers.services.info(`✅ Tool Semantic Cache connected to Milvus (fatalAttempt=${fatalAttempt}, recoveryAttempt=${recoveryAttempt})`);
+        loggers.services.info(`Tool Semantic Cache connected to Milvus (fatalAttempt=${fatalAttempt}, recoveryAttempt=${recoveryAttempt})`);
         break;
       } catch (error: any) {
         if (error?.name === 'MilvusRecoveringError') {
           recoveryAttempt++;
           if (recoveryAttempt >= RECOVERY_MAX_ATTEMPTS) {
-            loggers.services.fatal(`🚨 FATAL: Milvus still recovering after ${RECOVERY_MAX_ATTEMPTS} attempts (${(RECOVERY_MAX_ATTEMPTS * RECOVERY_INTERVAL_MS) / 1000}s) — collections never finished loading`);
+            loggers.services.fatal(`FATAL: Milvus still recovering after ${RECOVERY_MAX_ATTEMPTS} attempts (${(RECOVERY_MAX_ATTEMPTS * RECOVERY_INTERVAL_MS) / 1000}s) — collections never finished loading`);
             break;
           }
           loggers.services.warn({ recoveryAttempt, reason: error.message },
@@ -65,7 +65,7 @@ export const INIT_TOOL_CACHE: BootstrapStep = {
       // cold/absent Milvus — fail-closed on a fallback service is wrong. Log
       // and continue: ctx.toolSemanticCacheInitialized stays false, tool_search
       // resolves from pgvector.
-      loggers.services.warn(`⚠️ Cannot connect to Milvus (fatalAttempts=${fatalAttempt}, recoveryAttempts=${recoveryAttempt}) — tool search falls back to pgvector (api remains Ready)`);
+      loggers.services.warn(`Cannot connect to Milvus (fatalAttempts=${fatalAttempt}, recoveryAttempts=${recoveryAttempt}) — tool search falls back to pgvector (api remains Ready)`);
     }
 
     // #1058: MCP tool indexing runs in BACKGROUND — must NEVER block bootstrap.
@@ -85,10 +85,10 @@ export const INIT_TOOL_CACHE: BootstrapStep = {
     // In pgvector-only mode (Milvus unreachable / MILVUS_HOST unset) the cache
     // is null or uninitialized — skip it; tool_search resolves from pgvector.
     if (milvusConnected && ctx.toolSemanticCache) {
-    loggers.services.info('🔄 MCP tool semantic-cache indexing dispatched to background (non-blocking) — pgvector primary remains available');
+    loggers.services.info('MCP tool semantic-cache indexing dispatched to background (non-blocking) — pgvector primary remains available');
     ctx.toolSemanticCache.autoIndexToolsWhenReady()
       .then(async () => {
-        loggers.services.info('✅ Background MCP tool indexing complete');
+        loggers.services.info('Background MCP tool indexing complete');
         try {
           const { verifyToolSearch } = await import('../services/startup-helpers/verifyToolSearch.js');
           const verifyTimeoutMs = Number.parseInt(process.env.TOOL_INDEX_VERIFY_TIMEOUT_MS ?? '15000', 10);
@@ -113,7 +113,7 @@ export const INIT_TOOL_CACHE: BootstrapStep = {
           '⚠️ Background MCP tool indexing failed — tool search falls back to pgvector (api remains Ready)');
       });
     } else {
-      loggers.services.info('ℹ️ Milvus not connected — skipping Milvus background indexing; tool_search resolves from pgvector (ToolPgvectorSearchService)');
+      loggers.services.info('Milvus not connected — skipping Milvus background indexing; tool_search resolves from pgvector (ToolPgvectorSearchService)');
     }
 
     // ToolPgvectorSearchService

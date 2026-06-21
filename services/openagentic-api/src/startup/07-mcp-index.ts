@@ -39,11 +39,11 @@ export const INIT_MCP_INDEX: BootstrapStep = {
       } finally {
         if (timeoutHandle) clearTimeout(timeoutHandle);
       }
-      loggers.services.info('✅ MCP tools synced to PostgreSQL with pgvector embeddings');
+      loggers.services.info('MCP tools synced to PostgreSQL with pgvector embeddings');
 
       // Start periodic re-indexing (every 30 min)
       pgIndexingService.startPeriodicIndexing?.();
-      loggers.services.info('🔄 Periodic MCP tool re-indexing started (30-min interval)');
+      loggers.services.info('Periodic MCP tool re-indexing started (30-min interval)');
 
       // Note: usecases collection with pre-baked tool_chain_yaml was
       // considered (#766) and rejected as an anti-pattern. Pre-authored
@@ -54,7 +54,7 @@ export const INIT_MCP_INDEX: BootstrapStep = {
       // prescriptions), per the design discussion captured in
       // task #766 (deleted).
     } catch (pgError: any) {
-      loggers.services.warn({ error: pgError.message }, '⚠️ PostgreSQL tool indexing failed (Milvus primary is OK)');
+      loggers.services.warn({ error: pgError.message }, 'PostgreSQL tool indexing failed (Milvus primary is OK)');
     }
   },
 };

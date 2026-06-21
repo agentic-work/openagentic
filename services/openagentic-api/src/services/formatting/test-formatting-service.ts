@@ -26,13 +26,13 @@ async function testFormattingService() {
   // Test 1: Get all capabilities
   console.log('Test 1: Get all capabilities');
   const capabilities = service.getAllCapabilities();
-  console.log(`✅ Found ${capabilities.length} capabilities`);
+  console.log(`Found ${capabilities.length} capabilities`);
   console.log(`   Categories: ${[...new Set(capabilities.map(c => c.category))].join(', ')}\n`);
 
   // Test 2: Get all presets
   console.log('Test 2: Get all presets');
   const presets = service.getAllPresets();
-  console.log(`✅ Found ${presets.length} presets`);
+  console.log(`Found ${presets.length} presets`);
   presets.forEach(p => {
     console.log(`   - ${p.name}: ${p.triggers.join(', ')}`);
   });
@@ -41,7 +41,7 @@ async function testFormattingService() {
   // Test 3: Generate system prompt section
   console.log('Test 3: Generate system prompt section');
   const systemPromptSection = service.generateSystemPromptSection();
-  console.log(`✅ Generated system prompt section (${systemPromptSection.length} characters)`);
+  console.log(`Generated system prompt section (${systemPromptSection.length} characters)`);
   console.log('   First 500 chars:');
   console.log('   ' + systemPromptSection.substring(0, 500).replace(/\n/g, '\n   '));
   console.log('   ...\n');
@@ -71,7 +71,7 @@ async function testFormattingService() {
   // Test 5: Export to JSON
   console.log('\n\nTest 5: Export service data');
   const serviceData = service.toJSON();
-  console.log(`✅ Service data exported:`);
+  console.log(`Service data exported:`);
   console.log(`   - ${serviceData.capabilities.length} capabilities`);
   console.log(`   - ${serviceData.presets.length} presets`);
   console.log(`   - ${serviceData.languageSupport.length} supported languages`);
@@ -95,9 +95,9 @@ async function testFormattingService() {
   for (const capId of keyCapabilities) {
     const cap = service.getCapability(capId);
     if (cap) {
-      console.log(`   ✅ ${capId}: ${cap.name} (${cap.supportLevel})`);
+      console.log(`${capId}: ${cap.name} (${cap.supportLevel})`);
     } else {
-      console.log(`   ❌ ${capId}: NOT FOUND`);
+      console.log(`${capId}: NOT FOUND`);
     }
   }
 

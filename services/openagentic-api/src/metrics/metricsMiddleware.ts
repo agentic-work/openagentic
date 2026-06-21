@@ -160,7 +160,7 @@ export async function registerMetricsPlugin(fastify: FastifyInstance) {
   // Add metrics middleware
   fastify.addHook('onRequest', httpMetricsMiddleware());
   
-  logger.info('📊 Metrics plugin registered with Fastify');
+  logger.info('Metrics plugin registered with Fastify');
 }
 
 export default {

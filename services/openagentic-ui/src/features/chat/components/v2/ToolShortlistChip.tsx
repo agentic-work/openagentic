@@ -3,8 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 /**
  * ToolShortlistChip — Wave 3 (#525) per-message tool-shortlist pill.
  *
- * Driven by the server-emitted `tool_shortlist` NDJSON frame (Wave 2 of
- * <internal-plan>):
+ * Driven by the server-emitted `tool_shortlist` NDJSON frame (Wave 2):
  *
  *   {
  *     type: 'tool_shortlist',
@@ -18,8 +17,6 @@ import React, { useEffect, useRef, useState } from 'react';
  * in the assistant message header. Click opens a popover listing `kept`
  * (top 5) with "...and N more" when count exceeds kept.length. ESC closes
  * the popover.
- *
- * Plan ref: <internal-plan>.
  */
 
 export interface ToolShortlistChipProps {

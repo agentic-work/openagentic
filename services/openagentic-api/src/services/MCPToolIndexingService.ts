@@ -122,7 +122,7 @@ export class MCPToolIndexingService {
           ).catch(() => [{ cnt: 0 }]);
           const embeddedCount = Number(pgEmbedCount[0]?.cnt || 0);
           if (embeddedCount === 0) {
-            this.logger.info('[MCP_INDEXING] 🔄 pgvector embeddings empty - forcing re-index regardless of Redis hash');
+            this.logger.info('[MCP_INDEXING] pgvector embeddings empty - forcing re-index regardless of Redis hash');
             forceReindex = true;
           }
         }
@@ -145,14 +145,14 @@ export class MCPToolIndexingService {
             });
             const rowCount = Number(milvusStats?.data?.row_count ?? milvusStats?.stats?.find((s: any) => s.key === 'row_count')?.value ?? 0);
             if (!Number.isFinite(rowCount) || rowCount === 0) {
-              this.logger.info({ rowCount }, '[MCP_INDEXING] 🔄 Milvus mcp_tools collection empty - forcing re-index regardless of Redis hash');
+              this.logger.info({ rowCount }, '[MCP_INDEXING] Milvus mcp_tools collection empty - forcing re-index regardless of Redis hash');
               forceReindex = true;
             }
           } catch (milvusErr: any) {
             // Stats query itself failed — treat as worst-case empty and
             // force re-index. Better to redo the work than silently leave
             // ToolRanker with no data.
-            this.logger.warn({ err: milvusErr?.message }, '[MCP_INDEXING] 🔄 Milvus mcp_tools stats query failed - forcing re-index (fail-safe)');
+            this.logger.warn({ err: milvusErr?.message }, '[MCP_INDEXING] Milvus mcp_tools stats query failed - forcing re-index (fail-safe)');
             forceReindex = true;
           }
         }
@@ -203,7 +203,7 @@ export class MCPToolIndexingService {
     }
 
     try {
-      this.logger.info('[MCP_INDEXING] 🚀 Starting MCP tool indexing with super verbose logging');
+      this.logger.info('[MCP_INDEXING] Starting MCP tool indexing with super verbose logging');
       this.logger.info({
         startTime: new Date().toISOString(),
         mcpProxyUrl: process.env.MCP_PROXY_ENDPOINT || 'http://openagentic-mcp-proxy:8080',
@@ -212,7 +212,7 @@ export class MCPToolIndexingService {
       }, '[MCP_INDEXING] Initial configuration');
 
       // Load tools from MCP Proxy
-      this.logger.info('[MCP_INDEXING] 📡 Loading MCP tools from MCP Proxy...');
+      this.logger.info('[MCP_INDEXING] Loading MCP tools from MCP Proxy...');
       const allTools = await this.loadMCPToolsFromProxy();
 
       this.logger.info({
@@ -226,7 +226,7 @@ export class MCPToolIndexingService {
       }, '[MCP_INDEXING] 📊 MCP tools loaded from proxy (showing first 3)');
 
       if (allTools.length === 0) {
-        this.logger.warn('[MCP_INDEXING] ⚠️ No MCP tools found - checking fallback options');
+        this.logger.warn('[MCP_INDEXING] No MCP tools found - checking fallback options');
         return;
       }
 
@@ -243,24 +243,24 @@ export class MCPToolIndexingService {
 
       // 1. PRIMARY: PostgreSQL pgvector (ACID + semantic search — what the LLM queries)
       if (this.prisma) {
-        this.logger.info('[MCP_INDEXING] 🐘 [PRIMARY] Indexing tools in PostgreSQL pgvector (single source of truth)...');
+        this.logger.info('[MCP_INDEXING] [PRIMARY] Indexing tools in PostgreSQL pgvector (single source of truth)...');
         await this.indexToolsInPostgres(allTools);
-        this.logger.info('[MCP_INDEXING] ✅ [PRIMARY] PostgreSQL pgvector indexing complete');
+        this.logger.info('[MCP_INDEXING] [PRIMARY] PostgreSQL pgvector indexing complete');
       } else {
-        this.logger.error('[MCP_INDEXING] ❌ PostgreSQL not configured — tool semantic search will be BROKEN');
+        this.logger.error('[MCP_INDEXING] PostgreSQL not configured — tool semantic search will be BROKEN');
       }
 
       // 2. FALLBACK: Milvus (GPU-accelerated replica — used only if pgvector is DOWN)
       if (this.embeddingEnabled && this.embeddingService) {
-        this.logger.info('[MCP_INDEXING] 🔍 [FALLBACK] Indexing tools in Milvus (resilience replica)...');
+        this.logger.info('[MCP_INDEXING] [FALLBACK] Indexing tools in Milvus (resilience replica)...');
         await this.indexToolsInMilvus(allTools);
-        this.logger.info('[MCP_INDEXING] ✅ [FALLBACK] Milvus indexing complete');
+        this.logger.info('[MCP_INDEXING] [FALLBACK] Milvus indexing complete');
       } else {
-        this.logger.info('[MCP_INDEXING] ⏭️ Milvus fallback disabled — no embedding service configured');
+        this.logger.info('[MCP_INDEXING] Milvus fallback disabled — no embedding service configured');
       }
 
       // 3. LAST RESORT: Redis (plain JSON cache — emergency only, no semantic filtering)
-      this.logger.info('[MCP_INDEXING] 💾 [LAST RESORT] Caching tools in Redis (emergency fallback)...');
+      this.logger.info('[MCP_INDEXING] [LAST RESORT] Caching tools in Redis (emergency fallback)...');
       await this.cacheToolsInRedis(allTools);
 
       // 4. BUILT-IN META-TOOLS (the chat-pipeline refactor Phase C) — keep tool_search
@@ -481,7 +481,7 @@ export class MCPToolIndexingService {
       }, '[MCP_INDEXING] 🔍 Starting Milvus indexing process');
 
       // Clear existing data - use deleteEntities with proper filter syntax
-      this.logger.info('[MCP_INDEXING] 🗑️ Clearing existing data from Milvus collection...');
+      this.logger.info('[MCP_INDEXING] Clearing existing data from Milvus collection...');
 
       // First, check if collection has any data
       const queryResult = await this.milvusClient.query({
@@ -503,7 +503,7 @@ export class MCPToolIndexingService {
           collectionName
         }, '[MCP_INDEXING] ✅ Existing data cleared from Milvus');
       } else {
-        this.logger.info('[MCP_INDEXING] ✅ Collection is empty, no data to clear');
+        this.logger.info('[MCP_INDEXING] Collection is empty, no data to clear');
       }
 
       const entities = [];
@@ -641,7 +641,7 @@ export class MCPToolIndexingService {
       }, '[MCP_INDEXING] ✅ Entities inserted into Milvus');
 
       // Flush to ensure data is written
-      this.logger.info('[MCP_INDEXING] 💾 Flushing data to ensure persistence...');
+      this.logger.info('[MCP_INDEXING] Flushing data to ensure persistence...');
       const flushResult = await this.milvusClient.flush({
         collection_names: [collectionName]
       });
@@ -1028,7 +1028,7 @@ export class MCPToolIndexingService {
         collection_name: collectionName
       });
 
-      this.logger.info('[MCP_INDEXING] ✅ Milvus collection created and indexed');
+      this.logger.info('[MCP_INDEXING] Milvus collection created and indexed');
 
     } catch (error: any) {
       // Caller's catch downgrades "Milvus unavailable" to a calm warn; only log

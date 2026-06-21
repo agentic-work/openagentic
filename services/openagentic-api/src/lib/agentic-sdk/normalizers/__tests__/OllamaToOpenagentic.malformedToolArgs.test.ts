@@ -6,8 +6,8 @@
  * This test pins the same B4 behavior on the vendored copy so the upstream
  * fix has to land in both files before this test goes GREEN.
  *
- * See <internal-sdk>/.../OllamaToOpenagentic.malformedToolArgs.test.ts
- * for the canonical version + reasoning.
+ * The shared llm-sdk carries the canonical version of this test; this copy
+ * pins the same behavior on the vendored normalizer.
  */
 import { describe, it, expect } from 'vitest';
 import { loadNdjsonFixture } from './fixtures/loader.js';

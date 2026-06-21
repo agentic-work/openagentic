@@ -2,8 +2,8 @@
  * BuiltInAgentRegistry — markdown-driven sub-agent loader for the chatmode
  * `Task` tool.
  *
- * Mirrors Anthropic's built-in agents directory at
- * `<claude-code-src>/tools/AgentTool/built-in/`. Each `.md` file
+ * Follows the same convention as Claude Code's built-in agents directory.
+ * Each `.md` file
  * under `services/openagentic-api/src/agents/built-in/` carries:
  *
  *   ---

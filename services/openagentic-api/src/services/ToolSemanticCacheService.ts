@@ -368,7 +368,7 @@ export class ToolSemanticCacheService {
           // Create new collection with correct dimensions
           await this.createToolsCollection();
 
-          this.logger.info('✅ Collection recreated with correct dimensions', {
+          this.logger.info('Collection recreated with correct dimensions', {
             oldDimension: existingDim,
             newDimension: EMBEDDING_DIMENSIONS
           });
@@ -643,7 +643,7 @@ export class ToolSemanticCacheService {
     }, '[AUTO-INDEX] 🔓 Acquired distributed lock - proceeding with indexing');
 
     try {
-      this.logger.info('🔄 Auto-indexing MCP tools from MCP Proxy...');
+      this.logger.info('Auto-indexing MCP tools from MCP Proxy...');
 
       // Fetch tools from MCP Proxy (centralized tool catalog)
       const MCP_PROXY_URL = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
@@ -738,7 +738,7 @@ export class ToolSemanticCacheService {
 
             // CRITICAL: Release lock before returning (finally block won't run on early return within try)
             await redisClient.releaseLock(MCP_INDEX_LOCK_KEY, this.instanceId);
-            this.logger.info({ instanceId: this.instanceId }, '[AUTO-INDEX] 🔓 Released distributed lock (skip re-index path)');
+            this.logger.info({ instanceId: this.instanceId }, '[AUTO-INDEX] Released distributed lock (skip re-index path)');
 
             return; // EXIT - don't re-index
           }
@@ -784,7 +784,7 @@ export class ToolSemanticCacheService {
 
         await this.indexAllTools(toolsForIndexing);
         // Use actual indexed count instead of querying Milvus stats (which may not be updated yet)
-        this.logger.info(`✅ Auto-indexed ${toolsForIndexing.length} MCP tools successfully`);
+        this.logger.info(`Auto-indexed ${toolsForIndexing.length} MCP tools successfully`);
 
         // Store tools hash for future change detection
         const toolNames = toolsForIndexing.map(t => t.name || '').filter(Boolean).sort();
@@ -833,12 +833,12 @@ export class ToolSemanticCacheService {
    */
   async forceIndexToolsWithDebugging(): Promise<{ success: boolean; stats: any; error?: string }> {
     try {
-      this.logger.info('🔧 [FORCE-INDEX] Starting force index with detailed debugging');
+      this.logger.info('[FORCE-INDEX] Starting force index with detailed debugging');
 
       await this.autoIndexToolsWhenReady();
 
       const stats = await this.getCacheStats();
-      this.logger.info({ stats }, '✅ [FORCE-INDEX] Force indexing completed successfully');
+      this.logger.info({ stats }, '[FORCE-INDEX] Force indexing completed successfully');
 
       return { success: true, stats };
     } catch (error) {
@@ -1550,7 +1550,7 @@ export class ToolSemanticCacheService {
       // Multi-cloud queries need more tools to ensure diversity
       const effectiveTopK = isMultiCloud ? Math.max(topK, 50) : topK;
 
-      this.logger.info(`\x1b[96m🔍 CLOUD-AWARE SEMANTIC SEARCH\x1b[0m`, {
+      this.logger.info(`\x1b[96m CLOUD-AWARE SEMANTIC SEARCH\x1b[0m`, {
         query: `\x1b[96m${query.substring(0, 100)}\x1b[0m`,
         topK: effectiveTopK,
         serverFilter: serverFilter || 'none',
@@ -1627,7 +1627,7 @@ export class ToolSemanticCacheService {
         });
       }
 
-      console.log('\n🔍 [CLOUD-AWARE-SEARCH] Top 10 Tools After Boosting:');
+      console.log('\n [CLOUD-AWARE-SEARCH] Top 10 Tools After Boosting:');
       results.slice(0, 10).forEach((r: any, idx: number) => {
         const cloudInfo = r.matchedClouds?.length > 0 ? ` [${r.matchedClouds.join(',')}]` : '';
         console.log(`  ${idx + 1}. ${r.tool_name} (${r.server_name}) - Score: ${r.rrfScore?.toFixed(3)}${cloudInfo}`);
@@ -1721,7 +1721,7 @@ export class ToolSemanticCacheService {
 
       const duration = Date.now() - startTime;
 
-      this.logger.info(`\x1b[92m✅ CLOUD-AWARE SEARCH COMPLETE\x1b[0m in ${duration}ms`, {
+      this.logger.info(`\x1b[92m CLOUD-AWARE SEARCH COMPLETE\x1b[0m in ${duration}ms`, {
         query: `\x1b[96m${query.substring(0, 50)}\x1b[0m`,
         resultsFound: `\x1b[92m${finalTools.length}\x1b[0m`,
         isMultiCloud,
@@ -1733,7 +1733,7 @@ export class ToolSemanticCacheService {
 
       return finalTools;
     } catch (error) {
-      this.logger.error({ error, query }, '❌ Failed to search tools');
+      this.logger.error({ error, query }, 'Failed to search tools');
       throw error;
     }
   }

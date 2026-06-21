@@ -3,8 +3,8 @@
  *
  * This is the agent registry the chatmode `Task` tool consumes. Markdown
  * built-ins under `services/openagentic-api/src/agents/built-in/*.md` are
- * the canonical SoT for sub-agent identities (mirrors Claude Code's
- * `<claude-code-src>/tools/AgentTool/built-in/`). Each .md file is
+ * the canonical SoT for sub-agent identities (same convention as Claude
+ * Code's built-in agents directory). Each .md file is
  * a frontmatter+body shape that the loader parses into an
  * `AgentRegistryEntry`.
  *

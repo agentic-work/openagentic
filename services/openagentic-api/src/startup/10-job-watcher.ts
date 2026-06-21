@@ -8,18 +8,18 @@ export const START_JOB_WATCHER: BootstrapStep = {
   critical: false,
   async run({ ctx }) {
     try {
-      loggers.services.info('🔄 Initializing Redis client connection...');
+      loggers.services.info('Initializing Redis client connection...');
       await initializeRedis(loggers.services);
       const redisClient = getRedisClient();
 
       if (redisClient.isConnected()) {
-        loggers.services.info('✅ Redis client connected successfully');
+        loggers.services.info('Redis client connected successfully');
 
         // Start JobCompletionWatcher for autonomous job monitoring
-        loggers.services.info('🔄 Starting JobCompletionWatcher for autonomous monitoring...');
+        loggers.services.info('Starting JobCompletionWatcher for autonomous monitoring...');
         ctx.jobCompletionWatcher = new JobCompletionWatcher(redisClient, loggers.services);
         ctx.jobCompletionWatcher.start();
-        loggers.services.info('✅ JobCompletionWatcher started - AI will auto-detect completed jobs');
+        loggers.services.info('JobCompletionWatcher started - AI will auto-detect completed jobs');
 
         // Wire watcher events to SSE broadcasts for real-time notifications
         ctx.jobCompletionWatcher.on('job:completed', async (statusChange: any) => {
@@ -50,10 +50,10 @@ export const START_JOB_WATCHER: BootstrapStep = {
           }
         });
       } else {
-        loggers.services.warn('⚠️ Redis client failed to connect - continuing without cache');
+        loggers.services.warn('Redis client failed to connect - continuing without cache');
       }
     } catch (error) {
-      loggers.services.warn({ err: error }, '⚠️ JobCompletionWatcher initialization failed (non-critical)');
+      loggers.services.warn({ err: error }, 'JobCompletionWatcher initialization failed (non-critical)');
     }
   },
 };

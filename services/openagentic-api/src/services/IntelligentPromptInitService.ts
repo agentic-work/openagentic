@@ -20,7 +20,7 @@ export class IntelligentPromptInitService {
    */
   async initialize(): Promise<void> {
     try {
-      this.logger.info('🚀 Initializing intelligent prompt system...');
+      this.logger.info('Initializing intelligent prompt system...');
 
       const startTime = Date.now();
 
@@ -53,7 +53,7 @@ export class IntelligentPromptInitService {
    * Seed all prompt templates from PromptTemplates.ts
    */
   private async seedPromptTemplates(): Promise<void> {
-    this.logger.info(`📝 Seeding ${PROMPT_TEMPLATES.length} intelligent prompt templates...`);
+    this.logger.info(`Seeding ${PROMPT_TEMPLATES.length} intelligent prompt templates...`);
 
     let created = 0;
     let updated = 0;
@@ -158,7 +158,7 @@ export class IntelligentPromptInitService {
     });
 
     if (!defaultTemplate) {
-      this.logger.error('❌ CRITICAL: No default prompt template found after seeding!');
+      this.logger.error('CRITICAL: No default prompt template found after seeding!');
       throw new Error('No default prompt template configured');
     }
 

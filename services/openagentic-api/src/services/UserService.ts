@@ -62,9 +62,9 @@ export class UserService {
         });
         
         if (requirePasswordReset) {
-          this.logger.info(`✅ Created admin user: ${adminEmail} (password must be changed on first login)`);
+          this.logger.info(`Created admin user: ${adminEmail} (password must be changed on first login)`);
         } else {
-          this.logger.info(`✅ Created admin user: ${adminEmail} (password reset disabled by ADMIN_REQUIRE_PASSWORD_RESET=false)`);
+          this.logger.info(`Created admin user: ${adminEmail} (password reset disabled by ADMIN_REQUIRE_PASSWORD_RESET=false)`);
         }
       } else {
         // Ensure existing user is admin
@@ -76,9 +76,9 @@ export class UserService {
               groups: ['admin', 'users', 'OpenAgenticAdmins']
             }
           });
-          this.logger.info(`✅ Updated user to admin: ${adminEmail}`);
+          this.logger.info(`Updated user to admin: ${adminEmail}`);
         } else {
-          this.logger.info(`✅ Admin user already exists: ${adminEmail}`);
+          this.logger.info(`Admin user already exists: ${adminEmail}`);
         }
       }
     } catch (error) {

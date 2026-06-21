@@ -22,15 +22,15 @@ export const INIT_RAG: BootstrapStep = {
       ctx.ragService = new RAGService(ctx.milvusClient!, loggers.services);
       const initResult = await ctx.ragService.initializeCollection();
       if (initResult.success) {
-        loggers.services.info('✅ RAG collection initialized');
+        loggers.services.info('RAG collection initialized');
       }
     } catch (ragErr: any) {
-      loggers.services.warn({ error: ragErr.message }, '⚠️ RAGService init failed (non-critical)');
+      loggers.services.warn({ error: ragErr.message }, 'RAGService init failed (non-critical)');
     }
 
     // RAG init service (embedding models, vector DBs)
     try {
-      loggers.services.info('🚀 Initializing RAG services...');
+      loggers.services.info('Initializing RAG services...');
       const ragInitialized = await ragInitService.initialize();
       if (ragInitialized) {
         const ragHealth = ragInitService.getHealthStatus();
@@ -40,14 +40,14 @@ export const INIT_RAG: BootstrapStep = {
           embeddingModel: ragHealth.components.embeddings.model,
           milvusHealthy: ragHealth.components.milvus.healthy
         }, '✅ RAG services initialized successfully');
-        loggers.services.info('✅ Semantic template routing ready (Milvus-based)');
+        loggers.services.info('Semantic template routing ready (Milvus-based)');
       } else {
         const ragError = ragInitService.getInitializationError();
-        loggers.services.warn({ error: ragError }, '⚠️ RAG services failed to initialize - system will operate with limited capabilities');
-        loggers.services.warn('💡 Set AZURE_OPENAI_EMBEDDING_DEPLOYMENT or AWS_EMBEDDING_MODEL_ID to enable embeddings');
+        loggers.services.warn({ error: ragError }, 'RAG services failed to initialize - system will operate with limited capabilities');
+        loggers.services.warn('Set AZURE_OPENAI_EMBEDDING_DEPLOYMENT or AWS_EMBEDDING_MODEL_ID to enable embeddings');
       }
     } catch (ragInitErr) {
-      loggers.services.warn({ err: ragInitErr }, '⚠️ RAGInitService failed (non-critical)');
+      loggers.services.warn({ err: ragInitErr }, 'RAGInitService failed (non-critical)');
     }
 
     // Document Indexing Service
@@ -56,9 +56,9 @@ export const INIT_RAG: BootstrapStep = {
       ctx.documentIndexingService = new DocumentIndexingService(ctx.milvusClient!, prisma, loggers.services);
       await ctx.documentIndexingService.initializeCollection();
       setDocumentIndexingService(ctx.documentIndexingService);
-      loggers.services.info('✅ Document Indexing Service initialized');
+      loggers.services.info('Document Indexing Service initialized');
     } catch (error: any) {
-      loggers.services.warn({ error: error.message }, '⚠️ Document Indexing Service init failed (non-critical)');
+      loggers.services.warn({ error: error.message }, 'Document Indexing Service init failed (non-critical)');
       ctx.documentIndexingService = null;
     }
 
@@ -69,9 +69,9 @@ export const INIT_RAG: BootstrapStep = {
         logger: loggers.services,
         cache: { defaultTTL: 3600, keyPrefix: 'repo', enableCaching: true }
       });
-      loggers.services.info('✅ Repository Container initialized');
+      loggers.services.info('Repository Container initialized');
     } catch (error: any) {
-      loggers.services.warn({ error: error.message }, '⚠️ Repository Container init failed');
+      loggers.services.warn({ error: error.message }, 'Repository Container init failed');
       ctx.repositoryContainer = null;
     }
 
@@ -90,9 +90,9 @@ export const INIT_RAG: BootstrapStep = {
       initUserMemoryService(prisma, redisClient.isConnected() ? redisClient as any : null, loggers.services, milvusClient, embeddingService);
       initUserProfileService(prisma, redisClient.isConnected() ? redisClient as any : null, loggers.services);
       initFeedbackLearningService(prisma, loggers.services);
-      loggers.services.info('✅ Adaptive Memory services initialized (UserMemory, UserProfile, FeedbackLearning)');
+      loggers.services.info('Adaptive Memory services initialized (UserMemory, UserProfile, FeedbackLearning)');
     } catch (err) {
-      loggers.services.warn({ err }, '⚠️ Adaptive Memory services failed to initialize - memory features will be limited');
+      loggers.services.warn({ err }, 'Adaptive Memory services failed to initialize - memory features will be limited');
     }
 
     // Bedrock Pricing Service
@@ -103,7 +103,7 @@ export const INIT_RAG: BootstrapStep = {
         loggers.services.info({ cachedModels: bedrockPricingService.getAllPricing().length },
           '✅ Bedrock Pricing Service initialized (live AWS pricing)');
       } catch (err) {
-        loggers.services.warn({ err }, '⚠️ Bedrock Pricing Service failed - using fallback pricing');
+        loggers.services.warn({ err }, 'Bedrock Pricing Service failed - using fallback pricing');
       }
     }
 
@@ -125,10 +125,10 @@ export const INIT_RAG: BootstrapStep = {
         loggers.services.info({ subscriptionId: azureSubscriptionId, resourceGroup: azureResourceGroup,
           account: azureOpenAIAccount }, '✅ Azure AI Foundry Metrics Service initialized and collecting metrics');
       } else {
-        loggers.services.info('⏭️  Azure AI Foundry Metrics Service not configured (optional)');
+        loggers.services.info('Azure AI Foundry Metrics Service not configured (optional)');
       }
     } catch (error) {
-      loggers.services.warn({ error }, '⚠️ Failed to initialize Azure AI Foundry Metrics Service - continuing without AIF metrics');
+      loggers.services.warn({ error }, 'Failed to initialize Azure AI Foundry Metrics Service - continuing without AIF metrics');
     }
 
     // First-time system initialization (InitializationService)
@@ -171,7 +171,7 @@ export const INIT_RAG: BootstrapStep = {
       // System prompt validation is deferred to step 09 (prompt-cache-init)
       // where ctx.promptService is freshly initialized.
     } catch (initErr: any) {
-      loggers.services.warn({ error: initErr.message }, '⚠️ System initialization service failed (non-critical)');
+      loggers.services.warn({ error: initErr.message }, 'System initialization service failed (non-critical)');
     }
 
     // Conversation Compaction Worker
@@ -183,9 +183,9 @@ export const INIT_RAG: BootstrapStep = {
       });
       await compactionWorker.start();
       global.compactionWorker = compactionWorker;
-      loggers.services.info('✅ Conversation Compaction Worker started');
+      loggers.services.info('Conversation Compaction Worker started');
     } catch (error: any) {
-      loggers.services.warn({ error: error.message }, '⚠️ Compaction Worker init failed (non-critical)');
+      loggers.services.warn({ error: error.message }, 'Compaction Worker init failed (non-critical)');
       global.compactionWorker = null;
     }
 
@@ -240,6 +240,6 @@ export const INIT_RAG: BootstrapStep = {
       );
     }
 
-    loggers.services.info('🚀 All RAG and supporting services initialized');
+    loggers.services.info('All RAG and supporting services initialized');
   },
 };

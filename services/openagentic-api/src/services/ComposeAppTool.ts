@@ -1,7 +1,5 @@
 /**
- * compose_app — Phase 4 #474 step 3 — T3 mini-app tool.
- *
- * Plan: <internal-plan>
+ * compose_app — T3 mini-app tool (#474).
  *
  * Sister tool to compose_visual, but for full mini-apps:
  *   - The model authors a 500–1500 LOC sandboxed HTML/JS document

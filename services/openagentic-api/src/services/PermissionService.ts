@@ -3,7 +3,7 @@
  *
  * Replaces the regex-tier legacy gate (LOW/MEDIUM/HIGH/CRITICAL +
  * argument-escalation patterns + per-user trust scoring + DB pattern overrides)
- * with the simpler proven shape from <claude-code-src>/types/permissions.ts:
+ * with the simpler proven shape of Claude Code's permission model:
  *
  *   - 3 behaviors:  allow | deny | ask
  *   - 5 modes:      default | acceptEdits | bypassPermissions | dontAsk | plan
@@ -29,7 +29,7 @@ import { EventEmitter } from 'events';
 import { getDataAccessAuditService } from './DataAccessAuditService.js';
 
 // ---------------------------------------------------------------------------
-// Types — mirrored from <claude-code-src>/types/permissions.ts
+// Types — modeled on Claude Code's permission types
 // ---------------------------------------------------------------------------
 
 export type PermissionBehavior = 'allow' | 'deny' | 'ask';

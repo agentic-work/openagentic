@@ -122,7 +122,7 @@ export const useMCPTools = () => {
       setCurrentToolRound(tool.round || 1); // Track round for agentic loop display
     } else if (tool.type === 'mcp_calls_data') {
       // Real-time MCP call results from backend
-      console.log('[MCP-TOOLS] 📥 Received mcp_calls_data:', tool.calls);
+      console.log('[MCP-TOOLS] Received mcp_calls_data:', tool.calls);
       setActiveMcpCalls(tool.calls || []);
       // Update round if provided (agentic loop tracking)
       if (tool.round && tool.round > 0) {
@@ -131,7 +131,7 @@ export const useMCPTools = () => {
     } else if (tool.type === 'executing') {
       // CRITICAL FIX: Add tool to active calls if it doesn't exist yet (streaming display)
       // MCP tool execution logging - disabled in production
-      // console.log('[MCP-TOOLS] 🔧 tool_executing event received:', tool);
+      // console.log('[MCP-TOOLS] tool_executing event received:', tool);
       setActiveMcpCalls(prev => {
         const exists = prev.some(call => call.name === tool.name);
         if (!exists) {

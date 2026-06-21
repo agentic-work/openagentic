@@ -20,8 +20,7 @@
  *   - Output blocks are `UIContentBlock` — the persistence + render shape
  *     defined in `./types.ts`.
  *
- * the design notes
- * Plan: <internal-plan> (Phase 7)
+ * (Track B Phase 7.)
  */
 import type { UIContentBlock, UIStreamFrameLoose } from './types.js';
 

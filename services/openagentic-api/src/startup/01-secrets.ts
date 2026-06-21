@@ -9,20 +9,20 @@ export const LOAD_SECRETS: BootstrapStep = {
   // development the loader returns ephemeral generated values and never throws.
   critical: true,
   async run() {
-    loggers.services.info('🔐 Loading secrets configuration...');
+    loggers.services.info('Loading secrets configuration...');
     const isProduction = process.env.NODE_ENV === 'production';
     try {
       const secrets = getSecrets(loggers.services);
       logSecrets(secrets, loggers.services);
       setAppSecrets(secrets);
-      loggers.services.info('✅ Secrets configuration loaded and validated');
+      loggers.services.info('Secrets configuration loaded and validated');
     } catch (error) {
       if (isProduction) {
         // Fail closed: re-raise so the critical bootstrap step aborts boot.
-        loggers.services.error({ err: error }, '❌ FATAL: secrets validation failed in production — refusing to start.');
+        loggers.services.error({ err: error }, 'FATAL: secrets validation failed in production — refusing to start.');
         throw error;
       }
-      loggers.services.warn({ err: error }, '⚠️ Secrets configuration partially loaded (non-production) — some secrets may use runtime-generated values. Server will continue starting.');
+      loggers.services.warn({ err: error }, 'Secrets configuration partially loaded (non-production) — some secrets may use runtime-generated values. Server will continue starting.');
     }
   },
 };

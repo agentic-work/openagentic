@@ -25,7 +25,7 @@ const v1RoutesPluginImpl: FastifyPluginAsync<V1RoutesPluginOptions> = async (fas
   // backward compatibility but will be deprecated over time.
   try {
     await fastify.register(v1Router, { prefix: '/api/v1' });
-    loggers.routes.info('✅ API v1 router registered at /api/v1/*');
+    loggers.routes.info('API v1 router registered at /api/v1/*');
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register API v1 router at /api/v1');
   }
@@ -38,7 +38,7 @@ const v1RoutesPluginImpl: FastifyPluginAsync<V1RoutesPluginOptions> = async (fas
   // prevent the primary /api/v1 mount from staying live.
   try {
     await fastify.register(v1Router, { prefix: '/v1' });
-    loggers.routes.info('✅ API v1 router alias registered at /v1/* (SDK/CLI compat)');
+    loggers.routes.info('API v1 router alias registered at /v1/* (SDK/CLI compat)');
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register API v1 router alias at /v1');
   }

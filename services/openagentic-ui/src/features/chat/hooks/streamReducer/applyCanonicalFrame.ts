@@ -5,8 +5,8 @@
  * `chat_messages.content_blocks` ≡ live-rendered `contentBlocks[]` by
  * construction.
  *
- * SoT path: `~/openagentic/openagentic-sdk/src/lib/ui-stream/applyCanonicalFrame.ts`
- * Plan:     `<internal-plan>` (Phase 7)
+ * SoT path: `services/shared/llm-sdk/src/lib/ui-stream/applyCanonicalFrame.ts`
+ * (Phase 7)
  *
  * The re-export keeps existing UI imports stable
  * (`from '../streamReducer/applyCanonicalFrame'`) so no UI call site

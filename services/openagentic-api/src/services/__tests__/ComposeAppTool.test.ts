@@ -1,7 +1,5 @@
 /**
- * ComposeAppTool — Phase 4 #474 step 3 — T3 mini-app tool surface.
- *
- * Plan: <internal-plan>
+ * ComposeAppTool — T3 mini-app tool surface (#474).
  *
  * Wires the existing pure-functional `validateComposeAppPayload`
  * (commit 336000a2) into an Anthropic-style tool definition + handler.

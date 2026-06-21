@@ -209,7 +209,7 @@ test.describe('AI Flow Builder CRUD', () => {
     const stillExists = verifyRes.body.workflows?.find((w: any) => w.id === workflowId);
     expect(stillExists).toBeFalsy();
     console.log('Workflow deleted and verified gone');
-    console.log('\n✅ CRUD test PASSED');
+    console.log('\n CRUD test PASSED');
   });
 
   test('OpenAI-compatible streaming completions work', async ({ page }) => {
@@ -267,7 +267,7 @@ test.describe('AI Flow Builder CRUD', () => {
     expect(result.fullContent).toBeTruthy();
     expect(result.fullContent.toLowerCase()).toContain('hello');
     expect(result.chunkCount).toBeGreaterThan(0);
-    console.log(`✅ Streaming works: "${result.fullContent}" (${result.chunkCount} chunks)`);
+    console.log(`Streaming works: "${result.fullContent}" (${result.chunkCount} chunks)`);
   });
 
   test('AI Builder generates workflow on canvas', async ({ page }) => {
@@ -379,6 +379,6 @@ test.describe('AI Flow Builder CRUD', () => {
     console.log(`Nodes on canvas: ${nodeCount}`);
     expect(nodeCount).toBeGreaterThan(0);
 
-    console.log(`\n✅ AI Builder test PASSED: ${nodeCount} nodes generated on canvas`);
+    console.log(`\n AI Builder test PASSED: ${nodeCount} nodes generated on canvas`);
   });
 });

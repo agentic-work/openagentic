@@ -1,8 +1,6 @@
 /**
- * Phase 4 #474 — CdnAllowList: validates `<script src=...>` URLs in
+ * CdnAllowList (#474): validates `<script src=...>` URLs in
  * compose_app HTML payloads against the cluster-internal CDN allow-list.
- *
- * Plan: <internal-plan>
  *
  * Contract:
  *  - Inline scripts (no `src` attr) PASS — validated by separate no-eval rule.

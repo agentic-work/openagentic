@@ -495,7 +495,7 @@ export class OllamaProvider extends BaseLLMProvider {
     // Concurrency gate — wait for a permit before hitting the GPU
     const queueDepth = this.completionSemaphore.pending;
     if (queueDepth > 0) {
-      this.logger.info({ queueDepth, model: request.model }, '[OllamaProvider] ⏳ Waiting for GPU slot');
+      this.logger.info({ queueDepth, model: request.model }, '[OllamaProvider] Waiting for GPU slot');
     }
     await this.completionSemaphore.acquire();
     let semaphoreReleased = false;

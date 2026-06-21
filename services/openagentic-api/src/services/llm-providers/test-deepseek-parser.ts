@@ -47,7 +47,7 @@ function parseDeepSeekToolCalls(content: string): {
     return { toolCalls: [], cleanedContent: content, hasDeepSeekMarkers: false };
   }
 
-  console.log('✓ DeepSeek markers detected\n');
+  console.log('DeepSeek markers detected\n');
 
   const toolCalls: any[] = [];
   let cleanedContent = content;
@@ -99,12 +99,12 @@ function parseDeepSeekToolCalls(content: string): {
               }
             });
 
-            console.log(`✓ Parsed tool call: ${toolName}`);
+            console.log(`Parsed tool call: ${toolName}`);
             console.log(`  - ID: ${toolCallId}`);
             console.log(`  - Arguments: ${toolArgsJson}\n`);
 
           } catch (parseError) {
-            console.error(`✗ Failed to parse tool call JSON: ${parseError}`);
+            console.error(`Failed to parse tool call JSON: ${parseError}`);
           }
         }
       }
@@ -121,11 +121,11 @@ function parseDeepSeekToolCalls(content: string): {
     // Trim whitespace
     cleanedContent = cleanedContent.trim();
 
-    console.log(`✓ Tool calls parsed: ${toolCalls.length}`);
-    console.log(`✓ Content cleaned (${content.length} → ${cleanedContent.length} chars)\n`);
+    console.log(`Tool calls parsed: ${toolCalls.length}`);
+    console.log(`Content cleaned (${content.length} → ${cleanedContent.length} chars)\n`);
 
   } catch (error) {
-    console.error(`✗ Error parsing DeepSeek tool calls: ${error}\n`);
+    console.error(`Error parsing DeepSeek tool calls: ${error}\n`);
   }
 
   return { toolCalls, cleanedContent, hasDeepSeekMarkers: true };
@@ -140,13 +140,13 @@ console.log('\n' + '='.repeat(60) + '\n');
 
 // Verify results
 console.log('VERIFICATION:');
-console.log(`✓ Has DeepSeek markers: ${result.hasDeepSeekMarkers}`);
-console.log(`✓ Tool calls found: ${result.toolCalls.length}`);
-console.log(`✓ Content cleaned: ${result.cleanedContent === "I'll help you fetch that URL. Let me use the fetch tool."}`);
-console.log(`✓ Tool name: ${result.toolCalls[0]?.function.name === 'fetch'}`);
-console.log(`✓ Tool arguments valid JSON: ${!!result.toolCalls[0]?.function.arguments}`);
+console.log(`Has DeepSeek markers: ${result.hasDeepSeekMarkers}`);
+console.log(`Tool calls found: ${result.toolCalls.length}`);
+console.log(`Content cleaned: ${result.cleanedContent === "I'll help you fetch that URL. Let me use the fetch tool."}`);
+console.log(`Tool name: ${result.toolCalls[0]?.function.name === 'fetch'}`);
+console.log(`Tool arguments valid JSON: ${!!result.toolCalls[0]?.function.arguments}`);
 
 const args = JSON.parse(result.toolCalls[0].function.arguments);
-console.log(`✓ Parsed arguments: url=${args.url}, method=${args.method}`);
+console.log(`Parsed arguments: url=${args.url}, method=${args.method}`);
 
-console.log('\n✅ DeepSeek parser test completed successfully!\n');
+console.log('\n DeepSeek parser test completed successfully!\n');

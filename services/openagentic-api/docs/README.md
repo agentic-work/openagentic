@@ -107,7 +107,7 @@ AIF_METRICS_REFRESH_INTERVAL_MINUTES=5
 
 #### MCP Logging
 ```bash
-API_BASE_URL=http://openagenticchat-api:3000  # In mcp-proxy service
+API_BASE_URL=http://openagentic-api:3000  # In mcp-proxy service
 ```
 
 #### LLM Providers

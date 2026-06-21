@@ -1,5 +1,5 @@
 /**
- * Logger configuration for openagenticchat-ui service
+ * Logger configuration for openagentic-ui service
  * 
  * Browser-compatible logger with console output
  * Uses structured logging similar to pino for consistency

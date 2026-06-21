@@ -3,8 +3,8 @@
  *
  * Plan §Parallel/Serial Dispatch + Test #3 + #4.
  *
- * Ports the partition algorithm from
- * <claude-code-src>/services/tools/toolOrchestration.ts:91 — splits
+ * Implements the same tool-call partition algorithm Claude Code uses —
+ * splits
  * a list of tool_use blocks into batches where each batch is either
  * concurrency-safe (parallelizable) or one mutating call.
  */

@@ -1,7 +1,5 @@
 /**
- * Phase 4 #474 — composeAppValidator
- *
- * Plan: <internal-plan>
+ * composeAppValidator (#474)
  *
  * Server-side validation pipeline for compose_app payloads. Composes:
  *   - CdnAllowList.validateScriptUrls (shipped 1bb497aa) — script src

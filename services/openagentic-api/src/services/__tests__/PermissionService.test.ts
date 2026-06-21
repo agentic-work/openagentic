@@ -3,7 +3,7 @@
  *
  * Replaces the old ToolApprovalGate regex-tier model (LOW/MEDIUM/HIGH/CRITICAL +
  * argument escalation + per-user trust scoring) with the simpler PermissionRule
- * model from <claude-code-src>/types/permissions.ts:
+ * model modeled on Claude Code's permission types:
  *
  *   - 3 behaviors:  allow | deny | ask
  *   - 5 modes:      default | acceptEdits | bypassPermissions | dontAsk | plan

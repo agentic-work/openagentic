@@ -138,7 +138,7 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
     }
   });
 
-  logger.info('✅ Models v1 routes registered');
+  logger.info('Models v1 routes registered');
 };
 
 export default modelsRoutes;

@@ -44,7 +44,16 @@ module.exports = {
     // TypeScript rules
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
-    '@typescript-eslint/no-explicit-any': 'warn',
+    // no-explicit-any RATCHET. Promoted from 'warn' to 'error' so NEW `any`
+    // fails the lint. The large existing burden is grandfathered: CI only lints
+    // files CHANGED in a PR/push (see the eslint-ratchet job in
+    // .github/workflows/ci.yml), so untouched legacy files never trip this and
+    // the only direction the count can move is down.
+    //
+    // Burndown baseline (services/openagentic-api/src, 2026-06-21):
+    //   ~4115 `as any` casts and ~8056 total `any` occurrences.
+    // Trend target: monotonically decreasing. Do NOT add `any` to new code.
+    '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/no-unused-vars': ['error', { 
       argsIgnorePattern: '^_',
       varsIgnorePattern: '^_',
@@ -128,7 +137,7 @@ module.exports = {
       },
     },
     {
-      files: ['services/openagenticchat-ui/**/*.tsx'],
+      files: ['services/openagentic-ui/**/*.tsx'],
       extends: [
         'plugin:react/recommended',
         'plugin:react-hooks/recommended',

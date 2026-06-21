@@ -5,10 +5,8 @@
  * partition into read-only-parallel and write-serial batches, dispatch,
  * append tool_results to message history, repeat until end_turn.
  *
- * Mirrors <claude-code-src>/query.ts:241 with chatmode-specific
+ * Implements a Claude-Code-style query loop with chatmode-specific
  * NDJSON envelope (Vercel opcode format) layered on top.
- *
- * Plan: <internal-plan>
  */
 import type {
   ChatLoopInput,
@@ -1532,8 +1530,8 @@ export async function chatLoop(
     }
 
     // Partition: adjacent read-only blocks coalesce into one parallel batch;
-    // every mutating block becomes its own serial batch. Mirrors Claude Code's
-    // <claude-code-src>/services/tools/toolOrchestration.ts:91.
+    // every mutating block becomes its own serial batch. Same read-parallel /
+    // write-serial partitioning Claude Code uses for tool orchestration.
     const safeNames = input.concurrencySafeNames ?? new Set<string>();
     const concurrency = input.maxConcurrency ?? 5;
     const batches = partitionToolCalls(toolBlocks, safeNames);

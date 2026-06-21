@@ -1,7 +1,7 @@
 /**
  * Q1-blocker-9 — arg-aware auto-approve for generic CLI passthrough tools.
  *
- * Captured in <internal-upstream>/reports/verify-cadence/Q1-conversation-89cc2350/:
+ * Captured from a verify-cadence session (Q1-conversation-89cc2350):
  *
  *   User asked for a per-day Bedrock invocation breakdown for the last 30
  *   days. Sonnet issued 30 sequential `call_aws` calls

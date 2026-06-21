@@ -1,8 +1,7 @@
 /**
  * TaskTool — sub-agent dispatch for chatmode.
  *
- * Mirrors Anthropic's `AgentTool` (Task) at
- * `<claude-code-src>/tools/AgentTool/AgentTool.tsx`. The model
+ * Follows the same shape as Claude Code's `AgentTool` (Task). The model
  * picks a specialized sub-agent from a description-driven catalog; each
  * sub-agent runs in its own ReAct loop with a filtered tool list and
  * its own system prompt. NO enum gate, NO regex post-filter — the tool

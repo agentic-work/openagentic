@@ -3,7 +3,7 @@
  *
  * Per-message pill rendered in the assistant message header (next to or
  * in place of TierBadge / HandoffChip). Driven by the server-emitted
- * `tool_shortlist` NDJSON frame (Wave 2 of <internal-plan>):
+ * `tool_shortlist` NDJSON frame (Wave 2):
  *
  *   {
  *     type: 'tool_shortlist',

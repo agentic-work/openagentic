@@ -27,9 +27,9 @@ export class ChatPromptService {
     // Initialize Milvus semantic routing (uses user memory)
     if (this.useMilvusSemanticRouting && milvusService) {
       this.milvusSemanticService = new PromptTemplateSemanticService(logger, milvusService);
-      this.logger.info('✅ Milvus semantic template routing enabled (with user memory integration)');
+      this.logger.info('Milvus semantic template routing enabled (with user memory integration)');
     } else {
-      this.logger.info('ℹ️ Milvus semantic routing disabled - using traditional prompt assignment only');
+      this.logger.info('Milvus semantic routing disabled - using traditional prompt assignment only');
     }
   }
 

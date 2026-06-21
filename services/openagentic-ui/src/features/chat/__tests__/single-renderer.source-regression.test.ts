@@ -1,8 +1,7 @@
 /**
  * Architecture cage — single thinking-block renderer shape.
  *
- * REGRESSION pin — Track B Phase 0 of the canonical streaming rip
- * (<internal-plan>, Phase 5).
+ * REGRESSION pin — Track B Phase 0 of the canonical streaming rip (Phase 5).
  *
  * `InlineThinkingBlock.tsx` ships TWO DOM shapes from the same React
  * component:

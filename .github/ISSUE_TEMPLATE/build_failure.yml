@@ -46,8 +46,8 @@ body:
       label: Affected Service
       description: Which service or component failed to build?
       options:
-        - openagenticchat-api
-        - openagenticchat-ui
+        - openagentic-api
+        - openagentic-ui
         - mcp-orchestrator
         - mcp-executor
         - All Services
@@ -83,8 +83,8 @@ body:
       description: What command were you running when the build failed?
       placeholder: |
         e.g., npm run build
-        e.g., docker build -t openagenticchat-api .
-        e.g., helm upgrade openagenticchat ./helm/openagenticchat-v3
+        e.g., docker build -t openagentic-api .
+        e.g., helm upgrade openagentic ./helm/openagentic
     validations:
       required: true
 

@@ -1,0 +1,203 @@
+name: CI
+
+# Real build gate: type-checks the services that are tsc-clean and FAILS the build
+# on any new type error. This is the structural quality gate behind the lighter
+# OSS sanity check (oss-integrity.yml). The UI is type-checked too but kept
+# non-blocking (continue-on-error) to absorb its historically large surface /
+# any churn without flapping the gate; promote it to blocking once stable.
+#
+# Gating (build fails on tsc errors):
+#   - services/shared/llm-sdk          (workspace pkg; built first, others depend on it)
+#   - services/shared/workflow-engine  (depends on llm-sdk)
+#   - services/openagentic-api         (depends on both shared pkgs + prisma client)
+#   - services/openagentic-workflows   (npm-managed; depends on in-repo workflow-engine)
+# Non-gating:
+#   - services/openagentic-ui          (continue-on-error; see TODO below)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to keep the queue fast.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10.15.0'
+  # Surface transitive @types/* (e.g. @types/mdast) to the workspace root so tsc
+  # resolves them the same way a developer's hoisted install does. Without this a
+  # --frozen-lockfile install leaves type-only deps unhoisted and api tsc 404s on 'mdast'.
+  PNPM_PUBLIC_HOIST: '*'
+
+jobs:
+  # ---- Gating: shared workspace packages (built in dependency order) ----------
+  llm-sdk:
+    name: tsc — shared/llm-sdk (gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile --ignore-scripts --config.public-hoist-pattern='${{ env.PNPM_PUBLIC_HOIST }}'
+      - name: Type-check llm-sdk
+        run: pnpm --filter @agentic-work/llm-sdk exec tsc --noEmit
+
+  workflow-engine:
+    name: tsc — shared/workflow-engine (gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile --ignore-scripts --config.public-hoist-pattern='${{ env.PNPM_PUBLIC_HOIST }}'
+      # workflow-engine imports @agentic-work/llm-sdk via its built dist (package exports),
+      # so the SDK must be compiled before this type-check resolves its types.
+      - name: Build llm-sdk (dependency)
+        run: pnpm --filter @agentic-work/llm-sdk run build
+      - name: Type-check workflow-engine
+        run: pnpm --filter @openagentic/workflow-engine exec tsc --noEmit
+
+  api:
+    name: tsc — openagentic-api (gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile --ignore-scripts --config.public-hoist-pattern='${{ env.PNPM_PUBLIC_HOIST }}'
+      # api consumes both shared packages via their built dist (package exports).
+      - name: Build shared dependencies
+        run: |
+          pnpm --filter @agentic-work/llm-sdk run build
+          pnpm --filter @openagentic/workflow-engine run build
+      # Prisma client types are generated, not vendored; tsc needs them present.
+      - name: Generate Prisma client
+        run: pnpm --filter ./services/openagentic-api exec prisma generate
+      - name: Type-check api
+        run: pnpm --filter ./services/openagentic-api exec tsc --noEmit
+
+  workflows:
+    name: tsc — openagentic-workflows (gate)
+    runs-on: ubuntu-latest
+    # openagentic-workflows is NOT part of the pnpm workspace; it is npm-managed and
+    # carries an external file: dep that breaks `npm ci`, so install with `npm install`.
+    defaults:
+      run:
+        working-directory: services/openagentic-workflows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: services/openagentic-workflows/package-lock.json
+      # Lockfile carries an external "file:" link target that breaks `npm ci`, so use `npm install`.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Type-check workflows
+        run: npx tsc --noEmit
+
+  # ---- Gating: no-explicit-any RATCHET (changed files only) -------------------
+  # The repo carries a large pre-existing `any` burden (~4k `as any` in api,
+  # ~900 in ui — see the burndown comments in .eslintrc.js / .eslintrc.cjs), so
+  # turning no-explicit-any into a hard error repo-wide would explode. Instead
+  # this job lints ONLY the .ts/.tsx files changed in this PR/push, with a single
+  # inline rule (@typescript-eslint/no-explicit-any: error). Effect: touching a
+  # file means you may not leave/add `any` in it; untouched legacy files are
+  # grandfathered. The count can only ratchet down.
+  eslint-ratchet:
+    name: no-explicit-any ratchet (changed files, gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need history to diff the change set against the base/parent commit.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # Minimal, pinned toolchain — no project install needed for an inline rule.
+      - name: Install eslint + ts parser/plugin
+        run: npm install --no-save --no-audit --no-fund eslint@8.57.1 @typescript-eslint/parser@7 @typescript-eslint/eslint-plugin@7
+      - name: Compute changed TS/TSX files
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.base_ref }}"
+            git fetch --no-tags --depth=1 origin "${{ github.base_ref }}" || true
+            RANGE="$(git merge-base "$BASE" HEAD)...HEAD"
+          else
+            # push: diff the pushed range; fall back to parent on first commit
+            RANGE="${{ github.event.before }}...HEAD"
+            git cat-file -e "${{ github.event.before }}" 2>/dev/null || RANGE="HEAD~1...HEAD"
+          fi
+          echo "Diff range: $RANGE"
+          FILES="$(git diff --name-only --diff-filter=d "$RANGE" -- '*.ts' '*.tsx' \
+                    | grep -E '^services/(openagentic-api|openagentic-ui|openagentic-workflows|shared)/' \
+                    | grep -vE '\.(test|spec|d)\.tsx?$' \
+                    | grep -vE '\.(config)\.(ts|tsx)$' || true)"
+          echo "Changed lintable files:"
+          echo "$FILES"
+          # Stash into the step output (newline-delimited).
+          {
+            echo 'files<<EOF'
+            echo "$FILES"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+      - name: Lint changed files for new `any`
+        if: steps.changed.outputs.files != ''
+        run: |
+          echo "${{ steps.changed.outputs.files }}" | tr '\n' '\0' | xargs -0 -r \
+            npx --no-install eslint \
+              --no-eslintrc \
+              --parser @typescript-eslint/parser \
+              --parser-options ecmaVersion:2022,sourceType:module,ecmaFeatures:{jsx:true} \
+              --plugin @typescript-eslint \
+              --rule '{"@typescript-eslint/no-explicit-any":"error"}'
+
+  # ---- Non-gating: UI -----------------------------------------------------------
+  ui:
+    name: tsc — openagentic-ui (non-blocking)
+    runs-on: ubuntu-latest
+    # TODO: promote the UI to a hard gate (drop continue-on-error) once its tsc
+    # surface is confirmed stable in CI. It currently type-checks clean locally,
+    # but is kept non-blocking to avoid flapping the gate on its large/churny
+    # surface. Tracked alongside the no-explicit-any ratchet in .eslintrc.cjs.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile --ignore-scripts --config.public-hoist-pattern='${{ env.PNPM_PUBLIC_HOIST }}'
+      - name: Type-check ui (non-blocking)
+        run: pnpm --filter ./services/openagentic-ui exec tsc --noEmit
