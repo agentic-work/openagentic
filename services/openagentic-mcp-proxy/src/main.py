@@ -803,7 +803,12 @@ async def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(secu
         }
 
     try:
-        # Decode JWT header to determine token type
+        # Peek at the (unverified) JWT header ONLY to route to the correct
+        # verification branch — NO security/authorization decision is made from
+        # this value. The trust gate is the signature-verifying jwt.decode()
+        # below, which hardcodes algorithms=['HS256'] (it does NOT trust the
+        # `alg` read here) and fails closed when no shared secret is configured.
+        # Any other token shape is rejected fail-closed further down.
         unverified_header = jwt.get_unverified_header(token)
         alg = unverified_header.get('alg', 'RS256')
         kid = unverified_header.get('kid')

@@ -46,7 +46,11 @@
            Inter 17px/1.65                 = body
            Instrument Serif ital           = lede/tagline accents (was MISSING)
          Measured from the live openagentics.io DOM. -->
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    <!-- SRI (integrity) is intentionally omitted: the Google Fonts css2
+         endpoint serves User-Agent-dependent CSS, so a pinned hash would break
+         font loading on browsers whose UA yields a different response body.
+         crossorigin is set so the request is made in CORS mode. -->
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" crossorigin="anonymous">
 
     <!-- JetBrains Mono for code blocks - with ligatures support -->
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">

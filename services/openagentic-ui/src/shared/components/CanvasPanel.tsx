@@ -321,13 +321,15 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
           body: JSON.stringify({ args })
         });
         const result = await response.json();
+        // The preview iframe runs with `allow-same-origin`, so its content
+        // shares our origin. Scope the reply to it explicitly (never '*').
         iframeRef.current?.contentWindow?.postMessage({
           type: 'oat-result', callId, success: true, result: result.result || result
-        }, '*');
+        }, window.location.origin);
       } catch (error: any) {
         iframeRef.current?.contentWindow?.postMessage({
           type: 'oat-result', callId, success: false, error: error.message
-        }, '*');
+        }, window.location.origin);
       }
     };
     window.addEventListener('message', handler);

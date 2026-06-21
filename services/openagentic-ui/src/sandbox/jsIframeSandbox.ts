@@ -161,9 +161,12 @@ export function createJsSandbox(): JsSandboxHandle {
     },
     run(requestId, code) {
       if (!iframe.contentWindow) return;
+      // The sandbox runs with `allow-scripts` only (no `allow-same-origin`),
+      // so the child frame has an opaque origin that serializes to "null".
+      // Target that opaque origin explicitly instead of the wildcard '*'.
       iframe.contentWindow.postMessage(
         { type: 'run', requestId, code },
-        '*',
+        'null',
       );
     },
     dispose() {

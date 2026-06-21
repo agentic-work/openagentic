@@ -126,9 +126,13 @@ MEMORY_MCP_URL = os.getenv("MEMORY_MCP_URL", "http://mcp-proxy:3100")
 REQUEST_TIMEOUT = float(os.getenv("REQUEST_TIMEOUT", "30"))
 SEARXNG_URL = os.getenv("SEARXNG_URL", "http://searxng:8080")  # SearXNG instance (default: in-cluster)
 
-# Use system SSL context instead of certifi (certifi bundle may be outdated)
+# Use system SSL context instead of certifi (certifi bundle may be outdated).
+# create_default_context() already yields a secure client context (cert +
+# hostname verification on). Explicitly pin the floor to TLS 1.2 so weak
+# legacy protocols (SSLv3 / TLS 1.0 / 1.1) can never be negotiated.
 import ssl as _ssl
 SSL_CONTEXT = _ssl.create_default_context()
+SSL_CONTEXT.minimum_version = _ssl.TLSVersion.TLSv1_2
 
 # Page cache to avoid re-fetching
 _page_cache: Dict[str, Dict[str, Any]] = {}

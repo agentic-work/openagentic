@@ -367,6 +367,10 @@ export function WidgetRenderer({
   // Listen for the resize bridge from the iframe.
   useEffect(() => {
     function onMsg(ev: MessageEvent) {
+      // The widget iframes use sandbox="allow-scripts" (no allow-same-origin),
+      // so their messages arrive with an opaque origin of the string "null".
+      // Accept only that opaque origin or our own origin — never a foreign one.
+      if (ev.origin !== 'null' && ev.origin !== window.location.origin) return;
       const data = ev.data;
       if (!data || data.type !== 'cm-widget-resize' || typeof data.height !== 'number') return;
       // Only accept messages from one of OUR iframes.
