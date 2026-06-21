@@ -24,6 +24,10 @@ export default defineConfig({
     ],
     coverage: {
       provider: 'v8',
+      // Write coverage even when some tests fail (vitest skips the report by
+      // default) — required so coverage emits lcov on a suite that has
+      // env-dependent integration-test failures (no live DB/Milvus/Ollama).
+      reportOnFailure: true,
       // lcov is the format SonarQube consumes via sonar.javascript.lcov.reportPaths.
       // Keep text/json/html for local dev.
       reporter: ['text', 'json', 'html', 'lcov'],
