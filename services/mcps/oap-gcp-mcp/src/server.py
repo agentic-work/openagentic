@@ -80,31 +80,6 @@ GCP_MONITORING_API_BASE = "https://monitoring.googleapis.com/v3"
 _credentials = None
 _credentials_expiry = None
 
-# OBO (On-Behalf-Of) context for user-delegated operations
-_obo_access_token = None
-_obo_user_email = None
-
-def set_obo_context(access_token: str, user_email: str = None):
-    """
-    Set the OBO context to use a user's access token for GCP API calls.
-    This enables operations to run as the authenticated user instead of the service account.
-
-    Args:
-        access_token: User's Google OAuth access token
-        user_email: User's email (optional, for logging)
-    """
-    global _obo_access_token, _obo_user_email
-    _obo_access_token = access_token
-    _obo_user_email = user_email
-    logger.info(f"OBO context set for user: {user_email or 'unknown'}")
-
-def clear_obo_context():
-    """Clear the OBO context, reverting to service account authentication."""
-    global _obo_access_token, _obo_user_email
-    _obo_access_token = None
-    _obo_user_email = None
-    logger.info("OBO context cleared")
-
 def get_credentials():
     """
     Get GCP credentials from service account.
@@ -171,17 +146,10 @@ def get_access_token() -> str:
     """
     Get a valid access token for GCP API calls.
 
-    If OBO context is set, returns the user's access token.
-    Otherwise, returns the service account token.
+    Resolves the service-account / Application Default Credentials token
+    (GOOGLE_APPLICATION_CREDENTIALS, GCP_CREDENTIALS_JSON/_FILE, or the
+    gcloud SDK default chain) — the standard self-hosted auth path.
     """
-    global _obo_access_token
-
-    # Use OBO token if available (user-delegated operations)
-    if _obo_access_token:
-        logger.debug(f"Using OBO access token for user: {_obo_user_email or 'unknown'}")
-        return _obo_access_token
-
-    # Fall back to service account credentials
     credentials = get_credentials()
 
     # Refresh if expired
@@ -270,8 +238,7 @@ async def gcp_api_execute(
     method: str,
     path: str,
     project_id: Optional[str] = None,
-    body: Optional[Dict] = None,
-    meta: Optional[Dict] = None
+    body: Optional[Dict] = None
 ) -> Dict[str, Any]:
     """
     Execute ANY Google Cloud Platform API operation.
@@ -279,9 +246,9 @@ async def gcp_api_execute(
     This is a universal tool that can perform any GCP operation via REST APIs.
     It supports Compute Engine, Cloud Storage, Cloud Resource Manager, and more.
 
-    Supports OBO (On-Behalf-Of) authentication: When a user access token is provided
-    via the meta.userAccessToken field, operations run as the authenticated user
-    instead of the service account.
+    Authenticates with the configured service account / Application Default
+    Credentials (GOOGLE_APPLICATION_CREDENTIALS, GCP_CREDENTIALS_JSON/_FILE,
+    or the gcloud SDK default chain) — the standard self-hosted auth path.
 
     Args:
         service: GCP service name. Options:
@@ -298,7 +265,6 @@ async def gcp_api_execute(
             - CRM: "/projects/{project}"
         project_id: GCP project ID (defaults to GCP_PROJECT_ID env var)
         body: Request body for POST/PUT/PATCH operations
-        meta: Internal metadata from MCP proxy containing userAccessToken for OBO auth
 
     Returns:
         Dict with:
@@ -331,21 +297,6 @@ async def gcp_api_execute(
         )
     """
     try:
-        # Extract user token from meta if provided by MCP proxy
-        # This enables OBO (On-Behalf-Of) authentication so operations run as the user
-        if meta and isinstance(meta, dict):
-            user_token = meta.get("userAccessToken")
-            user_email = meta.get("userEmail")
-            if user_token:
-                logger.info(f"OBO: Using user token from meta for {user_email or 'unknown user'}")
-                set_obo_context(user_token, user_email)
-            else:
-                logger.info("OBO: No userAccessToken in meta, using service account")
-                clear_obo_context()
-        else:
-            logger.info("OBO: No meta provided, using service account")
-            clear_obo_context()
-
         project = project_id or GCP_PROJECT_ID
 
         # Build the full URL based on service
@@ -383,9 +334,6 @@ async def gcp_api_execute(
             "success": False,
             "error": str(e)
         }
-    finally:
-        # Always clear OBO context after each request
-        clear_obo_context()
 
 @mcp.tool()
 async def gcp_list_instances(
@@ -572,8 +520,8 @@ async def gcp_list_projects(
     user asked "show me my cloud resources". GCP MCP had `gcp_get_project`
     (single-project lookup) but no enumeration entry. Resource Manager
     `projects.list` is the canonical surface — it respects IAM via the
-    OBO-bound credentials so each user only sees projects they can
-    actually access. Citation: cloudresourcemanager.googleapis.com/v1/projects.list.
+    configured service-account credentials, so it returns the projects that
+    service account can access. Citation: cloudresourcemanager.googleapis.com/v1/projects.list.
     """
     bounded_page_size = max(1, min(int(page_size or 100), 500))
     query: list[str] = [f"pageSize={bounded_page_size}"]

@@ -8,7 +8,7 @@ Cloud Run v2 REST surface (https://run.googleapis.com/v2):
   /projects/{p}/locations/{loc}/jobs/{job}/executions
   /projects/{p}/locations/{loc}/operations
 
-Each tool delegates to `gcp_api_execute(service, method, path, project_id, body, meta)`.
+Each tool delegates to `gcp_api_execute(service, method, path, project_id, body)`.
 We mock that helper and assert each tool produces the right REST call so we
 prove tool-level correctness without hitting the live GCP control plane.
 

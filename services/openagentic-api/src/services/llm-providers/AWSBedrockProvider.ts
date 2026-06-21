@@ -46,10 +46,6 @@ import type { CanonicalStreamFormat } from '@agentic-work/llm-sdk/lib/normalizer
 // Ollama normalizer (no separate Gemma normalizer in @agentic-work/llm-sdk).
 import { createOllamaToOpenagenticNormalizer as createGemmaToOpenagenticNormalizer } from '@agentic-work/llm-sdk/lib/normalizers/index.js';
 import { MODELS } from '../../config/models.js';
-import {
-  assumeRoleWithAADToken,
-  type AWSOIDCredentials,
-} from './AWSOIDCFederation.js';
 // Phase 0.4 — SDK adapter is SoT for Claude-on-Bedrock InvokeModel
 // wire shape. The Claude branches of the in-class `convertToBedrock`
 // route through this helper now; non-Claude branches (Llama/Nova/Titan)
@@ -59,18 +55,6 @@ import { buildBedrockClaudeBody } from './aws/buildBedrockClaudeBody.js';
 // thinking wire shape (adaptive vs enabled+budget). The provider reads it
 // instead of a second inline model regex.
 import { getModelCapabilityRegistry } from '../ModelCapabilityRegistry.js';
-
-/**
- * Per-call caller context used for user-scoped credential resolution.
- * When `aadToken` is present, the provider swaps in OIDC-derived creds
- * via AssumeRoleWithWebIdentity instead of the service's default chain.
- */
-export interface BedrockCallerContext {
-  /** Azure AD ID token of the requesting user. */
-  aadToken?: string;
-  /** User identifier (email/upn) — drives STS RoleSessionName. */
-  userEmail?: string;
-}
 
 export interface BedrockConfig {
   region: string;
@@ -262,12 +246,6 @@ export class AWSBedrockProvider extends BaseLLMProvider {
   private readonly initialRetryDelayMs: number;
   private readonly secondaryModel?: string;
 
-  // Short-lived LRU of user-scoped BedrockRuntimeClients keyed by AAD token
-  // hash. Reuses the same client for the lifetime of the assumed-role
-  // credentials, avoiding a new TLS handshake on every chat request.
-  private userRuntimeClients: Map<string, { client: BedrockRuntimeClient; expiresAt: number }> = new Map();
-  private static readonly USER_CLIENT_LRU_MAX = 64;
-
   constructor(logger: Logger) {
     super(logger, 'aws-bedrock');
     // Default retry configuration
@@ -278,117 +256,18 @@ export class AWSBedrockProvider extends BaseLLMProvider {
   }
 
   /**
-   * Resolve AWS credentials for a request.
+   * Return the BedrockRuntimeClient for a request.
    *
-   * - If the caller supplied an AAD ID token, exchange it for short-lived
-   *   STS credentials via AssumeRoleWithWebIdentity and return those.
-   * - Otherwise return `null` — telling the call-site to use the existing
-   *   singleton runtime client (which is bootstrapped from static creds
-   *   or the default AWS credential chain at `initialize()` time).
-   *
-   * This is the seam the Python `_get_credentials_via_direct_oidc` helper
-   * sits in; keep the logic purely about credential resolution so the
-   * upstream caller can decide how to plumb the result into a client.
+   * OSS uses the standard AWS credential chain (env access keys, IAM
+   * role / instance profile, or shared profile) bootstrapped once in
+   * `initialize()`. There is no per-user credential exchange — the
+   * singleton client built at init time serves every request.
    */
-  private async resolveCredentials(
-    callerContext?: BedrockCallerContext,
-  ): Promise<AWSOIDCredentials | null> {
-    if (!callerContext?.aadToken) {
-      return null;
+  private async getBedrockClient(): Promise<BedrockRuntimeClient> {
+    if (!this.runtimeClient) {
+      throw new Error('AWS Bedrock provider not initialized');
     }
-
-    try {
-      return await assumeRoleWithAADToken(callerContext.aadToken, {
-        userEmail: callerContext.userEmail,
-        region:
-          this.config?.region || process.env.AWS_REGION || 'us-east-1',
-      });
-    } catch (err) {
-      // Surface the failure with the same context the Python ref logs.
-      this.logger.error(
-        {
-          error: err instanceof Error ? err.message : String(err),
-          hasUserEmail: !!callerContext.userEmail,
-        },
-        '❌ [BEDROCK-OIDC] AssumeRoleWithWebIdentity failed — falling back to service creds',
-      );
-      throw err;
-    }
-  }
-
-  /**
-   * Return a BedrockRuntimeClient appropriate for the caller.
-   *
-   * - When `callerContext.aadToken` is present, build a fresh client
-   *   wired to the OIDC-derived credentials (and cache it briefly so
-   *   back-to-back calls from the same user reuse the same socket pool).
-   * - When no context is provided (service-init paths), return the
-   *   singleton `this.runtimeClient` that was built in `initialize()`.
-   */
-  private async getBedrockClient(
-    callerContext?: BedrockCallerContext,
-  ): Promise<BedrockRuntimeClient> {
-    if (!callerContext?.aadToken) {
-      if (!this.runtimeClient) {
-        throw new Error('AWS Bedrock provider not initialized');
-      }
-      return this.runtimeClient;
-    }
-
-    const creds = await this.resolveCredentials(callerContext);
-    if (!creds) {
-      // resolveCredentials returned null despite aadToken — shouldn't
-      // happen in practice, but fall back safely.
-      if (!this.runtimeClient) {
-        throw new Error('AWS Bedrock provider not initialized');
-      }
-      return this.runtimeClient;
-    }
-
-    // Short-lived per-user client cache keyed by token hash + user email
-    // to avoid building a new TLS-backed client per request.
-    const crypto = await import('crypto');
-    const cacheKey = crypto
-      .createHash('sha256')
-      .update(`${callerContext.aadToken}|${callerContext.userEmail || ''}`)
-      .digest('hex');
-    const cached = this.userRuntimeClients.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-      // LRU: move to end
-      this.userRuntimeClients.delete(cacheKey);
-      this.userRuntimeClients.set(cacheKey, cached);
-      return cached.client;
-    }
-
-    const clientConfig: any = {
-      region: this.config?.region || process.env.AWS_REGION || 'us-east-1',
-      credentials: {
-        accessKeyId: creds.accessKeyId,
-        secretAccessKey: creds.secretAccessKey,
-        sessionToken: creds.sessionToken,
-      },
-    };
-    if (this.config?.endpoint) {
-      clientConfig.endpoint = this.config.endpoint;
-    }
-    const client = new BedrockRuntimeClient(clientConfig);
-
-    // Cache until 60s before cred expiration so the client is never
-    // served with near-expired creds.
-    const expiresAt = Math.max(
-      creds.expiration.getTime() - 60_000,
-      Date.now() + 60_000,
-    );
-    this.userRuntimeClients.set(cacheKey, { client, expiresAt });
-
-    // Evict oldest entries beyond the LRU budget.
-    while (this.userRuntimeClients.size > AWSBedrockProvider.USER_CLIENT_LRU_MAX) {
-      const firstKey = this.userRuntimeClients.keys().next().value;
-      if (firstKey === undefined) break;
-      this.userRuntimeClients.delete(firstKey);
-    }
-
-    return client;
+    return this.runtimeClient;
   }
 
   /**
@@ -671,17 +550,6 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       throw new Error('AWS Bedrock provider not initialized');
     }
 
-    // Extract per-request caller context (AAD token / user email) so the
-    // STS::AssumeRoleWithWebIdentity path can run for user-scoped calls.
-    // The field is Bedrock-specific and threaded via a runtime-only cast
-    // to avoid widening the shared CompletionRequest interface for other
-    // providers. Upstream callers attach the field on the `request` object
-    // before invoking createCompletion. If unset, the per-site helpers
-    // fall through to the singleton client built in initialize().
-    const callerContext = (request as unknown as {
-      callerContext?: BedrockCallerContext;
-    }).callerContext;
-
     const startTime = Date.now();
 
     // Determine model from request or use default
@@ -831,9 +699,9 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
         try {
           if (request.stream) {
-            return await this.streamCompletionWithRetry(currentModelId, body, startTime, attempt, callerContext);
+            return await this.streamCompletionWithRetry(currentModelId, body, startTime, attempt);
           } else {
-            return await this.nonStreamCompletion(currentModelId, body, startTime, callerContext);
+            return await this.nonStreamCompletion(currentModelId, body, startTime);
           }
         } catch (error: any) {
           lastError = error;
@@ -903,18 +771,16 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     body: any,
     startTime: number,
     attempt: number,
-    callerContext?: BedrockCallerContext,
   ): Promise<AsyncGenerator<any>> {
     // For streaming, we need to handle throttling at the initial request level
     // The generator itself shouldn't need retry logic since throttling happens upfront
-    return this.streamCompletion(modelId, body, startTime, callerContext);
+    return this.streamCompletion(modelId, body, startTime);
   }
 
   private async nonStreamCompletion(
     modelId: string,
     body: any,
     startTime: number,
-    callerContext?: BedrockCallerContext,
   ): Promise<CompletionResponse> {
     // Non-Claude models on Bedrock (Nova, Llama, Nemotron, Mistral, etc.)
     // reject InvokeModel with Anthropic-shaped bodies ("Failed to deserialize
@@ -922,7 +788,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     // streamCompletion() uses for the streaming path.
     const isClaudeModel = modelId.includes('anthropic.claude');
     if (!isClaudeModel) {
-      return this.nonStreamWithConverseAPI(modelId, body, startTime, callerContext);
+      return this.nonStreamWithConverseAPI(modelId, body, startTime);
     }
 
     const command = new InvokeModelCommand({
@@ -932,7 +798,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       accept: 'application/json'
     });
 
-    const client = await this.getBedrockClient(callerContext);
+    const client = await this.getBedrockClient();
     const response = await client.send(command);
     const responseBody = JSON.parse(new TextDecoder().decode(response.body));
 
@@ -958,7 +824,6 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     modelId: string,
     body: any,
     startTime: number,
-    callerContext?: BedrockCallerContext,
   ): Promise<CompletionResponse> {
     const converseInput: ConverseCommandInput = {
       modelId,
@@ -980,7 +845,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
 
     this.logger.info({ modelId }, '🔵 [CONVERSE-API] Non-stream request');
     const command = new ConverseCommand(converseInput);
-    const client = await this.getBedrockClient(callerContext);
+    const client = await this.getBedrockClient();
     const response = await client.send(command);
 
     const latency = Date.now() - startTime;
@@ -1040,7 +905,6 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     modelId: string,
     body: any,
     startTime: number,
-    callerContext?: BedrockCallerContext,
   ): AsyncGenerator<any> {
     // Route to appropriate streaming API based on model:
     // - Claude models: InvokeModelWithResponseStream (native Anthropic format)
@@ -1050,7 +914,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     if (!isClaudeModel) {
       // Use ConverseStream for non-Claude models (Nova, Titan, etc.)
       this.logger.info({ modelId }, '[AWSBedrockProvider] Using ConverseStream for non-Claude model');
-      yield* this.streamWithConverseAPI(modelId, body, startTime, callerContext);
+      yield* this.streamWithConverseAPI(modelId, body, startTime);
       return;
     }
 
@@ -1063,7 +927,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       accept: 'application/json'
     });
 
-    const client = await this.getBedrockClient(callerContext);
+    const client = await this.getBedrockClient();
     const response = await client.send(command);
 
     if (!response.body) {
@@ -1128,7 +992,6 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     modelId: string,
     body: any,
     startTime: number,
-    callerContext?: BedrockCallerContext,
   ): AsyncGenerator<any> {
     // Convert our internal format to Converse API format
     // Note: For Nova models, body may already have inferenceConfig from convertToBedrock
@@ -1221,7 +1084,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     }, '🔵 [CONVERSE-API] Starting ConverseStream request');
 
     const command = new ConverseStreamCommand(converseInput);
-    const client = await this.getBedrockClient(callerContext);
+    const client = await this.getBedrockClient();
     const response = await client.send(command);
 
     if (!response.stream) {
@@ -2604,7 +2467,6 @@ export class AWSBedrockProvider extends BaseLLMProvider {
    */
   async embedText(
     text: string | string[],
-    callerContext?: BedrockCallerContext,
   ): Promise<number[] | number[][]> {
     if (!this.initialized || !this.runtimeClient) {
       throw new Error('AWS Bedrock provider not initialized');
@@ -2617,8 +2479,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     const texts = Array.isArray(text) ? text : [text];
     const embeddings: number[][] = [];
 
-    // Build client once per call so a token exchange is not repeated per chunk.
-    const client = await this.getBedrockClient(callerContext);
+    const client = await this.getBedrockClient();
 
     for (const inputText of texts) {
       // Prepare request body for Titan embedding model
@@ -2875,7 +2736,6 @@ export class AWSBedrockProvider extends BaseLLMProvider {
    */
   async generateImage(
     request: import('./ILLMProvider.js').ImageGenerationRequest,
-    callerContext?: BedrockCallerContext,
   ): Promise<import('./ILLMProvider.js').ImageGenerationResponse> {
     if (!this.initialized || !this.runtimeClient) {
       throw new Error('[AWSBedrockProvider] Not initialized — cannot generate image');
@@ -2905,7 +2765,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       accept: 'application/json',
     });
 
-    const client = await this.getBedrockClient(callerContext);
+    const client = await this.getBedrockClient();
     const response = await client.send(command);
     const responseBody = JSON.parse(new TextDecoder().decode(response.body));
     const generationTimeMs = Date.now() - startTime;
