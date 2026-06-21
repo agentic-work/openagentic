@@ -541,7 +541,10 @@ export const MultiModelSankeyChart: React.FC<MultiModelSankeyChartProps> = ({
         <h3
           className={`text-sm font-medium flex items-center gap-2 ${onOpenModal ? 'cursor-pointer hover:underline' : ''}`}
           style={{ color: colors.textSecondary }}
+          role={onOpenModal ? 'button' : undefined}
+          tabIndex={onOpenModal ? 0 : undefined}
           onClick={onOpenModal}
+          onKeyDown={onOpenModal ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenModal(); } } : undefined}
           title={onOpenModal ? "Click for detailed view" : undefined}
         >
           <GitBranch size={16} style={{ color: colors.accent }} />

@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { onKeyActivate } from '@/utils/a11y'
 
 export interface ModalProps {
   open: boolean
@@ -25,7 +26,9 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, fo
     <div
       role="dialog"
       aria-modal="true"
+      tabIndex={-1}
       onClick={onClose}
+      onKeyDown={onKeyActivate(onClose)}
       style={{
         position: 'fixed',
         inset: 0,
@@ -38,6 +41,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, fo
       <div
         className="glass"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
         style={{
           width,
           maxWidth: '92vw',

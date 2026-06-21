@@ -76,22 +76,9 @@ const LoginDev: React.FC = () => {
     fetchClientIp();
   }, []);
 
-  // Show loading while checking IP
-  if (isCheckingIp) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{ borderBottomColor: 'var(--color-ok)' }}></div>
-          <p className="mt-4 text-fg-muted">Verifying access...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show scary warning for unauthorized IPs
-  if (clientIp && !isAuthorizedIp(clientIp)) {
-    return <UnauthorizedWarning clientIp={clientIp} />;
-  }
+  // NOTE: the "checking IP" and "unauthorized IP" early returns are DEFERRED
+  // to just before the main render below — all hooks must run unconditionally
+  // (rules-of-hooks: no hook may sit after an early return).
 
   // Midjourney-style ASCII Unscramble Effect
   useEffect(() => {
@@ -243,6 +230,24 @@ const LoginDev: React.FC = () => {
 
     return () => clearInterval(glitchInterval);
   }, [typedText]);
+
+  // Deferred early returns — all hooks above have now run unconditionally.
+  // Show loading while checking IP.
+  if (isCheckingIp) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{ borderBottomColor: 'var(--color-ok)' }}></div>
+          <p className="mt-4 text-fg-muted">Verifying access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show scary warning for unauthorized IPs.
+  if (clientIp && !isAuthorizedIp(clientIp)) {
+    return <UnauthorizedWarning clientIp={clientIp} />;
+  }
 
   const handleAzureLogin = () => {
     window.location.href = '/api/auth/microsoft';

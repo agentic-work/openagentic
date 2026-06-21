@@ -8,6 +8,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, Trash2, AlertCircle, Info, ChevronDown, Check } from '@/shared/icons';
+import { onKeyActivate } from '@/utils/a11y';
 import type { Node } from 'reactflow';
 import type { NodeData } from '../types/workflow.types';
 import { isFieldRequired } from '../utils/workflowValidator';
@@ -309,6 +310,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   const [agentSearchQuery, setAgentSearchQuery] = useState('');
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
   const agentDropdownRef = useRef<HTMLDivElement>(null);
+  // Agent-Proxy node collapsible sections (used by the render-helper closures
+  // further down). Hoisted here so these hooks run before any early return.
+  const [showPersona, setShowPersona] = useState(false);
+  const [showToolPolicy, setShowToolPolicy] = useState(false);
+  const [showAgentMemory, setShowAgentMemory] = useState(false);
 
   useEffect(() => {
     if (node?.data) {
@@ -1607,10 +1613,9 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   };
 
   // ─── Agent-Proxy Node Config ───────────────────────────────────────
-  const [showPersona, setShowPersona] = useState(false);
-  const [showToolPolicy, setShowToolPolicy] = useState(false);
-  const [showAgentMemory, setShowAgentMemory] = useState(false);
-
+  // (showPersona / showToolPolicy / showAgentMemory state hoisted to the top
+  // of the component so they run unconditionally — they were below the
+  // `if (!node) return null` early return, violating rules-of-hooks.)
   const renderAgentSingleConfig = () => {
     const toolPolicyMode = fieldStr('toolPolicyMode', 'allow_all');
     const selectedTools: string[] = (fieldRaw('selectedTools') as string[] | undefined) ?? [];
@@ -1629,8 +1634,12 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           Agent ID {isFieldRequired('agent_single', 'agentId') && <span style={{ color: 'var(--color-error)' }}>*</span>}
         </label>
         <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={agentDropdownOpen}
           className="glass-field"
           onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
+          onKeyDown={onKeyActivate(() => setAgentDropdownOpen(!agentDropdownOpen))}
           style={{
             padding: '6px 10px', cursor: 'pointer',
             fontSize: 13, display: 'flex', alignItems: 'center', gap: 6,
@@ -1670,11 +1679,19 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
               {filteredAgents.map(agent => (
                 <div
                   key={agent.id}
+                  role="option"
+                  tabIndex={0}
+                  aria-selected={agent.id === currentAgentId}
                   onClick={() => {
                     updateData('agentId', agent.id);
                     setAgentDropdownOpen(false);
                     setAgentSearchQuery('');
                   }}
+                  onKeyDown={onKeyActivate(() => {
+                    updateData('agentId', agent.id);
+                    setAgentDropdownOpen(false);
+                    setAgentSearchQuery('');
+                  })}
                   style={{
                     padding: '6px 12px', cursor: 'pointer', fontSize: 12,
                     background: agent.id === currentAgentId ? 'var(--ctl-surf-hover)' : 'transparent',

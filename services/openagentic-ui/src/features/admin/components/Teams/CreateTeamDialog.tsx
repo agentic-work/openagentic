@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 import { createTeam } from '../../services/teamsAdminApi';
 import type { Team, CreateTeamInput } from '../../services/teamsAdminApi';
 
@@ -86,9 +87,13 @@ export function CreateTeamDialog({ open, onClose, onCreated, existingTeams }: Cr
   return (
     /* Backdrop */
     <div
+      role="button"
+      tabIndex={0}
+      aria-label="Close"
       className="fixed inset-0 z-50 flex items-center justify-center"
       style={{ backgroundColor: 'color-mix(in srgb, var(--color-shadow) 50%, transparent)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={onKeyActivate(() => onClose())}
     >
       <div
         className="w-full max-w-md rounded-lg shadow-xl"

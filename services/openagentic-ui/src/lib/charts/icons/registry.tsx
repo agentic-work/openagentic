@@ -791,7 +791,7 @@ export function isKnownStencil(type?: string): boolean {
 }
 
 /** Canonical list of every registered slug — used by docs + tests. */
-export const STENCIL_SLUGS = Object.keys(REGISTRY).sort()
+export const STENCIL_SLUGS = Object.keys(REGISTRY).sort((a, b) => a.localeCompare(b))
 
 /** Grouped slug list for docs / palette UI. */
 export const STENCIL_GROUPS = {

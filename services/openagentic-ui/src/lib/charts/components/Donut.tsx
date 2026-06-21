@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 import { pie as d3Pie, arc as d3Arc } from 'd3-shape';
 import { format as d3Format } from 'd3-format';
 import { useChartFrame } from '../hooks/useChartFrame';
@@ -117,7 +118,10 @@ export function Donut({ data, title, height = 460, disableFrame, wheelZoom, onEx
           return (
             <div
               key={s.name}
+              role="button"
+              tabIndex={0}
               onClick={() => setIsolated((cur) => cur === s.name ? null : s.name)}
+              onKeyDown={onKeyActivate(() => setIsolated((cur) => cur === s.name ? null : s.name))}
               style={{
                 display: 'grid',
                 gridTemplateColumns: '14px 1fr auto auto',

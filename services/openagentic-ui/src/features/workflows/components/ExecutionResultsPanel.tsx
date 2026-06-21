@@ -19,6 +19,7 @@ import {
   Download, Save, ExternalLink,
 } from '@/shared/icons';
 import { NodeOutputRenderer } from './NodeOutputRenderer';
+import { onKeyActivate } from '@/utils/a11y';
 import { useAuth } from '@/app/providers/AuthContext';
 import { WorkflowApiService, WorkflowExecution } from '../services/workflowApi';
 import { nodeTypeConfigs } from '../utils/nodeConfigs';
@@ -505,7 +506,7 @@ const DataSection: React.FC<{
 
   return (
     <div className="wf-output-section">
-      <div className="wf-output-section-title" onClick={() => setOpen(!open)}>
+      <div className="wf-output-section-title" role="button" tabIndex={0} onClick={() => setOpen(!open)} onKeyDown={onKeyActivate(() => setOpen(!open))}>
         {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
         {title}
         {open && has && (
@@ -884,7 +885,10 @@ const TimelineTab: React.FC<{
 
               <div
                 className={`wf-timeline-card ${exp ? 'expanded' : ''}`}
+                role="button"
+                tabIndex={0}
                 onClick={() => { setExpandedId(exp ? null : ne.nodeId); onNodeSelect?.(ne.nodeId); }}
+                onKeyDown={onKeyActivate(() => { setExpandedId(exp ? null : ne.nodeId); onNodeSelect?.(ne.nodeId); })}
               >
                 <div className="wf-tc-header">
                   <div className="wf-tc-icon" style={{ backgroundColor: `${color}22`, color }}>
@@ -983,8 +987,8 @@ const AssistantTab: React.FC<{
   onWorkflowGenerated?: (def: WorkflowDefinition) => void;
   onWorkflowPatch?: (patches: WorkflowPatch[]) => void;
 }> = ({ content, canvasContext, executionContext, rawDefinition, onWorkflowGenerated, onWorkflowPatch }) => {
-  if (content) return <div className="wf-exec-content">{content}</div>;
-
+  // NOTE: hooks must run unconditionally — the `if (content) return …` guard
+  // is deferred until after every hook below (see the guarded return).
   const { messages, isGenerating, sendMessage, clearMessages, stopGeneration, setCanvasContext } = useAIFlowChat();
   const [input, setInput] = useState('');
   const [autoFixRunning, setAutoFixRunning] = useState(false);
@@ -1011,6 +1015,9 @@ const AssistantTab: React.FC<{
       onWorkflowPatch(last.patches);
     }
   }, [messages, onWorkflowPatch]);
+
+  // Deferred early return — all hooks above have now run unconditionally.
+  if (content) return <div className="wf-exec-content">{content}</div>;
 
   const handleSend = async (overrideMsg?: string) => {
     const msg = (overrideMsg || input).trim();
@@ -1054,7 +1061,7 @@ const AssistantTab: React.FC<{
             <div className={`wf-ai-avatar ${msg.role === 'user' ? 'human' : 'bot'}`}>
               {msg.role === 'user' ? '👤' : '✨'}
             </div>
-            <div className={`wf-ai-bubble ${msg.role === 'user' ? '' : ''}`}>
+            <div className="wf-ai-bubble">
               {msg.role === 'user' ? (
                 <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
               ) : (
@@ -1439,7 +1446,10 @@ const HistoryTab: React.FC<{
         return (
           <div key={ex.id}
             className={`wf-history-item ${active ? 'active' : ''}`}
+            role="button"
+            tabIndex={0}
             onClick={() => onLoadExecution?.(ex.id)}
+            onKeyDown={onKeyActivate(() => onLoadExecution?.(ex.id))}
             onDoubleClick={(e) => { e.stopPropagation(); setDetailExec(ex); setDetailIndex(execs.length - idx); }}>
             <span className="wf-run-status-dot" style={{ backgroundColor: SC[ex.status] || 'var(--color-fg-muted)' }} />
             <div className="wf-history-info">

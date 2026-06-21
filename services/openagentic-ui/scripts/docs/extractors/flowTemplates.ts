@@ -32,7 +32,7 @@ export function flowTemplates(config: FlowTemplatesConfig): Extractor {
     } catch {
       entries = [];
     }
-    const jsonFiles = entries.filter((e) => e.endsWith('.json')).sort();
+    const jsonFiles = entries.filter((e) => e.endsWith('.json')).sort((a, b) => a.localeCompare(b));
 
     const items: DocItem[] = [];
     const sourceFiles: string[] = [];
@@ -51,8 +51,8 @@ export function flowTemplates(config: FlowTemplatesConfig): Extractor {
       const slug = tpl.slug || basename(file, '.json');
       const nodeTypes = Array.from(
         new Set((tpl.definition?.nodes ?? []).map((n) => n.type).filter(Boolean) as string[]),
-      ).sort();
-      const toolsUsed = Array.from(new Set(tpl.meta?.tools_used ?? [])).sort();
+      ).sort((a, b) => a.localeCompare(b));
+      const toolsUsed = Array.from(new Set(tpl.meta?.tools_used ?? [])).sort((a, b) => a.localeCompare(b));
 
       items.push({
         id: slug,

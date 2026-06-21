@@ -1845,7 +1845,7 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
               padding: 16,
             }}
           >
-            <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(560px, 94vw)', maxHeight: '88vh', overflowY: 'auto' }}>
+            <div role="presentation" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} style={{ width: 'min(560px, 94vw)', maxHeight: '88vh', overflowY: 'auto' }}>
               <NeedsInputForm
                 request={needsInput}
                 onSubmit={handleNeedsInputSubmit}

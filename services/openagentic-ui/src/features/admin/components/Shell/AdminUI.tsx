@@ -8,6 +8,7 @@
  * - Professional color palette
  */
 import React from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 
 // ============================================================================
 // STATUS BADGES
@@ -127,6 +128,9 @@ export const AdminCard: React.FC<AdminCardProps> = ({
     <div
       className={`admin-card ${className}`}
       onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? onKeyActivate(onClick) : undefined}
       style={{
         backgroundColor: 'var(--color-surface)',
         borderRadius: '12px',

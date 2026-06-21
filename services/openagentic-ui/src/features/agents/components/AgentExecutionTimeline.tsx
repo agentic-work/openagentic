@@ -228,6 +228,8 @@ export const AgentExecutionTimeline: React.FC<AgentExecutionTimelineProps> = ({ 
                         <img
                           src={match[0]}
                           alt={step.toolName || 'Generated image'}
+                          role="button"
+                          tabIndex={0}
                           className="rounded-md cursor-pointer hover:opacity-90 transition-opacity"
                           style={{ maxWidth: 180, maxHeight: 120, objectFit: 'cover', border: '1px solid var(--color-border)' }}
                           onClick={(e) => {
@@ -238,6 +240,19 @@ export const AgentExecutionTimeline: React.FC<AgentExecutionTimelineProps> = ({ 
                             } else {
                               img.style.maxWidth = '180px';
                               img.style.maxHeight = '120px';
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              const img = e.currentTarget;
+                              if (img.style.maxWidth === '180px' || img.style.maxWidth === '') {
+                                img.style.maxWidth = '100%';
+                                img.style.maxHeight = '400px';
+                              } else {
+                                img.style.maxWidth = '180px';
+                                img.style.maxHeight = '120px';
+                              }
                             }
                           }}
                         />

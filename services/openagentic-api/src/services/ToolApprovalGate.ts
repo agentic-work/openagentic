@@ -660,8 +660,19 @@ export class ToolApprovalGate {
    * Admin API: Set tool risk override
    */
   async setToolRiskOverride(pattern: string, riskLevel: RiskLevel): Promise<void> {
-    // Validate the pattern compiles
-    new RegExp(pattern, 'i');
+    // Validate the pattern compiles (throws on an invalid regex before we persist).
+    // The compiled value itself is unused — we only care about the validation side
+    // effect — so it is discarded explicitly rather than instantiated for no reason.
+    try {
+      // eslint-disable-next-line no-new
+      RegExp(pattern, 'i');
+    } catch (err) {
+      throw new Error(
+        `Invalid tool risk override pattern "${pattern}": ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
 
     // Remove existing override for same pattern
     this.dbOverrides = this.dbOverrides.filter(o => o.pattern !== pattern);

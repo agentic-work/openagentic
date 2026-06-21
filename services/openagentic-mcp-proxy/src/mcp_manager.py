@@ -203,14 +203,18 @@ class MCPServer:
             env = {k: v for k, v in os.environ.items() if k in _ALLOWED_BASE_ENV}
             env.update(self.config.env)  # Server-specific vars from config override base
 
-            self.process = subprocess.Popen(
+            # Spawn off the event loop so the fork/exec never blocks it; the
+            # returned synchronous Popen handle is what the rest of this class
+            # manages (stdin/stdout pipes, .poll(), .pid, .terminate()).
+            self.process = await asyncio.to_thread(
+                subprocess.Popen,
                 self.config.command,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 env=env,
                 text=True,
-                bufsize=0  # Unbuffered for real-time communication
+                bufsize=0,  # Unbuffered for real-time communication
             )
 
             # Give it a moment to start

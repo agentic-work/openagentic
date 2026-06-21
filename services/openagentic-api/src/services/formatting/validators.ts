@@ -242,10 +242,20 @@ function suggestEnhancements(content: string, lines: string[], result: Validatio
     }
   }
 
-  // Suggest adding emojis to headers
-  const headersWithoutEmoji = lines.filter(l =>
-    /^#{1,3}\s[^🔧🚀📚💡⚠️✅❌🔍📊🏗️⚖️🔢]/.test(l)
-  );
+  // Suggest adding emojis to headers. Matched via a positive check rather than
+  // a negated character class because several of these glyphs are multi-code-point
+  // (e.g. ⚠️ and 🏗️ carry a variation selector), which a character class cannot
+  // represent as a single member.
+  const HEADER_EMOJIS = [
+    '🔧', '🚀', '📚', '💡', '⚠️', '✅', '❌', '🔍', '📊', '🏗️', '⚖️', '🔢',
+  ];
+  const headerPrefixRe = /^(#{1,3}\s)(.*)$/u;
+  const headersWithoutEmoji = lines.filter((l) => {
+    const m = headerPrefixRe.exec(l);
+    if (!m) return false;
+    const rest = m[2];
+    return !HEADER_EMOJIS.some((e) => rest.startsWith(e));
+  });
   if (headersWithoutEmoji.length > 0) {
     result.suggestions.push({
       original: headersWithoutEmoji[0],

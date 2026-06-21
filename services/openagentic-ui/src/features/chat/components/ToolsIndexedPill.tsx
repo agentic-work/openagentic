@@ -21,6 +21,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Layers, X } from '@/shared/icons';
 import { apiEndpoint } from '@/utils/api';
+import { onKeyActivate } from '@/utils/a11y';
 
 interface ToolsStatus {
   status: string;
@@ -130,7 +131,9 @@ export const ToolsIndexedPill: React.FC = () => {
           role="dialog"
           aria-modal="true"
           aria-label="MCP tool index status"
+          tabIndex={0}
           onClick={() => setOpen(false)}
+          onKeyDown={onKeyActivate(() => setOpen(false))}
           style={{
             position: 'fixed', inset: 0, zIndex: 1000,
             background: 'color-mix(in srgb, var(--cm-text) 55%, transparent)',
@@ -139,6 +142,7 @@ export const ToolsIndexedPill: React.FC = () => {
         >
           <div
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
             style={{
               background: 'var(--color-surface)',
               border: '1px solid var(--color-border)',

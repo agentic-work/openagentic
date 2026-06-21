@@ -14,6 +14,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '../../primitives-v2'
 import { apiEndpoint } from '../../../../utils/api'
+import { onKeyActivate } from '@/utils/a11y'
 
 interface MCPServer {
   name: string
@@ -267,7 +268,9 @@ function ServerCard({ server, selected, onClick }: { server: MCPServer; selected
   return (
     <div
       role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={onKeyActivate(onClick)}
       style={{
         padding: '14px 16px',
         border: `1px solid ${selected ? 'var(--ap-accent)' : 'var(--ap-border)'}`,
@@ -664,7 +667,10 @@ function AddServerModal({ onClose }: { onClose: () => void }) {
   return (
     <div
       role="dialog"
+      aria-modal="true"
+      aria-label="Add MCP server"
       onClick={onClose}
+      onKeyDown={onKeyActivate(onClose)}
       style={{
         position: 'fixed', inset: 0,
         background: 'rgba(0,0,0,0.32)',
@@ -674,6 +680,7 @@ function AddServerModal({ onClose }: { onClose: () => void }) {
     >
       <div
         onClick={e => e.stopPropagation()}
+        onKeyDown={e => e.stopPropagation()}
         style={{
           width: 560, maxWidth: '92vw',
           background: 'var(--ap-bg)',

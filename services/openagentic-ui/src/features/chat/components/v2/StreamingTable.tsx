@@ -214,7 +214,7 @@ export function StreamingTable({ table }: StreamingTableProps) {
       const v = cellScalarString(row[filterCol.key]);
       if (v) set.add(v);
     }
-    return Array.from(set).sort();
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [filterCol, rows]);
   const filterDefaultLabel = filter?.default ?? 'all';
   const [filterValue, setFilterValue] = useState<string>('');

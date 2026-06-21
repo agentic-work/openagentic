@@ -64,6 +64,14 @@ export function Bundle({ data, title, height = 720, disableFrame, wheelZoom, onE
 
   useChartFrame(svgRef, contentRef, { title: title ?? 'bundle', disabled: disableFrame, wheelZoom, onExpand });
 
+  // Hooks must run unconditionally — keep this above the early return below.
+  const hoveredCounts = useMemo(() => {
+    if (!hoverName) return null;
+    const incoming = layout.links.filter(([s, t]) => t.data.name === hoverName).length;
+    const outgoing = layout.links.filter(([s, t]) => s.data.name === hoverName).length;
+    return { incoming, outgoing };
+  }, [hoverName, layout.links]);
+
   // d3-hierarchy considers a childless root as 1 leaf. Treat "only the root,
   // no children" as the empty case for a more useful message.
   const hasChildren = (data.root.children ?? []).length > 0;
@@ -77,13 +85,6 @@ export function Bundle({ data, title, height = 720, disableFrame, wheelZoom, onE
     const outgoing = layout.links.some(([s, t]) => t.data.name === hoverName && s.data.name === name);
     return { isIncoming: incoming, isOutgoing: outgoing };
   };
-
-  const hoveredCounts = useMemo(() => {
-    if (!hoverName) return null;
-    const incoming = layout.links.filter(([s, t]) => t.data.name === hoverName).length;
-    const outgoing = layout.links.filter(([s, t]) => s.data.name === hoverName).length;
-    return { incoming, outgoing };
-  }, [hoverName, layout.links]);
 
   return (
     <div className={className} data-aw-chart-frame style={{ width: '100%', position: 'relative' }}>

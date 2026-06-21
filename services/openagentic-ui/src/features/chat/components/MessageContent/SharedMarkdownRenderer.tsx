@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { remarkCiteMarker } from './remarkCiteMarker';
 import { rehypeSemanticTokens } from '@/features/shared/markdown/rehypeSemanticTokens';
+import { onKeyActivate } from '@/utils/a11y';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeSanitize, { defaultSchema, type Options as SanitizeSchema } from 'rehype-sanitize';
@@ -275,9 +276,12 @@ const MilvusImage: React.FC<MilvusImageProps> = memo(({ src, alt, theme }) => {
         <img
           src={finalSrc}
           alt={alt || 'Generated image'}
+          role="button"
+          tabIndex={0}
           className="rounded-lg shadow-lg max-w-full h-auto cursor-pointer transition-opacity hover:opacity-90"
           style={{ maxHeight: '512px', objectFit: 'contain', display: imgLoaded || isImageProtocol ? 'block' : 'none' }}
           onClick={() => setIsFullscreen(true)}
+          onKeyDown={onKeyActivate(() => setIsFullscreen(true))}
           onError={() => setImageError(true)}
           onLoad={() => setImgLoaded(true)}
         />
@@ -289,7 +293,7 @@ const MilvusImage: React.FC<MilvusImageProps> = memo(({ src, alt, theme }) => {
       </div>
 
       {isFullscreen && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 cursor-pointer" onClick={() => setIsFullscreen(false)}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 cursor-pointer" role="button" tabIndex={0} aria-label="Close fullscreen" onClick={() => setIsFullscreen(false)} onKeyDown={onKeyActivate(() => setIsFullscreen(false))}>
           <button className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors z-10" onClick={() => setIsFullscreen(false)} aria-label="Close fullscreen">
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -297,7 +301,7 @@ const MilvusImage: React.FC<MilvusImageProps> = memo(({ src, alt, theme }) => {
             </svg>
           </button>
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm">Press ESC or click anywhere to close</div>
-          <img src={finalSrc} alt={alt || 'Generated image'} className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
+          <img src={finalSrc} alt={alt || 'Generated image'} role="presentation" className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} />
         </div>,
         document.body
       )}

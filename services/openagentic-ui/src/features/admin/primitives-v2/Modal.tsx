@@ -135,8 +135,19 @@ export function Modal({
   return (
     <div
       data-testid={`${testId}-backdrop`}
+      role="button"
+      tabIndex={0}
+      aria-label="Close"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          if (e.target === e.currentTarget) {
+            e.preventDefault()
+            onClose()
+          }
+        }
       }}
       style={{
         position: 'fixed',

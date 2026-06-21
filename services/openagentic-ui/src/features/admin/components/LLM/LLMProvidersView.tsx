@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 // Keep basic chevrons from lucide, use custom for status icons
 import { ChevronDown, ChevronRight } from '@/shared/icons';
 import { Server, CheckCircle, XCircle, AlertCircle, RefreshCw } from '../Shared/AdminIcons';
@@ -294,7 +295,10 @@ export const LLMProvidersView: React.FC<LLMProvidersViewProps> = ({ theme }) => 
               {/* Provider Header */}
               <div
                 className="flex items-center justify-between cursor-pointer"
+                role="button"
+                tabIndex={0}
                 onClick={() => toggleProvider(provider.name)}
+                onKeyDown={onKeyActivate(() => toggleProvider(provider.name))}
               >
                 <div className="flex items-center gap-4">
                   <div className="p-3 rounded-lg bg-primary-500/10 flex items-center justify-center">

@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AdminFilterBar } from '../Shared/AdminFilterBar';
+import { onKeyActivate } from '@/utils/a11y';
 import { PageHeader, LogRow, type LogSeverity } from '../../primitives-v2';
 import {
   fetchAuditLogs,
@@ -290,6 +291,8 @@ export function FlowsAuditLogViewer({ theme: _theme }: FlowsAuditLogViewerProps)
               <React.Fragment key={row.id}>
                 <div
                   onClick={() => handleRowClick(row)}
+                  onKeyDown={onKeyActivate(() => handleRowClick(row))}
+                  tabIndex={0}
                   style={{ cursor: 'pointer' }}
                   role="button"
                   aria-expanded={isExpanded}

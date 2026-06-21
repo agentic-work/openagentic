@@ -186,6 +186,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({ data, onRefresh }
           >
             <div
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
               style={{
                 background: tokens.bg0,
                 border: `1px solid ${tokens.line1}`,

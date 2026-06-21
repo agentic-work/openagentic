@@ -471,7 +471,7 @@ export const adminPromptsRoutes: FastifyPluginAsync = async (fastify) => {
         'other'
       ];
 
-      return reply.send({ categories });
+      return await reply.send({ categories });
     } catch (error: any) {
       logger.error({ error: error.message }, 'Failed to fetch categories');
       return reply.code(500).send({

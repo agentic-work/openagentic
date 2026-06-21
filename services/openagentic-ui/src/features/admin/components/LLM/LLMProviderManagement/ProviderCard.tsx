@@ -2,6 +2,7 @@
  * Provider Card — Individual card in the provider list view.
  */
 import React from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 import { Edit2, ChevronRight, Plus } from '@/shared/icons';
 import { Server } from '../../Shared/AdminIcons';
 import { AdminStatusBadge } from '../../Shared/AdminStatusBadge';
@@ -43,7 +44,10 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
     <div className="rounded-card overflow-hidden transition-[background,transform,box-shadow] duration-200 ease-emphasized bg-surface-1">
       {/* Card Header */}
       <div className="flex items-center justify-between px-5 py-4 cursor-pointer select-none hover:brightness-105 transition-all"
-        onClick={onToggleExpand}>
+        role="button"
+        tabIndex={0}
+        onClick={onToggleExpand}
+        onKeyDown={onKeyActivate(onToggleExpand)}>
         <div className="flex items-center gap-4">
           {/* Icon with health dot overlay */}
           <div className={`relative w-10 h-10 rounded-lg flex items-center justify-center ${meta.bgColor} ${meta.borderColor} border`}>

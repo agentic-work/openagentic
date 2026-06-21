@@ -909,7 +909,21 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
             <div className="wf-node-title">{data.label || 'Node'}</div>
             {subtitle && <div className="wf-node-subtitle">{subtitle}</div>}
           </div>
-          <div className="wf-node-menu" onClick={handleConfigure} title="Configure">
+          <div
+            className="wf-node-menu"
+            role="button"
+            tabIndex={0}
+            aria-label="Configure"
+            onClick={handleConfigure}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                reactFlow.setNodes(nodes => nodes.map(n => ({ ...n, selected: n.id === id })));
+              }
+            }}
+            title="Configure"
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
             </svg>

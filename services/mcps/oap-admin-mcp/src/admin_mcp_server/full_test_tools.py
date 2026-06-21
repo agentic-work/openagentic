@@ -836,9 +836,8 @@ async def admin_full_system_test(
     report["duration_seconds"] = round(timer.get_total_ms() / 1000, 2)
 
     # Generate summary message
-    status_emoji = "" if report["results"]["overall_status"] == "PASS" else ""
     report["summary_message"] = f"""
-{status_emoji} **Full System Test Complete**
+**Full System Test Complete**
 
 **Overall Status:** {report["results"]["overall_status"]}
 **Pass Rate:** {report["summary"]["pass_rate"]}

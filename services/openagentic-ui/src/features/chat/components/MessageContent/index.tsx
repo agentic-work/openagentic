@@ -29,6 +29,7 @@ const sanitizeSchema = {
     src: [...(defaultSchema.protocols?.src || []), 'image']
   }
 };
+import { onKeyActivate } from '@/utils/a11y';
 import { AlertCircle, Info, CheckCircle, XCircle, Copy, Check, ChevronDown, ChevronRight, Activity } from '@/shared/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import ShikiCodeBlock from './ShikiCodeBlock';
@@ -676,7 +677,10 @@ const MessageContent: React.FC<MessageContentProps> = ({ message, theme }) => {
                             <img
                               src={src}
                               alt={alt}
+                              role="button"
+                              tabIndex={0}
                               onClick={() => setViewerImage({ url: src, alt })}
+                              onKeyDown={onKeyActivate(() => setViewerImage({ url: src, alt }))}
                               className="max-w-full h-auto cursor-pointer"
                               loading="lazy"
                             />
@@ -689,7 +693,6 @@ const MessageContent: React.FC<MessageContentProps> = ({ message, theme }) => {
                   </div>
                 );
             }
-            return null; // Add explicit return for TypeScript
           } catch (blockError) {
             console.error('Error rendering block:', blockError, block);
             return (

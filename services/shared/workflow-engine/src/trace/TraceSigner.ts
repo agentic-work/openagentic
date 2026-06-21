@@ -42,7 +42,7 @@ function sortKeys(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sortKeys);
   const obj = value as Record<string, unknown>;
   const out: Record<string, unknown> = {};
-  for (const k of Object.keys(obj).sort()) {
+  for (const k of Object.keys(obj).sort((a, b) => a.localeCompare(b))) {
     out[k] = sortKeys(obj[k]);
   }
   return out;

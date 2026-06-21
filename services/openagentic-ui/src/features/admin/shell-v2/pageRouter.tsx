@@ -144,7 +144,7 @@ function V2PagePlaceholder({ sectionId: _sectionId }: { sectionId: string }) {
 function GrafanaLink() {
   return (
     <div className="p-10 text-center max-w-xl mx-auto mt-10">
-      <div className="text-fg-3 font-mono text-xs tracking-widest uppercase">// external</div>
+      <div className="text-fg-3 font-mono text-xs tracking-widest uppercase">{'// external'}</div>
       <h2 className="text-fg-0 text-xl font-bold mt-2">Grafana opens in a new tab</h2>
       <p className="text-fg-2 mt-3">
         Live dashboards at <span className="font-mono">/grafana/</span>.

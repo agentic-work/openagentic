@@ -937,7 +937,9 @@ export async function chatLoop(
       if (input == null) return 'null';
       if (typeof input !== 'object') return String(input);
       // Object keys are sorted so {a:1,b:2} and {b:2,a:1} share a sig.
-      const keys = Object.keys(input as Record<string, unknown>).sort();
+      const keys = Object.keys(input as Record<string, unknown>).sort((a, b) =>
+        a.localeCompare(b),
+      );
       const norm: Record<string, unknown> = {};
       for (const k of keys) norm[k] = (input as Record<string, unknown>)[k];
       return JSON.stringify(norm);

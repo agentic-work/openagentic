@@ -71,7 +71,7 @@ const SEED_USER = process.env.SEED_USER_ID || 'system-00000000-0000-0000-0000-00
 
 async function seed(): Promise<void> {
   const files = readdirSync(TEMPLATES_DIR).filter((f) => f.endsWith('.json'));
-  files.sort();
+  files.sort((a, b) => a.localeCompare(b));
 
   const results: Array<{ slug: string; id: string; action: string }> = [];
 

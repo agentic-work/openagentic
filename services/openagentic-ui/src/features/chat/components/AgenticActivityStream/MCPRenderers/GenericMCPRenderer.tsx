@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 import { Check, Loader2, XCircle, ChevronDown, ChevronRight, Terminal, Globe, FileText, AlertCircle, Folder } from '@/shared/icons';
 import type { MCPRendererProps } from './types';
 
@@ -413,6 +414,9 @@ export const GenericMCPRenderer: React.FC<MCPRendererProps> = ({
     >
       {/* Header */}
       <div
+        role={hasDetails ? 'button' : undefined}
+        tabIndex={hasDetails ? 0 : undefined}
+        aria-expanded={hasDetails ? expanded : undefined}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -421,6 +425,7 @@ export const GenericMCPRenderer: React.FC<MCPRendererProps> = ({
           cursor: hasDetails ? 'pointer' : 'default',
         }}
         onClick={() => hasDetails && setExpanded(!expanded)}
+        onKeyDown={onKeyActivate(() => hasDetails && setExpanded(!expanded))}
       >
         {/* Status icon */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>

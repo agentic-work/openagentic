@@ -202,6 +202,82 @@ export function WidgetRenderer({
   maxHeight,
   className,
 }: WidgetRendererProps) {
+  // ── Hooks ──────────────────────────────────────────────────────────────
+  // React hooks must run unconditionally on every render, in the same order.
+  // The arch_diagram / chart branches below return early, so ALL hooks for
+  // the iframe path are hoisted here above those returns. They compute
+  // harmless values for the non-iframe kinds (the results go unused there).
+  const isLoading = !content || content.length === 0;
+  // Sev-0 2026-05-08: re-build srcdoc when the parent theme or accent
+  // changes so iframes re-paint instead of staying frozen in their
+  // build-time palette. MutationObserver on <html> covers data-theme
+  // toggles; CSS-var poll covers accent-picker mutations.
+  const [themeRev, setThemeRev] = useState(0);
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return;
+    const root = document.documentElement;
+    const obs = new MutationObserver(() => setThemeRev(r => r + 1));
+    obs.observe(root, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'class', 'style'],
+    });
+    return () => obs.disconnect();
+  }, []);
+  const srcdoc = useMemo(
+    // Runtime narrows to 'svg' | 'html' by this point — reactflow_arch /
+    // chart branches return earlier. Cast keeps the buildSrcdoc signature
+    // tight without widening every internal kind union.
+    () => (isLoading ? '' : buildSrcdoc(kind as 'svg' | 'html', content)),
+    // themeRev intentionally in deps so palette flips force a rebuild
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [kind, content, isLoading, themeRev],
+  );
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const modalIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [iframeHeight, setIframeHeight] = useState<number>(220);
+  const [hover, setHover] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  // Listen for the resize bridge from the iframe.
+  useEffect(() => {
+    function onMsg(ev: MessageEvent) {
+      // The widget iframes use sandbox="allow-scripts" (no allow-same-origin),
+      // so their messages arrive with an opaque origin of the string "null".
+      // Accept only that opaque origin or our own origin — never a foreign one.
+      if (ev.origin !== 'null' && ev.origin !== window.location.origin) return;
+      const data = ev.data;
+      if (!data || data.type !== 'cm-widget-resize' || typeof data.height !== 'number') return;
+      // Only accept messages from one of OUR iframes.
+      if (
+        ev.source !== iframeRef.current?.contentWindow &&
+        ev.source !== modalIframeRef.current?.contentWindow
+      ) {
+        return;
+      }
+      const next = Math.min(2000, Math.max(120, Math.ceil(data.height) + 4));
+      setIframeHeight(next);
+    }
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  // ESC closes the modal.
+  useEffect(() => {
+    if (!expanded) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setExpanded(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [expanded]);
+
+  const handleExpand = useCallback(() => setExpanded(true), []);
+  const handleNewTab = useCallback(() => {
+    if (srcdoc) openSrcdocInNewTab(srcdoc);
+  }, [srcdoc]);
+  const handleClose = useCallback(() => setExpanded(false), []);
+  // ── End hooks ──────────────────────────────────────────────────────────
+
   // 2026-05-14 — `arch_diagram` is the stencil-based architecture diagram
   // primitive. Wire payload is { nodes:[{id,type,label,sublabel,group?}],
   // edges:[{from,to,kind?,label?}], direction? }. Mount through
@@ -333,75 +409,6 @@ export function WidgetRenderer({
       />
     );
   }
-  const isLoading = !content || content.length === 0;
-  // Sev-0 2026-05-08: re-build srcdoc when the parent theme or accent
-  // changes so iframes re-paint instead of staying frozen in their
-  // build-time palette. MutationObserver on <html> covers data-theme
-  // toggles; CSS-var poll covers accent-picker mutations.
-  const [themeRev, setThemeRev] = useState(0);
-  useEffect(() => {
-    if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return;
-    const root = document.documentElement;
-    const obs = new MutationObserver(() => setThemeRev(r => r + 1));
-    obs.observe(root, {
-      attributes: true,
-      attributeFilter: ['data-theme', 'class', 'style'],
-    });
-    return () => obs.disconnect();
-  }, []);
-  const srcdoc = useMemo(
-    // Runtime narrows to 'svg' | 'html' by this point — reactflow_arch /
-    // chart branches return earlier. Cast keeps the buildSrcdoc signature
-    // tight without widening every internal kind union.
-    () => (isLoading ? '' : buildSrcdoc(kind as 'svg' | 'html', content)),
-    // themeRev intentionally in deps so palette flips force a rebuild
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [kind, content, isLoading, themeRev],
-  );
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const modalIframeRef = useRef<HTMLIFrameElement | null>(null);
-  const [iframeHeight, setIframeHeight] = useState<number>(220);
-  const [hover, setHover] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-
-  // Listen for the resize bridge from the iframe.
-  useEffect(() => {
-    function onMsg(ev: MessageEvent) {
-      // The widget iframes use sandbox="allow-scripts" (no allow-same-origin),
-      // so their messages arrive with an opaque origin of the string "null".
-      // Accept only that opaque origin or our own origin — never a foreign one.
-      if (ev.origin !== 'null' && ev.origin !== window.location.origin) return;
-      const data = ev.data;
-      if (!data || data.type !== 'cm-widget-resize' || typeof data.height !== 'number') return;
-      // Only accept messages from one of OUR iframes.
-      if (
-        ev.source !== iframeRef.current?.contentWindow &&
-        ev.source !== modalIframeRef.current?.contentWindow
-      ) {
-        return;
-      }
-      const next = Math.min(2000, Math.max(120, Math.ceil(data.height) + 4));
-      setIframeHeight(next);
-    }
-    window.addEventListener('message', onMsg);
-    return () => window.removeEventListener('message', onMsg);
-  }, []);
-
-  // ESC closes the modal.
-  useEffect(() => {
-    if (!expanded) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setExpanded(false);
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [expanded]);
-
-  const handleExpand = useCallback(() => setExpanded(true), []);
-  const handleNewTab = useCallback(() => {
-    if (srcdoc) openSrcdocInNewTab(srcdoc);
-  }, [srcdoc]);
-  const handleClose = useCallback(() => setExpanded(false), []);
 
   const cap = maxHeight || '90vh';
 
@@ -602,6 +609,12 @@ export function WidgetRenderer({
             }}
             onClick={(e) => {
               if (e.target === e.currentTarget) handleClose();
+            }}
+            onKeyDown={(e) => {
+              if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+                e.preventDefault();
+                handleClose();
+              }
             }}
           >
             <div

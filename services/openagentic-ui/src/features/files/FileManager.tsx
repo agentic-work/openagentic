@@ -44,6 +44,7 @@ import {
 import { useAuth } from '@/app/providers/AuthContext';
 import { formatDistanceToNow, format } from 'date-fns';
 import { apiEndpoint } from '@/utils/api';
+import { onKeyActivate } from '@/utils/a11y';
 
 interface FileInfo {
   id: string;
@@ -555,10 +556,13 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       // List View
                       <div
                         key={file.id}
+                        role="button"
+                        tabIndex={0}
                         className={`flex items-center p-3 rounded-lg hover:bg-surface-2 cursor-pointer ${
                           isSelected ? 'bg-surface-2 ring-2 ring-accent' : ''
                         } ${selectedFile?.id === file.id ? 'bg-surface-2' : ''}`}
                         onClick={() => setSelectedFile(file)}
+                        onKeyDown={onKeyActivate(() => setSelectedFile(file))}
                       >
                         <button
                           onClick={(e) => {
@@ -629,10 +633,13 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       // Grid View
                       <div
                         key={file.id}
+                        role="button"
+                        tabIndex={0}
                         className={`bg-surface-2 rounded-lg p-4 hover:ring-2 hover:ring-accent cursor-pointer ${
                           isSelected ? 'ring-2 ring-accent' : ''
                         }`}
                         onClick={() => setSelectedFile(file)}
+                        onKeyDown={onKeyActivate(() => setSelectedFile(file))}
                       >
                         <div className="flex items-center justify-between mb-3">
                           <Icon 

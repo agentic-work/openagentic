@@ -133,7 +133,7 @@ export default async function pipelineRoutes(fastify: FastifyInstance) {
         avgResponseTime: 2887
       };
 
-      return reply.send(metrics);
+      return await reply.send(metrics);
     } catch (error) {
       console.error('Error fetching pipeline metrics:', error);
       return reply.status(500).send({

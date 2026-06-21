@@ -10,6 +10,7 @@ import {
   Server, Zap, Database, Cpu
 } from '../Shared/AdminIcons';
 import { useAuth } from '../../../../app/providers/AuthContext';
+import { onKeyActivate } from '@/utils/a11y';
 import { PageHeader, LogRow, type LogSeverity } from '../../primitives-v2';
 
 interface MCPCallLog {
@@ -421,8 +422,10 @@ export const MCPCallLogsView: React.FC<MCPCallLogsViewProps> = ({ theme }) => {
                     {/* Unified log row */}
                     <div
                       onClick={() => toggleLog(log.id)}
+                      onKeyDown={onKeyActivate(() => toggleLog(log.id))}
                       style={{ cursor: 'pointer' }}
                       role="button"
+                      tabIndex={0}
                       aria-expanded={isExpanded}
                     >
                       <LogRow

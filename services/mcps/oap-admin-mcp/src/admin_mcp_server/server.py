@@ -86,11 +86,17 @@ async def lifespan(app):
         except Exception as e:
             logger.warning(f"Background connection init failed: {e} - tools degrade gracefully")
 
-    asyncio.create_task(_init_connections_background())
+    # Keep a strong reference for the lifetime of the lifespan so the event loop
+    # does not garbage-collect the task before it completes.
+    init_task = asyncio.create_task(_init_connections_background())
 
     logger.info("Admin MCP Server ready - waiting for requests (connections initializing in background)")
 
     yield  # Server runs here
+
+    # Ensure the background init task is settled before teardown.
+    if not init_task.done():
+        init_task.cancel()
 
     # Cleanup connections on shutdown
     logger.info("Shutting down Admin MCP Server...")

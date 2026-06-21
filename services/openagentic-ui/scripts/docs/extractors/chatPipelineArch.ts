@@ -59,7 +59,7 @@ export function chatPipelineArch(config: ChatPipelineArchConfig): Extractor {
     };
     const sourceFiles: string[] = [];
 
-    for (const file of tsFiles.sort()) {
+    for (const file of tsFiles.sort((a, b) => a.localeCompare(b))) {
       const abs = join(dirAbs, file);
       const src = await readFile(abs, 'utf-8');
       const rel = relative(basePath, abs);

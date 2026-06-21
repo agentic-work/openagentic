@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../../../app/providers/AuthContext';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { PageHeader } from '../../primitives-v2';
+import { onKeyActivate } from '@/utils/a11y';
 
 // ============================================================================
 // CUSTOM SVG ICONS (replacing lucide-react)
@@ -887,6 +888,8 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
           return (
             <div
               key={skill.id}
+              role="button"
+              tabIndex={0}
               className={`
                 relative p-4 rounded-xl border transition-all cursor-pointer
                 ${isActive
@@ -895,6 +898,7 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
                 }
               `}
               onClick={() => onToggleSkill(skill.id)}
+              onKeyDown={onKeyActivate(() => onToggleSkill(skill.id))}
             >
               {/* Active Badge */}
               {isActive && (

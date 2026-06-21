@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 import type { NormalizedStreamEvent } from '../../../../types/AnthropicStreamEvent';
 import { buildTree, type TreeNode as TreeNodeType } from './buildTree';
 import { TreeNode } from './TreeNode';
@@ -143,11 +144,17 @@ export function UnifiedActivityTree({
         {node.type === 'tool' && (
           <div>
             <div
+              role="button"
+              tabIndex={0}
               style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
               onClick={() => {
                 toggleTool(node.id);
                 onToolClick?.(node.id);
               }}
+              onKeyDown={onKeyActivate(() => {
+                toggleTool(node.id);
+                onToolClick?.(node.id);
+              })}
             >
               <span
                 style={{

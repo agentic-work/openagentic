@@ -403,18 +403,8 @@ export class ChatAuthService {
    * Health check for auth service
    */
   async healthCheck(): Promise<boolean> {
-    try {
-      // Check if auth services are available
-      // For now, always return healthy
-      
-      return true;
-      
-    } catch (error) {
-      this.logger.error({ 
-        error: error.message 
-      }, 'Auth service health check failed');
-      
-      return false;
-    }
+    // Auth services are validated lazily per-request; nothing here can throw,
+    // so this is a constant healthy signal until a real probe is wired in.
+    return true;
   }
 }

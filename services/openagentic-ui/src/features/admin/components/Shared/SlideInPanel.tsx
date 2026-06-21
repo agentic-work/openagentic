@@ -77,6 +77,18 @@ export const SlideInPanel: React.FC<SlideInPanelProps> = ({
     }
   };
 
+  // Keyboard affordance mirroring the backdrop click (Enter / Space dismiss)
+  const handleBackdropKeyDown = (e: React.KeyboardEvent) => {
+    if (
+      closeOnBackdropClick &&
+      e.target === e.currentTarget &&
+      (e.key === 'Enter' || e.key === ' ')
+    ) {
+      e.preventDefault();
+      onClose();
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -84,6 +96,7 @@ export const SlideInPanel: React.FC<SlideInPanelProps> = ({
       className="fixed inset-0 z-50 flex justify-end"
       style={{ backgroundColor: showBackdrop ? 'color-mix(in srgb, var(--color-shadow) 50%, transparent)' : 'transparent' }}
       onClick={handleBackdropClick}
+      onKeyDown={handleBackdropKeyDown}
       role="dialog"
       aria-modal="true"
       aria-labelledby="slide-panel-title"

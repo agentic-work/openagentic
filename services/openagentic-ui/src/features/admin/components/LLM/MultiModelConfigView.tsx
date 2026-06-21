@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 // Basic UI icons from lucide
 import { Settings, Brain, Wrench, Save, ChevronDown, ChevronRight, Info, Sparkles, X } from '@/shared/icons';
 // Custom badass OpenAgentic icons
@@ -382,9 +383,13 @@ export const MultiModelConfigView: React.FC = () => {
         style={{ borderLeft: `3px solid var(--ap-${roleKey === 'reasoning' ? 'purple' : roleKey === 'tool_execution' ? 'blue' : roleKey === 'synthesis' ? 'green' : 'orange'}-500, currentColor)` }}
       >
         {/* Role Header */}
-        <div 
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={isExpanded}
           className="flex items-center justify-between p-4 cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-fg)_5%,transparent)] transition-colors"
           onClick={() => setExpandedRole(isExpanded ? null : roleKey)}
+          onKeyDown={onKeyActivate(() => setExpandedRole(isExpanded ? null : roleKey))}
         >
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-lg ${ROLE_COLORS[roleKey]}`}>

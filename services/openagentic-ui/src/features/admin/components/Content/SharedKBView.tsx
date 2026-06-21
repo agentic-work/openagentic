@@ -16,6 +16,7 @@ import {
   CheckCircle, AlertCircle, X,
 } from '@/shared/icons';
 import type { IconComponent } from '@/shared/icons';
+import { onKeyActivate } from '@/utils/a11y';
 import { PageHeader } from '../../primitives-v2';
 
 // ---------------------------------------------------------------------------
@@ -516,10 +517,12 @@ function AddSourceDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)]" role="button" tabIndex={0} aria-label="Close" onClick={onClose} onKeyDown={onKeyActivate(onClose)}>
       <div
         className="bg-[color:var(--color-surface-primary)] border border-border rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        role="presentation"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border p-4">
           <h3 className="text-base font-semibold text-text-primary">

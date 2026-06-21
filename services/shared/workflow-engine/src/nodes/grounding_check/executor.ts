@@ -186,8 +186,8 @@ export async function execute(
   return {
     valid,
     score: Number(score.toFixed(3)),
-    groundedEntities: grounded.sort(),
-    unfoundedEntities: unfounded.sort(),
+    groundedEntities: grounded.sort((a, b) => a.localeCompare(b)),
+    unfoundedEntities: unfounded.sort((a, b) => a.localeCompare(b)),
     claim: claimText.slice(0, 500),
     violationSummary,
   };

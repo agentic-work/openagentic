@@ -142,7 +142,9 @@ function stableArgsFingerprint(args: Record<string, unknown>): string {
     if (value === null || typeof value !== 'object') return value;
     if (Array.isArray(value)) return value.map(sortKeys);
     const out: Record<string, unknown> = {};
-    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+    for (const key of Object.keys(value as Record<string, unknown>).sort((a, b) =>
+      a.localeCompare(b),
+    )) {
       out[key] = sortKeys((value as Record<string, unknown>)[key]);
     }
     return out;
@@ -918,30 +920,12 @@ export class PermissionService {
         const val = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
         if (Array.isArray(val.rules)) {
           // DB is sole SoT (#788, 2026-05-13). Load verbatim; do NOT merge
-          // source defaults over admin edits.
+          // source defaults over admin edits. (The legacy default-merge path
+          // was removed — its seedDefaults set was provably empty, so it never
+          // synthesized a rule over the operator-owned DB rows.)
           const dbRules = val.rules as PermissionRule[];
-          const seedDefaults: PermissionRule[] = [];
-
-          // Build a lookup of DB rule identities so we can detect missing
-          // policySettings defaults without dropping operator-owned rules.
-          const idOf = (r: PermissionRule) =>
-            `${r.ruleValue.toolName} ${r.ruleBehavior} ${r.source}`;
-          const dbSet = new Set(dbRules.map(idOf));
-          const missingDefaults = seedDefaults.filter((r) => !dbSet.has(idOf(r)));
-
-          this.rules = [...dbRules, ...missingDefaults];
-
-          if (missingDefaults.length > 0) {
-            this.logger.info(
-              { dbCount: dbRules.length, addedDefaults: missingDefaults.length, total: this.rules.length },
-              '[Permissions] Merged new policySettings defaults into DB-loaded rules',
-            );
-            // Write the merged set back so subsequent boots see the canonical
-            // state and the admin UI shows the up-to-date defaults.
-            await this.persist();
-          } else {
-            this.logger.info({ count: this.rules.length }, '[Permissions] Loaded rules from DB');
-          }
+          this.rules = [...dbRules];
+          this.logger.info({ count: this.rules.length }, '[Permissions] Loaded rules from DB');
         }
       } else {
         // Seed the row with current defaults so admin UI has something to edit.

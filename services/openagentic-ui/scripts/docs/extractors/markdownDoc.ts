@@ -28,7 +28,7 @@ async function expandPathOrGlob(basePath: string, expr: string): Promise<string[
       const s = await stat(resolve(parentAbs, e));
       if (s.isFile()) out.push(`${parent}/${e}`);
     }
-    return out.sort();
+    return out.sort((a, b) => a.localeCompare(b));
   } catch {
     return [];
   }

@@ -36,6 +36,7 @@ import {
 import { format } from 'date-fns';
 import { useAuth } from '@/app/providers/AuthContext';
 import { workflowEndpoint } from '@/utils/api';
+import { onKeyActivate } from '@/utils/a11y';
 
 export interface NodeExecution {
   nodeId: string;
@@ -845,8 +846,11 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                         <h4 className="text-[11px] font-semibold text-error mb-1.5 uppercase tracking-wide">Structure Errors</h4>
                         {validationResult.compilation.errors.map((err: any, i: number) => (
                           <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1"
+                            role={err.nodeId ? 'button' : undefined}
+                            tabIndex={err.nodeId ? 0 : undefined}
                             style={{ background: 'color-mix(in srgb, var(--color-error) 6%, transparent)', color: 'var(--color-text-secondary)' }}
                             onClick={() => err.nodeId && onNodeSelect?.(err.nodeId)}
+                            onKeyDown={err.nodeId ? onKeyActivate(() => onNodeSelect?.(err.nodeId)) : undefined}
                           >
                             <XCircle className="w-3 h-3 text-error flex-shrink-0 mt-0.5" />
                             <div>
@@ -893,8 +897,11 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                                 </h4>
                                 {groupIssues.map((issue: any, i: number) => (
                                   <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1 cursor-pointer hover:bg-surface-2"
+                                    role={issue.nodeId ? 'button' : undefined}
+                                    tabIndex={issue.nodeId ? 0 : undefined}
                                     style={{ background: bgMap[group.color], color: 'var(--color-text-secondary)' }}
                                     onClick={() => issue.nodeId && onNodeSelect?.(issue.nodeId)}
+                                    onKeyDown={issue.nodeId ? onKeyActivate(() => onNodeSelect?.(issue.nodeId)) : undefined}
                                   >
                                     <AlertCircle className={`w-3 h-3 ${colorMap[group.color]} flex-shrink-0 mt-0.5`} />
                                     <div>
@@ -913,8 +920,11 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                               <h4 className="text-[11px] font-semibold text-warning mb-1.5 uppercase tracking-wide">Other Issues</h4>
                               {allIssues.filter((_: any, idx: number) => !categorized.has(idx)).map((issue: any, i: number) => (
                                 <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1 cursor-pointer hover:bg-surface-2"
+                                  role={issue.nodeId ? 'button' : undefined}
+                                  tabIndex={issue.nodeId ? 0 : undefined}
                                   style={{ background: 'color-mix(in srgb, var(--color-warning) 6%, transparent)', color: 'var(--color-text-secondary)' }}
                                   onClick={() => issue.nodeId && onNodeSelect?.(issue.nodeId)}
+                                  onKeyDown={issue.nodeId ? onKeyActivate(() => onNodeSelect?.(issue.nodeId)) : undefined}
                                 >
                                   <AlertCircle className="w-3 h-3 text-warning flex-shrink-0 mt-0.5" />
                                   <div>
@@ -984,7 +994,10 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                         return (
                           <div
                             key={exec.id}
+                            role="button"
+                            tabIndex={0}
                             onClick={() => setSelectedHistoryId(isSelected ? null : exec.id)}
+                            onKeyDown={onKeyActivate(() => setSelectedHistoryId(isSelected ? null : exec.id))}
                             className="flex items-center gap-2.5 px-3 py-2 border-b cursor-pointer transition-colors hover:bg-surface-2"
                             style={{
                               borderColor: 'var(--color-border)',
@@ -1069,7 +1082,10 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                                 return (
                                   <div
                                     key={node.nodeId}
+                                    role="button"
+                                    tabIndex={0}
                                     onClick={() => setHistorySelectedNode(prev => prev === node.nodeId ? null : node.nodeId)}
+                                    onKeyDown={onKeyActivate(() => setHistorySelectedNode(prev => prev === node.nodeId ? null : node.nodeId))}
                                     className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors hover:bg-surface-2"
                                     style={{ background: isSelected ? 'var(--color-bg-secondary)' : undefined }}
                                   >
@@ -1224,7 +1240,10 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                         return (
                           <div
                             key={node.nodeId}
+                            role="button"
+                            tabIndex={0}
                             onClick={() => handleNodeClick(node.nodeId)}
+                            onKeyDown={onKeyActivate(() => handleNodeClick(node.nodeId))}
                             className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors hover:bg-surface-2"
                             style={{ background: isSelected ? 'var(--color-bg-secondary)' : undefined }}
                           >

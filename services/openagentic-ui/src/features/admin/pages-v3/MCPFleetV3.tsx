@@ -33,6 +33,7 @@ import {
   type McpServerRow,
 } from '../hooks/useDashboardMetrics'
 import { apiEndpoint, apiRequest } from '../../../utils/api'
+import { onKeyActivate } from '@/utils/a11y'
 import { useAdminQuery } from '../hooks/useAdminQuery'
 import { Donut as AwDonut, type DonutData as AwDonutData } from '../../../lib/charts/components/Donut'
 import {
@@ -774,7 +775,9 @@ const ServerCardGrid = ({
         <div
           key={s.name as string}
           role="button"
+          tabIndex={0}
           onClick={() => onPick(s)}
+          onKeyDown={onKeyActivate(() => onPick(s))}
           aria-selected={isSelected}
           style={{
             padding: '10px 12px',
@@ -1783,7 +1786,10 @@ const LiveActivityDrawer = ({
                 return (
                   <div
                     key={`${e.id ?? ''}-${e.ts}-${i}`}
+                    role={e.server ? 'button' : undefined}
+                    tabIndex={e.server ? 0 : undefined}
                     onClick={() => e.server && onPick(String(e.server))}
+                    onKeyDown={e.server ? onKeyActivate(() => onPick(String(e.server))) : undefined}
                     title={e.server ? 'click to drill into this server' : undefined}
                     style={{ cursor: e.server ? 'pointer' : 'default' }}
                   >

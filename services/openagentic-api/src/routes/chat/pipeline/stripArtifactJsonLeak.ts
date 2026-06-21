@@ -129,16 +129,8 @@ function stripNextLeak(
   // --- shape 3: bare `{...}` JSON object -------------------------------
   // Find the earliest `{` at/after cursor; check if balanced JSON parses
   // and looks like an artifact args payload.
-  let bareBraceIdx = -1;
-  {
-    let i = from;
-    while (i < text.length) {
-      const c = text.indexOf('{', i);
-      if (c < 0) break;
-      bareBraceIdx = c;
-      break;
-    }
-  }
+  // Earliest `{` at/after the cursor (-1 when none remain).
+  const bareBraceIdx = from < text.length ? text.indexOf('{', from) : -1;
 
   // Choose the earliest candidate.
   type Candidate = { kind: 'fence' | 'preamble' | 'bare'; start: number; end: number };

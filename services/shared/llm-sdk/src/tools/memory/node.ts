@@ -171,7 +171,7 @@ export class BetaLocalFilesystemMemoryTool implements MemoryToolHandlers {
 
         const dirContents = await fs.readdir(dirPath);
 
-        for (const item of dirContents.sort()) {
+        for (const item of dirContents.sort((a, b) => a.localeCompare(b))) {
           if (item.startsWith('.') || item === 'node_modules') {
             continue;
           }

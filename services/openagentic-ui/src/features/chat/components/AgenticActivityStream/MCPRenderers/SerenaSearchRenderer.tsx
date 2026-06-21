@@ -11,6 +11,7 @@
 
 import React, { useState } from 'react';
 import { Search, FileText, Check, Loader2, ChevronDown, ChevronRight, Code, XCircle } from '@/shared/icons';
+import { onKeyActivate } from '@/utils/a11y';
 import type { MCPRendererProps } from './types';
 
 interface SearchMatch {
@@ -143,7 +144,11 @@ export const SerenaSearchRenderer: React.FC<MCPRendererProps> = ({
           cursor: totalMatches > 0 ? 'pointer' : 'default',
           borderBottom: expanded && totalMatches > 0 ? '1px solid color-mix(in srgb, var(--color-border) 40%, transparent)' : 'none',
         }}
+        role={totalMatches > 0 ? 'button' : undefined}
+        tabIndex={totalMatches > 0 ? 0 : undefined}
+        aria-expanded={totalMatches > 0 ? expanded : undefined}
         onClick={() => totalMatches > 0 && setExpanded(!expanded)}
+        onKeyDown={totalMatches > 0 ? onKeyActivate(() => setExpanded(!expanded)) : undefined}
       >
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
           {status === 'calling' ? (
@@ -255,7 +260,7 @@ export const SerenaSearchRenderer: React.FC<MCPRendererProps> = ({
                       fontSize: 11,
                     }}
                   >
-                    {match.line && (
+                    {match.line != null && (
                       <span
                         style={{
                           color: 'var(--color-text-muted)',

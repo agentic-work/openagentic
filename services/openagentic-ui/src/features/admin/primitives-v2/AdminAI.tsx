@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { SharedMarkdownRenderer } from '@/features/chat/components/MessageContent/SharedMarkdownRenderer'
 import { useTheme } from '@/contexts/ThemeContext'
 import { allSidebarIds } from '@/features/admin/shell-v2/sidebar-items'
+import { onKeyActivate } from '@/utils/a11y'
 
 /**
  * AdminAIBar / AdminAIPanel — the in-product AI assistant per
@@ -313,7 +314,11 @@ export function AdminAIPanel({
     <div
       className="fixed inset-0 z-[90]"
       style={{ background: 'color-mix(in srgb, var(--color-shadow) 60%, transparent)' }}
+      role="button"
+      tabIndex={0}
+      aria-label="Close"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      onKeyDown={onKeyActivate(() => onClose())}
       data-testid="ai-mask"
     >
       <div

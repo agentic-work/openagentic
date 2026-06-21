@@ -18,6 +18,7 @@ import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Maximize2, Minimize2, Copy, Check } from '@/shared/icons';
+import { onKeyActivate } from '@/utils/a11y';
 import { ArtifactType, getMinimumViableContent } from '../../utils/streamingArtifactDetector';
 
 interface StreamingArtifactRendererProps {
@@ -690,8 +691,8 @@ const StreamingArtifactRenderer: React.FC<StreamingArtifactRendererProps> = ({
   // When fullscreen, render a backdrop overlay via portal
   if (isFullscreen) {
     return createPortal(
-      <div className="fixed inset-0 z-[9997] bg-black/80" onClick={() => setIsFullscreen(false)}>
-        <div onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 z-[9997] bg-black/80" role="button" tabIndex={0} aria-label="Close" onClick={() => setIsFullscreen(false)} onKeyDown={onKeyActivate(() => setIsFullscreen(false))}>
+        <div role="presentation" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
           {artifactContent}
         </div>
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] text-white/60 text-sm">

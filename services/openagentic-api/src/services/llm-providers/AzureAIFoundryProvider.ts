@@ -1654,9 +1654,11 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
       maxTokens: anthropicRequest.max_tokens,
     }, '[AzureAIFoundryProvider] Creating Anthropic completion');
 
-    // TODO: AIF Anthropic streaming has event format issues with the completion stage.
-    // Force non-streaming for now to unblock UC testing. Fix streaming in next iteration.
-    if (false && request.stream) {
+    // AIF Anthropic streaming has event-format issues with the completion stage,
+    // so it stays off by default and non-streaming handles every request. It can
+    // be opted into via AIF_ANTHROPIC_STREAMING=true once the stream format is fixed.
+    const aifAnthropicStreamingEnabled = process.env.AIF_ANTHROPIC_STREAMING === 'true';
+    if (aifAnthropicStreamingEnabled && request.stream) {
       return this.streamAnthropicCompletion(anthropicRequest, startTime);
     } else {
       return await this.nonStreamAnthropicCompletion(anthropicRequest, startTime);

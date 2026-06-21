@@ -169,7 +169,7 @@ export class SandboxManager {
   }
 
   private ensureWorker(): Promise<void> {
-    if (this.worker && this.workerReady) return this.workerReady;
+    if (this.worker && this.workerReady !== null) return this.workerReady;
     this.worker = this.workerFactory();
     this.worker.addEventListener(
       'message',

@@ -646,22 +646,18 @@ const MessageBubble = memo(function MessageBubble({
   const isSystem = message.role === 'system';
   const isStreaming = message.status === 'streaming';
 
-  // Skip tool messages - they're shown inline with their parent
-  if (message.role === 'tool') {
-    return null;
-  }
-
-  // Skip system messages
-  if (isSystem) {
-    return null;
-  }
-
-  // TURN AGGREGATION: Skip non-first messages in a turn (they're aggregated into the first)
-  // But don't skip if it has substantial content to display
+  // Determine whether this bubble renders nothing. We compute the flag here
+  // but DEFER the actual `return null` until after all hooks below — React
+  // hooks must run unconditionally in the same order every render (no hook
+  // may sit after an early return). See the guarded return further down.
+  //   - tool messages are shown inline with their parent
+  //   - system messages are skipped
+  //   - non-first turn-aggregated messages without substantial content are skipped
   const hasSubstantialContent = message.content && message.content.trim().length > 50;
-  if (turnInfo && !turnInfo.isFirst && !hasSubstantialContent && !isStreaming) {
-    return null;
-  }
+  const shouldRenderNothing =
+    message.role === 'tool' ||
+    isSystem ||
+    Boolean(turnInfo && !turnInfo.isFirst && !hasSubstantialContent && !isStreaming);
 
   // Handle keyboard events for edit
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -931,6 +927,11 @@ const MessageBubble = memo(function MessageBubble({
       activityStreamData.contentBlocks,
     ],
   );
+
+  // Deferred early return — all hooks above have now run unconditionally.
+  if (shouldRenderNothing) {
+    return null;
+  }
 
   // Whether the activity stream includes text content (completed messages with interleaved blocks)
   const activityStreamHasText = finalContentBlocks.some(b => b.type === 'text');

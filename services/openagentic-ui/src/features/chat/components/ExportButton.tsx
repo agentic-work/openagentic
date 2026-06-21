@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 import { Download, FileText, FileDown, File, Check } from '@/shared/icons';
 import { ChatMessage } from '@/types';
 import { ClientExportService } from '@/features/chat/services/export/client';
@@ -186,7 +187,11 @@ const ExportButton: React.FC<ExportButtonProps> = ({
           {/* Backdrop */}
           <div
             className="fixed inset-0 z-40"
+            role="button"
+            tabIndex={0}
+            aria-label="Close export menu"
             onClick={() => setIsOpen(false)}
+            onKeyDown={onKeyActivate(() => setIsOpen(false))}
           />
 
           {/* Dropdown menu */}

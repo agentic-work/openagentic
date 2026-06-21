@@ -180,7 +180,6 @@ const tokenize = (input: string): Token[] => {
       case 'separator':
         tokens = tokens.slice(0, tokens.length - 1);
         return strip(tokens);
-        break;
       case 'number':
         let lastCharacterOfLastToken = lastToken.value[lastToken.value.length - 1];
         if (lastCharacterOfLastToken === '.' || lastCharacterOfLastToken === '-') {
@@ -200,7 +199,6 @@ const tokenize = (input: string): Token[] => {
       case 'delimiter':
         tokens = tokens.slice(0, tokens.length - 1);
         return strip(tokens);
-        break;
     }
 
     return tokens;
@@ -208,7 +206,7 @@ const tokenize = (input: string): Token[] => {
   unstrip = (tokens: Token[]): Token[] => {
     let tail: string[] = [];
 
-    tokens.map((token) => {
+    tokens.forEach((token) => {
       if (token.type === 'brace') {
         if (token.value === '{') {
           tail.push('}');
@@ -226,7 +224,7 @@ const tokenize = (input: string): Token[] => {
     });
 
     if (tail.length > 0) {
-      tail.reverse().map((item) => {
+      tail.reverse().forEach((item) => {
         if (item === '}') {
           tokens.push({
             type: 'brace',
@@ -246,7 +244,7 @@ const tokenize = (input: string): Token[] => {
   generate = (tokens: Token[]): string => {
     let output = '';
 
-    tokens.map((token) => {
+    tokens.forEach((token) => {
       switch (token.type) {
         case 'string':
           output += '"' + token.value + '"';

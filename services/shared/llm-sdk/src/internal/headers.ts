@@ -94,6 +94,6 @@ export const buildHeaders = (newHeaders: HeadersLike[]): NullableHeaders => {
 };
 
 export const isEmptyHeaders = (headers: HeadersLike) => {
-  for (const _ of iterateHeaders(headers)) return false;
-  return true;
+  // Empty when the header iterator yields nothing on its first step.
+  return iterateHeaders(headers).next().done === true;
 };

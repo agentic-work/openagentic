@@ -300,6 +300,7 @@ export const TrafficFlowExpand: React.FC<{
       aria-modal="true"
       aria-label="Traffic flow — full-screen views"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); onClose() } }}
     >
       <div className="aw-tf-modal">
         <header className="aw-tf-modal__head">

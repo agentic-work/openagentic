@@ -11,6 +11,7 @@
 
 import React, { useState } from 'react';
 import { Globe, Check, Loader2, ChevronDown, ChevronRight, ExternalLink, XCircle } from '@/shared/icons';
+import { onKeyActivate } from '@/utils/a11y';
 import type { MCPRendererProps } from './types';
 
 // Parse URL from input
@@ -126,6 +127,9 @@ export const WebFetchRenderer: React.FC<MCPRendererProps> = ({
     >
       {/* Header */}
       <div
+        role={hasContent ? 'button' : undefined}
+        tabIndex={hasContent ? 0 : undefined}
+        aria-expanded={hasContent ? expanded : undefined}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -135,6 +139,7 @@ export const WebFetchRenderer: React.FC<MCPRendererProps> = ({
           borderBottom: expanded && hasContent ? '1px solid color-mix(in srgb, var(--color-border) 40%, transparent)' : 'none',
         }}
         onClick={() => hasContent && setExpanded(!expanded)}
+        onKeyDown={onKeyActivate(() => hasContent && setExpanded(!expanded))}
       >
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
           {status === 'calling' ? (
@@ -177,7 +182,7 @@ export const WebFetchRenderer: React.FC<MCPRendererProps> = ({
 
         {/* Meta badges */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          {wordCount && wordCount > 0 && status === 'success' && (
+          {wordCount != null && wordCount > 0 && status === 'success' && (
             <span
               style={{
                 fontSize: 10,

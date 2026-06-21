@@ -44,7 +44,7 @@ function stableStringify(value: unknown): string {
   if (Array.isArray(value)) {
     return '[' + value.map(stableStringify).join(',') + ']';
   }
-  const keys = Object.keys(value as Record<string, unknown>).sort();
+  const keys = Object.keys(value as Record<string, unknown>).sort((a, b) => a.localeCompare(b));
   const parts = keys.map(k => JSON.stringify(k) + ':' + stableStringify((value as any)[k]));
   return '{' + parts.join(',') + '}';
 }

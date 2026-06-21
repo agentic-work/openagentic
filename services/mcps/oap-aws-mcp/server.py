@@ -22,6 +22,7 @@ The official server provides:
 
 import os
 import sys
+import asyncio
 import logging
 import json
 from typing import Any, Dict, Optional
@@ -1517,13 +1518,16 @@ async def execute_cli_command(
 
         logger.info(f"Executing AWS CLI: {command[:100]}...")
 
-        # Execute the command
-        result = subprocess.run(
+        # Execute the command off the event loop — subprocess.run blocks until
+        # the CLI exits (up to the 5-minute timeout), which would otherwise
+        # freeze the asyncio loop serving other tool calls.
+        result = await asyncio.to_thread(
+            subprocess.run,
             shlex.split(command),
             capture_output=True,
             text=True,
             env=env,
-            timeout=300  # 5 minute timeout
+            timeout=300,  # 5 minute timeout
         )
 
         # Check for errors

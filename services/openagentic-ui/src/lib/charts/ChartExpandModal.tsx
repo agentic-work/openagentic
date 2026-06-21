@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useThemeTokens } from './hooks/useThemeTokens';
+import { onKeyActivate } from '@/utils/a11y';
 
 export type TimeRange = '1h' | '6h' | '24h' | '7d' | '30d' | '90d' | 'custom';
 
@@ -78,8 +79,10 @@ export function ChartExpandModal({
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      tabIndex={-1}
       data-aw-chart-expand
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={onKeyActivate(() => onClose())}
       style={{
         position: 'fixed',
         inset: 0,

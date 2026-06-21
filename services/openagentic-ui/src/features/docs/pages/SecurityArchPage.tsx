@@ -414,7 +414,6 @@ const SecurityArchPage: React.FC = () => {
                       fontWeight: 700,
                       color: item.severity === 'Low' ? 'var(--color-success)'
                         : item.severity === 'Medium' ? 'var(--color-warning)'
-                        : item.severity === 'High' ? 'var(--color-error)'
                         : 'var(--color-error)',
                     }}
                   >

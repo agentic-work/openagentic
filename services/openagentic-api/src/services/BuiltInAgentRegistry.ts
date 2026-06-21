@@ -260,7 +260,7 @@ export async function loadBuiltInAgents(
 ): Promise<BuiltInAgentRegistryEntry[]> {
   const files = (await fs.promises.readdir(dir))
     .filter(f => f.endsWith('.md'))
-    .sort();
+    .sort((a, b) => a.localeCompare(b));
 
   const entries: BuiltInAgentRegistryEntry[] = [];
   for (const fileName of files) {

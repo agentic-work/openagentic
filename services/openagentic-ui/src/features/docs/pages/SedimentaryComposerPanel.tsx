@@ -13,6 +13,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 
 interface SeedModule {
   name: string;
@@ -180,7 +181,10 @@ export const SedimentaryComposerPanel: React.FC = () => {
           {EXAMPLES.map((e, i) => (
             <li
               key={i}
+              role="button"
+              tabIndex={0}
               onClick={() => { setPaused(true); setIdx(i); }}
+              onKeyDown={onKeyActivate(() => { setPaused(true); setIdx(i); })}
               style={{
                 padding: '6px 8px',
                 borderRadius: 4,

@@ -322,8 +322,8 @@ export const PromptTechniquesRadialMenu: React.FC<PromptTechniquesRadialMenuProp
                     delay: index * 0.05 
                   }}
                   style={{
-                    left: buttonSize / 2 - buttonSize / 2,
-                    top: buttonSize / 2 - buttonSize / 2
+                    left: 0,
+                    top: 0
                   }}
                 >
                   <motion.button

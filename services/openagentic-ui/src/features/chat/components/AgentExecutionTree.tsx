@@ -98,6 +98,20 @@ const ToolCallRow: React.FC<{ tool: ToolCallDisplay; isDark: boolean }> = ({ too
   const mutedColor = isDark ? 'var(--text-tertiary, #8b949e)' : 'var(--text-tertiary, #6b7280)';
   const summaryColor = isDark ? 'var(--text-secondary, #a0aec0)' : 'var(--text-secondary, #4a5568)';
 
+  // Generate inline summary of what the tool did (e.g. "Created uc2-vnet in eastus")
+  // Hook must run unconditionally — keep it above the early return below.
+  const summary = useMemo(() => {
+    if (tool.status !== 'completed' && tool.status !== 'error') return null;
+    try {
+      const parsedArgs = tool.args ? JSON.parse(tool.args) : (tool.input ? JSON.parse(tool.input) : undefined);
+      const parsedResult = tool.result ? (typeof tool.result === 'string' ? tool.result : JSON.stringify(tool.result)) : undefined;
+      const s = summarizeToolCall(tool.toolName, parsedArgs, parsedResult, tool.status as any);
+      return s.kind === 'text' ? s.text : null;
+    } catch {
+      return null;
+    }
+  }, [tool.toolName, tool.args, tool.input, tool.result, tool.status]);
+
   if (tool.isThinking) {
     const secs = tool.durationMs ? (tool.durationMs / 1000).toFixed(1) : '?';
     const tokenStr = tool.thinkingTokens ? ` (~${formatTokens(tool.thinkingTokens)} tokens)` : '';
@@ -120,19 +134,6 @@ const ToolCallRow: React.FC<{ tool: ToolCallDisplay; isDark: boolean }> = ({ too
       </div>
     );
   }
-
-  // Generate inline summary of what the tool did (e.g. "Created uc2-vnet in eastus")
-  const summary = useMemo(() => {
-    if (tool.status !== 'completed' && tool.status !== 'error') return null;
-    try {
-      const parsedArgs = tool.args ? JSON.parse(tool.args) : (tool.input ? JSON.parse(tool.input) : undefined);
-      const parsedResult = tool.result ? (typeof tool.result === 'string' ? tool.result : JSON.stringify(tool.result)) : undefined;
-      const s = summarizeToolCall(tool.toolName, parsedArgs, parsedResult, tool.status as any);
-      return s.kind === 'text' ? s.text : null;
-    } catch {
-      return null;
-    }
-  }, [tool.toolName, tool.args, tool.input, tool.result, tool.status]);
 
   return (
     <div

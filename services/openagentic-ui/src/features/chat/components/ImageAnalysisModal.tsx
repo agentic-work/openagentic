@@ -4,6 +4,7 @@
  */
 
 import React, { Suspense, memo } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 
 // Lazy load the ImageAnalysis component
 const ImageAnalysis = React.lazy(() => import('@/features/chat/components/ImageAnalysis'));
@@ -27,7 +28,9 @@ const ImageAnalysisModal = memo<ImageAnalysisModalProps>(({
 
   return (
     <div
-      
+      role="button"
+      tabIndex={0}
+      aria-label="Close"
       className="fixed inset-0 z-50 flex items-center justify-center"
       style={{ backgroundColor: 'var(--color-background)' }}
       onClick={(e) => {
@@ -35,8 +38,14 @@ const ImageAnalysisModal = memo<ImageAnalysisModalProps>(({
           onClose();
         }
       }}
+      onKeyDown={onKeyActivate(() => onClose())}
     >
-      <div className="w-full max-w-4xl mx-4 h-[80vh]" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="w-full max-w-4xl mx-4 h-[80vh]"
+        role="presentation"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
         <Suspense fallback={<div className="flex items-center justify-center h-full">Loading Image Analysis...</div>}>
           <ImageAnalysis
             file={currentImageForAnalysis}

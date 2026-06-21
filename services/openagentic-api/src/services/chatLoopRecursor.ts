@@ -276,9 +276,10 @@ export async function chatLoopRecursor(
     };
   };
 
-  const result = timeoutPromise
-    ? await Promise.race([runChildLoop(), timeoutPromise])
-    : await runChildLoop();
+  const result =
+    timeoutPromise !== null
+      ? await Promise.race([runChildLoop(), timeoutPromise])
+      : await runChildLoop();
   if (timeoutHandle) clearTimeout(timeoutHandle);
 
   // Publish agent_complete so the UI can close the sub-agent card.

@@ -12,6 +12,7 @@ import {
   Square,
   Loader2
 } from '@/shared/icons';
+import { onKeyActivate } from '@/utils/a11y';
 
 interface MCPCall {
   id: string;
@@ -154,7 +155,11 @@ const MCPFunctionDisplay: React.FC<MCPFunctionDisplayProps> = ({
             {/* Header */}
             <div
               className="flex items-center justify-between p-4 cursor-pointer"
+              role="button"
+              tabIndex={0}
+              aria-expanded={isExpanded}
               onClick={() => toggleExpanded(call.id)}
+              onKeyDown={onKeyActivate(() => toggleExpanded(call.id))}
             >
               <div className="flex items-center gap-3">
                 <motion.div

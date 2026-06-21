@@ -4,6 +4,7 @@
  * with skills association, selectable models, and theme-safe styling.
  */
 import React, { useState, useEffect, useCallback } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 import { Plus, Edit, Trash2, Save, X, Search, Play, ChevronDown, ChevronRight } from '@/shared/icons';
 import { AgentExecutionDashboard } from './AgentExecutionDashboard';
 import { AgentPlayground } from './AgentPlayground';
@@ -363,7 +364,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
         }}
       >
         {/* Agent row */}
-        <div className="flex items-center gap-3 px-3.5 py-2.5 cursor-pointer" onClick={() => setExpandedAgent(isExpanded ? null : agent.id)}>
+        <div className="flex items-center gap-3 px-3.5 py-2.5 cursor-pointer" role="button" tabIndex={0} onClick={() => setExpandedAgent(isExpanded ? null : agent.id)} onKeyDown={onKeyActivate(() => setExpandedAgent(isExpanded ? null : agent.id))}>
           <div className="flex-shrink-0 text-xs transition-transform" style={{ color: 'var(--text-tertiary)', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
             <ChevronRight size={12} />
           </div>
@@ -447,7 +448,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                     <span style={{ color: 'var(--text-tertiary)' }}>Primary:</span>{' '}
                     {agent.model_config?.primaryModel || 'auto (TFC)'}
                     {agent.model_config?.temperature != null && <> &nbsp;<span style={{ color: 'var(--text-tertiary)' }}>Temp:</span> {agent.model_config.temperature}</>}
-                    {agent.model_config?.maxTokens && <> &nbsp;<span style={{ color: 'var(--text-tertiary)' }}>Max:</span> {agent.model_config.maxTokens.toLocaleString()}</>}
+                    {agent.model_config?.maxTokens != null && <> &nbsp;<span style={{ color: 'var(--text-tertiary)' }}>Max:</span> {agent.model_config.maxTokens.toLocaleString()}</>}
                   </div>
                   {agent.model_config?.fallbackModel && (
                     <div><span style={{ color: 'var(--text-tertiary)' }}>Fallback:</span> {agent.model_config.fallbackModel}</div>
@@ -695,7 +696,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
 
       {/* Prompt Preview Modal */}
       {previewPrompt !== null && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_60%,transparent)] backdrop-blur-sm" onClick={() => setPreviewPrompt(null)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_60%,transparent)] backdrop-blur-sm" role="button" tabIndex={0} aria-label="Close" onClick={() => setPreviewPrompt(null)} onKeyDown={onKeyActivate(() => setPreviewPrompt(null))}>
           <div
             className="rounded-xl w-[640px] max-h-[75vh] flex flex-col shadow-2xl"
             style={{
@@ -719,7 +720,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
 
       {/* Edit Modal */}
       {editingAgent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setEditingAgent(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" role="button" tabIndex={0} aria-label="Close" onClick={() => setEditingAgent(null)} onKeyDown={onKeyActivate(() => setEditingAgent(null))}>
           <div
             className="rounded-xl w-[680px] max-h-[85vh] overflow-y-auto shadow-2xl"
             style={{

@@ -1221,7 +1221,7 @@ const PROVIDER_PATTERNS: Array<{ pattern: RegExp; providerType: ProviderType }> 
 function inferFamily(model: string): ModelFamily {
   const m = model.toLowerCase();
   if (/gpt-oss/.test(m)) return 'gpt-oss';
-  if (/^gpt|davinci/.test(m)) return 'gpt';
+  if (/^(gpt|davinci)/.test(m)) return 'gpt';
   if (/claude/.test(m)) return 'claude';
   if (/gemini|bison|palm/.test(m)) return 'gemini';
   if (/llama|codellama|vicuna|orca/.test(m)) return 'llama';

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useCallback, useEffect } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 
 interface KeyboardActions {
   createNewSession?: () => void;
@@ -63,26 +64,61 @@ const shortcuts: ShortcutDefinition[] = [
   { keys: 'cmd+d, ctrl+d', description: 'Switch to dark theme', category: 'Theme', action: 'setDarkTheme' }
 ];
 
+// Normalize a single key combo ("cmd+M") to a stable lookup key ("cmd+m").
+function normalizeCombo(combo: string): string {
+  return combo
+    .trim()
+    .toLowerCase()
+    .split('+')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b))
+    .join('+');
+}
+
+// Flattened, render-stable maps built once from the static `shortcuts` table.
+// One key combo → its action. Used to dispatch from a single useHotkeys call.
+const COMBO_TO_ACTION: Record<string, keyof KeyboardActions> = {};
+const ALL_COMBOS: string[] = [];
+for (const { keys, action } of shortcuts) {
+  for (const combo of keys.split(',').map((k) => k.trim()).filter(Boolean)) {
+    ALL_COMBOS.push(combo);
+    COMBO_TO_ACTION[normalizeCombo(combo)] = action;
+  }
+}
+
 export function useKeyboardShortcuts(actions: KeyboardActions, enabled: boolean = true) {
-  // Register all shortcuts only if enabled
-  shortcuts.forEach(({ keys, action }) => {
-    useHotkeys(
-      keys,
-      (e) => {
-        if (!enabled) return; // Don't execute if disabled
-        e.preventDefault();
-        const actionFn = actions[action];
-        if (actionFn && typeof actionFn === 'function') {
-          actionFn();
-        }
-      },
-      {
-        enableOnFormTags: false,
-        preventDefault: true,
-        enabled // Use the enabled parameter
+  // Register every shortcut in ONE top-level useHotkeys call (hooks must not be
+  // called inside a loop/callback — rules-of-hooks). The fired hotkey is
+  // resolved back to its action via the COMBO_TO_ACTION lookup.
+  useHotkeys(
+    ALL_COMBOS,
+    (e, handler) => {
+      if (!enabled) return; // Don't execute if disabled
+      e.preventDefault();
+      // react-hotkeys-hook v4: `handler.keys` is the matched non-modifier
+      // keys; rebuild the combo using the live modifier flags so it matches
+      // the normalized lookup regardless of cmd/ctrl variant.
+      const parts: string[] = [];
+      if (e.ctrlKey) parts.push('ctrl');
+      if (e.metaKey) parts.push('cmd');
+      if (e.altKey) parts.push('alt');
+      if (e.shiftKey) parts.push('shift');
+      for (const k of handler.keys ?? []) parts.push(k);
+      const action = COMBO_TO_ACTION[normalizeCombo(parts.join('+'))];
+      if (!action) return;
+      const actionFn = actions[action];
+      if (actionFn && typeof actionFn === 'function') {
+        actionFn();
       }
-    );
-  });
+    },
+    {
+      enableOnFormTags: false,
+      preventDefault: true,
+      enabled // Use the enabled parameter
+    },
+    [actions, enabled]
+  );
 
   // Return shortcut definitions for UI display
   return shortcuts.map(({ keys, description, category }) => ({
@@ -117,7 +153,11 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({ is
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-[var(--color-shadow)]/80"
+        role="button"
+        tabIndex={0}
+        aria-label="Close"
         onClick={onClose}
+        onKeyDown={onKeyActivate(onClose)}
       />
 
       {/* Modal — neo-brutalist: sharp corners, 2px ink border, hard shadow */}
@@ -182,7 +222,7 @@ function formatShortcutKey(key: string): string {
   
   return key
     .replace(/cmd/gi, isMac ? '⌘' : 'Ctrl')
-    .replace(/ctrl/gi, isMac ? 'Ctrl' : 'Ctrl')
+    .replace(/ctrl/gi, 'Ctrl')
     .replace(/shift/gi, '⇧')
     .replace(/\+/g, ' ')
     .replace(/enter/gi, '↵')

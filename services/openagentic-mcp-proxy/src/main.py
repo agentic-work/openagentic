@@ -376,7 +376,7 @@ async def lifespan(app: FastAPI):
                 raise
             if _waited == 0:
                 logger.info(f"Waiting for Redis at {redis_host}:{redis_port} (normal on a fresh install)...")
-            time.sleep(2)
+            await asyncio.sleep(2)
             _waited += 2
     logger.info(f"Redis connected at {redis_host}:{redis_port}")
 
@@ -386,11 +386,15 @@ async def lifespan(app: FastAPI):
         logger.warning("MCP Inspector ENABLED (dev-only debug surface) — do not enable in production")
         logger.info("Starting MCP Inspector UI...")
         try:
-            inspector_process = subprocess.Popen(
+            # Spawn off the event loop so the (brief) fork/exec never blocks it,
+            # while keeping the synchronous Popen handle the rest of the lifespan
+            # manages (.pid / .poll() / .terminate()).
+            inspector_process = await asyncio.to_thread(
+                subprocess.Popen,
                 ["npx", "@modelcontextprotocol/inspector", "--no-open"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                env={**os.environ, "PORT": "6274", "MCPP_PORT": "6277"}
+                env={**os.environ, "PORT": "6274", "MCPP_PORT": "6277"},
             )
             logger.info(f"MCP Inspector started on ports 6274/6277 (PID: {inspector_process.pid})")
         except Exception as e:

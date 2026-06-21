@@ -2359,8 +2359,8 @@ const start = async () => {
     console.log('-'.repeat(40));
     console.log(`System Prompts: ${systemPrompts.length} found`);
     console.log(`Prompt Templates: ${promptTemplates.length} found`);
-    console.log(`${defaultSystemPrompt ? '' : ''} Default System Prompt: ${defaultSystemPrompt ? defaultSystemPrompt.name : 'pending seed'}`);
-    console.log(`${defaultTemplate ? '' : ''} Default Template: ${defaultTemplate ? defaultTemplate.name : 'pending seed'}`);
+    console.log(`Default System Prompt: ${defaultSystemPrompt ? defaultSystemPrompt.name : 'pending seed'}`);
+    console.log(`Default Template: ${defaultTemplate ? defaultTemplate.name : 'pending seed'}`);
     console.log(seedPending
       ? '✨ PROMPT_HEALTHCHECK COMPLETED — defaults will be seeded during initialization.\n'
       : '✨ PROMPT_HEALTHCHECK COMPLETED - Database content verified!\n');

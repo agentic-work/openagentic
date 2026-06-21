@@ -19,6 +19,7 @@ import {
 } from '../Shared/AdminIcons';
 import { Layers, HardDrive, Users } from '@/shared/icons';
 import { apiRequest } from '@/utils/api';
+import { onKeyActivate } from '@/utils/a11y';
 import { PageHeader } from '../../primitives-v2';
 
 // =============================================================================
@@ -800,7 +801,11 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                   <React.Fragment key={col.name}>
                     <div
                       className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-border/30 hover:bg-surface-secondary/30 transition-colors cursor-pointer items-center"
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isExpanded}
                       onClick={() => toggleCollection(col.name)}
+                      onKeyDown={onKeyActivate(() => toggleCollection(col.name))}
                     >
                       <div className="col-span-1 flex items-center">
                         {isExpanded ? (
@@ -843,7 +848,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                           {col.status || 'loaded'}
                         </span>
                       </div>
-                      <div className="col-span-1 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="col-span-1 flex items-center gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                         <button
                           title="Browse"
                           className="p-1.5 rounded hover:bg-surface-secondary transition-colors text-text-tertiary hover:text-text-primary"

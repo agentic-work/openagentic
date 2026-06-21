@@ -103,7 +103,7 @@ export async function seedTemplatesOnBoot(): Promise<SeedResult[]> {
 
   let files: string[];
   try {
-    files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
+    files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort((a, b) => a.localeCompare(b));
   } catch (err: any) {
     logger.error({ err: err.message, dir }, '[templateSeeder] readdir failed');
     return [];

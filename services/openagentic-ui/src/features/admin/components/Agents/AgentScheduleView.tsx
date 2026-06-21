@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, RefreshCw, Play, Search, X, Save, ChevronDown, ChevronRight } from '@/shared/icons';
 import { Clock, Settings } from '../Shared/AdminIcons';
+import { onKeyActivate } from '@/utils/a11y';
 
 // =============================================================================
 // Types
@@ -420,7 +421,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
 
       {/* Create Schedule Modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setShowCreate(false)}>
+        <div role="button" tabIndex={0} aria-label="Close" className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setShowCreate(false)} onKeyDown={onKeyActivate(() => setShowCreate(false))}>
           <div
             className="rounded-xl w-[600px] max-h-[85vh] overflow-y-auto shadow-2xl"
             style={{
@@ -428,6 +429,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
               border: '1px solid var(--color-border, var(--color-border-default))',
             }}
             onClick={e => e.stopPropagation()}
+            onKeyDown={e => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--color-border, var(--color-border-default))' }}>
@@ -586,7 +588,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
 
       {/* Delete Confirmation Dialog */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setDeleteConfirm(null)}>
+        <div role="button" tabIndex={0} aria-label="Close" className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} onKeyDown={onKeyActivate(() => setDeleteConfirm(null))}>
           <div
             className="rounded-xl w-[400px] shadow-2xl"
             style={{
@@ -594,6 +596,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
               border: '1px solid var(--color-border, var(--color-border-default))',
             }}
             onClick={e => e.stopPropagation()}
+            onKeyDown={e => e.stopPropagation()}
           >
             <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--color-border, var(--color-border-default))' }}>
               <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Delete Schedule</h3>

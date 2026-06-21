@@ -556,13 +556,9 @@ export class MilvusVectorService {
    * Health check for vector service
    */
   async healthCheck(): Promise<boolean> {
-    try {
-      // Basic health check - could be expanded to check Milvus connectivity
-      return true;
-    } catch (error) {
-      this.logger.error({ err: error }, 'Vector service health check failed');
-      return false;
-    }
+    // Basic health check - could be expanded to check Milvus connectivity.
+    // Nothing here can throw yet, so this is a constant healthy signal.
+    return true;
   }
 
   /**

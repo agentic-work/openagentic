@@ -232,7 +232,7 @@ export function AdminTable<T>({
       </div>
 
       {/* Pagination */}
-      {pageSize && totalPages > 1 && (
+      {pageSize != null && totalPages > 1 && (
         <div className="flex items-center justify-between mt-3 px-1">
           <span style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>
             Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, sortedData.length)} of {sortedData.length}

@@ -95,7 +95,7 @@ export function agentTypes(config: AgentTypesConfig): Extractor {
     } catch {
       entries = [];
     }
-    const mdFiles = entries.filter((e) => e.endsWith('.md')).sort();
+    const mdFiles = entries.filter((e) => e.endsWith('.md')).sort((a, b) => a.localeCompare(b));
 
     const items: DocItem[] = [];
     const sourceFiles: string[] = [];

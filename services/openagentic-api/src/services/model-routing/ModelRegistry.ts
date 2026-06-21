@@ -85,7 +85,7 @@ export class ModelRegistry {
    */
   async ensureLoaded(): Promise<void> {
     if (Date.now() - this.loadedAt < CACHE_TTL_MS) return;
-    if (this.loadingPromise) { await this.loadingPromise; return; }
+    if (this.loadingPromise !== null) { await this.loadingPromise; return; }
     this.loadingPromise = this.load().finally(() => { this.loadingPromise = null; });
     await this.loadingPromise;
   }

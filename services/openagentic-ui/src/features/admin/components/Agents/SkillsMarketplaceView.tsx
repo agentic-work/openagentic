@@ -5,6 +5,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Download, Trash2, X, Edit } from '@/shared/icons';
+import { onKeyActivate } from '@/utils/a11y';
 import { PageHeader } from '../../primitives-v2';
 
 interface AgentSkill {
@@ -352,8 +353,8 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
 
       {/* Browse Repositories Modal — add skills from public SKILL.md repos */}
       {showBrowseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setShowBrowseModal(false)}>
-          <div className="rounded-xl w-[760px] max-h-[80vh] flex flex-col shadow-2xl" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" role="button" tabIndex={0} aria-label="Close" onClick={() => setShowBrowseModal(false)} onKeyDown={onKeyActivate(() => setShowBrowseModal(false))}>
+          <div className="rounded-xl w-[760px] max-h-[80vh] flex flex-col shadow-2xl" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }} role="presentation" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
               <div>
                 <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Add skills from a public repository</h3>
@@ -409,11 +410,13 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
 
       {/* Import Modal */}
       {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setShowImportModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" role="button" tabIndex={0} aria-label="Close" onClick={() => setShowImportModal(false)} onKeyDown={onKeyActivate(() => setShowImportModal(false))}>
           <div
             className="rounded-xl w-[500px] shadow-2xl"
             style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+            role="presentation"
             onClick={e => e.stopPropagation()}
+            onKeyDown={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
               <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Import Skill</h3>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 import { Search, Trash2, RefreshCw, Users, Brain, Code, GitBranch, MessageSquare } from '@/shared/icons';
 import { Database } from '../Shared/AdminIcons';
 import { PageHeader } from '../../primitives-v2';
@@ -382,7 +383,10 @@ export const UserContextView: React.FC<UserContextViewProps> = ({ theme }) => {
                 return (
                   <div
                     key={user.userId}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedUser(isSelected ? null : user)}
+                    onKeyDown={onKeyActivate(() => setSelectedUser(isSelected ? null : user))}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all"
                     style={{
                       backgroundColor: isSelected
@@ -525,7 +529,14 @@ export const UserContextView: React.FC<UserContextViewProps> = ({ theme }) => {
 
       {/* Purge Confirmation Dialog */}
       {purgeConfirm && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setPurgeConfirm(false)}>
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Close"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm"
+          onClick={() => setPurgeConfirm(false)}
+          onKeyDown={onKeyActivate(() => setPurgeConfirm(false))}
+        >
           <div
             className="rounded-xl w-[440px] shadow-2xl"
             style={{
@@ -533,6 +544,7 @@ export const UserContextView: React.FC<UserContextViewProps> = ({ theme }) => {
               border: '1px solid var(--color-border, var(--color-border-default))',
             }}
             onClick={e => e.stopPropagation()}
+            onKeyDown={e => e.stopPropagation()}
           >
             <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--color-border, var(--color-border-default))' }}>
               <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Purge User Context</h3>

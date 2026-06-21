@@ -1,5 +1,6 @@
 import React from 'react';
 import { AdminTooltip } from './AdminTooltip';
+import { onKeyActivate } from '@/utils/a11y';
 
 export interface AdminMetricCardProps {
   label: string;
@@ -49,6 +50,7 @@ export const AdminMetricCard: React.FC<AdminMetricCardProps> = ({
         cursor: onClick ? 'pointer' : undefined,
       }}
       onClick={onClick}
+      onKeyDown={onClick ? onKeyActivate(onClick) : undefined}
       onMouseEnter={(e) => {
         if (onClick) {
           e.currentTarget.style.borderColor = 'var(--color-primary)';

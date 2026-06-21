@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 import {
   ChevronRight,
   ChevronDown,
@@ -100,8 +101,11 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
             {/* Table row */}
             <div
               draggable
+              role="button"
+              tabIndex={0}
               onDragStart={e => handleDragStart(e, table)}
               onClick={() => toggleTable(fullName)}
+              onKeyDown={onKeyActivate(() => toggleTable(fullName))}
               style={{
                 display: 'flex',
                 alignItems: 'center',

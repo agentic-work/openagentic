@@ -44,6 +44,7 @@ import { MCPToolRenderer, getRendererForTool, GenericMCPRenderer } from './MCPRe
 import { CollapsedThinkingBlock, ArtifactErrorBoundary } from '@/shared/components';
 import { ThinkingSphere } from '@/shared/components/ThinkingSphere';
 import { useTheme } from '@/contexts/ThemeContext';
+import { onKeyActivate } from '@/utils/a11y';
 import { humanizeToolName, getCategoryColor } from '../../utils/toolNameHumanizer';
 import { summarizeToolCall, type ToolSummary, type RichSummary } from '../../utils/toolSummarizer';
 import { formatToolInputDelta } from '../../utils/toolInputDelta';
@@ -1441,6 +1442,7 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
           cursor: isExpandable ? 'pointer' : 'default',
         }}
         onClick={() => isExpandable && setShowDetail(!showDetail)}
+        onKeyDown={isExpandable ? onKeyActivate(() => setShowDetail(!showDetail)) : undefined}
         role={isExpandable ? 'button' : undefined}
         tabIndex={isExpandable ? 0 : undefined}
       >
@@ -2159,6 +2161,13 @@ const ExpandableToolItem: React.FC<{
             setIsDetailOpen(!isDetailOpen);
           }
         }}
+        onKeyDown={onKeyActivate(() => {
+          if (hasChildren) {
+            setIsChildrenOpen(!isChildrenOpen);
+          } else if (!isRunning) {
+            setIsDetailOpen(!isDetailOpen);
+          }
+        })}
         role="button"
         tabIndex={0}
       >
@@ -3115,9 +3124,6 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
     }
   }, [isStreaming, streamingState]);
 
-  // Nothing to show
-  if (toolCalls.length === 0 && !thinkingContent && !hasInterleavedContent) return null;
-
   // #922+#831 — block-level HITL assignment, hoisted out of the JSX IIFE
   // so `renderContentBlock` and the tool-card inline embed paths can both
   // look up "what HITL entry pairs with THIS specific tool_use block?".
@@ -3126,6 +3132,7 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
   // with the earliest unconsumed HITL entry whose toolName matches.
   // Remaining unpaired entries are tracked as orphans and rendered at the
   // end of the stream (existing fallback contract — unchanged from #922 v1).
+  // Hook must run unconditionally — keep it above the early return below.
   const { hitlAssignedByBlockId, hitlOrphans } = useMemo(() => {
     const assigned = new Map<string, HitlApprovalEntry>();
     const pool = new Map<string, HitlApprovalEntry[]>();
@@ -3147,6 +3154,9 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
     }
     return { hitlAssignedByBlockId: assigned, hitlOrphans: orphans };
   }, [contentBlocks, hitlByToolName]);
+
+  // Nothing to show
+  if (toolCalls.length === 0 && !thinkingContent && !hasInterleavedContent) return null;
 
   // Render a single content block (thinking, text, or tool_use)
   const renderContentBlock = (block: ContentBlock, index: number) => {

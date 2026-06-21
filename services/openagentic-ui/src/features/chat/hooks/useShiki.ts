@@ -21,7 +21,7 @@ export function useShiki() {
     }
 
     // If highlighter is already being created, wait for it
-    if (highlighterPromise) {
+    if (highlighterPromise !== null) {
       highlighterPromise.then(hl => {
         setHighlighter(hl);
         setIsLoading(false);

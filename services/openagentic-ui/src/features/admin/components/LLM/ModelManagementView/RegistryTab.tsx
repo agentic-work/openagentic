@@ -8,6 +8,7 @@ import {
 } from '@/shared/icons';
 import { CheckCircle, XCircle } from '../../Shared/AdminIcons';
 import { apiRequest } from '@/utils/api';
+import { onKeyActivate } from '@/utils/a11y';
 import { emitModelsChanged } from '@/utils/modelSync';
 import { getProviderIcon } from '../../Shared/ProviderIcons';
 import { AdminToast, useAdminToast } from '../../Shared/AdminToast';
@@ -441,9 +442,12 @@ export const RegistryTab: React.FC<{
             return (
             <div key={model.id}>
             <div
+              role="button"
+              tabIndex={0}
               className={`grid grid-cols-[2fr_1.2fr_80px_1fr_55px_65px_180px] gap-2 px-4 py-2.5 items-center text-xs cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-fg)_2%,transparent)] transition-colors ${i > 0 ? 'border-t' : ''}`}
               style={{ borderColor: 'var(--color-border)' }}
               onClick={() => setExpandedModel(isExpanded ? null : model.id)}
+              onKeyDown={onKeyActivate(() => setExpandedModel(isExpanded ? null : model.id))}
             >
               <div className="flex items-center gap-2 min-w-0">
                 <ChevronRight size={12} className={`flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} style={{ color: 'var(--text-muted)' }} />
@@ -484,7 +488,7 @@ export const RegistryTab: React.FC<{
                   {effectiveEnabled ? 'Active' : 'Off'}
                 </span>
               </span>
-              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
                 {/* Test model — low-token health probe (#54) */}
                 <button onClick={() => handleTestModel(model)} disabled={testingModel === model.id}
                   className="px-2 py-0.5 rounded text-[10px] font-medium bg-[color-mix(in_srgb,var(--color-ok)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-ok)_25%,transparent)] text-ok border border-[color-mix(in_srgb,var(--color-ok)_30%,transparent)] transition-colors disabled:opacity-50 flex-shrink-0"
@@ -847,14 +851,19 @@ export const RegistryTab: React.FC<{
           can't be managed from OpenAgentic and must go through Azure portal. */}
       {aifBlockedAction && (
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Close"
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
           style={{ background: 'color-mix(in srgb, var(--color-shadow) 70%, transparent)', backdropFilter: 'blur(4px)' }}
           onClick={() => setAifBlockedAction(null)}
+          onKeyDown={onKeyActivate(() => setAifBlockedAction(null))}
         >
           <div
             className="max-w-lg w-full rounded-xl border shadow-2xl"
             style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
             onClick={e => e.stopPropagation()}
+            onKeyDown={e => e.stopPropagation()}
           >
             <div className="px-5 py-4 border-b flex items-start gap-3" style={{ borderColor: 'var(--color-border)' }}>
               <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(212, 165, 116, 0.15)' }}>

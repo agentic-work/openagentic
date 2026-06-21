@@ -34,7 +34,7 @@
 
 .admin-badge::before {
   content: '\f0f3'; /* Nerd Font shield icon */
-  font-family: 'Symbols Nerd Font';
+  font-family: 'Symbols Nerd Font', sans-serif;
   font-size: 1rem;
   margin-right: 0.25rem;
 }
@@ -53,7 +53,7 @@
 
 .admin-typing::before {
   content: '\uf0e7'; /* Nerd Font lightning bolt */
-  font-family: 'Symbols Nerd Font';
+  font-family: 'Symbols Nerd Font', sans-serif;
   margin-right: 0.25rem;
   animation: pulse 1s infinite;
 }
@@ -95,7 +95,7 @@
 /* Admin list items with nerd font bullets */
 .admin-message ul li::before {
   content: '\uf058'; /* Nerd Font check circle */
-  font-family: 'Symbols Nerd Font';
+  font-family: 'Symbols Nerd Font', sans-serif;
   color: #10b981;
   margin-right: 0.5rem;
   margin-left: -1.5rem;
@@ -119,7 +119,7 @@
 
 .admin-status::before {
   content: '\uf2c1'; /* Nerd Font admin/user icon */
-  font-family: 'Symbols Nerd Font';
+  font-family: 'Symbols Nerd Font', sans-serif;
   font-size: 1rem;
 }
 

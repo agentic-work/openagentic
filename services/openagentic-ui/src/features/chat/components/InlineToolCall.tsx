@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from '@/shared/icons';
+import { onKeyActivate } from '@/utils/a11y';
 
 interface InlineToolCallProps {
   toolName: string;
@@ -26,9 +27,12 @@ export const InlineToolCall: React.FC<InlineToolCallProps> = ({
   return (
     <div className={`my-2 border ${borderColor} rounded-md overflow-hidden`}>
       {/* Tool call header - matches Claude's style */}
-      <div 
+      <div
+        role="button"
+        tabIndex={0}
         className={`px-3 py-2 ${bgColor} flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity`}
         onClick={() => setShowDetails(!showDetails)}
+        onKeyDown={onKeyActivate(() => setShowDetails(!showDetails))}
       >
         <button className="flex items-center gap-1">
           {showDetails ? (

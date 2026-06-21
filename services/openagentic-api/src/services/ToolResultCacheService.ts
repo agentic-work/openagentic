@@ -400,7 +400,7 @@ export class ToolResultCacheService {
    */
   async initialize(): Promise<void> {
     if (this.initialized) return;
-    if (this.initPromise) return this.initPromise;
+    if (this.initPromise !== null) return this.initPromise;
 
     this.initPromise = this._initialize();
     return this.initPromise;

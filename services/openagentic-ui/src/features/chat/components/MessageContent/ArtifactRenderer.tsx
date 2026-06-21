@@ -17,7 +17,7 @@ const _libCache: Record<string, string> = {};
 const _libPromises: Record<string, Promise<string>> = {};
 
 function preloadBundledLib(name: string): void {
-  if (_libPromises[name]) return;
+  if (_libPromises[name] !== undefined) return;
   _libPromises[name] = fetch(`/artifact-runtime/${name}`)
     .then(r => r.ok ? r.text() : '')
     .then(text => { _libCache[name] = text; return text; })

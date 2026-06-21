@@ -115,7 +115,7 @@ class ModelConfigurationServiceClass {
     }
 
     // Prevent concurrent refreshes
-    if (this.refreshPromise) {
+    if (this.refreshPromise !== null) {
       return this.refreshPromise;
     }
 

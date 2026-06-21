@@ -346,7 +346,7 @@ ${parentMemory.trim()}
 The parent chat retrieved the following documents relevant to this turn. Consult them before calling tools that would re-retrieve similar content.
 
 <parent-rag>
-${parentRag.slice(0, 3).map(renderChunk).join('\n\n')}
+${parentRag.slice(0, 3).map((c: any, i: number) => renderChunk(c, i)).join('\n\n')}
 </parent-rag>`;
     }
 

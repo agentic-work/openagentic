@@ -15,6 +15,7 @@ import { AdminToast, useAdminToast } from '../../Shared/AdminToast';
 import { getProviderIcon, getProviderColor } from '../../Shared/ProviderIcons';
 import { apiRequest } from '@/utils/api';
 import { emitModelsChanged } from '@/utils/modelSync';
+import { onKeyActivate } from '@/utils/a11y';
 import {
   DiscoveredModel, ModelInfo, DbProvider,
   CAPABILITY_BADGES, TIER_COLORS, COST_TIER_COLORS, MODEL_ROLES, guessTier,
@@ -606,12 +607,18 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center p-4"
           style={{ background: 'color-mix(in srgb, var(--color-shadow) 70%, transparent)', backdropFilter: 'blur(4px)' }}
+          role="button"
+          tabIndex={0}
+          aria-label="Close"
           onClick={() => setAifBlocked(false)}
+          onKeyDown={onKeyActivate(() => setAifBlocked(false))}
         >
           <div
             className="max-w-lg w-full rounded-panel shadow-soft-lg"
             style={{ background: 'var(--surface-2)' }}
+            role="presentation"
             onClick={e => e.stopPropagation()}
+            onKeyDown={e => e.stopPropagation()}
           >
             <div className="px-5 py-4 border-b flex items-start gap-3" style={{ borderColor: 'var(--color-border)' }}>
               <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(212, 165, 116, 0.15)' }}>

@@ -12,6 +12,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useAdminQuery, useAdminInvalidate } from '../../hooks/useAdminQuery';
 import { apiRequest } from '@/utils/api';
+import { onKeyActivate } from '@/utils/a11y';
 import { AdminToast, useAdminToast } from '../Shared/AdminToast';
 import { SoTBanner, ExplainerCard, PageHeader } from '../../primitives-v2';
 import { ProviderQualifier } from '@/shared/components/ProviderQualifier';
@@ -225,6 +226,7 @@ const ModelPicker: React.FC<ModelPickerProps> = ({ category, value, registryMode
           {/* Auto option */}
           <div
             role="option"
+            tabIndex={0}
             aria-selected={displayValue === AUTO_VALUE}
             data-value={AUTO_VALUE}
             style={{
@@ -236,6 +238,7 @@ const ModelPicker: React.FC<ModelPickerProps> = ({ category, value, registryMode
               background: displayValue === AUTO_VALUE ? tint('var(--color-primary)', 8) : 'transparent',
             }}
             onClick={() => handleSelect(AUTO_VALUE)}
+            onKeyDown={onKeyActivate(() => handleSelect(AUTO_VALUE))}
           >
             <span>auto (Smart Router)</span>
             <TierPill tier="router" />
@@ -257,6 +260,7 @@ const ModelPicker: React.FC<ModelPickerProps> = ({ category, value, registryMode
               <div
                 key={m.id}
                 role="option"
+                tabIndex={0}
                 aria-selected={displayValue === m.model}
                 data-value={m.model}
                 data-provider={m.provider}
@@ -269,6 +273,7 @@ const ModelPicker: React.FC<ModelPickerProps> = ({ category, value, registryMode
                   background: displayValue === m.model ? tint('var(--color-primary)', 8) : 'transparent',
                 }}
                 onClick={() => handleSelect(m.model)}
+                onKeyDown={onKeyActivate(() => handleSelect(m.model))}
               >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                   <ProviderQualifier

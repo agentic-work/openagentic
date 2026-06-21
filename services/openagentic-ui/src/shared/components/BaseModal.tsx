@@ -2,6 +2,7 @@ import React, { useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from '@/shared/icons';
+import { onKeyActivate } from '@/utils/a11y';
 
 // Modal configuration constants
 export const MODAL_CONFIG = {
@@ -112,7 +113,10 @@ export const BaseModal: React.FC<BaseModalProps> = ({
               backdropFilter: 'blur(8px)',
             }}
             onClick={handleBackdropClick}
-            aria-hidden="true"
+            onKeyDown={onKeyActivate(() => closeOnBackdropClick && onClose())}
+            role="button"
+            tabIndex={0}
+            aria-label="Close"
           />
 
           {/* Modal Container */}
@@ -120,6 +124,10 @@ export const BaseModal: React.FC<BaseModalProps> = ({
             className="fixed inset-0 flex items-center justify-center p-4"
             style={{ zIndex: MODAL_CONFIG.zIndex.modal }}
             onClick={handleBackdropClick}
+            onKeyDown={onKeyActivate(() => closeOnBackdropClick && onClose())}
+            role="button"
+            tabIndex={0}
+            aria-label="Close"
           >
             {/* Modal — neo-brutalist: sharp corners, 2px ink border-strong,
                 hard zero-blur offset shadow, fade+scale enter (0.96→1, 200ms). */}

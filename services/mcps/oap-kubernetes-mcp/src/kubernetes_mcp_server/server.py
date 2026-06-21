@@ -2047,7 +2047,9 @@ async def helm_list(
         elif namespace:
             cmd.extend(["-n", namespace])
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = await asyncio.to_thread(
+            subprocess.run, cmd, capture_output=True, text=True, timeout=30
+        )
 
         if result.returncode != 0:
             return {"success": False, "error": result.stderr}
@@ -2076,7 +2078,9 @@ async def helm_status(
         import subprocess
 
         cmd = ["helm", "status", release_name, "-n", namespace, "--output", "json"]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = await asyncio.to_thread(
+            subprocess.run, cmd, capture_output=True, text=True, timeout=30
+        )
 
         if result.returncode != 0:
             return {"success": False, "error": result.stderr}
@@ -2105,7 +2109,9 @@ async def helm_history(
         import subprocess
 
         cmd = ["helm", "history", release_name, "-n", namespace, "--output", "json"]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = await asyncio.to_thread(
+            subprocess.run, cmd, capture_output=True, text=True, timeout=30
+        )
 
         if result.returncode != 0:
             return {"success": False, "error": result.stderr}
@@ -2152,19 +2158,28 @@ async def helm_install(
             cmd.extend(["--wait", "--timeout", timeout])
 
         # Write values to temp file if provided
-        values_file = None
+        values_file_name = None
         if values:
-            values_file = tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False)
-            pyyaml.dump(values, values_file)
-            values_file.close()
-            cmd.extend(["-f", values_file.name])
+            def _write_values_tempfile() -> str:
+                # Synchronous tempfile + YAML dump kept off the event loop.
+                f = tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False)
+                try:
+                    pyyaml.dump(values, f)
+                    return f.name
+                finally:
+                    f.close()
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            values_file_name = await asyncio.to_thread(_write_values_tempfile)
+            cmd.extend(["-f", values_file_name])
+
+        result = await asyncio.to_thread(
+            subprocess.run, cmd, capture_output=True, text=True, timeout=600
+        )
 
         # Clean up temp file
-        if values_file:
+        if values_file_name:
             import os
-            os.unlink(values_file.name)
+            await asyncio.to_thread(os.unlink, values_file_name)
 
         if result.returncode != 0:
             return {"success": False, "error": result.stderr}
@@ -2212,18 +2227,27 @@ async def helm_upgrade(
         if wait:
             cmd.extend(["--wait", "--timeout", timeout])
 
-        values_file = None
+        values_file_name = None
         if values:
-            values_file = tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False)
-            pyyaml.dump(values, values_file)
-            values_file.close()
-            cmd.extend(["-f", values_file.name])
+            def _write_values_tempfile() -> str:
+                # Synchronous tempfile + YAML dump kept off the event loop.
+                f = tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False)
+                try:
+                    pyyaml.dump(values, f)
+                    return f.name
+                finally:
+                    f.close()
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            values_file_name = await asyncio.to_thread(_write_values_tempfile)
+            cmd.extend(["-f", values_file_name])
 
-        if values_file:
+        result = await asyncio.to_thread(
+            subprocess.run, cmd, capture_output=True, text=True, timeout=600
+        )
+
+        if values_file_name:
             import os
-            os.unlink(values_file.name)
+            await asyncio.to_thread(os.unlink, values_file_name)
 
         if result.returncode != 0:
             return {"success": False, "error": result.stderr}
@@ -2262,7 +2286,9 @@ async def helm_uninstall(
         if keep_history:
             cmd.append("--keep-history")
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        result = await asyncio.to_thread(
+            subprocess.run, cmd, capture_output=True, text=True, timeout=120
+        )
 
         if result.returncode != 0:
             return {"success": False, "error": result.stderr}
@@ -2302,7 +2328,9 @@ async def helm_rollback(
         if wait:
             cmd.extend(["--wait", "--timeout", timeout])
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        result = await asyncio.to_thread(
+            subprocess.run, cmd, capture_output=True, text=True, timeout=600
+        )
 
         if result.returncode != 0:
             return {"success": False, "error": result.stderr}
@@ -2339,7 +2367,9 @@ async def helm_get_values(
         if all_values:
             cmd.append("--all")
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = await asyncio.to_thread(
+            subprocess.run, cmd, capture_output=True, text=True, timeout=30
+        )
 
         if result.returncode != 0:
             return {"success": False, "error": result.stderr}

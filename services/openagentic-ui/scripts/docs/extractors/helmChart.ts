@@ -37,7 +37,7 @@ export function helmChart(config: HelmChartConfig): Extractor {
     }
 
     const items: DocItem[] = [];
-    for (const e of entries.sort()) {
+    for (const e of entries.sort((a, b) => a.localeCompare(b))) {
       if (!e.endsWith('.yaml') && !e.endsWith('.yml')) continue;
       const abs = resolve(templatesDir, e);
       const s = await stat(abs);

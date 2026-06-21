@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Wrench, FileOutput, AlertTriangle, Zap, ArrowRight, Check, Loader2 } from '@/shared/icons';
 
@@ -119,12 +120,19 @@ export const MultiModelIndicator: React.FC<MultiModelIndicatorProps> = ({
       className="mb-3"
     >
       {/* Compact View */}
-      <div 
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
         className="flex items-center gap-3 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500/10 via-cyan-500/10 to-green-500/10 border border-white/10 cursor-pointer hover:border-white/20 transition-colors"
         onClick={() => {
           setIsExpanded(!isExpanded);
           onToggleExpand?.();
         }}
+        onKeyDown={onKeyActivate(() => {
+          setIsExpanded(!isExpanded);
+          onToggleExpand?.();
+        })}
       >
         <div className="flex items-center gap-1.5">
           <Zap size={14} className="text-yellow-500" />

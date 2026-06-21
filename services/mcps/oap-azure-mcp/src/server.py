@@ -8423,7 +8423,9 @@ async def azure_service_health_events(
         normalized_types = {t.lower() for t in (event_types or [])}
 
         while next_url and len(all_events) < max_results:
-            resp = requests.get(next_url, headers={"Authorization": f"Bearer {token}"}, timeout=30)
+            resp = await asyncio.to_thread(
+                requests.get, next_url, headers={"Authorization": f"Bearer {token}"}, timeout=30
+            )
             if resp.status_code != 200:
                 return {
                     "success": False,
@@ -8630,13 +8632,13 @@ async def azure_get_front_door(
 
         # Standard/Premium AFD
         std_url = f"https://management.azure.com/subscriptions/{sub_id}/resourceGroups/{resource_group}/providers/Microsoft.Cdn/profiles/{name}?api-version=2023-05-01"
-        resp = requests.get(std_url, headers=headers, timeout=20)
+        resp = await asyncio.to_thread(requests.get, std_url, headers=headers, timeout=20)
         if resp.status_code == 200:
             return {"success": True, "tier": "Standard/Premium", "front_door": resp.json(), "executed_as": user_info}
 
         # Classic AFD
         cls_url = f"https://management.azure.com/subscriptions/{sub_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/frontDoors/{name}?api-version=2021-06-01"
-        resp = requests.get(cls_url, headers=headers, timeout=20)
+        resp = await asyncio.to_thread(requests.get, cls_url, headers=headers, timeout=20)
         if resp.status_code == 200:
             return {"success": True, "tier": "Classic", "front_door": resp.json(), "executed_as": user_info}
 

@@ -10,6 +10,7 @@
  */
 
 import React, { useState } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 import { FileText, Folder, Check, Loader2, ChevronDown, ChevronRight, XCircle } from '@/shared/icons';
 import type { MCPRendererProps } from './types';
 
@@ -94,6 +95,8 @@ export const SerenaFileRenderer: React.FC<MCPRendererProps> = ({
     >
       {/* Header */}
       <div
+        role="button"
+        tabIndex={0}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -103,6 +106,7 @@ export const SerenaFileRenderer: React.FC<MCPRendererProps> = ({
           borderBottom: expanded && content ? '1px solid color-mix(in srgb, var(--color-border) 40%, transparent)' : 'none',
         }}
         onClick={() => content && setExpanded(!expanded)}
+        onKeyDown={onKeyActivate(() => content && setExpanded(!expanded))}
       >
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
           {status === 'calling' ? (

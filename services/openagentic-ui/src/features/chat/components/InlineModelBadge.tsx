@@ -70,14 +70,16 @@ const getModelDisplayName = (model: string): string => {
 };
 
 const InlineModelBadge: React.FC<InlineModelBadgeProps> = ({ model, theme }) => {
-  if (!model) return null;
-
   // #60: Cross-reference the live model registry. If the historical message
   // was generated with a model that's no longer in the active registry
   // (provider disabled or model deleted), append a "retired" indicator so
   // the user understands they can't pick it again — without losing the
   // truthful attribution of which model originally produced the response.
+  // Hook must run unconditionally — keep it above the early return.
   const liveModels = useAvailableModels();
+
+  if (!model) return null;
+
   const isRetired = liveModels.length > 0 && !liveModels.some(m => m.id === model);
 
   const displayName = getModelDisplayName(model);

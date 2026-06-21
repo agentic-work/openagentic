@@ -68,7 +68,7 @@ function pickArgs(c: ToolCallShape): unknown {
 
 function deriveStatus(
   c: ToolCallShape,
-  isStreaming: boolean,
+  _isStreaming: boolean,
 ): ToolStatus {
   const explicit = c.status;
   if (explicit === 'completed') return 'ok';
@@ -77,7 +77,7 @@ function deriveStatus(
   // No explicit status — infer from data presence.
   if (c.error) return 'err';
   if (c.result !== undefined || c.response !== undefined) return 'ok';
-  return isStreaming ? 'running' : 'running';
+  return 'running';
 }
 
 function fmtDuration(c: ToolCallShape): string | undefined {

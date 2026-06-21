@@ -8,6 +8,7 @@ import {
   Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { PageHeader, LogRow, type LogSeverity } from '../../primitives-v2';
+import { onKeyActivate } from '@/utils/a11y';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -582,8 +583,10 @@ export const AgentExecutionDashboard: React.FC<AgentExecutionDashboardProps> = (
                 <React.Fragment key={exec.id}>
                   <div
                     onClick={() => setExpandedRow(isOpen ? null : exec.id)}
+                    onKeyDown={onKeyActivate(() => setExpandedRow(isOpen ? null : exec.id))}
                     style={{ cursor: 'pointer' }}
                     role="button"
+                    tabIndex={0}
                     aria-expanded={isOpen}
                   >
                     <LogRow

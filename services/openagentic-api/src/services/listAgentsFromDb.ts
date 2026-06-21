@@ -108,7 +108,7 @@ let cachedAt = 0;
 let inflight: Promise<DbBackedAgentEntry[]> | null = null;
 
 async function refreshSnapshot(): Promise<DbBackedAgentEntry[]> {
-  if (inflight) return inflight;
+  if (inflight !== null) return inflight;
   inflight = (async () => {
     try {
       const rows = await listAgentsFromDb();

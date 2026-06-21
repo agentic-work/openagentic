@@ -194,7 +194,9 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
                     {showMenu === workflow.id && (
                       <div
                         className="glass absolute right-0 mt-8 w-48 z-10"
+                        role="presentation"
                         onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
                       >
                         <button
                           onClick={() => {

@@ -26,7 +26,7 @@ export const systemConfigRoutes: FastifyPluginAsync = async (fastify, opts) => {
           ? process.env.DEPLOY_MODE
           : (process.env.KUBERNETES_SERVICE_HOST ? 'kubernetes' : 'compose');
 
-      return reply.send({
+      return await reply.send({
         workflowEngine: {
           type: 'native' as const,
           name: 'OpenAgentic Workflows',

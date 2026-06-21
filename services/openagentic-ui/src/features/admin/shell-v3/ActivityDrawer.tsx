@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { useAdminQuery } from '../hooks/useAdminQuery'
+import { onKeyActivate } from '@/utils/a11y'
 
 interface AuditLogItem {
   id: string
@@ -48,7 +49,11 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({ open, onClose })
     <>
       {/* Backdrop */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Close"
         onClick={onClose}
+        onKeyDown={onKeyActivate(onClose)}
         style={{
           position: 'fixed',
           inset: 0,

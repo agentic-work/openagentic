@@ -183,9 +183,11 @@ export const Sidebar = ({ active, onSelect, onSignOut }: SidebarProps) => {
         <span className="aw-sidebar__leaf-name">{leaf.name}</span>
         <span
           role="button"
+          tabIndex={0}
           aria-label={isPinned ? 'unpin' : 'pin'}
           title={isPinned ? 'unpin' : 'pin'}
           onClick={(e) => { e.stopPropagation(); togglePin(leafId) }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); togglePin(leafId) } }}
           className="aw-sidebar__leaf-pin"
           style={{ marginLeft: 'auto', cursor: 'pointer', opacity: isPinned ? 1 : 0.55 }}
         >
@@ -265,9 +267,11 @@ export const Sidebar = ({ active, onSelect, onSignOut }: SidebarProps) => {
                           fully visible when already pinned. */}
                       <span
                         role="button"
+                        tabIndex={0}
                         aria-label={isPinned ? 'unpin' : 'pin'}
                         title={isPinned ? 'unpin' : 'pin'}
                         onClick={(e) => { e.stopPropagation(); togglePin(leaf.id) }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); togglePin(leaf.id) } }}
                         className="aw-sidebar__leaf-pin"
                         style={{
                           marginLeft: meta ? 4 : 'auto',

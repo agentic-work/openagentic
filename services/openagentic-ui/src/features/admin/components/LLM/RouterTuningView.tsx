@@ -11,6 +11,7 @@
 
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { apiRequest } from '@/utils/api';
+import { onKeyActivate } from '@/utils/a11y';
 import { useAdminQuery } from '../../hooks/useAdminQuery';
 import { AdminCard } from '../Shared';
 import { PageHeader } from '../../primitives-v2';
@@ -598,10 +599,17 @@ const Chip: React.FC<ChipProps> = ({ field, label, color, value, dirty, onCommit
   };
 
   return (
-    <span style={chipStyle} onClick={!editing ? handleClick : undefined} title={`Click to edit ${label}`}>
+    <span
+      style={chipStyle}
+      role="button"
+      tabIndex={editing ? -1 : 0}
+      onClick={!editing ? handleClick : undefined}
+      onKeyDown={!editing ? onKeyActivate(handleClick) : undefined}
+      title={`Click to edit ${label}`}
+    >
       {label}
       {FIELD_HELP[field] && (
-        <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center' }}>
+        <span role="presentation" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center' }}>
           <FieldHelp fieldName={field} />
         </span>
       )}
@@ -666,7 +674,10 @@ const FloorCard: React.FC<FloorCardProps> = ({ meta, value, dirty, onCommit }) =
 
   return (
     <div
+      role="button"
+      tabIndex={editing ? -1 : 0}
       onClick={!editing ? handleClick : undefined}
+      onKeyDown={!editing ? onKeyActivate(handleClick) : undefined}
       style={{
         background: 'var(--color-surface-tertiary)',
         border: `1px solid ${dirty ? 'var(--color-warning)' : 'var(--color-border)'}`,
@@ -682,7 +693,7 @@ const FloorCard: React.FC<FloorCardProps> = ({ meta, value, dirty, onCommit }) =
     >
       <div style={{ color: 'var(--color-text-secondary)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '6px' }}>
         {meta.label}
-        <span onClick={(e) => e.stopPropagation()}>
+        <span role="presentation" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
           <FieldHelp fieldName={meta.key} />
         </span>
       </div>

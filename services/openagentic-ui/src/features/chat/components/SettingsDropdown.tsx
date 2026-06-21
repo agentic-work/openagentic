@@ -5,6 +5,7 @@
  */
 
 import React, { useState } from 'react';
+import { onKeyActivate } from '@/utils/a11y';
 import { motion } from 'framer-motion';
 import { Moon, Sun, Settings as SettingsIcon, Wrench, Brain, Zap, MessageCircle, Save, Folder } from '@/shared/icons';
 import ArtifactsPanel from './ArtifactsPanel';
@@ -141,10 +142,17 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
                     </div>
                   </div>
                   <div
+                    role="switch"
+                    tabIndex={0}
+                    aria-checked={settings.general?.enableKeyboardShortcuts !== false}
                     onClick={() => onSettingsChange({
                       ...settings,
                       general: { ...settings.general, enableKeyboardShortcuts: !settings.general?.enableKeyboardShortcuts }
                     })}
+                    onKeyDown={onKeyActivate(() => onSettingsChange({
+                      ...settings,
+                      general: { ...settings.general, enableKeyboardShortcuts: !settings.general?.enableKeyboardShortcuts }
+                    }))}
                     className={clsx(
                       'w-10 h-5 rounded-full transition-colors relative cursor-pointer',
                       settings.general?.enableKeyboardShortcuts !== false ? 'bg-green-500' : 'bg-gray-400'
@@ -172,10 +180,17 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
                     </div>
                   </div>
                   <div
+                    role="switch"
+                    tabIndex={0}
+                    aria-checked={settings.general?.showTypingIndicators !== false}
                     onClick={() => onSettingsChange({
                       ...settings,
                       general: { ...settings.general, showTypingIndicators: !settings.general?.showTypingIndicators }
                     })}
+                    onKeyDown={onKeyActivate(() => onSettingsChange({
+                      ...settings,
+                      general: { ...settings.general, showTypingIndicators: !settings.general?.showTypingIndicators }
+                    }))}
                     className={clsx(
                       'w-10 h-5 rounded-full transition-colors relative cursor-pointer',
                       settings.general?.showTypingIndicators !== false ? 'bg-green-500' : 'bg-gray-400'
@@ -203,10 +218,17 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
                     </div>
                   </div>
                   <div
+                    role="switch"
+                    tabIndex={0}
+                    aria-checked={settings.general?.autoSaveConversations !== false}
                     onClick={() => onSettingsChange({
                       ...settings,
                       general: { ...settings.general, autoSaveConversations: !settings.general?.autoSaveConversations }
                     })}
+                    onKeyDown={onKeyActivate(() => onSettingsChange({
+                      ...settings,
+                      general: { ...settings.general, autoSaveConversations: !settings.general?.autoSaveConversations }
+                    }))}
                     className={clsx(
                       'w-10 h-5 rounded-full transition-colors relative cursor-pointer',
                       settings.general?.autoSaveConversations !== false ? 'bg-green-500' : 'bg-gray-400'

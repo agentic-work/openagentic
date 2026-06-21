@@ -24,6 +24,7 @@ import {
   MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { onKeyActivate } from '@/utils/a11y';
 
 // ── Types matching /api/cluster/services response ───────────────────────────
 interface ReleaseInfo {
@@ -119,8 +120,11 @@ const ServiceNode: React.FC<NodeProps> = ({ data }) => {
 
       {svc.shaShort && (
         <div
+          role="button"
+          tabIndex={0}
           style={{ marginTop: 4, fontFamily: 'var(--font-mono)', fontSize: 10, color: '#cbd5e1', cursor: 'pointer' }}
           onClick={(e) => { e.stopPropagation(); setShowFullDigest(s => !s); }}
+          onKeyDown={onKeyActivate((e) => { e.stopPropagation(); setShowFullDigest(s => !s); })}
           title="Click to expand full sha256 digest"
         >
           <span style={{ color: '#94a3b8' }}>sha:</span>{' '}

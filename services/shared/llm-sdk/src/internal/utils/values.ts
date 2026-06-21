@@ -22,10 +22,14 @@ export function maybeObj(x: unknown): object {
 }
 
 // https://stackoverflow.com/a/34491287
+// Empty when the object exposes no enumerable key (own or inherited), matching
+// the semantics of a `for…in` walk without a single-iteration loop.
+function* enumerableKeys(obj: object): Generator<string> {
+  for (const k in obj) yield k;
+}
 export function isEmptyObj(obj: Object | null | undefined): boolean {
   if (!obj) return true;
-  for (const _k in obj) return false;
-  return true;
+  return enumerableKeys(obj).next().done === true;
 }
 
 // https://eslint.org/docs/latest/rules/no-prototype-builtins

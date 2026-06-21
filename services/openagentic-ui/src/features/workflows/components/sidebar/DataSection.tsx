@@ -23,6 +23,7 @@ import {
 } from '@/shared/icons';
 import { useAuth } from '@/app/providers/AuthContext';
 import { workflowEndpoint } from '@/utils/api';
+import { onKeyActivate } from '@/utils/a11y';
 import { DataSourceForm } from './DataSourceForm';
 import { SchemaExplorer, SchemaTable } from './SchemaExplorer';
 
@@ -530,6 +531,9 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                     >
                       {/* Card header */}
                       <div
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isExpanded}
                         draggable
                         onDragStart={e => {
                           e.dataTransfer.setData('application/reactflow-node', JSON.stringify({
@@ -540,6 +544,7 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                         }}
                         style={{ padding: '16px 20px', cursor: 'grab', display: 'flex', alignItems: 'flex-start', gap: '14px' }}
                         onClick={() => toggleDs(ds.id)}
+                        onKeyDown={onKeyActivate(() => toggleDs(ds.id))}
                       >
                         {/* Type badge */}
                         <div style={{
@@ -637,7 +642,11 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                   return (
                     <div key={server.name} style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden', background: 'var(--color-bg-secondary, #1a1a2e)' }}>
                       <div
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isExpanded}
                         onClick={() => toggleServer(server.name)}
+                        onKeyDown={onKeyActivate(() => toggleServer(server.name))}
                         style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px', cursor: 'pointer', transition: 'background 0.15s' }}
                       >
                         {/* theme-allow: MCP-tool node-TYPE identity color (action category) */}
@@ -729,7 +738,11 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                     <div key={bucket.name} style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden', background: 'var(--color-bg-secondary, #1a1a2e)' }}>
                       {/* Bucket header */}
                       <div
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isExpanded}
                         onClick={() => handleExpandBucket(bucket.name)}
+                        onKeyDown={onKeyActivate(() => handleExpandBucket(bucket.name))}
                         style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px', cursor: 'pointer' }}
                       >
                         {/* theme-allow: S3 data-source-TYPE identity color */}
@@ -756,7 +769,10 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                             {/* Navigate up */}
                             {prefix && (
                               <div
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => navigateUp(bucket.name)}
+                                onKeyDown={onKeyActivate(() => navigateUp(bucket.name))}
                                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.1s', marginBottom: '4px' }}
                                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface, #2a2a2a)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -773,7 +789,10 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                             ) : objects.map(obj => (
                               <div
                                 key={obj.key}
+                                role={obj.isFolder ? 'button' : undefined}
+                                tabIndex={obj.isFolder ? 0 : undefined}
                                 onClick={obj.isFolder ? () => navigateFolder(bucket.name, obj.key) : undefined}
+                                onKeyDown={obj.isFolder ? onKeyActivate(() => navigateFolder(bucket.name, obj.key)) : undefined}
                                 draggable={!obj.isFolder}
                                 onDragStart={!obj.isFolder ? e => {
                                   e.dataTransfer.setData('application/reactflow-node', JSON.stringify({
@@ -840,7 +859,7 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '12px' }}>
                 {stores.map(store => (
                   <div key={store.store} style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden', background: 'var(--color-bg-secondary, #1a1a2e)' }}>
-                    <div onClick={() => toggleStore(store.store)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px', cursor: 'pointer' }}>
+                    <div role="button" tabIndex={0} aria-expanded={expandedStores.has(store.store)} onClick={() => toggleStore(store.store)} onKeyDown={onKeyActivate(() => toggleStore(store.store))} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px', cursor: 'pointer' }}>
                       <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: storeColors[store.store] || 'var(--color-fg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <Database className="w-5 h-5" style={{ color: 'var(--color-on-accent)' }} />
                       </div>
@@ -897,9 +916,12 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
 
             {/* File upload */}
             <div
+              role="button"
+              tabIndex={0}
               onDrop={e => { e.preventDefault(); e.stopPropagation(); handleFileUpload(e.dataTransfer.files); }}
               onDragOver={e => { e.preventDefault(); e.stopPropagation(); }}
               onClick={() => fileInputRef.current?.click()}
+              onKeyDown={onKeyActivate(() => fileInputRef.current?.click())}
               style={{
                 marginTop: '20px', border: '2px dashed var(--color-border)', borderRadius: '16px', padding: '32px',
                 textAlign: 'center', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',

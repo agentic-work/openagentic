@@ -42,6 +42,7 @@ import {
 import { useAuth } from '@/app/providers/AuthContext';
 import { useMCP } from '@/app/providers/MCPContext';
 import { workflowEndpoint } from '@/utils/api';
+import { onKeyActivate } from '@/utils/a11y';
 import { nodeTypeConfigs } from '../../utils/nodeConfigs';
 import { TemplateLegend } from '../TemplateLegend';
 import { DataSection } from './DataSection';
@@ -412,7 +413,10 @@ const NodesContent: React.FC = () => {
               return (
                 <div
                   key={config.type}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setExpandedType(isExpanded ? null : config.type)}
+                  onKeyDown={onKeyActivate(() => setExpandedType(isExpanded ? null : config.type))}
                   className="rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md"
                   style={{
                     borderColor: isExpanded ? 'var(--color-accent)' : 'var(--color-border)',
@@ -2122,6 +2126,8 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
               key={wf.id}
               data-testid={filter === 'templates' ? 'template-gallery-card' : undefined}
               data-template-slug={wf.name}
+              role="button"
+              tabIndex={0}
               className="glass-card glass-surface-hover group relative p-4 cursor-pointer"
               style={{
                 borderColor: filter === 'templates' && expandedId === wf.id
@@ -2129,6 +2135,13 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
                   : undefined,
                 boxShadow: filter === 'templates' && expandedId === wf.id
                   ? '0 0 0 1px var(--color-accent)' : undefined,
+              }}
+              onKeyDown={(e) => {
+                if (filter !== 'templates') return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setExpandedId(prev => prev === wf.id ? null : wf.id);
+                }
               }}
               onClick={(e) => {
                 // Templates view: single-click toggles legend; clicks on

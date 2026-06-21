@@ -416,7 +416,7 @@ const UserPermissionsView: React.FC = () => {
    * Unlock a user account that was locked due to scope violations
    */
   const handleUnlockUser = async (userId: string, userName: string) => {
-    if (!confirm(`Are you sure you want to unlock ${userName}'s account? This will also reset their warning count.`)) return;
+    if (!(await confirm(`Are you sure you want to unlock ${userName}'s account? This will also reset their warning count.`))) return;
 
     try {
       const headers = getAuthHeaders();
@@ -435,7 +435,7 @@ const UserPermissionsView: React.FC = () => {
    * Reset a user's warning count without unlocking
    */
   const handleResetWarnings = async (userId: string, userName: string) => {
-    if (!confirm(`Reset ${userName}'s warning count? They have not been locked yet.`)) return;
+    if (!(await confirm(`Reset ${userName}'s warning count? They have not been locked yet.`))) return;
 
     try {
       const headers = getAuthHeaders();
@@ -461,7 +461,7 @@ const UserPermissionsView: React.FC = () => {
     }
 
     // First confirmation
-    if (!confirm(`Are you sure you want to PERMANENTLY delete ${userEmail}?\n\nThis will remove:\n- All chat sessions and messages\n- All code sessions\n- All permissions\n- All usage metrics\n- The user account\n\nThis action CANNOT be undone!`)) {
+    if (!(await confirm(`Are you sure you want to PERMANENTLY delete ${userEmail}?\n\nThis will remove:\n- All chat sessions and messages\n- All code sessions\n- All permissions\n- All usage metrics\n- The user account\n\nThis action CANNOT be undone!`))) {
       return;
     }
 
@@ -531,7 +531,7 @@ const UserPermissionsView: React.FC = () => {
    */
   const handleResetBudget = async () => {
     if (!selectedUser) return;
-    if (!confirm(`Reset budget period for ${selectedUser.name}? This will reset their current spending.`)) return;
+    if (!(await confirm(`Reset budget period for ${selectedUser.name}? This will reset their current spending.`))) return;
 
     setBudgetLoading(true);
     try {

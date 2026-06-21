@@ -11,6 +11,7 @@ import {
 } from '@/shared/icons';
 import { FileAttachment as FileAttachmentType, getFileTypeInfo, formatFileSize } from '@/types/filePreview';
 import { FileAttachment } from './FileAttachment';
+import { onKeyActivate } from '@/utils/a11y';
 
 interface FileUploadProps {
   files: FileAttachmentType[];
@@ -295,10 +296,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     <div className={`space-y-4 ${className}`}>
       {/* Upload area */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Upload files"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onClick={openFileDialog}
+        onKeyDown={onKeyActivate(openFileDialog)}
         className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
           isDragOver
             ? 'border-accent bg-[var(--color-accent-soft)] '

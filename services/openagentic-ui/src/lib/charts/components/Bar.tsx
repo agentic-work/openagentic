@@ -82,15 +82,12 @@ export function Bar({ data, title, height = 460, disableFrame, wheelZoom, onExpa
 
   useChartFrame(svgRef, contentRef, { title: title ?? 'bar', disabled: disableFrame, wheelZoom, onExpand });
 
-  if (!layout.x || !layout.y) {
-    return <div className={className} style={{ padding: 16, color: tokens.fg3, fontFamily: tokens.fontMono, fontSize: 11 }}>no data</div>;
-  }
-
   const palette = [tokens.accent, tokens.info, tokens.warn, tokens.ok, tokens.err, tokens.capThinking, tokens.capStreaming, tokens.capTools];
   const fmtV = d3Format(data.yFormat ?? '~s');
 
   // Hover tooltip — tracks the category currently under the cursor and
   // shows all series values (stacked) or the single value (grouped).
+  // Hooks must run unconditionally — keep them above the early return below.
   const [hover, setHover] = useState<{ catIdx: number; x: number; y: number } | null>(null);
   const tooltipRows: TooltipRow[] = useMemo(() => {
     if (!hover) return [];
@@ -100,6 +97,10 @@ export function Bar({ data, title, height = 460, disableFrame, wheelZoom, onExpa
       value: fmtV(s.values[hover.catIdx] ?? 0),
     }));
   }, [hover, data.series, palette, fmtV]);
+
+  if (!layout.x || !layout.y) {
+    return <div className={className} style={{ padding: 16, color: tokens.fg3, fontFamily: tokens.fontMono, fontSize: 11 }}>no data</div>;
+  }
 
   const colWidth = layout.x ? layout.x.bandwidth() + (layout.innerW / data.categories.length) * 0.22 : 0;
   const colStep = data.categories.length > 0 ? layout.innerW / data.categories.length : 0;

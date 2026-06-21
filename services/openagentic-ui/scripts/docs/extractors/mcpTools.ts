@@ -33,7 +33,7 @@ export function mcpTools(config: McpToolsConfig): Extractor {
     const sections: DocSection[] = [];
     const sourceFiles: string[] = [];
 
-    for (const [serverDir, files] of [...byProduct.entries()].sort()) {
+    for (const [serverDir, files] of [...byProduct.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
       const items: DocItem[] = [];
       const seenToolKeys = new Set<string>();
       let serverDesc = serverDir;

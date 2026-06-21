@@ -21,6 +21,7 @@ import {
 import { type AuditLogEntry } from '../hooks/useDashboardMetrics'
 import { useAdminQuery } from '../hooks/useAdminQuery'
 import { apiEndpoint } from '../../../utils/api'
+import { onKeyActivate } from '../../../utils/a11y'
 import './AuditLogsPage.css'
 
 // ============================================================
@@ -592,7 +593,10 @@ const LiveFeed: React.FC<{
           {rows.slice(0, 200).map((e, i) => (
             <div
               key={e.id ?? `${e.timestamp}-${i}`}
+              role="button"
+              tabIndex={0}
               onClick={() => onRowClick(e)}
+              onKeyDown={onKeyActivate(() => onRowClick(e))}
               style={{ cursor: 'pointer' }}
             >
               <FeedRow

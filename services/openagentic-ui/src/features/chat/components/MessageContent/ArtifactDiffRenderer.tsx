@@ -22,6 +22,7 @@ import {
   Eye,
   Code
 } from '@/shared/icons';
+import { onKeyActivate } from '@/utils/a11y';
 
 interface DiffLine {
   type: 'add' | 'remove' | 'context';
@@ -248,6 +249,9 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
     >
       {/* Header */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -259,6 +263,7 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
           cursor: 'pointer'
         }}
         onClick={() => setIsExpanded(!isExpanded)}
+        onKeyDown={onKeyActivate(() => setIsExpanded(!isExpanded))}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <GitBranch size={16} style={{ color: 'var(--cm-text-muted)' }} />

@@ -2491,7 +2491,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
               }
             }}
           >
-            <div className="w-full max-w-4xl mx-4 h-[80vh]" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full max-w-4xl mx-4 h-[80vh]" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
               <ImageAnalysis
                 file={currentImageForAnalysis}
                 onAnalysisComplete={handleImageAnalysisComplete}

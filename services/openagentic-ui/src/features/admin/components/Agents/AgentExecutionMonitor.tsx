@@ -11,6 +11,7 @@ import { Search, X, XCircle, Download, ChevronRight } from '@/shared/icons';
 import { AgentExecutionTree } from '@/features/chat/components/AgentExecutionTree';
 import type { AgentNodeDisplay, ToolCallDisplay } from '@/features/chat/components/AgentExecutionTree';
 import { useAgentTreeStore } from '@/stores/useAgentTreeStore';
+import { onKeyActivate } from '@/utils/a11y';
 
 interface AgentExecution {
   id: string;
@@ -416,7 +417,10 @@ export const AgentExecutionMonitor: React.FC<AgentExecutionMonitorProps> = ({ th
               <div
                 key={exec.id}
                 className="bg-bg-surface border border-border-default rounded-lg px-3 py-2 cursor-pointer hover:border-accent-primary/30 transition-colors"
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedExecution(exec)}
+                onKeyDown={onKeyActivate(() => setSelectedExecution(exec))}
               >
                 <div className="flex items-center gap-2">
                   {/* Status badge */}

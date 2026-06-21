@@ -1411,7 +1411,9 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
             '[STREAM] MCP availability fetch failed (#51) — proceeding with none-connected',
           );
         }
-        connectedServers = Array.from(new Set(connectedServers)).sort();
+        connectedServers = Array.from(new Set(connectedServers)).sort((a, b) =>
+          a.localeCompare(b),
+        );
         // Known credential-gated servers. Matching is substring-based so
         // a connected name like `openagentic_azure` or `azure_knowledge`
         // suppresses the generic `azure` entry.
@@ -1626,8 +1628,11 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
               }
             }
             // Fire-and-forget — streamCallback handles its own errors.
-            const cbResult = streamCallback({ type: frame, data: payload });
-            if (cbResult && typeof (cbResult as any).then === 'function') {
+            const cbResult: unknown = streamCallback({ type: frame, data: payload });
+            if (
+              cbResult != null &&
+              typeof (cbResult as { then?: unknown }).then === 'function'
+            ) {
               (cbResult as Promise<unknown>).catch((err: unknown) => {
                 logger.warn(
                   { err: (err as any)?.message ?? String(err), frame },

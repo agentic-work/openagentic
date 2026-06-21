@@ -101,7 +101,7 @@ function post(msg: WorkerOutboundMessage): void {
 
 async function initPyodide(indexURL: string): Promise<void> {
   if (pyodide) return;
-  if (initPromise) return initPromise;
+  if (initPromise !== null) return initPromise;
 
   initPromise = (async () => {
     try {

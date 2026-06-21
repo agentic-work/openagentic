@@ -615,7 +615,7 @@ export function createAxiosMinioAdminOps(
         const [k, v = ''] = kv.split('=');
         return `${encodeURIComponent(decodeURIComponent(k))}=${encodeURIComponent(decodeURIComponent(v))}`;
       })
-      .sort()
+      .sort((a, b) => a.localeCompare(b))
       .join('&');
   }
 

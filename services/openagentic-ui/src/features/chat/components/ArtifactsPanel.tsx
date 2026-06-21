@@ -10,6 +10,7 @@ import {
   FileSpreadsheet, Folder, Loader, CheckCircle, AlertCircle, Eye
 } from '@/shared/icons';
 import SafeHtmlIframe from '@/shared/components/SafeHtmlIframe';
+import { onKeyActivate } from '@/utils/a11y';
 
 interface Artifact {
   id: string;
@@ -251,7 +252,14 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
     // Render hidden panel for transition-out animation
     return (
       <>
-        <div style={overlay} onClick={onClose} />
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Close artifacts panel"
+          style={overlay}
+          onClick={onClose}
+          onKeyDown={onKeyActivate(onClose)}
+        />
         <div style={panel} />
       </>
     );
@@ -260,7 +268,14 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
   return (
     <>
       {/* Overlay */}
-      <div style={overlay} onClick={onClose} />
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label="Close artifacts panel"
+        style={overlay}
+        onClick={onClose}
+        onKeyDown={onKeyActivate(onClose)}
+      />
 
       {/* Panel */}
       <div style={panel}>
@@ -317,11 +332,15 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
 
         {/* Upload dropzone */}
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Upload files"
           style={dropzoneStyle}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
+          onKeyDown={onKeyActivate(() => fileInputRef.current?.click())}
         >
           {uploading ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -468,7 +487,11 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
       {preview && (
         <div
           data-testid="artifact-preview-modal"
+          role="button"
+          tabIndex={0}
+          aria-label="Close preview"
           onClick={closePreview}
+          onKeyDown={onKeyActivate(closePreview)}
           style={{
             position: 'fixed',
             inset: 0,
@@ -482,6 +505,7 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
         >
           <div
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
             style={{
               width: 'min(960px, 100%)',
               maxHeight: '90vh',

@@ -77,7 +77,7 @@ let semanticCacheInitPromise: Promise<void> | null = null;
  */
 async function ensureSemanticCacheInitialized(logger: Logger): Promise<void> {
   if (semanticCacheInitialized) return;
-  if (semanticCacheInitPromise) return semanticCacheInitPromise;
+  if (semanticCacheInitPromise !== null) return semanticCacheInitPromise;
 
   semanticCacheInitPromise = (async () => {
     try {

@@ -28,7 +28,7 @@ export const useChatSessions = () => {
   const createNewSession = useCallback(async (onSessionReset?: () => void) => {
     // If a session creation is already in progress, wait for it
     // This prevents duplicate sessions from React StrictMode double-mounting
-    if (sessionCreationInProgress) {
+    if (sessionCreationInProgress !== null) {
       // console.log('[SESSION] Session creation already in progress, waiting...');
       const existingSessionId = await sessionCreationInProgress;
       // Reset session-specific state for the waiting caller too

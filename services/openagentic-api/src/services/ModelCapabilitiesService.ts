@@ -1132,7 +1132,8 @@ export class ExtendedCapabilitiesService extends EventEmitter {
   private calculateConfidence(model: ExtendedModel, tools: MCPToolCapability[], requirements: ExtendedTaskRequirements): number {
     const modelScore = this.scoreModelForRequirements(model, requirements);
     const toolScores = tools.map(tool => this.scoreToolForRequirements(tool, requirements));
-    const avgToolScore = toolScores.length > 0 ? toolScores.reduce((a, b) => a + b) / toolScores.length : 1;
+    const avgToolScore =
+      toolScores.length > 0 ? toolScores.reduce((a, b) => a + b, 0) / toolScores.length : 1;
     
     // Combined confidence with model weighted more heavily
     const confidence = (modelScore * 0.7) + (avgToolScore * 0.3);
