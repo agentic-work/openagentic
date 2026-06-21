@@ -18,5 +18,5 @@ python-dotenv>=1.0.0
 pydantic>=2.0.0
 
 # YAML parsing for apply/template operations
-pyyaml>=6.0.0
+pyyaml>=6.0.3
 structlog>=24.1.0
