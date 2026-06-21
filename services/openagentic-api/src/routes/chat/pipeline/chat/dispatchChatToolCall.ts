@@ -156,9 +156,9 @@ export interface ChatPipelineDeps {
    * Sub-agent runner (chatLoopRecursor-backed child chatLoop dispatch).
    *
    * SEV-0 fix 2026-04-30 — accepts `parentCtx` so the runner can build
-   * a ctx-aware MCP tool callback that propagates Azure-AD OBO headers
-   * (Authorization, X-Azure-ID-Token, X-AWS-ID-Token, X-User-Email,
-   * X-User-Id) on every sub-agent MCP tool call.
+   * a ctx-aware MCP tool callback that propagates identity headers
+   * (Authorization, X-User-Email, X-User-Id) on every sub-agent MCP tool
+   * call. OSS is local-auth only — no OBO (On-Behalf-Of) ID-token forwarding.
    */
   runSubagent: TaskDeps['runSubagent'];
   /**

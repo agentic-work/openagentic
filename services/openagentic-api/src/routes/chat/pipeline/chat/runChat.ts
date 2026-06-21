@@ -59,7 +59,6 @@ import { contextManagementService } from '../../../../services/ContextManagement
 import { makeStreamProvider } from './streamProvider.js';
 import { makeDispatch, type V3DispatchDeps } from './dispatchTool.js';
 import { computeConcurrencySafeNames, type RiskClassifier } from './toolRegistry.js';
-import { extractUserJwt } from './extractUserJwt.js';
 import { buildChatToolArray } from './toolRegistry.js';
 import { getLocalExecutorRegistry } from '../../../../services/local-executor/LocalExecutorRegistry.js';
 import type { ChatPipelineDeps } from './dispatchChatToolCall.js';
@@ -273,8 +272,9 @@ export function _resetEnrichedToolsCacheForTests(): void {
  *     can call runChat directly without bootstrapping).
  *   - Pulls `OPENAGENTIC_PROXY_URL` (default in-cluster service URL) and
  *     `OPENAGENTIC_PROXY_INTERNAL_KEY` (no default — fail-CLOSED) from env.
- *   - Forwards the parent's userId / sessionId / OBO tokens so the
- *     sub-agent's downstream MCP fanouts authenticate AS the user.
+ *   - Forwards the parent's userId / sessionId / local bearer so the
+ *     sub-agent's downstream MCP fanouts carry identity + audit attribution.
+ *     OSS is local-auth only — no OBO (On-Behalf-Of) ID-token forwarding.
  *   - Uses `parentCtx.toolUseId` (set by chatLoop's wrappedDispatch) as
  *     the correlation id when present; otherwise generates a fresh
  *     UUID. Either way the proxy gets a stable per-dispatch id.
@@ -342,12 +342,11 @@ function makeOpenAgenticProxyRunSubagent(
       // through dispatchCtx yet.
       `task-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-    // OBO tokens — prefer the V3 ctx.user surface that the chat path
+    // User identity — prefer the V3 ctx.user surface that the chat path
     // hydrates from request auth; fall back to parentCtx.user when set
-    // (some test paths inject directly).
+    // (some test paths inject directly). OSS is local-auth only (no OBO).
     const userObj = parentCtx?.user ?? ctx.user ?? {};
     const userToken = userObj?.accessToken ?? userObj?.userToken ?? undefined;
-    const userIdToken = userObj?.idToken ?? userObj?.userIdToken ?? undefined;
 
     let result: OpenAgenticProxyExecuteResult;
     try {
@@ -358,7 +357,6 @@ function makeOpenAgenticProxyRunSubagent(
         agentName: spec.role,
         task: spec.prompt,
         userToken,
-        userIdToken,
       });
     } catch (err: any) {
       ctx.logger.error(
@@ -418,12 +416,9 @@ export async function runChat(
   // → composer → chatLoop). Resolved in a finally block at the end
   // (see chatLoop wrap below).
   const v3TurnStartedAt = Date.now();
-  // Phase C.6 — surface the user's Azure AD ACCESS token via the typed
-  // ctx.userJwt accessor so OBO-aware cloud-MCP dispatch (chatLoop's Azure
-  // OBO seam) doesn't have to sniff ctx.user shape. extractUserJwt explicitly
-  // refuses idToken to prevent silent 401s at ARM/STS downstream. Set on the
-  // existing ctx so all sub-paths (chatLoop, dispatchTool, hooks) see it.
-  ctx.userJwt = extractUserJwt(ctx.user);
+  // OSS: no OBO (On-Behalf-Of) cloud-MCP dispatch — local-auth only — so
+  // there is no per-user access-token extraction here. Cloud MCP servers
+  // authenticate via their own service-account / static-keypair / ADC creds.
   // Phase 8 — pre-loop compaction trigger. BEFORE building the system
   // prompt or invoking chatLoop, consult the ContextManagementService.
   // When `usagePercentage >= 65` (soft threshold), call compactContext()

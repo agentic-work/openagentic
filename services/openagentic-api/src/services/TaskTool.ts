@@ -134,10 +134,10 @@ export interface TaskDeps {
    *
    * SEV-0 fix 2026-04-30 — `parentCtx` is the live v2 ctx of the parent
    * turn. The chat-side runner uses it to build a ctx-aware
-   * `executeMcpTool` callback that injects Azure-AD OBO headers
-   * (Authorization, X-Azure-ID-Token, X-AWS-ID-Token, X-User-Email,
-   * X-User-Id) on every sub-agent MCP tool call. Optional for
-   * back-compat with callers that don't carry a ctx.
+   * `executeMcpTool` callback that propagates identity headers
+   * (Authorization, X-User-Email, X-User-Id) on every sub-agent MCP tool
+   * call. OSS is local-auth only — no OBO (On-Behalf-Of) ID-token
+   * forwarding. Optional for back-compat with callers that don't carry a ctx.
    */
   runSubagent: (
     spec: SubagentSpec,
@@ -577,7 +577,8 @@ export async function executeTask(
   let runResult: SubagentRunResult;
   try {
     // SEV-0 fix 2026-04-30 — propagate parent ctx so the runner can
-    // build OBO-aware MCP tool callback for the sub-agent's ReAct loop.
+    // build an identity-aware MCP tool callback for the sub-agent's ReAct
+    // loop (OSS is local-auth only — no OBO ID-token forwarding).
     runResult = await deps.runSubagent(spec, ctx);
   } catch (err: any) {
     const errorMessage = err?.message ?? String(err);

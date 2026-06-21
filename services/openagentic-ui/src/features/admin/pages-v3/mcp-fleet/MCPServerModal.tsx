@@ -23,6 +23,7 @@ export interface MCPServerPayload {
   server_url?: string
   headers?: Record<string, string>
   capabilities?: string[]
+  // OSS: no OBO — field retained for API shape parity, UI control hidden (local-auth only).
   require_obo?: boolean
   user_isolated?: boolean
   enabled?: boolean
@@ -200,9 +201,11 @@ export const MCPServerModal: React.FC<MCPServerModalProps> = ({
         <FormRow name="capabilities (csv)" desc="advertised capabilities">
           <input value={capsCsv} onChange={(e) => setCapsCsv(e.target.value)} style={v3InputStyle} />
         </FormRow>
-        <FormRow name="require OBO" desc="user OAuth-on-behalf-of token required">
-          <Toggle on={requireObo} onChange={setRequireObo} />
-        </FormRow>
+        {/* OSS: no OBO — the per-MCP "require OBO" toggle is hidden because the
+            open-source edition is local-auth only and does not support per-user
+            On-Behalf-Of tokens. Cloud MCP servers use their own service-account
+            credentials. The require_obo state/field is retained below for API
+            shape parity (round-trips any existing value). */}
         <FormRow name="user isolated" desc="spawn one server instance per user">
           <Toggle on={userIsolated} onChange={setUserIsolated} />
         </FormRow>

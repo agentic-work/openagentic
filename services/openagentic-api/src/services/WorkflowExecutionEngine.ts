@@ -76,7 +76,7 @@ export interface ExecutionContext {
    */
   tenantId?: string | null;
   authToken?: string;
-  /** Azure AD ID token for AWS/Azure OBO federation */
+  /** Reserved/inert in OSS (local-auth only — no OBO ID-token forwarding). */
   idToken?: string;
   /** User email for MCP workspace isolation */
   userEmail?: string;
@@ -1675,12 +1675,9 @@ export class WorkflowExecutionEngine extends EventEmitter {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': this.context.authToken || '',
-          // Pass ID token for AWS Identity Center and Azure OBO federation
-          // (same as chat mode's tool-execution.helper.ts)
-          ...(this.context.idToken ? {
-            'X-AWS-ID-Token': this.context.idToken,
-            'X-Azure-ID-Token': this.context.idToken,
-          } : {}),
+          // OSS: no OBO (On-Behalf-Of) token forwarding. Cloud MCP servers
+          // authenticate via their own service-account / static-keypair / ADC
+          // credentials, not via a per-user OBO token (enterprise-only).
         },
         timeout: 60000,
         validateStatus: () => true,

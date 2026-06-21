@@ -252,11 +252,9 @@ export class CredentialScopeService {
       delete headers['X-Azure-Access-Token'];
     }
 
-    if (scoped.idToken) {
-      headers['X-Azure-ID-Token'] = scoped.idToken;
-    } else {
-      delete headers['X-Azure-ID-Token'];
-    }
+    // OSS: no OBO (On-Behalf-Of) ID-token forwarding — local-auth only. We
+    // never inject X-Azure-ID-Token; strip any inbound value defensively.
+    delete headers['X-Azure-ID-Token'];
 
     if (scoped.apiKey) {
       headers['X-API-Key'] = scoped.apiKey;

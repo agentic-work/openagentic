@@ -50,8 +50,7 @@ function buildFullArchitectureDiagram(mcpCount: number, nodeCount: number): Diag
     { id: 'milvus', label: 'Milvus', description: 'GPU vector search', shape: 'database', color: 'cyan' },
     { id: 'minio', label: 'MinIO', description: 'Object storage', shape: 'database', color: 'orange' },
     // Auth
-    { id: 'azure-ad', label: 'Azure AD', description: 'SSO / OIDC', shape: 'rounded', color: 'azure' },
-    { id: 'google-oauth', label: 'Google OAuth', shape: 'rounded', color: 'gcp' },
+    { id: 'local-auth', label: 'Local Auth', description: 'username + password', shape: 'rounded', color: 'azure' },
     { id: 'api-keys', label: 'API Keys', description: 'oa_ prefix', shape: 'rounded', color: 'gray' },
     // Observability
     { id: 'prometheus', label: 'Prometheus', description: 'Metrics', shape: 'rounded', color: 'red' },
@@ -74,8 +73,7 @@ function buildFullArchitectureDiagram(mcpCount: number, nodeCount: number): Diag
     { source: 'pipeline', target: 'redis', style: 'dashed', color: 'red' },
     { source: 'pipeline', target: 'milvus', style: 'dashed', color: 'cyan' },
     { source: 'api', target: 'minio', style: 'dashed', color: 'orange' },
-    { source: 'api', target: 'azure-ad', style: 'dashed', color: 'azure' },
-    { source: 'api', target: 'google-oauth', style: 'dashed', color: 'gcp' },
+    { source: 'api', target: 'local-auth', style: 'dashed', color: 'azure' },
     { source: 'api', target: 'api-keys', style: 'dashed', color: 'gray' },
     { source: 'api', target: 'prometheus', style: 'dashed', color: 'red' },
   ],
@@ -106,9 +104,9 @@ function buildIndustryComparisons(agentCount: number) {
       'RAG retrieval uses both pgvector (PostgreSQL extension) and Milvus (GPU-accelerated) for resilience. If one store is unavailable, the other continues serving queries. This dual-store pattern provides both low-latency and high-throughput vector search.',
   },
   {
-    title: 'On-Behalf-Of (OBO) Auth',
+    title: 'Local Auth + Per-Call Audit',
     description:
-      'Every tool invocation runs as the authenticated user, not a service account. OBO tokens propagate through the MCP Proxy to downstream services, ensuring audit trails accurately reflect who performed each action and enforcing per-user access control.',
+      'The open-source edition authenticates users locally (username + password or API key). Cloud MCP servers (AWS / Azure / GCP) use their own configured service-account / static-keypair / ADC credentials — not a per-user token. Every tool invocation is still recorded against the authenticated local user, so the audit trail reflects who ran each action. (Per-user SSO run-as / On-Behalf-Of is an enterprise-only capability.)',
   },
   ];
 }
@@ -129,9 +127,9 @@ const secretsSteps = [
       'Per-cloud credentials live in ~/.openagentic/cloud-secrets/*.env (one file per cloud) and are mounted into the MCP proxy. The AWS / Azure / GCP MCP servers only spawn once their credential file is present.',
   },
   {
-    title: 'On-Behalf-Of (OBO) tokens',
+    title: 'Cloud service-account credentials',
     description:
-      'When a user signs in via SSO, tool calls can run with the user\'s own OBO token rather than a static service credential, so the audit trail reflects who actually performed each action.',
+      'Cloud MCP servers authenticate with their own configured service-account / static-keypair / ADC credentials supplied via the cloud-secret env files — not a per-user token. Every tool call is recorded against the authenticated local user, so the audit trail still reflects who ran each action. (Per-user SSO run-as / OBO is enterprise-only.)',
   },
   {
     title: 'Per-Tool Credential Scoping',
@@ -357,9 +355,10 @@ const ArchitecturePage: React.FC = () => {
         <h2 style={sectionTitleStyle}>Secrets Management</h2>
         <p style={{ ...sectionDescStyle, marginBottom: '32px' }}>
           Platform secrets are written to a local .env by the install wizard, and
-          per-cloud credentials are mounted from ~/.openagentic/cloud-secrets. SSO
-          users can run tools under their own OBO token, and each tool only
-          receives the credentials it needs.
+          per-cloud credentials are mounted from ~/.openagentic/cloud-secrets. Cloud
+          MCP servers run with their own service-account credentials, every tool call
+          is audited against the local user, and each tool only receives the
+          credentials it needs.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

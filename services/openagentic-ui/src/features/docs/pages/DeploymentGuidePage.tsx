@@ -39,7 +39,7 @@ const secretsPipeline = [
   { stage: 'Install wizard', desc: 'The setup wizard collects platform secrets (admin credentials, internal JWT/signing secrets, provider keys) and writes them to a local .env — nothing is committed to Git' },
   { stage: 'Cloud-secret mounts', desc: 'Per-cloud credentials live in ~/.openagentic/cloud-secrets/*.env and are mounted into the MCP proxy; the cloud MCP servers only spawn once their file is present' },
   { stage: 'Helm Secret', desc: 'On Kubernetes, those values populate the chart\'s Secret template and are referenced as env vars; no plaintext credentials in values files or Git' },
-  { stage: 'OBO at runtime', desc: 'SSO users can run tools under their own On-Behalf-Of token instead of a static service credential, so the audit trail reflects the real actor' },
+  { stage: 'Credentials at runtime', desc: 'Cloud MCP servers run with their own configured service-account / static-keypair / ADC credentials from the mounted cloud-secret files; every tool call is audited against the authenticated local user, so the trail reflects the real actor' },
 ];
 
 // ============================================================================
@@ -421,8 +421,9 @@ const DeploymentGuidePage: React.FC = () => {
         <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
           Platform secrets are written to a local .env by the install wizard, and
           per-cloud credentials are mounted from ~/.openagentic/cloud-secrets. On
-          Kubernetes those values populate the chart Secret, and SSO users can run
-          tools under their own OBO token.
+          Kubernetes those values populate the chart Secret, and cloud MCP servers
+          run with their own service-account credentials while every tool call is
+          audited against the local user.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

@@ -62,13 +62,13 @@ export interface RunFlowOptions {
   /** Permissions of the caller. */
   userPermissions?: readonly string[];
   /**
-   * Optional caller identity — mirrors chatmode OBO threading. When supplied,
+   * Optional caller identity — mirrors chatmode auth threading. When supplied,
    * `user.accessToken` becomes the engine `authToken` (forwarded by
    * mcp_tool / http_request executors as the `Authorization` header onto
-   * mcp-proxy), and `user.idToken` becomes the engine `idToken` (forwarded
-   * as `X-Azure-ID-Token` + `X-AWS-ID-Token` for Azure OBO / AWS Identity
-   * Center federation). Mirrors the chatmode `buildMcpProxyHeaders`
-   * contract so harness assertions match production wire shape.
+   * mcp-proxy). `user.idToken` becomes the engine `idToken` but is inert in
+   * OSS — local-auth only, no OBO (On-Behalf-Of) ID-token forwarding. Mirrors
+   * the chatmode `buildMcpProxyHeaders` contract so harness assertions match
+   * production wire shape.
    */
   user?: {
     id?: string;
@@ -123,11 +123,11 @@ export async function runFlow(opts: RunFlowOptions): Promise<RunFlowResult> {
   const timeoutMs = opts.timeout ?? DEFAULT_TIMEOUT_MS;
   const tenantId = opts.tenantId ?? null;
 
-  // OBO/auth threading — mirror chatmode `buildMcpProxyHeaders`. When a
+  // Auth threading — mirror chatmode `buildMcpProxyHeaders`. When a
   // caller supplies `user.accessToken`, format it as `Bearer <jwt>` so
   // the mcp_tool/http_request executors can forward it verbatim as the
-  // outbound `Authorization` header. The `idToken` rides separately on
-  // `X-Azure-ID-Token` + `X-AWS-ID-Token`.
+  // outbound `Authorization` header. `idToken` is threaded for shape parity
+  // but inert in OSS (local-auth only — no OBO ID-token forwarding).
   const authToken = opts.user?.accessToken
     ? `Bearer ${opts.user.accessToken}`
     : undefined;

@@ -10,7 +10,8 @@
  *     (web_search/k8s/loki special cases + generic object pass-through)
  *   - LLM-output fields filtered when generic-passing input
  *   - web_search/web_news_search routed through openagentic_web
- *   - auth: ctx.authToken (NOT internal-secret) + X-AWS-ID-Token / X-Azure-ID-Token
+ *   - auth: service-internal key (or ctx.authToken); OSS never forwards
+ *     X-AWS-ID-Token / X-Azure-ID-Token (local-auth only — no OBO)
  *   - 3-layer error unwrapping: proxy envelope → JSONRPC → mcpResult
  *   - content-block normalization (array of {type:'text', text} → joined string)
  */
@@ -224,7 +225,7 @@ describe('mcp_tool/executor', () => {
     expect(sentConfig.headers['X-Internal-Secret']).toBeUndefined();
   });
 
-  it('forwards X-AWS-ID-Token + X-Azure-ID-Token when idToken is present', async () => {
+  it('OSS: never forwards X-AWS-ID-Token / X-Azure-ID-Token even when idToken is present (no OBO)', async () => {
     const post = mockProxy({
       result: { jsonrpc: '2.0', id: 1, result: { content: [], isError: false } },
     });
@@ -234,8 +235,9 @@ describe('mcp_tool/executor', () => {
       makeCtx(),
     );
     const sentConfig: any = post.mock.calls[0][2];
-    expect(sentConfig.headers['X-AWS-ID-Token']).toBe('aad-id-token');
-    expect(sentConfig.headers['X-Azure-ID-Token']).toBe('aad-id-token');
+    // OSS is local-auth only — no OBO (On-Behalf-Of) ID-token forwarding.
+    expect(sentConfig.headers['X-AWS-ID-Token']).toBeUndefined();
+    expect(sentConfig.headers['X-Azure-ID-Token']).toBeUndefined();
   });
 
   it('omits ID-token headers when idToken is undefined', async () => {

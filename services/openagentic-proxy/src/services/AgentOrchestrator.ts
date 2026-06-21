@@ -37,10 +37,6 @@ export interface ExecuteRequest {
   userDisplayName?: string;
   userEmail?: string;
   userToken?: string;
-  // GAP-#277: Azure AD ID token (separate audience from userToken).
-  // Used as X-Azure-ID-Token / X-AWS-ID-Token header for OBO when sub-agents
-  // call MCP tools — sub-agents need this to make Azure/AWS calls AS the user.
-  userIdToken?: string;
   authMethod: string;
   userGroups: string[];
   isAdmin: boolean;
@@ -563,7 +559,6 @@ export class AgentOrchestrator {
       userDisplayName: request.userDisplayName,
       userEmail: request.userEmail,
       userMessage: request.userMessage,
-      userIdToken: request.userIdToken,
     };
 
     // Resolve agent specs: try API (DB + PromptComposer) first, fall back to hardcoded defaults

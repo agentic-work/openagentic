@@ -40,7 +40,7 @@ const executionDiagram: DiagramDefinition = {
     { id: 'call', label: 'Tool Call', description: 'From LLM', shape: 'rounded', color: 'purple' },
     { id: 'hitl', label: 'HITL Check', description: 'Approval gate', shape: 'diamond', color: 'red' },
     { id: 'dlp', label: 'DLP Scan', description: 'Input scanning', shape: 'rounded', color: 'orange' },
-    { id: 'cred', label: 'Credential Scope', description: 'OBO token', shape: 'rounded', color: 'blue' },
+    { id: 'cred', label: 'Credential Scope', description: 'scoped creds', shape: 'rounded', color: 'blue' },
     { id: 'exec', label: 'Execute', description: 'MCP server', shape: 'rounded', color: 'green' },
     { id: 'validate', label: 'Validate', description: 'Output check', shape: 'rounded', color: 'cyan' },
     { id: 'cache', label: 'Cache', description: 'Redis TTL', shape: 'database', color: 'red' },
@@ -86,7 +86,7 @@ const ToolExecutionPage: React.FC = () => {
     },
     {
       name: 'Credential Scoping',
-      description: 'The platform injects the user\'s scoped credentials (OBO tokens for Azure, session-bound API keys for AWS/GCP). Tools never see raw platform secrets -- only user-context tokens.',
+      description: 'Each cloud MCP server runs with its own configured credentials (service-account / static-keypair for AWS, service principal for Azure, ADC for GCP) supplied via the cloud-secret env files. Each tool receives only the credentials it needs and never sees credentials outside its scope.',
       color: '#3b82f6',
     },
     {

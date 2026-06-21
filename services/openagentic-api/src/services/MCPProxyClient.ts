@@ -96,7 +96,6 @@ export interface MCPServer {
 
 export interface MCPProxyClientOptions {
   userToken?: string;
-  idToken?: string;  // ID token for OBO (audience = app's client ID)
 }
 
 export class MCPProxyClient implements IMCPProxyClient {
@@ -127,12 +126,8 @@ export class MCPProxyClient implements IMCPProxyClient {
       headers['Authorization'] = `Bearer ${apiInternalKey}`;
     }
 
-    // CRITICAL: Pass ID token for OBO (On-Behalf-Of) authentication
-    // OBO requires a token with audience = app's client ID, not the resource URL
-    // The MCP proxy uses this to call Azure/AWS APIs on behalf of the user
-    if (opts.idToken) {
-      headers['X-Azure-ID-Token'] = opts.idToken;
-    }
+    // OSS: no OBO (On-Behalf-Of) token forwarding — local-auth only, and
+    // cloud MCP servers authenticate via their own service-account creds.
 
     this.client = axios.create({
       baseURL: MCP_PROXY_URL,

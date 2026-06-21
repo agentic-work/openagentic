@@ -5,7 +5,7 @@
  * to the agent-proxy service (services/agent-proxy/) over HTTP. Replaces
  * the in-api legacy orchestrator path on the chat critical chain.
  *
- * The agent-proxy service is its own auth+OBO-aware microservice with
+ * The agent-proxy service is its own auth-aware microservice with
  * sandboxed execution + recursive sub-agent support. Routing through it
  * (instead of in-process orchestration) gives:
  *   - Process isolation between the chat loop and sub-agent ReAct loops.
@@ -21,9 +21,10 @@
  *
  * The agent-proxy auth middleware
  * (services/agent-proxy/src/middleware/auth.ts:22) treats this header
- * pair as a trusted service caller; the user's per-tenant OBO token
- * (`userToken` field in the body) is forwarded through the proxy to MCP
- * fanouts so the sub-agent calls Azure/AWS/GCP AS the end user.
+ * pair as a trusted service caller; the user's local bearer (`userToken`
+ * field in the body) is forwarded through the proxy for identity + audit
+ * attribution. OSS is local-auth only — no OBO (On-Behalf-Of) ID-token
+ * forwarding; cloud MCPs use their own service-account credentials.
  *
  * Fail-CLOSED: refuses to construct without AGENT_PROXY_INTERNAL_KEY,
  * AND refuses dev-secret literals (internal-JWT minting contract).
@@ -47,19 +48,12 @@ export interface OpenAgenticProxyExecuteRequest {
   /** Natural-language prompt the sub-agent receives verbatim. */
   task: string;
   /**
-   * Per-tenant OBO token forwarded as `userToken` in the body. The proxy
-   * forwards this to MCP fanouts so downstream Azure/AWS/GCP API calls
-   * authenticate AS the end user. Required for fail-closed auth — without it the
-   * sub-agent would call Azure as the platform service principal (which
-   * has no resource rights).
+   * The user's local bearer, forwarded as `userToken` in the body for
+   * identity + audit attribution of the sub-agent's downstream tool calls.
+   * OSS is local-auth only — no OBO (On-Behalf-Of) federation; cloud MCPs
+   * authenticate via their own service-account credentials.
    */
   userToken?: string;
-  /**
-   * Azure-AD ID token (separate audience from userToken). Used as
-   * `X-Azure-ID-Token` / `X-AWS-ID-Token` by the proxy's MCP bridge for
-   * OBO when sub-agents need to call Azure/AWS as the user.
-   */
-  userIdToken?: string;
   /** AbortSignal for cancellation. */
   signal?: AbortSignal;
 }
@@ -207,7 +201,6 @@ export class OpenAgenticProxyClient {
       authMethod: 'internal',
       isAdmin: false,
       ...(req.userToken ? { userToken: req.userToken } : {}),
-      ...(req.userIdToken ? { userIdToken: req.userIdToken } : {}),
     };
 
     try {

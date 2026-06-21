@@ -11,9 +11,10 @@
  *     `{{args.X}}` references resolve. An empty `inputMapping` passes the
  *     full input through.
  *  3. Invoke the engine's `executeSubWorkflow` hook (same one sub_workflow
- *     uses) with the resolved flowId + trigger input. OBO propagation +
+ *     uses) with the resolved flowId + trigger input. Identity propagation +
  *     tenant scoping live on the hook side (engine threads userId /
- *     authToken / idToken / tenantId into the recursive call).
+ *     authToken / tenantId into the recursive call; idToken is inert in OSS —
+ *     local-auth only, no OBO).
  *  4. Extract a value at `outputExtract` (dot/bracket path) from the child
  *     output. Empty `outputExtract` → return the full output.
  *  5. Recursion guard: if `ctx.subFlowDepth >= maxDepth (default 3)`,

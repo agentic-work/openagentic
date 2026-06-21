@@ -5,8 +5,9 @@
  * batch 3 — preserves all parameter-coercion logic and 3-layer error
  * unwrapping).
  *
- * Auth: this node runs AS the user — uses ctx.authToken (NOT internal-secret)
- * + optional X-AWS-ID-Token / X-Azure-ID-Token for OBO federation.
+ * Auth: uses the service-internal key (or ctx.authToken as fallback) to
+ * authorize against mcp-proxy. OSS is local-auth only — no OBO (On-Behalf-Of)
+ * ID-token forwarding; cloud MCP servers use their own service-account creds.
  *
  * Approval gate (HIGH-severity bypass fix, 2026-06-20): before the proxy call,
  * this executor runs the SAME approval gate + audit as chat/orchestrate via
@@ -222,13 +223,9 @@ export async function execute(
           (process.env.API_INTERNAL_KEY || process.env.INTERNAL_API_KEY)
             ? `Bearer ${process.env.API_INTERNAL_KEY || process.env.INTERNAL_API_KEY}`
             : (ctx.authToken || ''),
-        // Pass ID token for AWS Identity Center and Azure OBO federation.
-        ...(ctx.idToken
-          ? {
-              'X-AWS-ID-Token': ctx.idToken,
-              'X-Azure-ID-Token': ctx.idToken,
-            }
-          : {}),
+        // OSS: no OBO (On-Behalf-Of) token forwarding. Cloud MCP servers
+        // authenticate via their own service-account / static-keypair / ADC
+        // credentials, not via a per-user OBO token (enterprise-only).
       },
       timeout: 60000,
       validateStatus: () => true,

@@ -132,16 +132,7 @@ export interface RunCtx {
   };
   sessionId?: string;
   userId?: string;
-  user?: any; // OBO surface — propagates to sub-agents per Plan §Sub-Agent Recursion
-  /**
-   * Typed accessor for the user's Azure AD ACCESS token (the chat-pipeline refactor
-   * Phase C.6). Set once per turn by `runChat.ts` via `extractUserJwt`.
-   * The OBO-aware cloud-MCP dispatch path reads `ctx.userJwt` instead of
-   * sniffing `ctx.user` so the contract stays typed and an idToken never
-   * reaches the cloud OBO exchange by accident (which would silently 401
-   * at ARM/STS).
-   */
-  userJwt?: string;
+  user?: any; // identity surface — propagates to sub-agents per Plan §Sub-Agent Recursion
 }
 
 export interface ChatLoopInput {

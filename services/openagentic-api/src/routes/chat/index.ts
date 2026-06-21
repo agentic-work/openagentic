@@ -273,8 +273,8 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
   // The dispatch object stays `getBuiltInAgents + listMcpProxyTools`-
   // shaped because the sub-agent dispatch still needs the proxy snapshot
   // for discovered-name hydration paths and telemetry. mcp-proxy /tools
-  // is unauthenticated catalog read; OBO happens at tool execution time,
-  // not listing.
+  // is an unauthenticated catalog read; auth/identity is applied at tool
+  // execution time, not listing. (OSS is local-auth only — no OBO.)
   //
   // SEV-1 fix 2026-05-01 — built unconditionally. The dispatch resolver
   // needs only `getBuiltInAgents` + `listMcpProxyTools`, NOT the ranker.

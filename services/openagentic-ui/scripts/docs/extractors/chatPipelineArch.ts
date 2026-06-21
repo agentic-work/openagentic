@@ -12,7 +12,6 @@ const LAYER_MAP: Record<string, Layer> = {
   // Layer 1 — session facts, input prep
   'buildUserMessageContent.ts': 'layer1',
   'extractAttachmentText.ts': 'layer1',
-  'extractUserJwt.ts': 'layer1',
   'builders.ts': 'layer1',
   'parseInlineComposePatterns.ts': 'layer1',
   // Layer 2 — T1 catalog

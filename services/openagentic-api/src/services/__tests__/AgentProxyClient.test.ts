@@ -123,7 +123,6 @@ describe('OpenAgenticProxyClient — executeAgent', () => {
       agentName: 'cloud_operations',
       task: 'audit IAM drift',
       userToken: 'oboToken-XYZ',
-      userIdToken: 'azureIdToken-PQR',
     });
 
     const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
@@ -136,7 +135,8 @@ describe('OpenAgenticProxyClient — executeAgent', () => {
     expect(body.agents[0].role).toBe('cloud_operations');
     expect(body.agents[0].task).toBe('audit IAM drift');
     expect(body.userToken).toBe('oboToken-XYZ');
-    expect(body.userIdToken).toBe('azureIdToken-PQR');
+    // OSS: no OBO — userIdToken removed from the request shape; never sent.
+    expect(body.userIdToken).toBeUndefined();
     expect(body.orchestration).toBe('sequential');
     expect(body.aggregation).toBe('first');
   });

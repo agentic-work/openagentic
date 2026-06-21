@@ -645,7 +645,7 @@ export class ToolSemanticCacheService {
     try {
       this.logger.info('🔄 Auto-indexing MCP tools from MCP Proxy...');
 
-      // Fetch tools from MCP Proxy (centralized management with OBO support)
+      // Fetch tools from MCP Proxy (centralized tool catalog)
       const MCP_PROXY_URL = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
 
       this.logger.info({

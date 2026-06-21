@@ -323,9 +323,10 @@ export async function execute(
               sessionId: ctx.executionId,
               userId: ctx.userId,
               userMessage,
-              // #1275 true run-as-user OBO: thread the run-user's AAD token (+ id
-              // token + email) into the body so each dispatched sub-agent calls
-              // MCP tools AS THE USER (mcp-proxy OBO), not as a service principal.
+              // #1275 run-as-user attribution: thread the run-user's bearer +
+              // email into the body so each dispatched sub-agent's tool calls are
+              // attributed to the user. OSS is local-auth only — no OBO ID-token
+              // forwarding; cloud MCPs use their own service-account credentials.
               ...buildAgentProxyUserAuth(ctx),
               totalBudgetCents: 200,
               timeoutMs,

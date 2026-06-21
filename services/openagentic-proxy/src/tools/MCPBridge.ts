@@ -44,18 +44,18 @@ export class MCPBridge {
     const start = Date.now();
     const toolTimeout = this.getToolTimeout(toolName);
 
-    // CRITICAL OBO INJECTION: mcp-proxy /mcp/tool reads `meta.userAccessToken`
-    // off the request body (NOT off the Authorization header) and injects it
-    // into the user_info passed to the upstream MCP server. Without this,
-    // oap-azure-mcp falls back to a default credential and Azure ARM returns
-    // 401 "primary access token is invalid" because the request runs as the
-    // platform service principal (or no identity at all) instead of as the
-    // actual end user. We pull the access token straight off the Authorization
-    // header that buildAuthHeaders set, strip the Bearer prefix, and inject it.
+    // Identity passthrough: mcp-proxy /mcp/tool reads `meta.userAccessToken`
+    // off the request body and threads it into the user_info passed to the
+    // upstream MCP server (for per-user workspace scoping + audit attribution).
+    // We pull the bearer straight off the Authorization header that
+    // buildAuthHeaders set and strip the Bearer prefix.
     //
     // We ALSO pass the user identity fields (user_email, user_name) so the
     // shared http_transport.py logging shows the actual user instead of
-    // "unknown" / a stale platform admin email.
+    // "unknown".
+    //
+    // OSS is local-auth only — this is NOT OBO (On-Behalf-Of) federation;
+    // cloud MCP servers authenticate via their own service-account credentials.
     const authHeader = authHeaders['Authorization'] || authHeaders['authorization'] || '';
     const userAccessToken = authHeader.startsWith('Bearer ')
       ? authHeader.substring(7)
@@ -73,12 +73,8 @@ export class MCPBridge {
       meta.user_id = userId;
       meta.userId = userId;
     }
-    // Also pass the Azure ID token (separate audience) so oap-azure-mcp can
-    // do OBO exchanges if needed.
-    const azureIdToken = authHeaders['X-Azure-ID-Token'] || authHeaders['x-azure-id-token'];
-    if (azureIdToken) meta.azureIdToken = azureIdToken;
-    const awsIdToken = authHeaders['X-AWS-ID-Token'] || authHeaders['x-aws-id-token'];
-    if (awsIdToken) meta.awsIdToken = awsIdToken;
+    // OSS: no OBO (On-Behalf-Of) ID-token forwarding — local-auth only; cloud
+    // MCP servers authenticate via their own service-account credentials.
 
     try {
       const response = await axios.post(

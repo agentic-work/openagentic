@@ -142,8 +142,9 @@ export default async function orchestrateRoutes(fastify: FastifyInstance) {
         stream: body.stream
       }, '[Orchestrate] Executing with subagents');
 
-      // Create MCP client with user's token for OBO, then wrap it so every
-      // orchestrated tool call is audited + approval-gated (security: sub-agent
+      // Create MCP client with the user's local bearer (identity/audit), then
+      // wrap it so every orchestrated tool call is audited + approval-gated
+      // (OSS is local-auth only — no OBO). (security: sub-agent
       // callTool must NOT bypass the gate the chat path enforces). Non-SSE
       // route → no `emit`; a MUTATING call still audits and fails SAFE (blocks
       // on approval timeout). READs pass straight through.

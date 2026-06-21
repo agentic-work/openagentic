@@ -344,7 +344,7 @@ export class LargeResultStorageService {
         }
 
         // Allowed-MCP-servers check (when provided). Tool slug shape is
-        // `openagentic_<server>_<tool>` per buildChatV2Deps OBO plumb comments.
+        // `openagentic_<server>_<tool>` per buildChatV2Deps header-plumb comments.
         if (Array.isArray(auth.allowedMcpServers) && auth.allowedMcpServers.length > 0) {
           const serverFromTool = inferMcpServerFromToolName(stored.toolName);
           if (serverFromTool && !auth.allowedMcpServers.includes(serverFromTool)) {

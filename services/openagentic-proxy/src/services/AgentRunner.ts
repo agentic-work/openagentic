@@ -99,10 +99,6 @@ export interface RunContext {
   // now decided by TieredFunctionCalling + admin defaults; sub-agents
   // inherit the chat's resolved model.
   userMessage?: string; // The current user request that triggered delegation
-  // GAP-#277: Azure AD ID token (separate audience from userToken). Injected as
-  // X-Azure-ID-Token / X-AWS-ID-Token by MCPBridge so sub-agent MCP tool calls
-  // can do OBO for Azure/AWS exactly like the main chat path does.
-  userIdToken?: string;
   flowContext?: {
     flowId?: string;
     flowName?: string;
@@ -1075,16 +1071,9 @@ ${parentRag.slice(0, 3).map(renderChunk).join('\n\n')}
     // for any future internal caller that omits the field.
     if (ctx.userGroups && ctx.userGroups.length > 0) headers['X-User-Groups'] = ctx.userGroups.join(',');
     if (ctx.userEmail) headers['X-User-Email'] = ctx.userEmail;
-    // GAP-#277: pass the user's Azure AD ID token (separate audience from
-    // accessToken) so MCP servers can do OBO for Azure ARM / AWS Identity Center
-    // exactly like the main chat path. Without this, sub-agent Azure/AWS calls
-    // fail with InvalidAuthenticationToken / "AWS OBO failed".
-    // The mcp-proxy then forwards X-Azure-ID-Token / X-AWS-ID-Token to the
-    // upstream MCP servers (openagentic_azure, openagentic_aws).
-    if (ctx.userIdToken) {
-      headers['X-Azure-ID-Token'] = ctx.userIdToken;
-      headers['X-AWS-ID-Token'] = ctx.userIdToken;
-    }
+    // OSS: no OBO (On-Behalf-Of) ID-token forwarding — local-auth only; cloud
+    // MCP servers (azure/aws/gcp) authenticate via their own service-account /
+    // static-keypair / ADC credentials, not a per-user OBO token.
     return headers;
   }
 

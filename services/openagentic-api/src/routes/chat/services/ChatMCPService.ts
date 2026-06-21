@@ -276,7 +276,8 @@ export class ChatMCPService {
 
   /**
    * List tools - fetches all available tools from MCP Proxy
-   * NOTE: Azure MCP tools now use OBO tokens per-request, no separate per-user sessions
+   * NOTE: OSS is local-auth only — cloud MCP tools (azure/aws/gcp) authenticate
+   * via their own service-account credentials, not per-user OBO tokens.
    *
    * SEV-0 (2026-05-12): the MCP proxy `/tools` endpoint requires auth. The
    * Authorization header builder mirrors `buildMcpProxyHeaders` in

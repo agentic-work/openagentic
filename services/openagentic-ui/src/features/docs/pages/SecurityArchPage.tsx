@@ -16,12 +16,12 @@ const securityFlowDiagram: DiagramDefinition = {
     { id: 'user', label: 'User Request', shape: 'rounded', color: 'primary' },
     { id: 'tls', label: 'TLS 1.3', description: 'External encryption', shape: 'rounded', color: 'green' },
     { id: 'ingress', label: 'Ingress', description: 'nginx ingress + rate limiting', shape: 'server', color: 'orange' },
-    { id: 'auth', label: 'Authentication', description: 'Azure AD / Google / API Key', shape: 'rounded', color: 'azure' },
+    { id: 'auth', label: 'Authentication', description: 'Local (username + password) / API Key', shape: 'rounded', color: 'azure' },
     { id: 'rbac', label: 'RBAC Check', description: '5 role levels', shape: 'diamond', color: 'purple' },
     { id: 'dlp', label: 'DLP Scanner', description: '55 rules, 5 categories', shape: 'rounded', color: 'red' },
     { id: 'hitl', label: 'HITL Gate', description: 'Approval for sensitive ops', shape: 'diamond', color: 'orange' },
     { id: 'rls', label: 'Row-Level Security', description: 'PostgreSQL RLS', shape: 'database', color: 'blue' },
-    { id: 'obo', label: 'OBO Token', description: 'Execute as user', shape: 'rounded', color: 'cyan' },
+    { id: 'obo', label: 'Audited Exec', description: 'logged + scoped', shape: 'rounded', color: 'cyan' },
     { id: 'audit', label: 'Audit Trail', description: 'SHA-256 hash chain', shape: 'database', color: 'gray' },
     { id: 'tool', label: 'Tool Execution', description: 'Scoped credentials', shape: 'server', color: 'green' },
   ],
@@ -48,12 +48,8 @@ const securityFlowDiagram: DiagramDefinition = {
 
 const authMethods = [
   {
-    title: 'Azure AD SSO',
-    description: 'OAuth2 / OIDC with Azure Active Directory. Multi-factor authentication enforced via Azure conditional access policies. Primary enterprise authentication method.',
-  },
-  {
-    title: 'Google OAuth',
-    description: 'OAuth2 authentication via Google accounts. Supports personal and Google Workspace accounts for organizations using Google as their identity provider.',
+    title: 'Local Username + Password',
+    description: 'The open-source edition authenticates users locally against credentials seeded by the install wizard and stored bcrypt-hashed in the database. This is the primary authentication method. (Enterprise SSO / OIDC identity providers are an enterprise-only capability.)',
   },
   {
     title: 'API Keys',
@@ -61,7 +57,7 @@ const authMethods = [
   },
   {
     title: 'Local JWT',
-    description: 'HS256-signed JSON Web Tokens using the JWT_SECRET environment variable. Issued after SSO or API key authentication. Short-lived with refresh token rotation.',
+    description: 'HS256-signed JSON Web Tokens using the JWT_SECRET environment variable. Issued after local login or API key authentication. Short-lived with refresh token rotation.',
   },
 ];
 
@@ -104,7 +100,7 @@ const networkLayers = [
 ];
 
 const mcpSecurity = [
-  { title: 'OBO Tokens', desc: 'On-Behalf-Of tokens ensure every tool call executes as the authenticated user, not a service account. The MCP Proxy propagates the user identity to downstream services.' },
+  { title: 'Per-Call Audit + Identity', desc: 'The open-source edition identifies users via local auth and records every tool call against that user, so the audit trail reflects who ran each action. Cloud MCP servers authenticate with their own configured service-account / static-keypair / ADC credentials. (Per-user SSO run-as / On-Behalf-Of tokens are an enterprise-only capability.)' },
   { title: 'MCP_READ_ONLY_MODE', desc: 'Safety guardrail that restricts all MCP tools to read-only operations. Write operations are rejected at the proxy level. Useful for demo and audit environments.' },
   { title: 'Per-Tool Credential Scoping', desc: 'Each MCP tool only receives the credentials it needs. The Azure DevOps tool gets Azure PATs; the GitHub tool gets GitHub tokens. No cross-tool credential leakage.' },
 ];
@@ -257,8 +253,8 @@ const SecurityArchPage: React.FC = () => {
         <p style={sectionHeadingStyle}>Identity</p>
         <h2 style={sectionTitleStyle}>Authentication</h2>
         <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
-          Four authentication methods covering enterprise SSO, social login,
-          and programmatic access. All methods produce a local JWT for
+          Local authentication for interactive users plus API keys for
+          programmatic access. All methods produce a local JWT for
           subsequent API calls.
         </p>
 
@@ -459,7 +455,7 @@ const SecurityArchPage: React.FC = () => {
             { step: 'Trigger', desc: 'A tool call is flagged as sensitive based on its configuration or DLP severity.' },
             { step: 'SSE Event', desc: 'The server sends a real-time event to the UI with the tool name, arguments, and risk context.' },
             { step: 'UI Popup', desc: 'The user sees a detailed approval dialog showing exactly what the tool will do and why it was flagged.' },
-            { step: 'Decision', desc: 'The user approves or denies. On approval, the tool executes with OBO credentials. On denial, execution is skipped gracefully.' },
+            { step: 'Decision', desc: 'The user approves or denies. On approval, the tool executes (audited against the requesting user). On denial, execution is skipped gracefully.' },
             { step: 'Timeout', desc: '5-minute default timeout (configurable per tool). If no response, the tool call is automatically denied and logged.' },
           ].map((item, i) => (
             <motion.div

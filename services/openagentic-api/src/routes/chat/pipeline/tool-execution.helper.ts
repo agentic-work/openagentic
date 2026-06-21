@@ -1044,8 +1044,8 @@ function preProcessToolCall(
  * @param toolCalls - Array of tool calls from LLM response
  * @param logger - Pino logger instance
  * @param availableTools - Array of available tools for name resolution
- * @param userToken - Optional user token for OBO auth (Azure access token for ARM, API key for service auth)
- * @param idToken - Optional Azure AD ID token for AWS Identity Center OBO (has app client ID as audience)
+ * @param userToken - Optional user token (API key for service auth)
+ * @param idToken - Reserved/inert in OSS (no OBO); kept for call-site arity
  * @param userId - User ID for audit logging
  * @param sessionId - Session ID for audit tracking
  * @param messageId - Message ID for audit tracking
@@ -1089,32 +1089,12 @@ export async function executeToolCalls(
   // Track effective user ID for caching and session management
   const effectiveUserId = userId || 'anonymous';
 
-  // Detect if any tools require AWS OBO
-  const hasAwsTools = toolCalls.some(tc =>
-    tc.function.name.toLowerCase().includes('aws') ||
-    tc.function.name.toLowerCase().includes('call_aws')
-  );
-
   logger.info({
     toolCallCount: toolCalls.length,
     toolNames: toolCalls.map(tc => tc.function.name),
     hasUserToken: !!userToken,
-    hasIdToken: !!idToken,
-    hasAwsTools,
-    // Log token info for OBO debugging (without exposing actual tokens)
-    idTokenLength: idToken ? idToken.length : 0,
     userTokenLength: userToken ? userToken.length : 0
   }, '[TOOL-EXEC] Executing tool calls via MCP Proxy');
-
-  // Warn if AWS tools are called without ID token (OBO will fail)
-  if (hasAwsTools && !idToken) {
-    logger.warn({
-      toolNames: toolCalls.filter(tc =>
-        tc.function.name.toLowerCase().includes('aws')
-      ).map(tc => tc.function.name),
-      hasUserToken: !!userToken
-    }, '[TOOL-EXEC] ⚠️ AWS tools requested but no ID token available - AWS OBO authentication will fail');
-  }
 
   // =================================================================
   // 🔀 PARALLEL EXECUTION: Pre-process and categorize tool calls
@@ -1885,8 +1865,9 @@ async function executeSingleMCPProxyCall(
       // NOT by inspecting the token (which may have been overwritten by auth stage
       // with an Azure AD token loaded from DB for API key users with linked Azure accounts).
       //
-      // Auth methods:
-      // 1. 'azure-ad' → Pass the Azure AD JWT directly for OBO authentication
+      // Auth methods (OSS is local-auth only — the 'azure-ad' branch is inert
+      // here; retained for parity with the enterprise auth-routing contract):
+      // 1. 'azure-ad' → Pass the JWT directly (enterprise SSO; never set in OSS)
       // 2. 'api-key' or 'local' → Generate an internal HS256 JWT for MCP proxy auth
       // 3. Fallback → Internal API key for service-to-service auth
       const isApiKeyAuth = authMethod === 'api-key';
@@ -1895,7 +1876,7 @@ async function executeSingleMCPProxyCall(
       const isValidAzureJwt = isAzureAdAuth && userToken && userToken.split('.').length === 3;
 
       if (isValidAzureJwt) {
-        // Pass Azure AD JWT directly for OBO authentication
+        // Enterprise SSO bearer passthrough — inert in OSS (local-auth only).
         headers['Authorization'] = `Bearer ${userToken}`;
       } else if (isApiKeyAuth || isLocalAuth || !userToken) {
         // API key and local users: generate an internal HS256 JWT for MCP proxy auth
@@ -1924,18 +1905,15 @@ async function executeSingleMCPProxyCall(
         headers['Authorization'] = `Bearer ${userToken || apiInternalKey}`;
       }
 
-      // Pass ID token for OBO (On-Behalf-Of) authentication
-      // CRITICAL: ID token has audience = app's client ID, which is required for OBO
-      // The access token has audience = https://management.azure.com which is WRONG for OBO
-      // Both AWS and Azure MCP servers need the ID token for OBO to work!
-      if (idToken) {
-        headers['X-AWS-ID-Token'] = idToken;     // For AWS Identity Center
-        headers['X-Azure-ID-Token'] = idToken;   // For Azure ARM MCP
-      }
+      // OSS: no OBO (On-Behalf-Of) token forwarding. The OSS edition is
+      // local-auth only — no idToken is ever present, and cloud MCP servers
+      // (aws/azure/gcp) authenticate to their cloud via their own
+      // service-account / static-keypair / ADC credentials, not via a
+      // per-user OBO token. (OBO is an enterprise-only feature.)
 
       // Pass user info for workspace isolation
       // CRITICAL: This enables MCP servers to look up user-specific workspaces
-      // when no OBO token is available (Google auth, API keys, local accounts)
+      // (api keys, local accounts) via X-User-Email / X-User-Id.
       if (userEmail) {
         headers['X-User-Email'] = userEmail;
       }
@@ -2078,7 +2056,7 @@ async function executeSingleMCPProxyCall(
         const credService = getCredentialScopeService(logger);
         const scopedHeaders = credService.buildScopedHeaders(
           resolvedToolName,
-          { azureAccessToken: userToken, azureIdToken: idToken, userId: effectiveUserId, authMethod },
+          { azureAccessToken: userToken, userId: effectiveUserId, authMethod },
           headers,
         );
         // Apply scoped headers (may remove tokens the tool doesn't need)

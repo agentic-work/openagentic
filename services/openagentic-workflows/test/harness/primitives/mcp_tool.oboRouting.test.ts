@@ -1,21 +1,20 @@
 /**
- * mcp_tool — OBO routing parity with chatmode (Flows-3).
+ * mcp_tool — proxy routing parity with chatmode (Flows-3).
  *
  * User directive 2026-05-13: "mcps are in mcp-proxy and should and can be
  * used by flows using the current users auth/roles/rbac- same as chatmode".
  *
  * The chatmode pipeline routes every MCP invocation through mcp-proxy with
- * the user's real Azure AD `access_token` as `Authorization: Bearer <jwt>`
- * plus the user's `id_token` as `X-Azure-ID-Token` + `X-AWS-ID-Token` for
- * Azure OBO / AWS Identity Center federation. (See chatmode's
+ * the caller's bearer as `Authorization: Bearer <jwt>` (see chatmode's
  * `buildMcpProxyHeaders` in `services/openagentic-api/src/services/
- * buildChatV2Deps.ts`.)
+ * buildChatV2Deps.ts`).
  *
- * This file pins the same contract for the Flows `mcp_tool` node so the
- * mcp-proxy sees the same upn/oid for a flow-driven call as it sees for a
- * chatmode-driven call. Without this, every MCP that uses OBO (openagentic_aws.*,
- * openagentic_azure.*, openagentic_gcp.*, etc.) would 401 from inside a flow even though
- * the user is fully entitled in chatmode.
+ * OSS is local-auth only — there is NO OBO (On-Behalf-Of) federation, so the
+ * Flows `mcp_tool` node never forwards `X-Azure-ID-Token` / `X-AWS-ID-Token`.
+ * Cloud MCP servers (openagentic_aws.*, openagentic_azure.*, openagentic_gcp.*)
+ * authenticate to their cloud via their own service-account / static-keypair /
+ * ADC credentials. This file pins both the Authorization routing parity AND the
+ * no-OBO-ID-token invariant.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -70,7 +69,7 @@ describe('mcp_tool routes through mcp-proxy with user OBO (chatmode parity)', ()
     expect(receivedAuth).toMatch(/^Bearer eyJ\./);
   });
 
-  it('forwards user ID token as both X-Azure-ID-Token and X-AWS-ID-Token (OBO + AWS Identity Center)', async () => {
+  it('OSS: never forwards X-Azure-ID-Token / X-AWS-ID-Token even when an idToken is present (no OBO)', async () => {
     process.env.MCP_PROXY_URL = 'http://mcp-proxy:8082';
 
     let azureIdToken: string | null = null;
@@ -112,8 +111,9 @@ describe('mcp_tool routes through mcp-proxy with user OBO (chatmode parity)', ()
     });
 
     expect(result.status).toBe('completed');
-    expect(azureIdToken).toBe('eyJ.id.jwt');
-    expect(awsIdToken).toBe('eyJ.id.jwt');
+    // OSS is local-auth only — no OBO (On-Behalf-Of) ID-token forwarding.
+    expect(azureIdToken).toBeNull();
+    expect(awsIdToken).toBeNull();
   });
 
   it('does NOT send Authorization header when user context is absent (no anonymous OBO leak)', async () => {

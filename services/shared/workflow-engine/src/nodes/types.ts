@@ -190,13 +190,15 @@ export interface NodeExecutionContext {
   readonly userId?: string;
   /**
    * Optional user auth token (NOT internal-secret) — used by user-context
-   * nodes such as mcp_tool that call the MCP proxy as the user. The proxy
-   * validates this and uses it for OBO federation.
+   * nodes such as mcp_tool that call the MCP proxy with the user's identity.
+   * OSS is local-auth only — no OBO federation; cloud MCPs use their own
+   * service-account credentials.
    */
   readonly authToken?: string;
   /**
-   * Optional ID token — used by mcp_tool for AWS Identity Center / Azure OBO
-   * federation (passed as X-AWS-ID-Token / X-Azure-ID-Token).
+   * Reserved/inert in OSS. OSS is local-auth only — no OBO (On-Behalf-Of)
+   * federation — so this is never forwarded as an ID-token header. Retained
+   * for context-shape parity with the broader ExecutionContext threading.
    */
   readonly idToken?: string;
   /**

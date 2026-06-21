@@ -9,8 +9,8 @@
  *   - deps.runSubagent (which V2 wires to SubagentOrchestrator) is REPLACED
  *     by an adapter that invokes OpenAgenticProxyClient.executeAgent.
  *   - The adapter receives the parent ctx (userId, sessionId, parentToolUseId,
- *     OBO tokens) so the proxy can authenticate the sub-agent's downstream
- *     MCP calls.
+ *     the user's local bearer) so the proxy can attribute the sub-agent's
+ *     downstream MCP calls. OSS is local-auth only — no OBO ID-token forwarding.
  *   - When the proxy fails (network error / non-2xx), the dispatch returns
  *     ok:false to the model channel — the loop never crashes.
  *
@@ -178,10 +178,11 @@ describe('V3 Task tool dispatch routes through OpenAgenticProxyClient (Phase 6)'
     expect(callArg.parentToolUseId).toBe('tool-use-task-1');
     expect(callArg.agentName).toBe('cloud_operations');
     expect(callArg.task).toBe('Audit IAM drift');
-    // Forward OBO token + Azure ID token from parent ctx so sub-agent's
-    // downstream MCP fanouts can do OBO.
+    // Forward the user's local bearer from parent ctx for identity/audit
+    // attribution of the sub-agent's downstream tool calls. OSS is local-auth
+    // only — no OBO; userIdToken is no longer part of the request shape.
     expect(callArg.userToken).toBe('oboToken-XYZ');
-    expect(callArg.userIdToken).toBe('idToken-PQR');
+    expect(callArg.userIdToken).toBeUndefined();
   });
 
   it('Proxy failure surfaces as Task ok:false (loop does not crash)', async () => {

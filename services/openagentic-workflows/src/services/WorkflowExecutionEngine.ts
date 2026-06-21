@@ -74,7 +74,7 @@ export interface ExecutionContext {
    */
   tenantId?: string | null;
   authToken?: string;
-  /** Azure AD ID token for AWS/Azure OBO federation */
+  /** Reserved/inert in OSS (local-auth only — no OBO ID-token forwarding). */
   idToken?: string;
   /** User email for MCP workspace isolation */
   userEmail?: string;
@@ -332,7 +332,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
   /**
    * Get internal service auth headers for self-calls (LLM endpoint, etc.)
    * Uses INTERNAL_SERVICE_SECRET bypass so workflow LLM calls don't depend on user JWT validity.
-   * MCP calls still use the user's auth token for OBO (on-behalf-of) flows.
+   * MCP calls carry the user's auth token for identity/audit. OSS is local-auth
+   * only — no OBO (On-Behalf-Of) federation; cloud MCPs use service-account creds.
    *
    * INTERNAL-AUTH USER PROPAGATION (2026-05-14): when the engine has a real
    * user context (this.context.userId from /:id/execute, NOT system-fired
@@ -2392,12 +2393,9 @@ export class WorkflowExecutionEngine extends EventEmitter {
           'Authorization': (process.env.API_INTERNAL_KEY || process.env.INTERNAL_API_KEY)
             ? `Bearer ${process.env.API_INTERNAL_KEY || process.env.INTERNAL_API_KEY}`
             : (this.context.authToken || ''),
-          // Pass ID token for AWS Identity Center and Azure OBO federation
-          // (same as chat mode's tool-execution.helper.ts)
-          ...(this.context.idToken ? {
-            'X-AWS-ID-Token': this.context.idToken,
-            'X-Azure-ID-Token': this.context.idToken,
-          } : {}),
+          // OSS: no OBO (On-Behalf-Of) token forwarding. Cloud MCP servers
+          // authenticate via their own service-account / static-keypair / ADC
+          // credentials, not via a per-user OBO token (enterprise-only).
         },
         timeout: 60000,
         validateStatus: () => true,
