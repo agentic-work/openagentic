@@ -10,7 +10,7 @@ azure-identity>=1.15.0,<2.0.0
 requests>=2.31.0,<3.0.0
 redis>=5.0.0,<6.0.0
 boto3>=1.34.0,<2.0.0
-botocore>=1.34.0,<2.0.0
+botocore>=1.43.34,<2.0.0
 prometheus-fastapi-instrumentator>=6.1.0,<8.0.0
 structlog>=24.1.0,<26.0.0
 # #1059 — mcp-proxy now OWNS the mcp_tools index (Milvus + pgvector writer).
