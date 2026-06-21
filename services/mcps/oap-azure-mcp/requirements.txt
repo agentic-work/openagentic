@@ -90,7 +90,7 @@ six>=1.16.0
 
 # Key Vault Data Plane (read/write secrets, keys, certs)
 azure-keyvault-secrets>=4.9.0
-azure-keyvault-keys>=4.9.0
+azure-keyvault-keys>=4.11.1
 azure-keyvault-certificates>=4.9.0
 
 # Storage Data Plane (blob operations)
