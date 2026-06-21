@@ -400,9 +400,9 @@ export const MCPCallLogsView: React.FC<MCPCallLogsViewProps> = ({ theme }) => {
                 const meta = (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontFamily: 'var(--font-mono)' }}>{log.executionTime}ms</span>
-                    {(log.requestSize || log.responseSize) && (
+                    {(log.requestSize || log.responseSize) ? (
                       <span>{formatBytes(log.requestSize)} / {formatBytes(log.responseSize)}</span>
-                    )}
+                    ) : null}
                     {isExpanded ? (
                       <ChevronDown className="w-4 h-4" />
                     ) : (

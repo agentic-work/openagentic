@@ -109,19 +109,19 @@ const TaskItem: React.FC<{
         )}
 
         {/* Timestamp */}
-        {showTimestamp && task.completedAt && (
+        {showTimestamp && task.completedAt ? (
           <span className="text-xs text-[var(--color-textMuted)] mt-0.5 block">
             {new Date(task.completedAt).toLocaleTimeString()}
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* Duration badge for completed tasks */}
-      {isCompleted && task.startedAt && task.completedAt && (
+      {isCompleted && task.startedAt && task.completedAt ? (
         <span className="text-xs text-[var(--color-textMuted)] tabular-nums flex-shrink-0">
           {Math.round((task.completedAt - task.startedAt) / 1000)}s
         </span>
-      )}
+      ) : null}
     </motion.div>
   );
 };

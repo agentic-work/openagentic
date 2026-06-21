@@ -177,11 +177,11 @@ export const VerboseMCPDisplay: React.FC<VerboseMCPDisplayProps> = ({
             }`}>
               {status.toUpperCase()}
             </span>
-            {duration && (
+            {duration ? (
               <span className="text-xs px-2 py-1 rounded text-gray-500 bg-[var(--color-surface-2)]">
                 {formatDuration(duration)}
               </span>
-            )}
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2 text-sm text-gray-500">

@@ -719,12 +719,12 @@ const UserPermissionsView: React.FC = () => {
                   </td>
                   <td>
                     <div className="flex flex-col gap-0.5">
-                      {user.daily_token_limit && (
+                      {user.daily_token_limit ? (
                         <span className="text-xs opacity-70">D: {user.daily_token_limit.toLocaleString()}</span>
-                      )}
-                      {user.monthly_token_limit && (
+                      ) : null}
+                      {user.monthly_token_limit ? (
                         <span className="text-xs opacity-70">M: {user.monthly_token_limit.toLocaleString()}</span>
-                      )}
+                      ) : null}
                       {!user.daily_token_limit && !user.monthly_token_limit && (
                         <span className="text-xs opacity-70">Unlimited</span>
                       )}

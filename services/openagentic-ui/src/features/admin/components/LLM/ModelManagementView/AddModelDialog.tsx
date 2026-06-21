@@ -444,16 +444,16 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
                             {model.providerName && (
                               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{model.providerName}</span>
                             )}
-                            {model.contextWindow && (
+                            {model.contextWindow ? (
                               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                                 {(model.contextWindow / 1000).toFixed(0)}K ctx
                               </span>
-                            )}
-                            {(model.maxOutputTokens || model.maxTokens) && (
+                            ) : null}
+                            {(model.maxOutputTokens || model.maxTokens) ? (
                               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                                 {((model.maxOutputTokens || model.maxTokens || 0) / 1000).toFixed(0)}K out
                               </span>
-                            )}
+                            ) : null}
                             {model.capabilities && (
                               <span className="flex gap-0.5">
                                 {CAPABILITY_BADGES.filter(b => model.capabilities?.[b.key]).map(b => (
@@ -496,20 +496,20 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
                           <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Configure before adding</span>
                         </div>
                         {/* Provider-reported specs (read-only) */}
-                        {(model.contextWindow || model.capabilities) && (
+                        {(model.contextWindow || model.capabilities) ? (
                           <div className="mb-3 p-2.5 rounded-lg border" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
                             <div className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Provider-reported specs</div>
                             <div className="flex flex-wrap gap-2">
-                              {model.contextWindow && (
+                              {model.contextWindow ? (
                                 <span className="px-2 py-0.5 text-xs font-mono rounded" style={{ background: 'var(--ap-accent-dim, color-mix(in srgb, var(--color-nfo) 10%, transparent))', color: 'var(--ap-accent)' }}>
                                   {(model.contextWindow / 1000).toFixed(0)}K context
                                 </span>
-                              )}
-                              {(model.maxOutputTokens || model.maxTokens) && (
+                              ) : null}
+                              {(model.maxOutputTokens || model.maxTokens) ? (
                                 <span className="px-2 py-0.5 text-xs font-mono rounded" style={{ background: 'var(--ap-accent-dim, color-mix(in srgb, var(--color-nfo) 10%, transparent))', color: 'var(--ap-accent)' }}>
                                   {((model.maxOutputTokens || model.maxTokens || 0) / 1000).toFixed(0)}K max output
                                 </span>
-                              )}
+                              ) : null}
                               {model.capabilities && CAPABILITY_BADGES.filter(b => model.capabilities?.[b.key]).map(b => (
                                 <span key={b.key} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded"
                                   style={{ backgroundColor: `color-mix(in srgb, ${b.color} 15%, transparent)`, color: b.color }}>
@@ -518,7 +518,7 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
                               ))}
                             </div>
                           </div>
-                        )}
+                        ) : null}
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Max Output Tokens</label>

@@ -247,14 +247,14 @@ const ChainOfThoughtDisplay: React.FC<ChainOfThoughtDisplayProps> = ({
                     </span>
 
                     {/* Duration */}
-                    {step.startTime && (
+                    {step.startTime ? (
                       <span
                         className="text-[10px]"
                         style={{ color: 'var(--color-text-tertiary)' }}
                       >
                         {formatDuration(step.startTime, step.endTime)}
                       </span>
-                    )}
+                    ) : null}
 
                     {/* Expand Arrow (if has details) */}
                     {(step.request || step.response) && (

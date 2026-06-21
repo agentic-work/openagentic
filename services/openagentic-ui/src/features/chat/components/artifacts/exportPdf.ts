@@ -34,7 +34,7 @@ function markdownToHtml(md: string): string {
   // Sentinel wraps a code-block index while the rest of the markdown is
   // transformed. Uses Private-Use-Area code points (not control chars) so the
   // marker never collides with real markdown text and stays regex-safe.
-  const placeholder = (i: number) => `${i}`;
+  const placeholder = (i: number) => `\uE000${i}\uE001`;
   let working = md.replace(
     /```(\w*)\n([\s\S]*?)```/g,
     (_match, lang: string, code: string) => {

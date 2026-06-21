@@ -94,7 +94,7 @@ export const InlineMCPCall: React.FC<InlineMCPCallProps> = ({
         <span className={`text-sm font-medium ${textColor}`}>
           {call.status === 'running' ? 'Calling' : 'Called'} MCP server: <code className="font-mono text-sm">{call.serverName || 'unknown'}</code> → <code className="font-mono text-sm">{call.toolName}</code>
           {call.executedOn && <span className="text-xs ml-2 opacity-70">on {call.executedOn}</span>}
-          {duration && <span className="text-xs ml-2">({formatDuration(duration)})</span>}
+          {duration ? <span className="text-xs ml-2">({formatDuration(duration)})</span> : null}
         </span>
       </div>
 

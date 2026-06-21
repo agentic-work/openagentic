@@ -899,11 +899,11 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                           <span>
                             Rows: <span className="font-mono text-text-secondary">{formatNumber(col.rowCount)}</span>
                           </span>
-                          {col.dimension && (
+                          {col.dimension ? (
                             <span>
                               Dimension: <span className="font-mono text-text-secondary">{col.dimension}</span>
                             </span>
-                          )}
+                          ) : null}
                           {col.indexType && (
                             <span>
                               Index: <span className="font-mono text-text-secondary">{col.indexType}</span>

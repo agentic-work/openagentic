@@ -339,11 +339,11 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
                             tools
                           </span>
                         )}
-                        {model.contextWindow && model.contextWindow >= 200000 && (
+                        {model.contextWindow && model.contextWindow >= 200000 ? (
                           <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--cm-accent) 15%, transparent)', color: 'var(--cm-accent)' }}>
                             {Math.round(model.contextWindow / 1000)}k ctx
                           </span>
-                        )}
+                        ) : null}
                         {model.pullRequired && (
                           <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--cm-error) 15%, transparent)', color: 'var(--cm-error)' }}>
                             pull required

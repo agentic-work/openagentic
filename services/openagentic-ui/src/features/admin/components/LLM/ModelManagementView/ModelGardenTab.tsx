@@ -682,16 +682,16 @@ export const ModelGardenTab: React.FC<{
                                     </span>
                                   );
                                 })}
-                                {model.contextWindow && (
+                                {model.contextWindow ? (
                                   <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--color-surface)', color: 'var(--text-muted)' }}>
                                     {(model.contextWindow / 1000).toFixed(0)}K ctx
                                   </span>
-                                )}
-                                {(model.maxOutputTokens || model.maxTokens) && (
+                                ) : null}
+                                {(model.maxOutputTokens || model.maxTokens) ? (
                                   <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--color-surface)', color: 'var(--text-muted)' }}>
                                     {((model.maxOutputTokens || model.maxTokens || 0) / 1000).toFixed(0)}K out
                                   </span>
-                                )}
+                                ) : null}
                               </div>
                             )}
                             {model.description && (

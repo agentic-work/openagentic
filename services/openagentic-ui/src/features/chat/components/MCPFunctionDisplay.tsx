@@ -192,12 +192,12 @@ const MCPFunctionDisplay: React.FC<MCPFunctionDisplayProps> = ({
                     'text-text-muted'
                   }`}>
                     <span className="capitalize">{call.status}</span>
-                    {duration && (
+                    {duration ? (
                       <>
                         <span>•</span>
                         <span>{formatDuration(duration)}</span>
                       </>
-                    )}
+                    ) : null}
                     <span>•</span>
                     <span>{startTime ? startTime.toLocaleTimeString() : 'Unknown time'}</span>
                   </div>

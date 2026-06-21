@@ -87,9 +87,9 @@ const RoleIndicator: React.FC<{ role: MultiModelRole; isActive: boolean }> = ({ 
         <Icon size={14} />
       )}
       <span className="text-xs font-medium">{config.label}</span>
-      {role.duration && (
+      {role.duration ? (
         <span className="text-[10px] opacity-60">{(role.duration / 1000).toFixed(1)}s</span>
-      )}
+      ) : null}
     </motion.div>
   );
 };
@@ -213,11 +213,11 @@ export const MultiModelIndicator: React.FC<MultiModelIndicatorProps> = ({
                         </motion.span>
                       )}
                       
-                      {role.duration && (
+                      {role.duration ? (
                         <span className="text-xs text-text-secondary">
                           {(role.duration / 1000).toFixed(2)}s
                         </span>
-                      )}
+                      ) : null}
                       
                       {role.cost !== undefined && (
                         <span className="text-xs text-text-secondary">

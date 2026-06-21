@@ -92,7 +92,7 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
               <Edit2 size={14} />
             </button>
           )}
-          <div onClick={e => e.stopPropagation()}>
+          <div role="presentation" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
             <StateMachineToggle
               checked={provider.enabled}
               onCommit={onCommit}

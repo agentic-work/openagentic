@@ -1304,7 +1304,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                     </div>
 
                     {/* Cost Summary */}
-                    {(execution.totalTokens || execution.estimatedCost) && (
+                    {(execution.totalTokens || execution.estimatedCost) ? (
                       <div className="sticky bottom-0 px-3 py-2 border-t"
                         style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
                         <div className="flex items-center justify-between text-[11px]">
@@ -1320,7 +1320,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                           )}
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Right: Node I/O Inspector */}

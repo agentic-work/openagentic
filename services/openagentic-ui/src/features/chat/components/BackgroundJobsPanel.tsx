@@ -420,11 +420,11 @@ export const BackgroundJobsPanel: React.FC<BackgroundJobsPanelProps> = ({
                                 <div>
                                   <div className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center justify-between text-gray-600 dark:text-gray-500">
                                     <span>Recent Logs</span>
-                                    {job.totalLogs && job.totalLogs > job.recentLogs.length && (
+                                    {job.totalLogs && job.totalLogs > job.recentLogs.length ? (
                                       <span className="text-gray-500">
                                         (showing last {job.recentLogs.length} of {job.totalLogs})
                                       </span>
-                                    )}
+                                    ) : null}
                                   </div>
                                   <div className="text-xs font-mono space-y-0.5 p-2 rounded bg-[var(--color-surface-2)]">
                                     {job.recentLogs.map((log, idx) => (

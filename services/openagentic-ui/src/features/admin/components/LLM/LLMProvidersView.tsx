@@ -418,12 +418,12 @@ export const LLMProvidersView: React.FC<LLMProvidersViewProps> = ({ theme }) => 
                                 )}
                               </div>
                             </div>
-                            {model.maxTokens && (
+                            {model.maxTokens ? (
                               <div className="text-right">
                                 <div className="text-xs text-text-secondary">Max Tokens</div>
                                 <div className="text-sm font-medium text-text-primary">{model.maxTokens.toLocaleString()}</div>
                               </div>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       ))}

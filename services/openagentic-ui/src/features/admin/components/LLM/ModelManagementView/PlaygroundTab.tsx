@@ -275,11 +275,11 @@ export const PlaygroundTab: React.FC<{
                 }}
               >
                 <div className="whitespace-pre-wrap">{msg.content}</div>
-                {msg.latency && (
+                {msg.latency ? (
                   <div className="text-xs mt-1 opacity-60">
                     {msg.latency}ms
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           ))}

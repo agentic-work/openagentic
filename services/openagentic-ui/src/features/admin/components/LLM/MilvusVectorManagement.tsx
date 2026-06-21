@@ -294,7 +294,7 @@ export const MilvusVectorManagement: React.FC<MilvusVectorManagementProps> = ({ 
                 )}
                 <span className={reindexResult.success ? 'ap-text-success' : 'ap-text-error'}>
                   {reindexResult.message}
-                  {reindexResult.duration && ` (${reindexResult.duration}ms)`}
+                  {reindexResult.duration ? ` (${reindexResult.duration}ms)` : null}
                 </span>
               </div>
             </div>

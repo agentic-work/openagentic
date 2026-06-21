@@ -227,11 +227,11 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
                       transition: 'width 0.3s ease',
                     }}
                   />
-                  {node.duration && (
+                  {node.duration ? (
                     <span className="text-[10px] whitespace-nowrap" style={{ color: 'var(--color-text-tertiary)' }}>
                       {node.duration}ms
                     </span>
-                  )}
+                  ) : null}
                 </div>
               </button>
             );

@@ -330,7 +330,7 @@ const AdminToolInspector: React.FC<AdminToolInspectorProps> = ({ visible, onClos
                     {/* Meta row */}
                     <div className="flex gap-3 text-[10px]" style={{ color: 'var(--color-textMuted)' }}>
                       {tool.model && <span>Model: {tool.model}</span>}
-                      {tool.duration && <span>{tool.duration}ms</span>}
+                      {tool.duration ? <span>{tool.duration}ms</span> : null}
                       {tool.type === 'mcp' && <span className="uppercase font-semibold">MCP</span>}
                     </div>
 

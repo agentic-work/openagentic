@@ -1184,11 +1184,11 @@ const ThinkingBlock: React.FC<ThinkingBlockProps> = memo(({
           {isStreaming ? 'Reasoning...' : 'Thought process'}
         </span>
         <span style={{ flex: 1 }} />
-        {duration && !isStreaming && (
+        {duration && !isStreaming ? (
           <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
             {formatDuration(duration)}
           </span>
-        )}
+        ) : null}
       </button>
 
       {isExpanded && (
