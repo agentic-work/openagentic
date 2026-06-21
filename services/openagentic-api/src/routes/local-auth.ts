@@ -341,11 +341,11 @@ export const localAuthRoutes: FastifyPluginAsync = async (fastify) => {
         detail: { isAdmin: user.is_admin },
       });
 
-      // CRITICAL: Call MCP orchestrator to spawn Azure MCP for this user
-      // Admin users get admin SP, regular users get read-only SP
-      try {
-        const mcpoUrl = process.env.MCP_ORCHESTRATOR_URL || 'http://mcp-orchestrator:3001';
-
+      // Call MCP orchestrator to spawn Azure MCP for this user (enterprise OBO path).
+      // Only runs when MCP_ORCHESTRATOR_URL is explicitly configured; the default
+      // OSS install has no orchestrator service, so this whole block is skipped.
+      const mcpoUrl = process.env.MCP_ORCHESTRATOR_URL;
+      if (mcpoUrl) try {
         logger.info({
           userId: user.id,
           email: user.email,
@@ -492,32 +492,36 @@ export const localAuthRoutes: FastifyPluginAsync = async (fastify) => {
           }
         });
 
-        // Notify MCP orchestrator to kill Azure MCP processes
-        const mcpoUrl = process.env.MCP_ORCHESTRATOR_URL || 'http://mcp-orchestrator:3001';
-        const logoutResponse = await fetch(`${mcpoUrl}/api/core/user-logout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-user-id': decoded.userId
-          },
-          body: JSON.stringify({
-            userId: decoded.userId,
-            email: decoded.email
-          })
-        });
+        // Notify MCP orchestrator to kill Azure MCP processes (enterprise OBO path).
+        // Only runs when MCP_ORCHESTRATOR_URL is explicitly configured; skipped in
+        // the default OSS install where no orchestrator service exists.
+        const mcpoUrl = process.env.MCP_ORCHESTRATOR_URL;
+        if (mcpoUrl) {
+          const logoutResponse = await fetch(`${mcpoUrl}/api/core/user-logout`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-user-id': decoded.userId
+            },
+            body: JSON.stringify({
+              userId: decoded.userId,
+              email: decoded.email
+            })
+          });
 
-        if (logoutResponse.ok) {
-          const result = await logoutResponse.json();
-          logger.info({
-            userId: decoded.userId,
-            email: decoded.email,
-            cleaned: result.cleaned
-          }, 'AUDIT: Local user logout - successfully killed Azure MCP instances');
-        } else {
-          logger.warn({
-            userId: decoded.userId,
-            status: logoutResponse.status
-          }, 'AUDIT: Local user logout - failed to kill Azure MCP instances');
+          if (logoutResponse.ok) {
+            const result = await logoutResponse.json();
+            logger.info({
+              userId: decoded.userId,
+              email: decoded.email,
+              cleaned: result.cleaned
+            }, 'AUDIT: Local user logout - successfully killed Azure MCP instances');
+          } else {
+            logger.warn({
+              userId: decoded.userId,
+              status: logoutResponse.status
+            }, 'AUDIT: Local user logout - failed to kill Azure MCP instances');
+          }
         }
       } catch (error) {
         logger.warn({

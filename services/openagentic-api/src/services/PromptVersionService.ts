@@ -63,84 +63,20 @@ export class PromptVersionService {
   }
 
   /**
-   * Test a prompt version with sample data
+   * Test a prompt version with sample data.
+   *
+   * Not implemented: real testing would run each test case through the LLM and
+   * score the output. The previous implementation fabricated passed:true with
+   * Math.random() scores and persisted them as effectiveness data, which is
+   * dishonest. It has no callers, so throwing here breaks nothing on the OSS
+   * happy path.
    */
-  async testVersion(versionId: string, testCases: any[]) {
-    try {
-      const version = await prisma.promptVersion.findUnique({
-        where: { id: versionId }
-      });
-
-      if (!version) {
-        throw new Error('Prompt version not found');
-      }
-
-      const results: PromptTestResult[] = [];
-      let totalScore = 0;
-
-      // Run each test case
-      for (const testCase of testCases) {
-        try {
-          // Apply variables to the prompt content
-          let processedContent = version.content;
-          const versionVars = (version.variables as any) || {};
-          const variables = { ...versionVars, ...testCase.variables } as Record<string, any>;
-          
-          for (const [key, value] of Object.entries(variables)) {
-            processedContent = processedContent.replace(
-              new RegExp(`{{${key}}}`, 'g'),
-              String(value)
-            );
-          }
-
-          // Here you would typically call the LLM to test the prompt
-          // For now, we'll simulate with a success response
-          const testResult: PromptTestResult = {
-            testName: testCase.name,
-            passed: true,
-            score: Math.random() * 100,
-            details: {
-              input: testCase.variables,
-              processedPrompt: processedContent,
-              expectedOutput: testCase.expectedOutput
-            }
-          };
-
-          results.push(testResult);
-          totalScore += testResult.score || 0;
-        } catch (error) {
-          results.push({
-            testName: testCase.name,
-            passed: false,
-            score: 0,
-            details: { error: String(error) }
-          });
-        }
-      }
-
-      // Calculate effectiveness score
-      const effectivenessScore = results.length > 0 
-        ? totalScore / results.length 
-        : 0;
-
-      // Update version with test results
-      await prisma.promptVersion.update({
-        where: { id: versionId },
-        data: {
-          test_results: results as any,
-          effectiveness_score: effectivenessScore / 100 // Convert to 0-1 scale
-        }
-      });
-
-      return {
-        versionId,
-        results,
-        effectivenessScore
-      };
-    } catch (error) {
-      logger.error('Failed to test prompt version', { error, versionId });
-      throw error;
-    }
+  async testVersion(_versionId: string, _testCases: any[]): Promise<{
+    versionId: string;
+    results: PromptTestResult[];
+    effectivenessScore: number;
+  }> {
+    throw new Error('Prompt version testing is not implemented');
   }
 
   /**

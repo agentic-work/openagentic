@@ -150,8 +150,9 @@ export class UserAuthService {
         throw new Error('No refresh token available - user needs to re-authenticate');
       }
       
-      // In a production environment, this would use MSAL to refresh the token
-      // For now, we'll simulate the refresh process
+      // MSAL/Entra token refresh is enterprise-only and not configured in OSS;
+      // performTokenRefresh throws rather than fabricating a token, and the catch
+      // below marks the stored token expired so the user is forced to re-auth.
       const refreshResult = await this.performTokenRefresh(refreshToken);
       
       // Update the stored token
@@ -199,7 +200,7 @@ export class UserAuthService {
     }
   }
 
-  private async performTokenRefresh(refreshToken: string): Promise<{
+  private async performTokenRefresh(_refreshToken: string): Promise<{
     accessToken: string;
     idToken?: string;
     refreshToken?: string;
@@ -207,34 +208,13 @@ export class UserAuthService {
     groups?: string[];
     isAdmin?: boolean;
   }> {
-    // In production, this would make actual MSAL refresh calls:
-    // const msalInstance = new ConfidentialClientApplication(msalConfig);
-    // const refreshResponse = await msalInstance.acquireTokenSilent({
-    //   scopes: ['openid', 'profile', 'email'],
-    //   refreshToken: refreshToken
-    // });
-    
-    // For now, simulate the refresh process
-    this.logger.debug('Simulating token refresh with MSAL');
-    
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Decode existing refresh token to get user info (simplified)
-    try {
-      const decoded = decode(refreshToken) as any;
-      
-      return {
-        accessToken: `refreshed_${Date.now()}_${randomBytes(24).toString('base64url')}`,
-        idToken: `id_token_${Date.now()}_${randomBytes(16).toString('base64url')}`,
-        refreshToken: refreshToken, // In real scenario, might get new refresh token
-        email: decoded?.email || decoded?.preferred_username || '',
-        groups: decoded?.groups || [],
-        isAdmin: decoded?.groups?.includes(this.adminGroupId) || false
-      };
-    } catch (decodeError) {
-      throw new Error('Invalid refresh token format');
-    }
+    // MSAL/Entra token refresh is an enterprise-only capability. Refreshing a
+    // real Azure AD token requires a ConfidentialClientApplication wired to the
+    // IdP (acquireTokenByRefreshToken), which the default OSS install does not
+    // configure. There is no caller of refreshUserToken/performTokenRefresh on
+    // the OSS local-auth path, so this only throws on the genuinely
+    // unconfigured enterprise path — it must never fabricate tokens.
+    throw new Error('token refresh not configured');
   }
 
   async getUserMCPInstance(userId: string, mcpType: string): Promise<any> {

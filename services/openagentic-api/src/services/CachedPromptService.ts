@@ -461,14 +461,17 @@ export class CachedPromptService {
     if (!this.options.enableCache || !this.redisClient) return;
 
     this.logger.warn('Invalidating all user prompt caches - this is an expensive operation');
-    
-    // Note: This is a simplified approach. In production, you might want to:
-    // 1. Keep track of cached user keys
-    // 2. Use Redis pattern matching to delete keys
-    // 3. Use cache versioning instead of deletion
-    
-    // For now, we'll just log the action since we don't have a key tracking mechanism
-    this.logger.debug('All user caches invalidation requested');
+
+    // Per-user templates are cached under `prompt:user:<userId>` (see getUserTemplate).
+    // Match those keys and delete them so the invalidation actually happens rather
+    // than only being logged. KEYS is acceptable here because this is a rarely-used
+    // admin-triggered operation, not a hot path.
+    const keys = await this.redisClient.keys('prompt:user:*');
+    for (const key of keys) {
+      await this.redisClient.del(key);
+    }
+
+    this.logger.debug({ invalidated: keys.length }, 'All user prompt caches invalidated');
   }
 
   /**

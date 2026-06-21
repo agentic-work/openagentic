@@ -652,26 +652,31 @@ export const analyticsRoutes: FastifyPluginAsync = async (fastify) => {
         .then(() => true)
         .catch(() => false);
 
-      // Check MCP orchestrator
-      const orchestratorUrl = process.env.MCP_ORCHESTRATOR_URL || 'http://mcp-orchestrator:3001';
+      // Check MCP orchestrator — only when explicitly configured (enterprise OBO
+      // path). The default OSS install has no orchestrator service, so we omit
+      // the row entirely rather than reporting a phantom "unhealthy" that would
+      // drag down the overall health score.
+      const orchestratorUrl = process.env.MCP_ORCHESTRATOR_URL;
       let mcpHealthy = false;
       let mcpServers = 0;
-      
-      try {
-        const mcpResponse = await fetch(`${orchestratorUrl}/health`, { 
-          signal: AbortSignal.timeout(5000) 
-        });
-        mcpHealthy = mcpResponse.ok;
-        
-        if (mcpHealthy) {
-          const serversResponse = await fetch(`${orchestratorUrl}/api/inspector/api/servers`);
-          if (serversResponse.ok) {
-            const serversData = await serversResponse.json() as any;
-            mcpServers = serversData.servers?.length || 0;
+
+      if (orchestratorUrl) {
+        try {
+          const mcpResponse = await fetch(`${orchestratorUrl}/health`, {
+            signal: AbortSignal.timeout(5000)
+          });
+          mcpHealthy = mcpResponse.ok;
+
+          if (mcpHealthy) {
+            const serversResponse = await fetch(`${orchestratorUrl}/api/inspector/api/servers`);
+            if (serversResponse.ok) {
+              const serversData = await serversResponse.json() as any;
+              mcpServers = serversData.servers?.length || 0;
+            }
           }
+        } catch (error) {
+          logger.debug({ error }, 'MCP health check failed');
         }
-      } catch (error) {
-        logger.debug({ error }, 'MCP health check failed');
       }
 
       // Service statuses
@@ -682,13 +687,14 @@ export const analyticsRoutes: FastifyPluginAsync = async (fastify) => {
           uptime: dbHealthy ? '99.9%' : '0%',
           responseTime: dbHealthy ? 5 : 0 // ms
         },
-        {
+        // Only surface the MCP Orchestrator row when one is configured.
+        ...(orchestratorUrl ? [{
           name: 'MCP Orchestrator',
           status: mcpHealthy ? 'healthy' : 'unhealthy',
           uptime: mcpHealthy ? '99.5%' : '0%',
           responseTime: mcpHealthy ? 50 : 0,
           metadata: { servers: mcpServers }
-        },
+        }] : []),
         {
           name: 'Vector Search',
           status: 'healthy', // TODO: Check Milvus

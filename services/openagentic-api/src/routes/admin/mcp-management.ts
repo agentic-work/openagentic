@@ -571,9 +571,21 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
       if (!server) {
         return reply.code(404).send({ error: 'MCP server not found' });
       }
-      
+
+      // The connection test goes through the MCP orchestrator (enterprise OBO
+      // path). The default OSS install has no orchestrator service, so report
+      // "not configured" instead of fetching a nonexistent host.
+      const orchestratorUrl = process.env.MCP_ORCHESTRATOR_URL;
+      if (!orchestratorUrl) {
+        return reply.send({
+          success: false,
+          status: 'not_configured',
+          error: 'MCP orchestrator is not configured (MCP_ORCHESTRATOR_URL unset)'
+        });
+      }
+
       // Try to list tools from the server
-      const testUrl = `${process.env.MCP_ORCHESTRATOR_URL || 'http://mcp-orchestrator:3001'}/api/mcp/tools`;
+      const testUrl = `${orchestratorUrl}/api/mcp/tools`;
       const response = await fetch(testUrl, {
         headers: {
           'x-mcp-server': serverId,

@@ -17,11 +17,14 @@ interface MCPHealthStatus {
 
 export class MCPHealthCheckService {
   private logger: Logger;
-  private orchestratorUrl: string;
+  private orchestratorUrl: string | undefined;
 
   constructor(logger: Logger) {
     this.logger = logger;
-    this.orchestratorUrl = process.env.MCP_ORCHESTRATOR_URL || process.env.ORCHESTRATOR_URL || 'http://mcp-orchestrator:3001';
+    // Only set when explicitly configured. The default OSS install has no
+    // MCP orchestrator service, so leaving this undefined makes every method
+    // short-circuit instead of firing a doomed fetch at a nonexistent host.
+    this.orchestratorUrl = process.env.MCP_ORCHESTRATOR_URL || process.env.ORCHESTRATOR_URL || undefined;
   }
 
   /**
@@ -29,6 +32,17 @@ export class MCPHealthCheckService {
    */
   async checkMCPHealth(): Promise<MCPHealthStatus> {
     const startTime = Date.now();
+
+    // No orchestrator configured (default OSS): report healthy with nothing to do.
+    if (!this.orchestratorUrl) {
+      return {
+        healthy: true,
+        orchestratorUrl: '',
+        servers: 0,
+        tools: 0,
+        responseTime: '0ms'
+      };
+    }
 
     try {
       // Try to connect to MCP orchestrator health endpoint
@@ -83,6 +97,9 @@ export class MCPHealthCheckService {
    * Gets the list of registered MCP servers
    */
   async getServers(): Promise<any[]> {
+    if (!this.orchestratorUrl) {
+      return [];
+    }
     try {
       const response = await fetch(`${this.orchestratorUrl}/api/mcp/servers`, {
         method: 'GET',
@@ -108,6 +125,9 @@ export class MCPHealthCheckService {
    * Gets the list of available tools
    */
   async getTools(): Promise<any[]> {
+    if (!this.orchestratorUrl) {
+      return [];
+    }
     try {
       const response = await fetch(`${this.orchestratorUrl}/api/mcp/tools`, {
         method: 'GET',
