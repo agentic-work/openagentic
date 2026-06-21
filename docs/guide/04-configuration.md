@@ -198,23 +198,35 @@ BOOTSTRAP_PROVIDER_DEFAULTS='{"chat":"anthropic.claude-sonnet-4-6","embedding":"
 SEEDER_VERSION=6
 ```
 
-### Vector store (Milvus) and tool cache
+### Vector store (pgvector default, optional Milvus) and tool cache
 
-Milvus is **mandatory** for the documented compose path: the api connects to it on boot
-and `exit(1)`s if unreachable (`server.ts`) — there is **no** pgvector-only fallback in
-compose. Milvus (with bundled `etcd` + `minio`) is gated behind the `milvus` profile, so
-the documented up command is always:
+The default vector backend is **pgvector** (Postgres): `isMilvusEnabled()` in `server.ts`
+returns `false` unless `MILVUS_HOST` is set or `MILVUS_ENABLED=true`, so a bare
+`docker compose up -d` boots healthy with no etcd/minio/milvus and uses pgvector for MCP
+tool search and RAG.
 
 ```bash
-docker compose --profile milvus up -d   # bare `up` crashes the api
+docker compose up -d   # default — pgvector-only, boots healthy as-is
 ```
+
+Milvus is **optional** — an add-on for high-availability or large-scale RAG. It (with
+bundled `etcd` + `minio`) is gated behind the `milvus` profile, and you enable it by
+passing the profile **and** flipping the api's Milvus path on:
+
+```bash
+MILVUS_ENABLED=true docker compose --profile milvus up -d   # optional Milvus backend
+```
+
+When you opt in, the api connects to Milvus on boot and fails loud if it is unreachable —
+so only set `MILVUS_ENABLED=true` alongside `--profile milvus` (or a reachable external
+`MILVUS_HOST`).
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `MILVUS_HOST` | `milvus` (compose service name) | Milvus host. A profile-up install needs no extra `.env`. |
+| `MILVUS_HOST` | (unset → pgvector-only; `milvus` service name when the profile is up) | Milvus host. `isMilvusEnabled()` treats an unset/empty `MILVUS_HOST` as pgvector-only, so setting it (to a reachable Milvus) is the primary switch that turns the Milvus path on. |
 | `MILVUS_PORT` | `19530` | Milvus port. |
-| `MILVUS_ENABLED` | (unset → treated as enabled) | The api treats any value **other than** `false` as enabled. Set `MILVUS_ENABLED=false` to skip the Milvus boot connect and run **pgvector-only** (the api logs `running pgvector-only` and uses pgvector for MCP tool search). Compose does not set this; the Helm chart sets it when `milvus.enabled: false`. |
-| `SKIP_TOOL_SEMANTIC_CACHE` | `true` | Gates **only** tool-embedding generation / RAG indexing. It does **not** make the api skip the mandatory Milvus boot connection. |
+| `MILVUS_ENABLED` | (unset → pgvector-only by default) | Explicit opt-out: `MILVUS_ENABLED=false` forces pgvector-only even if `MILVUS_HOST` is set. To run Milvus, set `MILVUS_HOST` (e.g. via `--profile milvus`) and leave `SKIP_TOOL_SEMANTIC_CACHE` non-`true`. The Helm chart wires this when `milvus.enabled: true`. |
+| `SKIP_TOOL_SEMANTIC_CACHE` | `true` | When `true` the api runs pgvector-only **and** skips tool-embedding generation / RAG indexing. Set it to `false` (and provide `MILVUS_HOST`) to enable the Milvus path. |
 | `DISABLE_RAG` | `true` | Disables RAG retrieval on first boot to prevent pipeline stalls from embedding timeouts when Ollama is shared with chat/tools. Re-enable once you have a dedicated embedding endpoint. |
 
 ### Service wiring (compose internal)
@@ -504,8 +516,11 @@ Before first boot, make sure you have:
 - [ ] Set the same `JWT_SECRET` / `SIGNING_SECRET` / `INTERNAL_API_KEY` /
       `INTERNAL_SERVICE_SECRET` across **all** services (the installer does this).
 - [ ] Set `ADMIN_USER_EMAIL` + `ADMIN_SEED_PASSWORD` (don't ship the placeholder).
-- [ ] Started compose with `--profile milvus` (or set `MILVUS_ENABLED=false` for
-      pgvector-only on Helm).
+- [ ] Decided your vector backend: the default `docker compose up -d` is
+      pgvector-only and boots healthy as-is — only add `MILVUS_ENABLED=true
+      docker compose --profile milvus up -d` if you want the optional Milvus
+      backend (Helm defaults Milvus on; set `milvus.enabled: false` for
+      pgvector-only there).
 - [ ] An Ollama endpoint reachable for embeddings (`nomic-embed-text` will be pulled).
 - [ ] At least one chat-capable model — a local Ollama chat model, or an LLM provider key
       / Bedrock bootstrap provider.

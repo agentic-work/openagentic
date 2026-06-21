@@ -720,18 +720,20 @@ printf '  Auto-login:     %s%s%s   %s(one-shot)%s\n' "$C_BOLD" "$MAGIC_URL" "$C_
 printf '  Admin email:    %sadmin@openagentic.local%s\n' "$C_BOLD" "$C_RESET"
 printf '  Admin password: see %s~/.openagentic/admin-credentials.txt%s\n\n' "$C_BOLD" "$C_RESET"
 
-if (( ${#detected[@]} > 0 )); then
-  printf '  %sTry one of these in the chat:%s\n' "$C_PURPLE" "$C_RESET"
-  for tag in "${detected[@]}"; do
-    case "$tag" in
-      Azure*) printf '    · %sShow me my Azure subscriptions%s\n'           "$C_BOLD" "$C_RESET" ;;
-      AWS*)   printf '    · %sShow me my AWS account and EC2 instances%s\n' "$C_BOLD" "$C_RESET" ;;
-      GCP*)   printf '    · %sList my GCP projects%s\n'                     "$C_BOLD" "$C_RESET" ;;
-      Kuber*) printf '    · %sList all my Kubernetes pods%s\n'              "$C_BOLD" "$C_RESET" ;;
-    esac
-  done
-  printf '\n'
-fi
+printf '  %sTry this first in the chat:%s\n' "$C_PURPLE" "$C_RESET"
+# The kubernetes MCP uses the in-cluster / mounted pod ServiceAccount, so this
+# works with ZERO cloud creds — always shown first.
+printf '    · %sWhich pods are crashlooping and why?%s\n' "$C_BOLD" "$C_RESET"
+# Cloud-specific prompts are only useful when that cloud MCP is actually
+# credentialed, so show them as secondary suggestions only when detected.
+for tag in "${detected[@]}"; do
+  case "$tag" in
+    Azure*) printf '    · %sShow me my Azure subscriptions%s\n'           "$C_BOLD" "$C_RESET" ;;
+    AWS*)   printf '    · %sShow me my AWS account and EC2 instances%s\n' "$C_BOLD" "$C_RESET" ;;
+    GCP*)   printf '    · %sList my GCP projects%s\n'                     "$C_BOLD" "$C_RESET" ;;
+  esac
+done
+printf '\n'
 
 if [[ "$OPEN_BROWSER" == "1" ]]; then
   if   command -v xdg-open >/dev/null 2>&1; then xdg-open "$MAGIC_URL" >/dev/null 2>&1 || true

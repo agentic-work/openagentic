@@ -11,7 +11,7 @@ are three install paths:
 
 | Path | Command | When to use |
 |---|---|---|
-| **Docker Compose (quick)** | `curl -sSL .../install.sh \| bash` then `docker compose --profile milvus up -d` | A laptop, a VM, or any box with Docker. The fastest way to a running stack. |
+| **Docker Compose (quick)** | `curl -sSL .../install.sh \| bash` then `docker compose up -d` | A laptop, a VM, or any box with Docker. The fastest way to a running stack. |
 | **Kubernetes (Helm)** | `curl -sSL .../install.sh \| bash -s -- --helm` | You already run Kubernetes and want to manage OpenAgentic like everything else. |
 | **Interactive wizard** | `curl -sSL .../install.sh \| bash` (default) or `--wizard` | Guided setup — pick providers, MCPs, and credentials in a TUI before launch. |
 
@@ -90,8 +90,11 @@ reports.
 ## Path 1 — Docker Compose (quick)
 
 This is the supported, batteries-included path. One command brings up the whole
-stack: Postgres (pgvector), Redis, Milvus (with its etcd + MinIO), Ollama,
-SearXNG, Prometheus, and all six application services.
+stack: Postgres (pgvector), Redis, Ollama, SearXNG, Prometheus, and all six
+application services. The default stack uses **pgvector** as the vector backend,
+so a bare `docker compose up -d` boots healthy with no extra services. Milvus
+(with its etcd + MinIO) is an **optional** add-on behind the `--profile milvus`
+flag — see [The optional `--profile milvus` add-on](#the-optional---profile-milvus-add-on).
 
 ### 1. Run the installer
 
@@ -124,7 +127,8 @@ curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/instal
    `~/.openagentic/admin-credentials.txt` (mode `600`).
 4. **Detects host cloud CLIs** (`~/.aws`, `~/.azure`, `~/.config/gcloud`,
    `~/.kube`) and reports which ones will be mounted read-only into the MCP proxy.
-5. **Brings the stack up** with `docker compose --profile milvus up -d`.
+5. **Brings the stack up** with `docker compose up -d` (the default pgvector-only
+   stack — no etcd/minio/milvus).
 6. **Waits for the API to report healthy** (~90 s on first boot), then prints the
    UI URL and opens your browser auto-logged-in via a one-shot magic link.
 
@@ -133,29 +137,37 @@ By default a `curl … | bash` install lands in `~/.openagentic` (overridable wi
 `docker-compose.yml` and `services/openagentic-api`, it uses that checkout in
 place instead.
 
-### 2. The `--profile milvus` requirement
+### 2. The optional `--profile milvus` add-on
 
-This is the single most important thing to get right.
-
-```bash
-docker compose --profile milvus up -d
-```
-
-The API connects to **Milvus on boot and exits if it cannot reach it** — there
-is no pgvector-only fallback in the default Compose stack. Milvus and its two
-dependencies (etcd, MinIO) sit behind the `milvus` profile purely so they can be
-pulled and started as one unit. **A bare `docker compose up -d` (no profile)
-will crash the API at boot.** Both `install.sh` and the wizard always pass
-`--profile milvus`; if you bring the stack up by hand, you must too.
+The default vector backend is **pgvector** (Postgres), so the everyday up command
+is just:
 
 ```bash
-# CORRECT
-docker compose --profile milvus up -d
-
-# WRONG — the api will crashloop because Milvus never starts
 docker compose up -d
 ```
 
+This boots healthy on its own — no etcd, MinIO, or Milvus required. The API uses
+pgvector for MCP tool search and RAG by default (`isMilvusEnabled()` in
+`server.ts` returns `false` unless you opt in), so a bare `up` is the supported
+path for a laptop, a VM, or a single-node deploy.
+
+**Milvus is optional** — reach for it only when you want a dedicated vector
+database for high-availability or large-scale RAG. It and its two dependencies
+(etcd, MinIO) sit behind the `milvus` profile so they can be pulled and started
+as one unit. To enable it, pass the profile **and** turn the API's Milvus path on
+with `MILVUS_ENABLED=true`:
+
+```bash
+# DEFAULT — pgvector-only, boots healthy with no extra services
+docker compose up -d
+
+# OPTIONAL — add the Milvus trio for HA / large-scale RAG
+MILVUS_ENABLED=true docker compose --profile milvus up -d
+```
+
+> When you opt into Milvus, the API connects to it on boot and will exit if it
+> cannot reach it — so only set `MILVUS_ENABLED=true` together with
+> `--profile milvus` (or point `MILVUS_HOST` at a reachable external Milvus).
 > Prometheus, SearXNG, and the app services are in the **default** profile, so
 > the only thing the `milvus` profile adds is `etcd`, `minio`, and `milvus`.
 
@@ -357,8 +369,10 @@ it:
 # launch
 ./tools/setup/node_modules/.bin/tsx tools/setup/src/index.tsx
 
-# then bring the stack up (Milvus profile is required)
-docker compose --profile milvus up -d
+# then bring the stack up (pgvector-only default — boots healthy as-is)
+docker compose up -d
+# …or opt into the optional Milvus backend:
+# MILVUS_ENABLED=true docker compose --profile milvus up -d
 ```
 
 ---
@@ -374,9 +388,10 @@ you can skip **all** prompts and auto-generation on a second machine or in CI:
 
 This copies your file to `./.env` (mode `600`), mints a `MAGIC_BOOT_TOKEN` if one
 isn't present (so first-run autologin still works), brings the stack up with
-`docker compose --profile milvus up -d`, waits for the API to go healthy, and
-prints the UI + autologin URLs. The wizard writes exactly this `.env` shape, so
-`--env` is the "I already configured it once, now do it again" path.
+`docker compose up -d` (the default pgvector stack; add `--milvus` to opt into
+Milvus), waits for the API to go healthy, and prints the UI + autologin URLs. The
+wizard writes exactly this `.env` shape, so `--env` is the "I already configured
+it once, now do it again" path.
 
 ### Configuring `.env` by hand
 
@@ -458,7 +473,7 @@ healthy.
 
 ```bash
 # all services should be healthy or running
-# (run after `--profile milvus up` so etcd/minio/milvus appear)
+# (etcd/minio/milvus appear only if you opted into `--profile milvus`)
 docker compose ps
 
 # wait for the api to report healthy
@@ -506,8 +521,10 @@ auto-logged-in. Pass `--no-open` to skip the browser launch.
 ```
 
 `--update` is safe to re-run. On the Docker path it runs
-`docker compose --profile milvus up -d --build` and waits for the API to return
-to healthy; on the Helm path it runs `helm upgrade` and waits for the rollout.
+`docker compose up -d --build` (matching whichever vector backend you installed
+with — it adds `--profile milvus` only if you pass `--milvus`) and waits for the
+API to return to healthy; on the Helm path it runs `helm upgrade` and waits for
+the rollout.
 
 ---
 
@@ -539,7 +556,7 @@ the logs against this list first (`docker logs openagentic-api-1 --tail=100`):
 
 | Symptom | Cause / fix |
 |---|---|
-| API exits immediately, never goes healthy | You ran a **bare** `docker compose up` — Milvus never started. Use `docker compose --profile milvus up -d`. |
+| API exits immediately, never goes healthy | If you opted into Milvus (`MILVUS_ENABLED=true`) but started a **bare** `docker compose up`, the api can't reach Milvus. Either drop `MILVUS_ENABLED` to run pgvector-only, or start with `MILVUS_ENABLED=true docker compose --profile milvus up -d`. The default pgvector-only `docker compose up -d` boots healthy on its own. |
 | `table … does not exist` | Prisma schema push hadn't run — it now runs on entrypoint and is idempotent; restart the api. |
 | `type "halfvec" does not exist` | pgvector extension. The Postgres init script enables it on first boot; if you reused an old volume, recreate it. |
 | `Post-indexing verification failed — 0 results` | Expected on first boot (empty tool index). The first chat request re-triggers indexing — not fatal. |
