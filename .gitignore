@@ -400,8 +400,10 @@ tests/demos-pw/package-lock.json
 *.jpeg
 *.jpg
 
-# CI-prefetched helm binary (vendored at build time, never committed)
+# CI-prefetched helm binaries (vendored per-arch at build time, never committed)
 services/openagentic-mcp-proxy/vendor/helm
+services/openagentic-mcp-proxy/vendor/helm-amd64
+services/openagentic-mcp-proxy/vendor/helm-arm64
 *.new
 
 # Local internal status tooling — never ship

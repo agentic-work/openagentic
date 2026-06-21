@@ -1,9 +1,10 @@
 name: Build & Push to GHCR
 
 # Triggers:
-#   - push to main  → :latest + :sha-XXXXXXX
-#   - version tag   → :vX.Y.Z + :X.Y + :latest
-#   - manual        → optional tag override
+#   - push to main  → multi-arch :latest (GHCR keeps ONLY :latest; all other
+#                     versions are pruned by the post-push cleanup step)
+#   - version tag   → release-artifacts (compose tarball + OCI helm + npm wizard)
+#   - manual        → wizard publish from the Actions tab
 on:
   push:
     branches: [main]
@@ -35,7 +36,8 @@ jobs:
 
     permissions:
       contents: read
-      packages: write
+      packages: write          # build/push + GHCR cleanup (delete) of owner's packages
+      security-events: write   # upload Trivy SARIF to the GitHub Security tab
 
     # DinD sidecar shares /var/run/docker.sock via an emptyDir volume.
     # Runner connects via the standard Unix socket — no TLS needed (in-pod only).
@@ -46,27 +48,29 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Node.js images: amd64-only — tsc segfaults under QEMU arm64 emulation.
-          # Add arm64 later by wiring native RPi runners with a separate job.
+          # All services build multi-arch (linux/amd64 + linux/arm64) so the
+          # arm64 Raspberry-Pi k3s cluster is a first-class deploy target. The
+          # setup-qemu-action + buildx multi-platform push produce a fat manifest.
+          # (tsc builds cleanly under arm64 QEMU — the old "tsc segfaults under
+          #  QEMU arm64" caveat is stale and has been removed.)
           - service: openagentic-api
             dockerfile: services/openagentic-api/Dockerfile
             build_arg: SRC_PATH=services/openagentic-api
-            platforms: linux/amd64
+            platforms: linux/amd64,linux/arm64
           - service: openagentic-ui
             dockerfile: services/openagentic-ui/Dockerfile
             build_arg: SRC_PATH=services/openagentic-ui
-            platforms: linux/amd64
+            platforms: linux/amd64,linux/arm64
           - service: openagentic-workflows
             dockerfile: services/openagentic-workflows/Dockerfile
             build_arg: ''
-            platforms: linux/amd64
-          # Python/light images: multi-arch fine under QEMU
+            platforms: linux/amd64,linux/arm64
           - service: openagentic-mcp-proxy
             dockerfile: services/openagentic-mcp-proxy/Dockerfile
             build_arg: SRC_PATH=services/openagentic-mcp-proxy
-            # amd64-only: the heavy CLI installs (helm/aws/azure curl) are flaky
-            # under QEMU arm64 network emulation. Cluster runs mcp-proxy on amd64.
-            platforms: linux/amd64
+            # helm is vendored per-arch (see "Pre-fetch helm" step); aws/azure
+            # CLIs install per-arch inside the Dockerfile via TARGETARCH.
+            platforms: linux/amd64,linux/arm64
             no_cache: "true"
           - service: openagentic-proxy
             dockerfile: services/openagentic-proxy/Dockerfile
@@ -114,6 +118,9 @@ jobs:
             env.BUILDKIT_STEP_LOG_MAX_SIZE=10485760
 
       # ── Tags ──────────────────────────────────────────────────────────────────
+      # GHCR keeps ONLY :latest. The semver / sha-* / tag_override tags were
+      # removed so no extra versions are ever published; the post-push cleanup
+      # step prunes anything that isn't :latest.
       - name: Compute image tags
         id: meta
         uses: docker/metadata-action@v5.7.0
@@ -121,24 +128,79 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=sha-,format=short
-            type=raw,value=${{ github.event.inputs.tag_override }},enable=${{ github.event.inputs.tag_override != '' }}
 
       # ── Pre-fetch vendored binaries (runner network is reliable; DinD's isn't) ──
       # mcp-proxy needs helm; get.helm.sh resets connections inside the DinD build,
       # so fetch it here on the runner and let the Dockerfile COPY it in.
-      - name: Pre-fetch helm for mcp-proxy
+      # Vendor BOTH arch helm binaries (helm-amd64 / helm-arm64) so the
+      # multi-arch Dockerfile can COPY them and install the one matching the
+      # build leg's $TARGETARCH. Fetching on the runner avoids the get.helm.sh
+      # TLS resets seen inside the DinD build network.
+      - name: Pre-fetch helm for mcp-proxy (both arches)
         if: matrix.service == 'openagentic-mcp-proxy'
         run: |
           mkdir -p services/openagentic-mcp-proxy/vendor
-          curl -fsSL "https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz" \
-            | tar -xz -C services/openagentic-mcp-proxy/vendor --strip-components=1 linux-amd64/helm
-          chmod +x services/openagentic-mcp-proxy/vendor/helm
+          for ARCH in amd64 arm64; do
+            curl -fsSL "https://get.helm.sh/helm-v3.17.3-linux-${ARCH}.tar.gz" \
+              | tar -xz -C services/openagentic-mcp-proxy/vendor --strip-components=1 "linux-${ARCH}/helm"
+            mv services/openagentic-mcp-proxy/vendor/helm "services/openagentic-mcp-proxy/vendor/helm-${ARCH}"
+            chmod +x "services/openagentic-mcp-proxy/vendor/helm-${ARCH}"
+          done
           ls -la services/openagentic-mcp-proxy/vendor/
 
-      # ── Build & push ─────────────────────────────────────────────────────────
+      # ── Build amd64 locally for the Trivy gate ────────────────────────────────
+      # Scan BEFORE pushing: build a single-arch amd64 image (the runner is amd64,
+      # so Trivy can scan it natively) and --load it into the daemon. Sharing the
+      # registry layer cache means the subsequent multi-arch push reuses these
+      # layers — the amd64 leg is not rebuilt from scratch. A failing Trivy gate
+      # here stops the job before any image is published.
+      - name: Build amd64 image for scan
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: localscan/${{ matrix.service }}:scan
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build_arg }}
+          network: host
+          cache-from: ${{ matrix.no_cache == 'true' && '' || format('type=registry,ref={0}/{1}/{2}:buildcache', env.REGISTRY, env.ORG, matrix.service) }}
+          cache-to:   type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache,mode=max
+          provenance: false
+
+      # ── Trivy vuln gate (fails the job on HIGH/CRITICAL) ──────────────────────
+      # Two passes: pass 1 writes SARIF for the Security tab (does NOT gate);
+      # pass 2 enforces the gate (exit-code 1 on HIGH/CRITICAL fixable vulns).
+      - name: Trivy scan → SARIF (report)
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: localscan/${{ matrix.service }}:scan
+          format: sarif
+          output: trivy-${{ matrix.service }}.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Upload Trivy SARIF to GitHub Security
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.service }}.sarif
+          category: trivy-${{ matrix.service }}
+
+      - name: Trivy vulnerability gate (HIGH,CRITICAL)
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: localscan/${{ matrix.service }}:scan
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      # ── Multi-arch build & push (only reached if the Trivy gate passed) ────────
       - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v6.18.0
         with:
@@ -156,6 +218,31 @@ jobs:
           cache-from: ${{ matrix.no_cache == 'true' && '' || format('type=registry,ref={0}/{1}/{2}:buildcache', env.REGISTRY, env.ORG, matrix.service) }}
           cache-to:   type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache,mode=max
           provenance: false
+
+      # ── GHCR cleanup: keep ONLY :latest ───────────────────────────────────────
+      # After the multi-arch push, delete every other version of this package so
+      # GHCR never accumulates old/untagged versions. owner=agentic-work is a USER
+      # account (not an org). The default GITHUB_TOKEN has packages:write/delete
+      # for the owner's packages. Only runs on the default branch (where :latest
+      # is actually published).
+      - name: Prune GHCR — keep only :latest
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        uses: dataaxiom/ghcr-cleanup-action@v1
+        with:
+          owner: ${{ env.ORG }}
+          packages: ${{ matrix.service }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # exclude-tags takes priority over every other rule, so :latest (and the
+          # :buildcache image we push for layer caching) are always preserved.
+          # keep-n-tagged: 0 + delete-untagged: true deletes EVERY other tagged
+          # and untagged version, leaving only the excluded tags. continue-on-error
+          # above means an empty package (nothing to delete) never fails the build.
+          exclude-tags: latest,buildcache
+          keep-n-tagged: 0
+          delete-untagged: true
+          delete-ghost-images: true
+          delete-partial-images: true
 
   # ── On version tags: compose tarball + OCI helm chart + npm wizard ──────────
   release-artifacts:

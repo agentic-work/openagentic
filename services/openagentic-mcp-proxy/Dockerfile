@@ -22,8 +22,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip3 install --no-cache-dir --break-system-packages azure-cli \
     || pip3 install --no-cache-dir azure-cli
 
-# Install AWS CLI v2 (required by OpenAgentic AWS MCP for CLI command execution, architecture-aware)
-RUN ARCH=$(dpkg --print-architecture) && \
+# Install AWS CLI v2 (required by OpenAgentic AWS MCP for CLI command execution).
+# Architecture-aware: prefer the buildx-provided TARGETARCH (correct per manifest
+# leg in a multi-arch build), fall back to dpkg for local single-arch builds.
+ARG TARGETARCH
+RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \
     if [ "$ARCH" = "amd64" ]; then AWS_ARCH="x86_64"; \
     elif [ "$ARCH" = "arm64" ]; then AWS_ARCH="aarch64"; \
     else AWS_ARCH="x86_64"; fi && \
@@ -34,15 +37,21 @@ RUN ARCH=$(dpkg --print-architecture) && \
     && rm -rf awscliv2.zip aws \
     && aws --version
 
-# Install Helm v3. External CDNs (get.helm.sh, baltocdn) get their TLS
-# connection reset under the DinD build network, so the binary is pre-fetched
-# by CI into vendor/helm and COPYed in. Falls back to curl for local builds
-# where vendor/helm isn't present.
+# Install Helm v3 — architecture-aware for multi-arch (amd64 + arm64) builds.
+# External CDNs (get.helm.sh, baltocdn) get their TLS connection reset under
+# the DinD build network, so CI pre-fetches BOTH arch binaries into vendor/
+# as helm-amd64 / helm-arm64 and we select the one matching the build target.
+# TARGETARCH is the buildx-provided target arch (amd64/arm64) for the current
+# manifest leg; it matches dpkg --print-architecture inside the target rootfs.
+# Falls back to curl for local builds where the vendored binaries aren't present.
+ARG TARGETARCH
 COPY services/openagentic-mcp-proxy/vendor/ /tmp/vendor/
-RUN if [ -f /tmp/vendor/helm ]; then \
+RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \
+    if [ -f "/tmp/vendor/helm-${ARCH}" ]; then \
+      install -m 0755 "/tmp/vendor/helm-${ARCH}" /usr/local/bin/helm && rm -rf /tmp/vendor; \
+    elif [ -f /tmp/vendor/helm ]; then \
       install -m 0755 /tmp/vendor/helm /usr/local/bin/helm && rm -rf /tmp/vendor; \
     else \
-      ARCH=$(dpkg --print-architecture) && \
       curl -fsSL "https://get.helm.sh/helm-v3.17.3-linux-${ARCH}.tar.gz" \
         | tar -xz -C /usr/local/bin --strip-components=1 "linux-${ARCH}/helm"; \
     fi \
