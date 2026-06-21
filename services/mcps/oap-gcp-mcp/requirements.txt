@@ -8,7 +8,7 @@ fastmcp>=3.2.0,<4.0.0
 # Google Cloud Authentication
 google-auth>=2.25.0
 google-auth-oauthlib>=1.2.0
-google-auth-httplib2>=0.2.0
+google-auth-httplib2>=0.4.0
 
 # Google Cloud SDKs
 google-cloud-compute>=1.15.0
