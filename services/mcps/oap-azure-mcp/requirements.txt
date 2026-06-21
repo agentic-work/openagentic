@@ -78,7 +78,7 @@ azure-mgmt-resourcegraph>=8.0.0     # Resource Graph for enterprise-scale querie
 # Note: azure-mgmt-advisor still depends on the legacy `six` module that
 # isn't pulled in by anything else, so we list it explicitly here.
 azure-mgmt-advisor>=9.0.0
-six>=1.16.0
+six>=1.17.0
 
 # Service Health: the dedicated mgmt SDK is beta-only and incomplete.
 # We use ARM REST directly via requests for service health events instead.
