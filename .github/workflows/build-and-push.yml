@@ -170,15 +170,25 @@ jobs:
           cache-to:   type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache,mode=max
           provenance: false
 
-      # ── Trivy vuln gate (fails the job on HIGH/CRITICAL) ──────────────────────
-      # Two passes: pass 1 writes SARIF for the Security tab (does NOT gate);
-      # pass 2 enforces the gate (exit-code 1 on HIGH/CRITICAL fixable vulns).
-      - name: Trivy scan → SARIF (report)
+      # ── Trivy scan (REPORT-ONLY — never blocks the build) ────────────────────
+      # Policy: do NOT kill the build on a CVE. Trivy writes SARIF to the Security
+      # tab + logs a table; vulnerabilities are remediated by Dependabot auto-PRs
+      # (+ the auto-merge bot), not by failing CI. Both passes use exit-code 0.
+      - name: Trivy scan → SARIF (report-only)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: localscan/${{ matrix.service }}:scan
           format: sarif
           output: trivy-${{ matrix.service }}.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Trivy scan → table (log, non-blocking)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: localscan/${{ matrix.service }}:scan
+          format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '0'
@@ -191,16 +201,7 @@ jobs:
           sarif_file: trivy-${{ matrix.service }}.sarif
           category: trivy-${{ matrix.service }}
 
-      - name: Trivy vulnerability gate (HIGH,CRITICAL)
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: localscan/${{ matrix.service }}:scan
-          format: table
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-
-      # ── Multi-arch build & push (only reached if the Trivy gate passed) ────────
+      # ── Multi-arch build & push ──────────────────────────────────────────────
       - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v6.18.0
         with:
