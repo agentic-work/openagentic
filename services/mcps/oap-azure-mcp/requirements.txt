@@ -109,7 +109,7 @@ msgraph-sdk>=1.16.0                 # Users, groups, apps, service principals
 # both deps must be pinned to versions whose tools/list response carries
 # annotations + _meta + outputSchema (proven via wire trace on 2026-05-01).
 # =============================================================================
-mcp>=1.27.0,<2.0.0
+mcp>=1.28.0,<2.0.0
 fastmcp>=3.2.0,<4.0.0
 
 # =============================================================================
