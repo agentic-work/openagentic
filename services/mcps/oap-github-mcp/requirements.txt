@@ -3,5 +3,5 @@
 # format only carries _meta + annotations on these versions.
 mcp>=1.27.0,<2.0.0
 fastmcp>=3.2.0,<4.0.0
-httpx>=0.27.0
+httpx>=0.28.1
 structlog>=24.1.0
