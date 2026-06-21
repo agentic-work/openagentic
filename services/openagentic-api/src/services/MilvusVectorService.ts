@@ -654,7 +654,9 @@ export class MilvusVectorService {
    */
   private chunkContent(content: string, maxChunkSize: number = 2000): string[] {
     const chunks: string[] = [];
-    const sentences = content.match(/[^.!?]+[.!?]+/g) || [content];
+    // ReDoS-hardened: bound the no-punctuation run (was /[^.!?]+[.!?]+/ — O(n²) on punctuation-free content).
+    // The {1,2000} cap matches maxChunkSize, so a punctuation-free blob is split at the chunk boundary anyway.
+    const sentences = content.match(/[^.!?]{1,2000}[.!?]+/g) || [content];
     
     let currentChunk = '';
     for (const sentence of sentences) {
@@ -1201,7 +1203,8 @@ SUMMARY:
       urls.forEach(url => entities.add(url));
 
       // Extract email addresses
-      const emailRegex = /[\w.-]+@[\w.-]+\.\w+/g;
+      // ReDoS-hardened: bounded segments (was /[\w.-]+@[\w.-]+\.\w+/ — O(n²) on large conversation text).
+      const emailRegex = /[\w.-]{1,64}@[\w.-]{1,255}\.\w{2,24}/g;
       const emails = conversationText.match(emailRegex) || [];
       emails.forEach(email => entities.add(email));
 

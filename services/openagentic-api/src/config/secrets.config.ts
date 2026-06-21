@@ -232,7 +232,8 @@ export function loadSecrets(logger?: Logger): SecretsConfig {
  */
 function generateDevSecret(type: string): string {
   const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(7);
+  // Use a CSPRNG even for dev secrets — a JWT/API signing secret must not be predictable.
+  const random = crypto.randomBytes(24).toString('hex');
   return `dev_${type}_${timestamp}_${random}`;
 }
 

@@ -159,14 +159,17 @@ function buildDefaultRules(): DLPRule[] {
   r('pii', 'US Drivers License', 'US driver license (with context)', /(?:driver'?s?\s+license|DL|license\s*#)\s*:?\s*([A-Z]{1,2}\d{5,8})\b/gi, 'medium');
   r('pii', 'Date of Birth', 'Date of birth pattern', /(?:DOB|date\s*of\s*birth|born|birthday)\s*[=:]\s*\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/gi, 'medium');
   r('pii', 'IBAN', 'International Bank Account Number', /\b[A-Z]{2}\d{2}[\s]?[A-Z0-9]{4}[\s]?(?:[A-Z0-9]{4}[\s]?){1,7}[A-Z0-9]{1,4}\b/g, 'high');
-  r('pii', 'IPv4 with Name', 'IP address associated with a name', /\b(?:name|user|employee)\s*[=:]\s*\S+.*?\b(?:\d{1,3}\.){3}\d{1,3}\b/gi, 'medium');
+  // ReDoS-hardened: bound the leading token and the inter-token gap so the scan stays linear on large (≤500KB) payloads.
+  r('pii', 'IPv4 with Name', 'IP address associated with a name', /\b(?:name|user|employee)\s*[=:]\s*\S{1,128}[\s\S]{0,120}?\b(?:\d{1,3}\.){3}\d{1,3}\b/gi, 'medium');
   r('pii', 'Personal Address', 'Street address pattern', /\b\d{1,5}\s+\w+(?:\s+\w+)*\s+(?:St|Street|Ave|Avenue|Blvd|Boulevard|Dr|Drive|Ln|Lane|Rd|Road|Ct|Court|Pl|Place|Way)\b/gi, 'low');
   r('pii', 'Tax ID (EIN)', 'Employer Identification Number', /\b\d{2}-\d{7}\b/g, 'medium');
   r('pii', 'Medicare ID', 'Medicare Beneficiary Identifier', /\b[1-9][A-Z][A-Z0-9]\d-[A-Z][A-Z0-9]\d-[A-Z]{2}\d{2}\b/g, 'high');
   // Tightened: require "VIN" context and add Luhn-like check digit validation
   r('pii', 'VIN', 'Vehicle Identification Number (with context)', /(?:VIN|vehicle\s+identification)\s*:?\s*([A-HJ-NPR-Z0-9]{17})\b/gi, 'low');
-  r('pii', 'Full Name + SSN', 'Name paired with SSN', /(?:name|first|last)\s*[=:]\s*\w+.*?\d{3}-\d{2}-\d{4}/gi, 'critical');
-  r('pii', 'Email + Password', 'Email with password in same context', /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}.*?(?:password|passwd|pwd)\s*[=:]/gi, 'critical');
+  // ReDoS-hardened: bound the leading token and the inter-token gap (proximity window) so the scan stays linear.
+  r('pii', 'Full Name + SSN', 'Name paired with SSN', /(?:name|first|last)\s*[=:]\s*\w{1,64}[\s\S]{0,120}?\d{3}-\d{2}-\d{4}/gi, 'critical');
+  // ReDoS-hardened: bound the email subparts (so greedy + cannot run away over a long tail) and the gap.
+  r('pii', 'Email + Password', 'Email with password in same context', /[a-zA-Z0-9._%+-]{1,64}@[a-zA-Z0-9.-]{1,255}\.[a-zA-Z]{2,24}[\s\S]{0,120}?(?:password|passwd|pwd)\s*[=:]/gi, 'critical');
 
   // ========== INFRASTRUCTURE (10 rules) ==========
   r('infrastructure', 'Internal IP RFC1918 10.x', 'RFC1918 private IP (10.0.0.0/8)', /\b10\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, 'low');

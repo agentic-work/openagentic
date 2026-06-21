@@ -489,7 +489,8 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
                   content.split(/\s+/).length / content.split('\n').filter(l => l.trim()).length : 0,
                 containsCode: /function|class|import|const|let|var|\{|\}|\[|\]/g.test(content),
                 containsUrls: /https?:\/\/[^\s]+/g.test(content),
-                containsEmails: /\S+@\S+\.\S+/g.test(content)
+                // ReDoS-hardened: bounded, non-overlapping segments (was /\S+@\S+\.\S+/ — O(n²) on large uploads).
+                containsEmails: /[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,24}/g.test(content)
               }
             };
           } else {
@@ -889,7 +890,8 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
                   encoding: 'utf-8',
                   hasCode: /function|class|import|const|let|var|\{|\}|\[|\]/g.test(content),
                   hasUrls: (content.match(/https?:\/\/[^\s]+/g) || []).length,
-                  hasEmails: (content.match(/\S+@\S+\.\S+/g) || []).length,
+                  // ReDoS-hardened: bounded, non-overlapping segments (was /\S+@\S+\.\S+/ — O(n²) on large uploads).
+                  hasEmails: (content.match(/[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,24}/g) || []).length,
                   languageHints: {
                     javascript: /function|const|let|var|=>/g.test(content),
                     python: /def |import |from |if __name__/g.test(content),

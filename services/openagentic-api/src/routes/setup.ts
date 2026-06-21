@@ -130,7 +130,8 @@ export const setupRoutes: FastifyPluginAsync = async (fastify) => {
       request.body || ({} as CompleteBody);
 
     // Field validation — keep messages user-facing, the wizard surfaces these directly.
-    if (!adminEmail || !/.+@.+\..+/.test(adminEmail))
+    // ReDoS-hardened: anchored + bounded segments (was /.+@.+\..+/ — O(n²) on adversarial input).
+    if (!adminEmail || !/^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,24}$/.test(adminEmail))
       return reply.code(400).send({ error: 'adminEmail must be a valid email' });
     if (!adminPassword || adminPassword.length < 8)
       return reply.code(400).send({ error: 'adminPassword must be at least 8 characters' });
