@@ -72,7 +72,7 @@
     "@smithy/fetch-http-handler": "^5.3.15",
     "@smithy/protocol-http": "^4.0.0",
     "@smithy/signature-v4": "^4.0.0",
-    "@smithy/types": "^3.0.0",
+    "@smithy/types": "^4.15.0",
     "@types/node": "^20.19.39",
     "google-auth-library": "^9.0.0",
     "typescript": "5.8.3",
