@@ -22,7 +22,7 @@ non-skipped check failed.
     HEALTH     /api/health healthy + db/redis/milvus connected; all pods Ready (kubectl)
     AUTH       local login → JWT (isAdmin)
     CHAT       a real chat turn returns a streamed assistant response
-    MCP:<id>   for all 14 MCPs — SKIP if not enabled/configured (k8s-detected),
+    MCP:<id>   for all 9 MCPs — SKIP if not enabled/configured (k8s-detected),
                else chat-probe ONE read tool + VERIFY via the audit log it executed
     FLOW:<id>  every seeded Flow template — run it, assert non-empty output
     APPROVAL   mutating tool → approval_required → approve → executes → audit decision=approved;
@@ -290,7 +290,6 @@ class Kube:
         "github": ("GITHUB_TOKEN", "GH_TOKEN", "GITHUB_PAT"),
         "prometheus": ("PROMETHEUS_URL", "PROM_URL", "PROMETHEUS_HOST"),
         "loki": ("LOKI_URL", "LOKI_HOST"),
-        "alertmanager": ("ALERTMANAGER_URL", "ALERTMANAGER_HOST"),
     }
 
     def mcp_state(self, probe: McpProbe, tools_by_server: Optional[dict[str, int]]) -> McpClusterState:
@@ -648,7 +647,7 @@ def _proxy_tools_by_server(http: Http, kube: Kube) -> Optional[dict[str, int]]:
 
 
 def phase_mcps(http: Http, kube: Kube, cfg: Cfg, rows: list[Row]) -> None:
-    banner("MCP-in-chat — all 14 MCPs (audit log = execution oracle)")
+    banner("MCP-in-chat — all 9 MCPs (audit log = execution oracle)")
     tools_by_server = _proxy_tools_by_server(http, kube)
     for probe in MCP_PROBES:
         check = f"MCP:{probe.mcp}"

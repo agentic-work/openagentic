@@ -34,16 +34,15 @@ from harness_lib import (  # noqa: E402
 
 
 # ─── probe table ─────────────────────────────────────────────────────────────
-def test_probe_table_covers_all_14_mcps():
+def test_probe_table_covers_all_9_mcps():
     expected = {
         "aws", "azure", "gcp", "kubernetes", "prometheus", "loki",
-        "alertmanager", "github", "admin", "agent-architect", "incident",
-        "knowledge", "runbook", "web",
+        "github", "admin", "web",
     }
     assert set(ALL_MCP_IDS) == expected
-    assert len(MCP_PROBES) == 14
+    assert len(MCP_PROBES) == 9
     # ids unique
-    assert len(set(ALL_MCP_IDS)) == 14
+    assert len(set(ALL_MCP_IDS)) == 9
 
 
 def test_every_probe_is_well_formed():
@@ -57,9 +56,9 @@ def test_every_probe_is_well_formed():
 def test_credential_free_mcps_flagged():
     free = {p.mcp for p in MCP_PROBES if not p.needs_creds}
     # The openagentic default set + safe built-ins.
-    assert {"web", "knowledge", "admin"}.issubset(free)
+    assert {"web", "admin"}.issubset(free)
     # Cloud + monitoring + github require creds.
-    for needs in ("aws", "azure", "gcp", "kubernetes", "github", "prometheus", "loki", "alertmanager"):
+    for needs in ("aws", "azure", "gcp", "kubernetes", "github", "prometheus", "loki"):
         assert probe_for(needs).needs_creds is True
 
 
@@ -119,7 +118,7 @@ def test_cred_gated_unknown_signal_skips_not_false_fails():
 
 def test_enabled_but_no_tools_skips():
     d = decide_mcp_skip(
-        probe_for("knowledge"),
+        probe_for("admin"),
         McpClusterState(enabled=True, creds_present=None, tools_listed=False),
     )
     assert d.probe is False

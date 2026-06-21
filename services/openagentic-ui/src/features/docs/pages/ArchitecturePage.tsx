@@ -205,7 +205,7 @@ const ArchitecturePage: React.FC = () => {
     }
   }, [loadManifest, loadedManifests]);
 
-  const mcpCount = loadedManifests.get('mcp-servers')?.sections.length ?? 14;
+  const mcpCount = loadedManifests.get('mcp-servers')?.sections.length ?? 9;
   const nodeCount =
     loadedManifests.get('node-types')?.sections.reduce((n, s) => n + s.items.length, 0) ?? 71;
   const agentCount =

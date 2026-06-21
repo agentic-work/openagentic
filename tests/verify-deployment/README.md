@@ -20,7 +20,7 @@ service health, MCP enablement, and credential detection come from
 | `HEALTH` | `/api/health` is `healthy` with db/redis/milvus connected **and** every pod in the namespace is Ready (`kubectl`). |
 | `AUTH` | Local login returns a JWT with `isAdmin`. |
 | `CHAT` | A real chat turn returns a streamed assistant response. |
-| `MCP:<id>` (×14) | For each of `aws, azure, gcp, kubernetes, prometheus, loki, alertmanager, github, admin, agent-architect, incident, knowledge, runbook, web`: detect enablement+creds from k8s → **SKIP** (with reason) if absent, else chat-probe one known READ tool and **verify it executed** by polling `GET /api/admin/audit-log` for a matching row (the audit log is the execution oracle) + a data sanity check. |
+| `MCP:<id>` (×9) | For each of `aws, azure, gcp, kubernetes, prometheus, loki, github, admin, web`: detect enablement+creds from k8s → **SKIP** (with reason) if absent, else chat-probe one known READ tool and **verify it executed** by polling `GET /api/admin/audit-log` for a matching row (the audit log is the execution oracle) + a data sanity check. |
 | `FLOW:<slug>` | Every seeded Flow template (`incident-triage`, `cost-anomaly`, `failed-deploy-rca`, `research-and-publish`, …) runs via the workflows API and produces non-empty output. Templates needing an absent MCP → **SKIP**. |
 | `APPROVAL` | A MUTATING tool call raises `approval_required` → `POST /api/approvals/:auditId/approve` → executes → audit row `decision=approved`; and a READ tool is audited `decision=auto` (never gated). SKIP if no mutating tool is reachable. |
 | `DASHBOARD` | The admin analytics/metrics endpoints (`/api/admin/cluster/health`, `/api/admin/analytics/stats`, `/api/admin/dashboard/counts`, `/api/admin/prom/query`) return data of the expected shape. |
@@ -98,8 +98,8 @@ npm run verify:deployment:test
 
 ## Honest expectation (openagentic, today)
 
-On `openagentic` only `web`, `knowledge`, and `admin` are enabled, so the other
-**11 MCP rows SKIP** (no creds). Until the tool auto-resolve fix deploys, the
+On `openagentic` only `web` and `admin` are enabled, so the other
+**7 MCP rows SKIP** (no creds). Until the tool auto-resolve fix deploys, the
 **MCP-in-chat and Flow rows that depend on tool execution may be RED** — that is
 **correct**. This harness is the truth-teller: it reports the real state and
 will flip green once tools execute. It is intentionally *not* built to pass

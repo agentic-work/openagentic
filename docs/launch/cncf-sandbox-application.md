@@ -14,8 +14,8 @@
 openagentic is a self-hosted, zero-telemetry, model-agnostic platform for building and
 running production AI agents that operate real cloud-native infrastructure. It is a full
 operations platform — chat, a visual ops Flow builder, RAG/memory, and admin dashboards —
-backed by 14 bundled Model Context Protocol (MCP) servers that actually touch AWS,
-Kubernetes, Prometheus, Loki, Alertmanager, GitHub, and more.
+backed by 9 bundled Model Context Protocol (MCP) servers that actually touch AWS,
+Azure, GCP, Kubernetes, Prometheus, Loki, GitHub, and more.
 
 The canonical use case is AI-assisted operations and incident response. An alert fires;
 openagentic queries Prometheus, Loki, and `kubectl` **in parallel**; produces a root-cause
@@ -54,14 +54,14 @@ openagentic is cloud-native by construction and integrates directly with the CNC
   A bundled Kubernetes MCP drives `kubectl`-equivalent operations through the approval +
   audit layer.
 - **Built on the observability stack the community already runs.** First-class MCPs for
-  **Prometheus**, **Loki**, and **Alertmanager** — openagentic reasons over the same metrics
+  **Prometheus** and **Loki** — openagentic reasons over the same metrics
   and logs your existing cloud-native observability stack already produces.
 - **OpenTelemetry-aware.** Optional OTel/OTLP tracing of agent and LLM activity, **off by
   default**, and when enabled it exports only to the operator's own collector — never to a
   vendor.
 - **Model Context Protocol (MCP) as the tool layer.** Capabilities are exposed as MCP
-  servers (14 bundled: aws, azure, gcp, kubernetes, prometheus, loki, alertmanager, github,
-  admin, agent-architect, incident, knowledge, runbook, web), an emerging open standard for
+  servers (9 bundled: aws, azure, gcp, kubernetes, prometheus, loki, github,
+  admin, web), an emerging open standard for
   agent–tool interoperability.
 - **Composes with — does not replace — CNCF Sandbox neighbors.** k8sgpt, HolmesGPT, kagent,
   and Robusta each solve a focused part of the AI-for-Kubernetes problem; openagentic is the
@@ -121,7 +121,7 @@ model (n8n, GitLab CE/EE).
 
 - **Stage requested:** Sandbox.
 - **Codebase:** an integrated multi-service platform — platform API, React UI, workflow/Flow
-  engine, MCP proxy, egress proxy, and 14 bundled MCP servers.
+  engine, MCP proxy, egress proxy, and 9 bundled MCP servers.
 - **Install paths:** one-line `docker compose` installer with a guided TUI wizard, plus a
   Helm chart for Kubernetes.
 - **Quality gates:** Vitest source-regression / "architecture cage" test suites (including a

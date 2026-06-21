@@ -6,7 +6,7 @@ harness (verify_deployment.py).
 Everything in this module is deterministic and importable so it can be unit
 tested WITHOUT a live cluster, a network, or kubectl:
 
-  * MCP_PROBES        — the per-MCP probe table (14 MCPs): probe prompt,
+  * MCP_PROBES        — the per-MCP probe table (9 MCPs): probe prompt,
                         expected tool name(s)/server, data sanity check.
   * Status / Row      — the matrix value types.
   * audit_row_matches — the "did this MCP's tool actually execute?" oracle that
@@ -77,7 +77,7 @@ class McpProbe:
                    looks real. Used only as a secondary signal; the audit row is
                    the PRIMARY execution oracle.
     needs_creds  : True for MCPs that require external credentials (cloud, github,
-                   monitoring). web/knowledge/admin are credential-free and ship
+                   monitoring). web/admin are credential-free and ship
                    enabled by default.
     """
     mcp: str
@@ -98,7 +98,7 @@ def _nonempty_min(n: int) -> Callable[[str], bool]:
     return lambda text: len((text or "").strip()) >= n
 
 
-# The 14 built-in MCPs. The probe prompt is phrased to trigger exactly ONE
+# The 9 built-in MCPs. The probe prompt is phrased to trigger exactly ONE
 # known, side-effect-free READ tool per MCP. expect_tools are the audit
 # tool_name fragments that prove that tool ran.
 MCP_PROBES: tuple[McpProbe, ...] = (
@@ -139,12 +139,6 @@ MCP_PROBES: tuple[McpProbe, ...] = (
         sanity=_has(r'error|log|stream|line|no results|0 results'),
     ),
     McpProbe(
-        mcp="alertmanager", label="Alertmanager", server="alertmanager",
-        probe_prompt="Use the alertmanager MCP to list currently firing alerts.",
-        expect_tools=("alertmanager_list_alerts", "list_alerts", "alerts"),
-        sanity=_has(r'alert|firing|no alerts|0 alerts'),
-    ),
-    McpProbe(
         mcp="github", label="GitHub", server="github",
         probe_prompt="Use the github MCP to get the authenticated user (login, name).",
         expect_tools=("github_get_me", "get_authenticated_user", "get_me", "get_user"),
@@ -158,34 +152,6 @@ MCP_PROBES: tuple[McpProbe, ...] = (
         needs_creds=False,
     ),
     McpProbe(
-        mcp="agent-architect", label="Agent Architect", server="agent-architect",
-        probe_prompt="Use the agent-architect MCP to list the available agent blueprints / templates.",
-        expect_tools=("architect_list", "list_blueprints", "list_templates", "list_agents"),
-        sanity=_has(r'blueprint|template|agent|architect'),
-        needs_creds=False,
-    ),
-    McpProbe(
-        mcp="incident", label="Incident", server="incident",
-        probe_prompt="Use the incident MCP to list the current open incidents.",
-        expect_tools=("incident_list", "list_incidents", "incidents"),
-        sanity=_has(r'incident|open|no incidents|0 incidents'),
-        needs_creds=False,
-    ),
-    McpProbe(
-        mcp="knowledge", label="Knowledge", server="knowledge",
-        probe_prompt="Use the knowledge MCP to search the knowledge base for 'getting started'.",
-        expect_tools=("knowledge_search", "kb_search", "search"),
-        sanity=_has(r'result|document|knowledge|no results|0 results'),
-        needs_creds=False,
-    ),
-    McpProbe(
-        mcp="runbook", label="Runbook", server="runbook",
-        probe_prompt="Use the runbook MCP to list the available runbooks.",
-        expect_tools=("runbook_list", "list_runbooks", "runbooks"),
-        sanity=_has(r'runbook|playbook|no runbooks|0 runbooks'),
-        needs_creds=False,
-    ),
-    McpProbe(
         mcp="web", label="Web", server="web",
         probe_prompt="Use the web MCP to search the web for 'OpenAgentic open source agentic platform' and summarize the top result.",
         expect_tools=("web_search", "search_web", "web_fetch", "fetch"),
@@ -194,7 +160,7 @@ MCP_PROBES: tuple[McpProbe, ...] = (
     ),
 )
 
-# The canonical 14-MCP id list (order = probe order).
+# The canonical 9-MCP id list (order = probe order).
 ALL_MCP_IDS: tuple[str, ...] = tuple(p.mcp for p in MCP_PROBES)
 
 
@@ -242,7 +208,7 @@ def decide_mcp_skip(probe: McpProbe, state: McpClusterState) -> SkipDecision:
       3. Enabled but proxy lists zero tools for it → SKIP "enabled but no tools listed".
       4. Otherwise → PROBE.
 
-    A credential-free MCP (web/knowledge/admin/…) with enabled in (True, None)
+    A credential-free MCP (web/admin) with enabled in (True, None)
     is probed; it only skips if explicitly disabled or tool-less.
     """
     if state.enabled is False:

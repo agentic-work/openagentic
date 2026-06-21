@@ -4,7 +4,7 @@
   "description": "Canonical headline counts and version, source-derived from the repo on every build.",
   "icon": "brain",
   "category": "core",
-  "generatedAt": "2026-06-09T23:11:03.455Z",
+  "generatedAt": "2026-06-21T00:19:24.566Z",
   "sourceFiles": [
     "version.json",
     "docker-compose.yml"
@@ -53,10 +53,10 @@
         {
           "id": "deployed-service-count",
           "name": "Deployed Services",
-          "description": "14 services in the compose stack",
+          "description": "16 services in the compose stack",
           "type": "summary-count",
           "properties": {
-            "value": 14,
+            "value": 16,
             "kind": "count"
           },
           "sourceFile": "docker-compose.yml"

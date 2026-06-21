@@ -67,7 +67,7 @@ const T1_REGISTRY_PATH =
   'services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts';
 
 export const DOMAINS: DomainConfig[] = [
-  // ── MCP servers + tools (14 oap-*-mcp dirs) ──────────────────────────────
+  // ── MCP servers + tools (9 oap-*-mcp dirs) ───────────────────────────────
   {
     domain: 'mcp-servers',
     title: 'MCP Servers',
@@ -271,7 +271,7 @@ export const DOMAINS: DomainConfig[] = [
   },
 
   // ── Platform summary (headline counts + version) ──────────────────────────
-  // The canonical numbers docs pages quote ("14 MCP servers", the version
+  // The canonical numbers docs pages quote ("9 MCP servers", the version
   // string). Generated from the real source so they cannot be hand-typed stale.
   {
     domain: 'platform-summary',

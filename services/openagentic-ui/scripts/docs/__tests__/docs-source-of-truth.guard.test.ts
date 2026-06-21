@@ -130,8 +130,8 @@ describe('docs source-of-truth guard', () => {
     versionJson = await readJson(VERSION_JSON);
   }, 120_000);
 
-  it('real services/mcps/oap-*-mcp dir count is the expected 14+', () => {
-    expect(realMcpCount).toBeGreaterThanOrEqual(14);
+  it('real services/mcps/oap-*-mcp dir count is the expected 9+', () => {
+    expect(realMcpCount).toBeGreaterThanOrEqual(9);
   });
 
   it('mcp-servers manifest section count === real oap-*-mcp dir count', async () => {

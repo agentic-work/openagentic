@@ -3,32 +3,31 @@
 """
 OpenAgentic AWS MCP Server - Forked from awslabs/mcp aws-api-mcp-server
 
-This is a wrapper around the official AWS API MCP server that adds:
-1. OBO (On-Behalf-Of) authentication via Azure AD -> AWS Identity Center
-2. Fallback to environment AWS credentials when OBO is not available
+Authentication: standard boto3 / environment credential chain.
+
+This MCP authenticates with AWS using the standard credential resolution
+order — environment variables (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY /
+optional AWS_SESSION_TOKEN), a shared credentials file, or an attached IAM
+role (EC2 instance profile / ECS task role / EKS IRSA). This is the
+self-hosted OSS pattern: the operator supplies a service account / IAM
+identity via the environment and every tool runs with those permissions.
+
+There is NO On-Behalf-Of (OBO) / Azure-AD token exchange and no per-user
+credential brokering — all tools share the one configured AWS identity.
 
 The official server provides:
 - call_aws: Execute AWS CLI commands with validation
 - suggest_aws_commands: Suggest CLI commands from natural language
-- get_execution_plan: (Experimental) Structured workflows
-
-We add OBO by intercepting the tool calls, exchanging the Azure AD token for
-AWS temporary credentials via Identity Center, and injecting those credentials.
 """
 
 import os
 import sys
 import logging
-import hashlib
-import time
 import json
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 from pathlib import Path
-from dataclasses import dataclass
 
 import boto3
-import redis
-from botocore.exceptions import ClientError, NoCredentialsError
 from fastmcp import FastMCP, Context
 from pydantic import Field, BaseModel
 from typing import Annotated
@@ -59,46 +58,15 @@ except ImportError:
 
 # AWS Configuration (no hardcoded defaults - all from environment)
 AWS_REGION = os.environ.get("AWS_REGION", "")
-AWS_IC_INSTANCE_ARN = os.environ.get("AWS_IC_INSTANCE_ARN", "")
-AWS_IC_APPLICATION_ARN = os.environ.get("AWS_IC_APPLICATION_ARN", "")
 
-# Fallback credentials (when OBO not available)
+# Static service credentials (optional). When unset, boto3 / the AWS CLI fall
+# back to the rest of the standard credential chain (shared credentials file,
+# EC2 instance profile, ECS task role, EKS IRSA, etc.).
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", "")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
 
-# Dev mode: allow fallback to service credentials when OBO fails for authenticated users
-AWS_OBO_FALLBACK_TO_SERVICE = os.environ.get("AWS_OBO_FALLBACK_TO_SERVICE", "false").lower() in ("true", "1", "yes")
-
 # Working directory for file operations
 WORKING_DIRECTORY = os.environ.get("AWS_API_MCP_WORKING_DIR", os.getcwd())
-
-# Redis configuration for credential caching
-REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
-REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
-REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", None)
-
-# Initialize Redis client (global, lazy init)
-_redis_client: Optional[redis.Redis] = None
-
-def _get_redis() -> Optional[redis.Redis]:
-    """Get or create Redis client."""
-    global _redis_client
-    if _redis_client is None:
-        try:
-            _redis_client = redis.Redis(
-                host=REDIS_HOST,
-                port=REDIS_PORT,
-                password=REDIS_PASSWORD,
-                decode_responses=True,
-                socket_timeout=5,
-                socket_connect_timeout=5
-            )
-            _redis_client.ping()
-            logger.info(f"Redis connected at {REDIS_HOST}:{REDIS_PORT}")
-        except Exception as e:
-            logger.warning(f"Redis connection failed, using in-memory cache: {e}")
-            _redis_client = None
-    return _redis_client
 
 # =============================================================================
 # CREDENTIALS MODEL (Compatible with official aws-api-mcp-server)
@@ -111,557 +79,19 @@ class Credentials(BaseModel):
     session_token: Optional[str] = None
 
 # =============================================================================
-# CREDENTIAL CACHE
+# AUTHENTICATION - standard boto3 / environment credential chain
 # =============================================================================
 
-@dataclass
-class CachedCredentials:
-    """Cached AWS credentials with expiration tracking."""
-    credentials: Credentials
-    expires_at: float  # Unix timestamp
-    account_id: str
-    role_name: str
-    user_identity: str  # For logging who these credentials belong to
+def get_environment_credentials() -> Optional[Credentials]:
+    """Return static service credentials from the environment, if configured.
 
-# Global in-memory credential cache: token_hash -> CachedCredentials
-# Used as fallback when Redis is unavailable
-_credential_cache: Dict[str, CachedCredentials] = {}
-
-# Redis cache key prefix
-REDIS_CACHE_PREFIX = "oap-aws-mcp:creds:"
-REDIS_IC_TOKEN_PREFIX = "oap-aws-mcp:ic-token:"
-
-# Cache credentials for 50 minutes (STS creds typically expire in 60 min)
-CREDENTIAL_CACHE_TTL_SECONDS = 50 * 60
-# Cache IC access tokens for 55 minutes (they expire in 60 min)
-IC_TOKEN_CACHE_TTL_SECONDS = 55 * 60
-
-def _get_user_from_token(token: str) -> str:
-    """Extract user identifier from JWT token for caching and logging.
-
-    Uses 'sub' claim (subject) as primary key since it's stable.
-    Falls back to email or preferred_username for display purposes.
+    When AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY are set we pass them
+    explicitly. Otherwise this returns None and the caller falls through to
+    boto3 / the AWS CLI default credential chain (shared credentials file,
+    EC2 instance profile, ECS task role, EKS IRSA, etc.).
     """
-    try:
-        import base64
-        payload = token.split('.')[1]
-        # Add padding if needed
-        payload += '=' * (4 - len(payload) % 4)
-        decoded = json.loads(base64.b64decode(payload).decode('utf-8'))
-        # Use 'sub' as cache key (stable), display name for logging
-        return decoded.get('sub') or decoded.get('oid') or decoded.get('preferred_username') or decoded.get('email') or 'unknown'
-    except Exception:
-        return 'unknown'
-
-def _get_user_display_name(token: str) -> str:
-    """Extract human-readable name from token for logging."""
-    try:
-        import base64
-        payload = token.split('.')[1]
-        payload += '=' * (4 - len(payload) % 4)
-        decoded = json.loads(base64.b64decode(payload).decode('utf-8'))
-        return decoded.get('preferred_username') or decoded.get('email') or decoded.get('name') or decoded.get('sub', 'unknown')
-    except Exception:
-        return 'unknown'
-
-def _get_user_info_from_token(token: str) -> dict:
-    """Extract full user info from JWT token for executed_as badge."""
-    try:
-        import base64
-        payload = token.split('.')[1]
-        padding = 4 - len(payload) % 4
-        if padding != 4:
-            payload += '=' * padding
-        decoded = json.loads(base64.urlsafe_b64decode(payload))
-        return {
-            "upn": decoded.get("upn", decoded.get("unique_name", decoded.get("preferred_username", decoded.get("email", "unknown")))),
-            "name": decoded.get("name", "Unknown User"),
-            "oid": decoded.get("oid", ""),
-            "tid": decoded.get("tid", ""),
-            "aud": decoded.get("aud", "")
-        }
-    except Exception as e:
-        logger.warning(f"Could not decode token for user info: {e}")
-        return {"upn": "unknown", "name": "Unknown User"}
-
-def _get_cached_credentials(token: str) -> Optional[Credentials]:
-    """Get cached credentials from Redis or in-memory cache.
-
-    IMPORTANT: Cache by USER ID (sub claim), not token hash!
-    This allows cached credentials to survive token refreshes where
-    the ID token might remain the same or change unpredictably.
-    """
-    user_id = _get_user_from_token(token)
-    if user_id == 'unknown':
-        logger.warning("Could not extract user ID from token for cache lookup")
-        return None
-
-    redis_key = f"{REDIS_CACHE_PREFIX}user:{user_id}"
-
-    # Try Redis first
-    r = _get_redis()
-    if r:
-        try:
-            cached_json = r.get(redis_key)
-            if cached_json:
-                data = json.loads(cached_json)
-                # Check if expired
-                if time.time() >= data['expires_at'] - 60:
-                    logger.info(f"Redis cached credentials expired for {data['user_display_name']}")
-                    r.delete(redis_key)
-                    return None
-
-                remaining = int(data['expires_at'] - time.time())
-                logger.info(f"✅ Using REDIS cached AWS credentials for {data['user_display_name']} "
-                            f"(account: {data['account_id']}, role: {data['role_name']}, "
-                            f"expires in {remaining}s)")
-                return Credentials(
-                    access_key_id=data['access_key_id'],
-                    secret_access_key=data['secret_access_key'],
-                    session_token=data.get('session_token')
-                )
-        except Exception as e:
-            logger.warning(f"Redis cache read failed: {e}")
-
-    # Fallback to in-memory cache (keyed by user_id)
-    cached = _credential_cache.get(user_id)
-    if cached is None:
-        logger.info(f"No cached AWS credentials for user {_get_user_display_name(token)}")
-        return None
-
-    # Check if expired (with 60 second buffer)
-    if time.time() >= (cached.expires_at - 60):
-        logger.info(f"In-memory cached credentials expired for {cached.user_identity}")
-        del _credential_cache[user_id]
-        return None
-
-    remaining = int(cached.expires_at - time.time())
-    logger.info(f"✅ Using IN-MEMORY cached AWS credentials for {cached.user_identity} "
-                f"(account: {cached.account_id}, role: {cached.role_name}, "
-                f"expires in {remaining}s)")
-    return cached.credentials
-
-def _get_cached_ic_token(user_id: str) -> Optional[str]:
-    """Get cached IC access token from Redis or in-memory cache."""
-    redis_key = f"{REDIS_IC_TOKEN_PREFIX}user:{user_id}"
-
-    # Try Redis first
-    r = _get_redis()
-    if r:
-        try:
-            cached_json = r.get(redis_key)
-            if cached_json:
-                data = json.loads(cached_json)
-                # Check if expired
-                if time.time() >= data['expires_at'] - 60:
-                    logger.info(f"Cached IC token expired for {user_id}")
-                    r.delete(redis_key)
-                    return None
-
-                remaining = int(data['expires_at'] - time.time())
-                logger.info(f"✅ Using REDIS cached IC token for {data.get('user_display_name', user_id)} "
-                            f"(expires in {remaining}s)")
-                return data['ic_access_token']
-        except Exception as e:
-            logger.warning(f"Redis IC token cache read failed: {e}")
-
-    return None
-
-def _cache_ic_token(user_id: str, user_display_name: str, ic_access_token: str, expires_in_seconds: int = IC_TOKEN_CACHE_TTL_SECONDS) -> None:
-    """Cache IC access token to Redis."""
-    redis_key = f"{REDIS_IC_TOKEN_PREFIX}user:{user_id}"
-    expires_at = time.time() + expires_in_seconds
-
-    r = _get_redis()
-    if r:
-        try:
-            cache_data = {
-                'ic_access_token': ic_access_token,
-                'user_id': user_id,
-                'user_display_name': user_display_name,
-                'expires_at': expires_at
-            }
-            r.setex(redis_key, expires_in_seconds, json.dumps(cache_data))
-            logger.info(f"✅ Cached IC access token to REDIS for {user_display_name} (TTL: {expires_in_seconds}s)")
-        except Exception as e:
-            logger.warning(f"Redis IC token cache write failed: {e}")
-
-def _cache_credentials(
-    token: str,
-    credentials: Credentials,
-    account_id: str,
-    role_name: str,
-    expires_in_seconds: int = CREDENTIAL_CACHE_TTL_SECONDS
-) -> None:
-    """Cache credentials in Redis (primary) and in-memory (fallback).
-
-    IMPORTANT: Cache by USER ID (sub claim), not token hash!
-    """
-    user_id = _get_user_from_token(token)
-    user_display_name = _get_user_display_name(token)
-    expires_at = time.time() + expires_in_seconds
-    redis_key = f"{REDIS_CACHE_PREFIX}user:{user_id}"
-
-    # Store in Redis
-    r = _get_redis()
-    if r:
-        try:
-            cache_data = {
-                'access_key_id': credentials.access_key_id,
-                'secret_access_key': credentials.secret_access_key,
-                'session_token': credentials.session_token,
-                'account_id': account_id,
-                'role_name': role_name,
-                'user_id': user_id,
-                'user_display_name': user_display_name,
-                'expires_at': expires_at
-            }
-            r.setex(redis_key, expires_in_seconds, json.dumps(cache_data))
-            logger.info(f"✅ Cached AWS credentials to REDIS for {user_display_name} "
-                        f"(account: {account_id}, role: {role_name}, TTL: {expires_in_seconds}s)")
-        except Exception as e:
-            logger.warning(f"Redis cache write failed: {e}")
-
-    # Also store in memory as fallback (keyed by user_id)
-    cached = CachedCredentials(
-        credentials=credentials,
-        expires_at=expires_at,
-        account_id=account_id,
-        role_name=role_name,
-        user_identity=user_display_name
-    )
-    _credential_cache[user_id] = cached
-    logger.info(f"✅ Cached AWS credentials to MEMORY for {user_display_name} "
-                f"(account: {account_id}, role: {role_name}, TTL: {expires_in_seconds}s)")
-
-# =============================================================================
-# OBO CONTEXT & AUTHENTICATION
-# =============================================================================
-
-# Per-request OBO context
-_obo_context: Dict[str, Any] = {}
-
-def set_obo_context(azure_token: str):
-    """Set OBO context for the current request."""
-    _obo_context["azure_token"] = azure_token
-    logger.info(f"OBO context set with Azure token (length: {len(azure_token)})")
-
-def clear_obo_context():
-    """Clear OBO context after request."""
-    _obo_context.clear()
-
-def get_obo_credentials() -> Optional[Credentials]:
-    """
-    Exchange Azure AD token for AWS credentials via AWS Identity Center.
-
-    Flow (Identity Center - preferred):
-    1. Check credential cache first
-    2. Azure AD ID token → Identity Center SSO-OIDC (create_token_with_iam)
-    3. Get IC access token
-    4. Use SSO to list accounts/roles available to user
-    5. Get role credentials for the first available account/role
-    6. Cache credentials for future calls
-
-    Fallback Flow (Direct OIDC - if IC not configured):
-    1. Azure AD ID token → STS AssumeRoleWithWebIdentity
-    2. Requires IAM OIDC provider trusting Azure AD
-    """
-    if "azure_token" not in _obo_context:
-        logger.debug("No Azure token in OBO context")
-        return None
-
-    azure_token = _obo_context["azure_token"]
-    region = AWS_REGION or "us-east-1"
-
-    # CRITICAL: Check cache first
-    cached_creds = _get_cached_credentials(azure_token)
-    if cached_creds:
-        return cached_creds
-
-    user_identity = _get_user_from_token(azure_token)
-    user_display = _get_user_display_name(azure_token)
-
-    logger.info("=" * 60)
-    logger.info("=== AWS OBO AUTHENTICATION ===")
-    logger.info(f"User: {user_display}")
-    logger.info(f"Azure token present: Yes (length: {len(azure_token)})")
-    logger.info(f"Region: {region}")
-    logger.info(f"Identity Center configured: {bool(AWS_IC_APPLICATION_ARN)}")
-    logger.info("=" * 60)
-
-    # Try Identity Center flow first (if configured)
-    if AWS_IC_APPLICATION_ARN:
-        creds = _get_credentials_via_identity_center(azure_token, user_identity, user_display, region)
-        if creds:
-            return creds
-        logger.warning("Identity Center OBO failed, trying direct OIDC federation fallback")
-
-    # Fallback: Direct OIDC federation (requires IAM OIDC provider for Azure AD)
-    return _get_credentials_via_direct_oidc(azure_token, user_identity, user_display, region)
-
-def _get_credentials_for_user(
-    azure_token: str,
-    user_identity: str,
-    user_display: str,
-    region: str
-) -> Optional[Credentials]:
-    """
-    Parameterized IC-then-OIDC credential acquisition (#671, 2026-05-07).
-
-    `get_obo_credentials()` above is the standard entry point — it reads
-    azure_token / user_identity from the module-level `_obo_context` dict,
-    then delegates to this same IC-or-OIDC chain. But aws_list_accounts at
-    line ~952 needs the same priming logic with EXPLICIT args (it has the
-    user identity in scope but the cache-priming path doesn't go through
-    `_obo_context`). Without this wrapper, the call site referenced an
-    undefined name and crashed every list-accounts flow on Identity Center
-    with the error:
-
-        name '_get_credentials_for_user' is not defined
-
-    Captured live in the dev environment 2026-05-07T18:36 ("show me my cloud
-    resources" turn) — AWS branch returned the bare NameError to the
-    model, which honestly reported "AWS inventory is blocked by a tool
-    runtime error".
-
-    Strategy: same chain as get_obo_credentials but parameterized.
-    Returns Credentials on success (already cached via _cache_credentials
-    by the inner helpers), or None to let the caller surface a clean
-    "creds not available" message instead of a confusing IC-account-list
-    flow when no accounts are reachable.
-    """
-    # Try Identity Center flow first if configured.
-    if AWS_IC_APPLICATION_ARN:
-        creds = _get_credentials_via_identity_center(
-            azure_token, user_identity, user_display, region,
-        )
-        if creds:
-            return creds
-        logger.warning(
-            "[_get_credentials_for_user] IC priming failed, falling back to direct OIDC"
-        )
-
-    # Fallback: direct OIDC federation.
-    return _get_credentials_via_direct_oidc(
-        azure_token, user_identity, user_display, region,
-    )
-
-def _get_credentials_via_identity_center(
-    azure_token: str,
-    user_identity: str,
-    user_display: str,
-    region: str
-) -> Optional[Credentials]:
-    """
-    Get AWS credentials via Identity Center Trusted Token Issuer.
-
-    Flow:
-    1. Exchange Azure AD token for IC access token (create_token_with_iam)
-    2. List accounts available to user
-    3. Get role credentials for first available account/role
-    """
-    try:
-        logger.info(f"[IC OBO] Exchanging Azure AD token via Identity Center")
-        logger.info(f"[IC OBO] Application ARN: {AWS_IC_APPLICATION_ARN}")
-
-        # Check for cached IC access token first
-        cached_ic_token = _get_cached_ic_token(user_identity)
-
-        if cached_ic_token:
-            ic_access_token = cached_ic_token
-        else:
-            # Step 1: Exchange Azure AD token for IC access token
-            sso_oidc = boto3.client('sso-oidc', region_name=region)
-
-            try:
-                ic_response = sso_oidc.create_token_with_iam(
-                    clientId=AWS_IC_APPLICATION_ARN,
-                    grantType='urn:ietf:params:oauth:grant-type:jwt-bearer',
-                    assertion=azure_token,
-                    scope=['sso:account:access']
-                )
-                ic_access_token = ic_response['accessToken']
-                expires_in = ic_response.get('expiresIn', 3600)
-
-                # Cache the IC access token
-                _cache_ic_token(user_identity, user_display, ic_access_token, min(expires_in, IC_TOKEN_CACHE_TTL_SECONDS))
-                logger.info(f"[IC OBO] Got IC access token (expires in {expires_in}s)")
-
-            except ClientError as e:
-                error_code = e.response.get('Error', {}).get('Code', 'Unknown')
-                error_msg = e.response.get('Error', {}).get('Message', str(e))
-                logger.error(f"[IC OBO] create_token_with_iam failed: {error_code} - {error_msg}")
-
-                # Check for common issues
-                if 'InvalidGrantException' in str(e) or 'invalid_grant' in str(error_msg).lower():
-                    logger.error("[IC OBO] Token exchange failed - check Trusted Token Issuer configuration")
-                    logger.error("[IC OBO] Ensure Azure AD tenant is configured as trusted issuer in Identity Center")
-                elif 'already redeemed' in str(error_msg).lower():
-                    logger.error("[IC OBO] JWT already redeemed - token was used before. Check caching logic.")
-
-                return None
-
-        # Step 2: List accounts available to this user
-        sso = boto3.client('sso', region_name=region)
-
-        try:
-            accounts_response = sso.list_accounts(accessToken=ic_access_token)
-            accounts = accounts_response.get('accountList', [])
-
-            if not accounts:
-                logger.error(f"[IC OBO] No AWS accounts available for user {user_display}")
-                return None
-
-            logger.info(f"[IC OBO] User has access to {len(accounts)} account(s)")
-
-            # Step 3: Get role credentials for first available account/role
-            for account in accounts:
-                account_id = account['accountId']
-                account_name = account.get('accountName', 'Unknown')
-
-                # List roles for this account
-                roles_response = sso.list_account_roles(
-                    accessToken=ic_access_token,
-                    accountId=account_id
-                )
-                roles = roles_response.get('roleList', [])
-
-                if not roles:
-                    logger.debug(f"[IC OBO] No roles in account {account_id}, trying next")
-                    continue
-
-                # Use first available role
-                role = roles[0]
-                role_name = role['roleName']
-
-                logger.info(f"[IC OBO] Getting credentials for {account_id}/{role_name}")
-
-                # Get role credentials
-                creds_response = sso.get_role_credentials(
-                    accessToken=ic_access_token,
-                    accountId=account_id,
-                    roleName=role_name
-                )
-
-                role_creds = creds_response['roleCredentials']
-
-                credentials = Credentials(
-                    access_key_id=role_creds['accessKeyId'],
-                    secret_access_key=role_creds['secretAccessKey'],
-                    session_token=role_creds['sessionToken']
-                )
-
-                # Calculate TTL from expiration
-                expiration_ms = role_creds.get('expiration', 0)
-                if expiration_ms:
-                    ttl_seconds = int((expiration_ms / 1000) - time.time())
-                    ttl_seconds = min(max(ttl_seconds, 60), CREDENTIAL_CACHE_TTL_SECONDS)
-                else:
-                    ttl_seconds = CREDENTIAL_CACHE_TTL_SECONDS
-
-                # Cache credentials
-                _cache_credentials(azure_token, credentials, account_id, role_name, ttl_seconds)
-
-                logger.info(f"[IC OBO] SUCCESS for {user_display}: {account_name} ({account_id})/{role_name}")
-                return credentials
-
-            logger.error(f"[IC OBO] No roles available in any account for user {user_display}")
-            return None
-
-        except ClientError as e:
-            error_code = e.response.get('Error', {}).get('Code', 'Unknown')
-            error_msg = e.response.get('Error', {}).get('Message', str(e))
-            logger.error(f"[IC OBO] SSO API failed: {error_code} - {error_msg}")
-            return None
-
-    except Exception as e:
-        logger.error(f"[IC OBO] Failed: {e}")
-        import traceback
-        logger.error(f"[IC OBO] Traceback: {traceback.format_exc()}")
-        return None
-
-def _get_credentials_via_direct_oidc(
-    azure_token: str,
-    user_identity: str,
-    user_display: str,
-    region: str
-) -> Optional[Credentials]:
-    """
-    Get AWS credentials via direct OIDC federation (AssumeRoleWithWebIdentity).
-
-    This requires:
-    - IAM OIDC provider configured for Azure AD tenant
-    - IAM role with trust policy allowing web identity federation
-    """
-    try:
-        logger.info("[OIDC OBO] Attempting direct OIDC federation")
-
-        # Get role ARN from environment or construct default
-        role_arn = os.environ.get("AWS_OBO_ROLE_ARN", "")
-        account_id = os.environ.get("AWS_ACCOUNT_ID", "")
-
-        if not role_arn:
-            if not account_id:
-                logger.error("[OIDC OBO] Neither AWS_OBO_ROLE_ARN nor AWS_ACCOUNT_ID configured")
-                return None
-            role_arn = f"arn:aws:iam::{account_id}:role/OpenAgenticOBORole"
-            logger.info(f"[OIDC OBO] Using constructed role ARN: {role_arn}")
-
-        sts_client = boto3.client('sts', region_name=region)
-
-        assume_response = sts_client.assume_role_with_web_identity(
-            RoleArn=role_arn,
-            RoleSessionName=f"obo-{user_display.replace('@', '-at-').replace('.', '-')[:32]}",
-            WebIdentityToken=azure_token,
-            DurationSeconds=3600
-        )
-
-        sts_creds = assume_response['Credentials']
-        assumed_account_id = assume_response['AssumedRoleUser']['Arn'].split(':')[4]
-        role_name = role_arn.split('/')[-1]
-
-        credentials = Credentials(
-            access_key_id=sts_creds['AccessKeyId'],
-            secret_access_key=sts_creds['SecretAccessKey'],
-            session_token=sts_creds['SessionToken']
-        )
-
-        # Calculate credential TTL
-        ttl_seconds = int((sts_creds['Expiration'].timestamp()) - time.time())
-        ttl_seconds = min(ttl_seconds, CREDENTIAL_CACHE_TTL_SECONDS)
-
-        # Cache credentials
-        _cache_credentials(azure_token, credentials, assumed_account_id, role_name, ttl_seconds)
-
-        logger.info(f"[OIDC OBO] SUCCESS for {user_display}: {assumed_account_id}/{role_name}")
-        return credentials
-
-    except ClientError as e:
-        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
-        error_msg = e.response.get('Error', {}).get('Message', str(e))
-        logger.error(f"[OIDC OBO] AssumeRoleWithWebIdentity failed: {error_code} - {error_msg}")
-
-        # Log token info for debugging
-        try:
-            import base64
-            payload = azure_token.split('.')[1]
-            payload += '=' * (4 - len(payload) % 4)
-            decoded = base64.b64decode(payload).decode('utf-8')
-            logger.error(f"[OIDC OBO] Token payload preview: {decoded[:500]}...")
-        except Exception as decode_err:
-            logger.error(f"[OIDC OBO] Could not decode token: {decode_err}")
-
-        return None
-    except Exception as e:
-        logger.error(f"[OIDC OBO] Failed: {e}")
-        import traceback
-        logger.error(f"[OIDC OBO] Traceback: {traceback.format_exc()}")
-        return None
-
-def get_fallback_credentials() -> Optional[Credentials]:
-    """Get fallback credentials from environment variables."""
     if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
-        logger.info("Using fallback AWS credentials from environment")
+        logger.info("Using static AWS service credentials from environment")
         return Credentials(
             access_key_id=AWS_ACCESS_KEY_ID,
             secret_access_key=AWS_SECRET_ACCESS_KEY,
@@ -721,22 +151,22 @@ AWS_SERVER_INSTRUCTIONS = """
 
 ### AUTHENTICATION
 
-This MCP supports On-Behalf-Of (OBO) authentication:
-- If a user is logged in via Azure AD, their Azure token is exchanged for AWS credentials via Identity Center
-- Operations run with the USER'S AWS permissions, not a service account
-- This ensures proper access control and audit trails
+This MCP authenticates with the standard AWS credential chain configured on
+the server (environment variables / shared credentials file / attached IAM
+role). Every operation runs with that single configured AWS identity — there
+is no per-user credential brokering. Use `aws_identity()` to see which
+identity is active.
 
 ### CRITICAL RULES
 
 1. **Start with convenience tools** - Use `aws_identity`, `aws_list_ec2`, `aws_list_s3`, `aws_cost_summary` for common operations
 2. **Use `call_aws` for complex operations** - When convenience tools don't cover the use case
-3. **Don't guess credentials** - The MCP handles authentication automatically via OBO
-4. **Check identity first** - If unsure about access, use `aws_identity()` to see who you are
+3. **Don't guess credentials** - The MCP authenticates automatically via the server's configured AWS credentials
+4. **Check identity first** - If unsure about access, use `aws_identity()` to see which identity is active
 
 ### DO NOT
 
 - Try to configure AWS credentials manually
-- Use IAM tools to modify the user's own permissions
 - Run destructive commands without user confirmation (DELETE, TERMINATE, etc.)
 """
 
@@ -756,18 +186,16 @@ async def call_aws(
     """
     Execute AWS CLI commands with validation and proper error handling.
 
-    This tool is compatible with the official aws-api-mcp-server interface but adds
-    OBO (On-Behalf-Of) authentication via Azure AD -> AWS Identity Center.
-
-    When a user is authenticated via Azure AD, their token is exchanged for AWS
-    temporary credentials through Identity Center, ensuring operations run with
-    the user's AWS permissions.
+    This tool is compatible with the official aws-api-mcp-server interface.
+    It authenticates with the standard AWS credential chain configured on the
+    server (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY env vars, shared
+    credentials file, or an attached IAM role).
 
     Args:
         cli_command: The complete AWS CLI command (must start with "aws")
         ctx: FastMCP context
         max_results: Optional limit for pagination
-        meta: Internal metadata from MCP proxy containing userAccessToken for OBO
+        meta: Internal metadata from MCP proxy (unused for auth)
 
     Returns:
         Command execution result with 'success' and 'data' or 'error'
@@ -779,103 +207,19 @@ async def call_aws(
         call_aws(cli_command="aws lambda list-functions --region us-west-2")
     """
     try:
-        # Extract Azure AD token from meta if provided by MCP proxy
-        credentials = None
-        user_token_provided = False
-
-        # User info for executed_as badge
-        user_info = None
-
-        if meta and isinstance(meta, dict):
-            user_token = meta.get("userAccessToken")
-            if user_token:
-                user_token_provided = True
-                user_display = _get_user_display_name(user_token)
-                user_info = _get_user_info_from_token(user_token)
-                logger.info(f"OBO: Attempting AWS OBO for user {user_display} (token length: {len(user_token)})")
-                set_obo_context(user_token)
-                credentials = get_obo_credentials()
-                if credentials:
-                    logger.info(f"OBO: Successfully obtained AWS credentials for {user_display}")
-                else:
-                    # OBO failed - check if dev fallback is allowed
-                    if AWS_OBO_FALLBACK_TO_SERVICE:
-                        logger.warning(f"OBO: FAILED for {user_display} - falling back to service credentials (AWS_OBO_FALLBACK_TO_SERVICE=true)")
-                        credentials = get_fallback_credentials()
-                        if credentials:
-                            logger.info(f"OBO: Using service credentials as fallback for {user_display}")
-                        else:
-                            return {
-                                "success": False,
-                                "error": "AWS OBO failed and no fallback credentials available. Set AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY.",
-                            }
-                    elif AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
-                        # Keypair-auth deployment: Identity Center OBO is an optional
-                        # enterprise feature. When it isn't configured (or fails) but a
-                        # static service keypair IS present, use it — a plain keypair
-                        # install must work for authenticated users too, not only for
-                        # unauthenticated system/service calls.
-                        logger.warning(f"OBO: unavailable for {user_display} - no Identity Center; using static keypair (AWS_ACCESS_KEY_ID present)")
-                        credentials = get_fallback_credentials()
-                        if not credentials:
-                            return {
-                                "success": False,
-                                "error": "AWS OBO unavailable and static keypair credentials could not be loaded.",
-                            }
-                    else:
-                        # No OBO path AND no static keypair — genuinely cannot authenticate.
-                        logger.error(f"OBO: FAILED to get credentials for {user_display} - NO FALLBACK")
-
-                        role_arn = os.environ.get("AWS_OBO_ROLE_ARN", "")
-                        account_id = os.environ.get("AWS_ACCOUNT_ID", "")
-                        hints = []
-
-                        if not role_arn and not account_id:
-                            hints.append("AWS_OBO_ROLE_ARN or AWS_ACCOUNT_ID environment variable not set")
-
-                        hints.extend([
-                            "Verify AWS IAM OIDC provider is configured for your Azure AD tenant",
-                            "Verify IAM role trust policy allows web identity federation from Azure AD",
-                            "Token may have expired - try re-authenticating"
-                        ])
-
-                        return {
-                            "success": False,
-                            "error": "AWS OBO authentication failed. Your Azure AD token could not be exchanged for AWS credentials.",
-                            "hint": " | ".join(hints),
-                            "details": {
-                                "user": user_display,
-                                "role_arn_configured": bool(role_arn),
-                                "account_id_configured": bool(account_id),
-                                "region": AWS_REGION or "us-east-1"
-                            }
-                        }
-
-        # Only use fallback credentials when NO user token is provided (system/service calls)
-        if not credentials and not user_token_provided:
-            logger.info("No user token provided - using fallback/environment credentials")
-            credentials = get_fallback_credentials()
-            if not credentials:
-                return {
-                    "success": False,
-                    "error": "No AWS credentials available. Either provide a user token for OBO or configure AWS environment variables.",
-                }
+        # Resolve static env credentials if present; otherwise pass None and let
+        # boto3 / the AWS CLI use the default credential chain (instance/task
+        # role, IRSA, shared credentials file, etc.).
+        credentials = get_environment_credentials()
 
         # Parse and execute the command
         result = await execute_cli_command(cli_command, credentials, max_results)
-
-        # Add executed_as to result for user badge display
-        if user_info and result.get("success"):
-            result["executed_as"] = user_info
-            logger.info(f"AWS command executed as: {user_info.get('upn', 'unknown')}")
 
         return result
 
     except Exception as e:
         logger.error(f"call_aws failed: {e}")
         return {"success": False, "error": str(e)}
-    finally:
-        clear_obo_context()
 
 @mcp.tool()
 async def suggest_aws_commands(
@@ -915,187 +259,60 @@ async def aws_list_accounts(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    List AWS accounts accessible to the current user via Identity Center.
+    List AWS accounts visible to the configured identity.
 
-    This tool shows which AWS accounts and roles the user can access through
-    AWS Identity Center SSO. Requires OBO authentication.
+    For an AWS Organizations management/delegated account this returns every
+    member account (via `organizations list-accounts`). Otherwise it falls
+    back to the single account the configured credentials belong to (via
+    `sts get-caller-identity`).
 
     Args:
-        meta: Internal metadata from MCP proxy containing userAccessToken for OBO
+        meta: Internal metadata from MCP proxy (unused for auth)
 
     Returns:
-        List of accessible accounts with their roles
+        List of accessible accounts
     """
-    try:
-        # Extract Azure AD token
-        if meta and isinstance(meta, dict):
-            user_token = meta.get("userAccessToken")
-            if user_token:
-                set_obo_context(user_token)
+    # First try AWS Organizations (works when the configured identity is in an
+    # org management / delegated-admin account with organizations:ListAccounts).
+    org_result = await _execute_aws_command(
+        cli_command="aws organizations list-accounts",
+        meta=meta,
+    )
+    if org_result.get("success") and isinstance(org_result.get("data"), dict):
+        org_accounts = org_result["data"].get("Accounts", [])
+        if org_accounts:
+            accounts = [
+                {
+                    "accountId": a.get("Id", ""),
+                    "accountName": a.get("Name", "Unknown"),
+                    "emailAddress": a.get("Email", ""),
+                    "status": a.get("Status", ""),
+                }
+                for a in org_accounts
+            ]
+            return {"success": True, "accounts": accounts}
 
-        if "azure_token" not in _obo_context:
-            return {
-                "success": False,
-                "error": "No Azure AD token provided. This tool requires OBO authentication."
-            }
-
-        if not AWS_IC_APPLICATION_ARN:
-            return {
-                "success": False,
-                "error": "AWS Identity Center not configured"
-            }
-
-        azure_token = _obo_context["azure_token"]
-        region = AWS_REGION or "us-east-1"
-        user_id = _get_user_from_token(azure_token)
-        user_display = _get_user_display_name(azure_token)
-
-        # Check if we have cached credentials for this user
-        # If so, return the account info from cache to avoid "JWT already redeemed" error
-        cached = _credential_cache.get(user_id)
-        if cached:
-            logger.info(f"Returning cached account info for {user_display}")
-            return {
-                "success": True,
-                "accounts": [{
-                    "accountId": cached.account_id,
-                    "accountName": "(from cache)",
-                    "emailAddress": user_display,
-                    "roles": [cached.role_name],
-                    "note": "Showing cached account. Full account list requires fresh login."
-                }]
-            }
-
-        # #637 — No credential cache yet. Prime via _get_credentials_for_user
-        # which has the IC-then-direct-OIDC fallback chain. The IC bootstrap
-        # path's `sso-oidc.create_token_with_iam` requires SigV4 signing
-        # with ambient IAM creds (IRSA / pod identity); when that's not
-        # configured, boto3 raises "Unable to locate credentials" mid-call.
-        # The direct-OIDC fallback (`sts.assume_role_with_web_identity`)
-        # treats the Azure JWT as a bearer token and works without ambient
-        # creds — so calling _get_credentials_for_user first lets the
-        # fallback land STS creds in `_credential_cache`, after which the
-        # cache-hit branch above returns the cached account info on the
-        # NEXT call. For this first call, we fall through to the IC path
-        # only if creds were primed via IC; otherwise we surface a clear
-        # error pointing at the cached single-account info from direct OIDC.
-        user_id = _get_user_from_token(azure_token)
-        ic_access_token = _get_cached_ic_token(user_id)
-
-        if not ic_access_token:
-            # Try priming via the full IC-then-direct-OIDC chain. If IC
-            # succeeds, _cache_ic_token populates the cache and we'll see
-            # ic_access_token next iteration. If only direct-OIDC succeeds,
-            # _credential_cache gets a STS row and the cache-hit branch
-            # above will return it — but we have to re-check after priming.
-            primed = _get_credentials_for_user(azure_token, user_id, user_display, region)
-            if primed:
-                # Re-check both caches after priming.
-                cached = _credential_cache.get(user_id)
-                if cached:
-                    logger.info(f"Returning primed account info for {user_display}")
-                    return {
-                        "success": True,
-                        "accounts": [{
-                            "accountId": cached.account_id,
-                            "accountName": "(from cache)",
-                            "emailAddress": user_display,
-                            "roles": [cached.role_name],
-                            "note": "Showing primed account from direct-OIDC OBO. Identity Center account list requires IRSA/pod-identity ambient creds for sso-oidc.create_token_with_iam.",
-                        }]
-                    }
-                ic_access_token = _get_cached_ic_token(user_id)
-
-        if not ic_access_token:
-            logger.info(f"Performing fresh IC token exchange for account listing - user: {user_display}")
-
-            # Exchange token (single-use JWT, must cache the result).
-            # NB: this requires ambient IAM creds (IRSA) — if missing,
-            # boto3 raises NoCredentialsError caught by the outer except.
-            sso_oidc = boto3.client('sso-oidc', region_name=region)
-            ic_response = sso_oidc.create_token_with_iam(
-                clientId=AWS_IC_APPLICATION_ARN,
-                grantType='urn:ietf:params:oauth:grant-type:jwt-bearer',
-                assertion=azure_token,
-                scope=['sso:account:access']
-            )
-
-            ic_access_token = ic_response['accessToken']
-            expires_in = ic_response.get('expiresIn', 3600)
-            _cache_ic_token(user_id, user_display, ic_access_token, min(expires_in, IC_TOKEN_CACHE_TTL_SECONDS))
-            logger.info(f"Got IC access token (expires in {expires_in}s)")
-        else:
-            logger.info(f"Using cached IC access token for {user_display}")
-
-        # List accounts
-        sso = boto3.client('sso', region_name=region)
-        accounts_response = sso.list_accounts(accessToken=ic_access_token)
-        accounts = accounts_response.get('accountList', [])
-
-        # Get roles for each account
-        result = []
-        for account in accounts:
-            account_id = account['accountId']
-            roles_response = sso.list_account_roles(
-                accessToken=ic_access_token,
-                accountId=account_id
-            )
-            roles = [r['roleName'] for r in roles_response.get('roleList', [])]
-
-            result.append({
-                "accountId": account_id,
-                "accountName": account.get('accountName', 'Unknown'),
-                "emailAddress": account.get('emailAddress', ''),
-                "roles": roles
-            })
-
-        return {"success": True, "accounts": result}
-
-    except NoCredentialsError as e:
-        # #637 — sso-oidc.create_token_with_iam requires ambient IAM creds
-        # (IRSA / pod identity / instance profile) to SigV4-sign the request.
-        # When missing, boto3 raises NoCredentialsError. The fallback path
-        # in _get_credentials_for_user uses sts.assume_role_with_web_identity
-        # which treats the Azure JWT as bearer (no ambient creds needed),
-        # so IAM-level tools succeed. This branch tells the caller exactly
-        # which configuration knob is missing.
-        logger.error(f"[#637] aws_list_accounts: ambient creds missing for sso-oidc.create_token_with_iam — {e}")
-        cached = _credential_cache.get(_get_user_from_token(_obo_context.get("azure_token", "")))
-        if cached:
-            return {
-                "success": True,
-                "accounts": [{
-                    "accountId": cached.account_id,
-                    "accountName": "(from direct-OIDC OBO cache)",
-                    "emailAddress": user_display,
-                    "roles": [cached.role_name],
-                    "note": "Identity Center account-list endpoint unavailable (no IRSA/pod-identity for sso-oidc.create_token_with_iam). Returning the single account/role landed via sts.assume_role_with_web_identity. Other aws_* tools work normally against this account.",
-                }]
-            }
+    # Fallback: just the account the configured credentials belong to.
+    identity = await _execute_aws_command(
+        cli_command="aws sts get-caller-identity",
+        meta=meta,
+    )
+    if identity.get("success") and isinstance(identity.get("data"), dict):
+        data = identity["data"]
         return {
-            "success": False,
-            "error": "Identity Center account list unavailable: sso-oidc.create_token_with_iam requires ambient IAM credentials (IRSA / pod-identity) on the oap-aws-mcp pod, none found. IAM-level aws tools work via direct STS OBO. To enable account-list, configure IRSA on the oap-aws-mcp ServiceAccount with a role that has sso-oauth:CreateTokenWithIAM permission.",
-            "hint": "Workaround: invoke any aws_list_iam_* tool first to land OBO STS credentials, then call aws_list_accounts again — it'll return the cached single-account info.",
+            "success": True,
+            "accounts": [{
+                "accountId": data.get("Account", ""),
+                "accountName": "(current account)",
+                "emailAddress": "",
+                "arn": data.get("Arn", ""),
+                "note": "Showing the single account the configured AWS identity belongs to. "
+                        "Full multi-account listing requires AWS Organizations access.",
+            }],
         }
-    except ClientError as e:
-        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
-        error_msg = e.response.get('Error', {}).get('Message', str(e))
-        logger.error(f"List accounts failed: {error_code} - {error_msg}")
 
-        # If JWT already redeemed, explain the situation
-        if 'already redeemed' in str(error_msg).lower():
-            return {
-                "success": False,
-                "error": "Your session token has already been used. Please use call_aws to execute commands - credentials are cached.",
-                "hint": "Try: call_aws(cli_command='aws sts get-caller-identity') to see your identity"
-            }
-
-        return {"success": False, "error": f"{error_code}: {error_msg}"}
-    except Exception as e:
-        logger.error(f"List accounts failed: {e}")
-        return {"success": False, "error": str(e)}
-    finally:
-        clear_obo_context()
+    # Surface whichever error is more informative.
+    return identity if not identity.get("success") else org_result
 
 # =============================================================================
 # INTERNAL AWS EXECUTION FUNCTION
@@ -1110,67 +327,23 @@ async def _execute_aws_command(
     """
     Internal function to execute AWS CLI commands.
     Called by both the call_aws tool and convenience tools.
+
+    Authenticates with the server's configured AWS credentials (env vars or
+    the default boto3 / AWS CLI credential chain).
     """
     try:
-        # Extract Azure AD token from meta if provided by MCP proxy
-        credentials = None
-        user_token_provided = False
-        user_info = None
-
-        if meta and isinstance(meta, dict):
-            user_token = meta.get("userAccessToken")
-            if user_token:
-                user_token_provided = True
-                user_display = _get_user_display_name(user_token)
-                user_info = _get_user_info_from_token(user_token)
-                logger.info(f"OBO: Attempting AWS OBO for user {user_display}")
-                set_obo_context(user_token)
-                credentials = get_obo_credentials()
-                if credentials:
-                    logger.info(f"OBO: Successfully obtained AWS credentials for {user_display}")
-                elif AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
-                    # Keypair-auth deployment: OBO is optional — fall back to the static
-                    # service keypair for authenticated users when it's configured.
-                    logger.warning(f"OBO: unavailable for {user_display} - using static keypair (AWS_ACCESS_KEY_ID present)")
-                    credentials = get_fallback_credentials()
-                    if not credentials:
-                        return {
-                            "success": False,
-                            "error": "AWS OBO unavailable and static keypair credentials could not be loaded.",
-                            "details": {"user": user_display}
-                        }
-                else:
-                    logger.error(f"OBO: FAILED to get credentials for {user_display}")
-                    return {
-                        "success": False,
-                        "error": "AWS OBO authentication failed.",
-                        "details": {"user": user_display}
-                    }
-
-        # Only use fallback credentials when NO user token is provided
-        if not credentials and not user_token_provided:
-            logger.info("No user token provided - using fallback credentials")
-            credentials = get_fallback_credentials()
-            if not credentials:
-                return {
-                    "success": False,
-                    "error": "No AWS credentials available.",
-                }
+        # Resolve static env credentials if present; otherwise pass None and let
+        # boto3 / the AWS CLI use the default credential chain.
+        credentials = get_environment_credentials()
 
         # Execute the command
         result = await execute_cli_command(cli_command, credentials, max_results)
-
-        # Add executed_as to result for user badge display
-        if user_info and result.get("success"):
-            result["executed_as"] = user_info
 
         return result
 
     except Exception as e:
         logger.error(f"_execute_aws_command failed: {e}")
         return {"success": False, "error": str(e)}
-    finally:
-        clear_obo_context()
 
 # =============================================================================
 # CONVENIENCE TOOLS - Simple wrappers for common operations
@@ -1188,7 +361,7 @@ async def aws_identity(
     your AWS identity including account, user ARN, and user ID.
 
     Args:
-        meta: Internal metadata from MCP proxy containing userAccessToken for OBO
+        meta: Internal metadata from MCP proxy (unused for auth)
 
     Returns:
         Your AWS identity information (Account, ARN, UserId)
@@ -1211,15 +384,13 @@ async def aws_cost_summary(
 
     This provides total AWS spending for the time period, useful for quick cost checks.
 
-    AUTH IS AUTOMATIC: this tool runs as the authenticated AD user via
-    Identity Center trusted-identity-propagation → AssumeRoleWithWebIdentity
-    against the deployment's configured OBO role (env-injected at startup).
+    AUTH IS AUTOMATIC: this tool uses the server's configured AWS credentials.
     NEVER ask the user for AWS credentials, role ARNs, or access keys —
-    just call the tool, OBO is handled server-side.
+    just call the tool, authentication is handled server-side.
 
     Args:
         days: Number of days to analyze (default 30)
-        meta: Internal metadata from MCP proxy containing userAccessToken for OBO
+        meta: Internal metadata from MCP proxy (unused for auth)
 
     Returns:
         Total cost for the period with currency
@@ -1254,17 +425,13 @@ async def aws_cost_summary(
                 total += amount
                 currency = metrics.get("Unit", "USD")
 
-            # Preserve executed_as if present
-            response = {
+            return {
                 "success": True,
                 "total_cost": round(total, 2),
                 "currency": currency,
                 "period": f"Last {days} days ({start_date} to {end_date})",
                 "raw_data": data
             }
-            if "executed_as" in result:
-                response["executed_as"] = result["executed_as"]
-            return response
         except Exception as e:
             logger.warning(f"Failed to parse cost data: {e}")
             return result  # Return raw result if parsing fails
@@ -1290,7 +457,7 @@ async def aws_cost_by_service(
         days: Number of days to analyze (default 30)
         group_by: Dimension to group by — SERVICE, REGION, LINKED_ACCOUNT, USAGE_TYPE, INSTANCE_TYPE
         granularity: Time granularity — DAILY or MONTHLY
-        meta: Internal metadata from MCP proxy containing userAccessToken for OBO
+        meta: Internal metadata from MCP proxy (unused for auth)
 
     Returns:
         Cost breakdown grouped by the specified dimension, sorted by cost descending
@@ -1347,8 +514,7 @@ async def aws_cost_by_service(
 
             total = sum(c for _, c in sorted_services)
 
-            # Preserve executed_as if present
-            response = {
+            return {
                 "success": True,
                 "total_cost": round(total, 2),
                 "currency": currency,
@@ -1356,9 +522,6 @@ async def aws_cost_by_service(
                 "services": [{"service": s, "cost": c} for s, c in sorted_services],
                 "top_5": [{"service": s, "cost": c} for s, c in sorted_services[:5]]
             }
-            if "executed_as" in result:
-                response["executed_as"] = result["executed_as"]
-            return response
         except Exception as e:
             logger.warning(f"Failed to parse cost data: {e}")
             return result  # Return raw result if parsing fails
@@ -1377,7 +540,7 @@ async def aws_list_ec2(
 
     Args:
         region: AWS region (e.g. us-east-1). Uses default if not specified.
-        meta: Internal metadata from MCP proxy containing userAccessToken for OBO
+        meta: Internal metadata from MCP proxy (unused for auth)
 
     Returns:
         List of EC2 instances with their details
@@ -1404,7 +567,7 @@ async def aws_list_s3(
     Shows bucket names and creation dates.
 
     Args:
-        meta: Internal metadata from MCP proxy containing userAccessToken for OBO
+        meta: Internal metadata from MCP proxy (unused for auth)
 
     Returns:
         List of S3 buckets
@@ -1421,7 +584,7 @@ async def aws_list_s3(
 # TYPED CONVENIENCE TOOLS — 0.6.6 P6 AWS MCP parity
 # Small, focused wrappers around CLI commands so the LLM can pick specific
 # tools by name instead of hand-rolling CLI strings. Each delegates to
-# _aws_cli() (below) which handles the region suffix + OBO meta passthrough.
+# _aws_cli() (below) which handles the region suffix.
 # =============================================================================
 
 def _with_region(cmd: str, region: Optional[str]) -> str:
@@ -1434,7 +597,7 @@ async def _aws_cli(
     region: Optional[str] = None,
     meta: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Shared tool body: region-suffix + OBO-forwarding CLI invocation."""
+    """Shared tool body: region-suffix + CLI invocation."""
     return await _execute_aws_command(
         cli_command=_with_region(base_cmd, region),
         meta=meta,
@@ -2035,7 +1198,7 @@ async def aws_bedrock_invoke_model(
         accept: Response Accept header (default application/json)
         content_type: Request Content-Type (default application/json)
         region: AWS region (defaults to us-east-1)
-        meta: Internal metadata from MCP proxy (OBO user token)
+        meta: Internal metadata from MCP proxy (unused for auth)
     """
     import shlex
     cmd = (
@@ -2075,7 +1238,7 @@ async def aws_bedrock_create_knowledge_base(
       "fieldMapping":{"vectorField":"...","textField":"...","metadataField":"..."}}`).
 
     Returns {success, data:{knowledgeBase:{knowledgeBaseId, status, name,
-    knowledgeBaseArn,...}}, executed_as}.
+    knowledgeBaseArn,...}}}.
 
     Args:
         name: KB name (must be unique in the account)
@@ -2086,7 +1249,7 @@ async def aws_bedrock_create_knowledge_base(
         vector_store_config: JSON config sub-document for the chosen type (string)
         description: Optional KB description
         region: AWS region (defaults to us-east-1)
-        meta: Internal metadata from MCP proxy (OBO user token)
+        meta: Internal metadata from MCP proxy (unused for auth)
     """
     import shlex
     storage_config_json = json.dumps({
@@ -2133,7 +1296,7 @@ async def aws_bedrock_create_agent(
     `prepare-agent` before it can be invoked.
 
     Returns {success, data:{agent:{agentId, agentArn, agentName,
-    agentStatus,...}}, executed_as}.
+    agentStatus,...}}}.
 
     Args:
         agent_name: Display name (unique in the account)
@@ -2143,7 +1306,7 @@ async def aws_bedrock_create_agent(
         description: Optional agent description
         idle_session_ttl_in_seconds: Session expiry (60-3600, default 600)
         region: AWS region (defaults to us-east-1)
-        meta: Internal metadata from MCP proxy (OBO user token)
+        meta: Internal metadata from MCP proxy (unused for auth)
     """
     import shlex
     cmd = (
@@ -2190,7 +1353,7 @@ async def aws_bedrock_invoke_agent(
         input_text: User message to send to the agent
         enable_trace: Include trace events in the streamed response
         region: AWS region (defaults to us-east-1)
-        meta: Internal metadata from MCP proxy (OBO user token)
+        meta: Internal metadata from MCP proxy (unused for auth)
     """
     import shlex
     cmd = (
@@ -2508,14 +1671,11 @@ def main():
     """Main entry point for the OpenAgentic AWS MCP server."""
     logger.info("=" * 60)
     logger.info("Starting OpenAgentic AWS MCP Server")
-    logger.info("Forked from awslabs/mcp aws-api-mcp-server + OBO support")
+    logger.info("Forked from awslabs/mcp aws-api-mcp-server")
+    logger.info("Auth: standard boto3 / environment credential chain")
     logger.info("=" * 60)
     logger.info(f"AWS Region: {AWS_REGION or '(not set, will use us-east-1)'}")
-    logger.info(f"Identity Center configured: {'Yes' if AWS_IC_APPLICATION_ARN else 'No'}")
-    if AWS_IC_APPLICATION_ARN:
-        logger.info(f"  Instance ARN: {AWS_IC_INSTANCE_ARN[:50] if AWS_IC_INSTANCE_ARN else '(not set)'}...")
-        logger.info(f"  Application ARN: {AWS_IC_APPLICATION_ARN[:50]}...")
-    logger.info(f"Fallback credentials: {'Yes' if AWS_ACCESS_KEY_ID else 'No (using default chain)'}")
+    logger.info(f"Static env credentials: {'Yes' if AWS_ACCESS_KEY_ID else 'No (using default credential chain)'}")
     logger.info(f"Working directory: {WORKING_DIRECTORY}")
     logger.info("=" * 60)
 

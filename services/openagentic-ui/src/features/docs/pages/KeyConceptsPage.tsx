@@ -154,7 +154,7 @@ const KeyConceptsPage: React.FC = () => {
 
   const agentCount =
     agentManifest?.sections.reduce((n, s) => n + s.items.length, 0) ?? 8;
-  const mcpCount = mcpManifest?.sections.length ?? 14;
+  const mcpCount = mcpManifest?.sections.length ?? 9;
   const nodeCount =
     nodeManifest?.sections.reduce((n, s) => n + s.items.length, 0) ?? 71;
 

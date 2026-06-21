@@ -1,4 +1,4 @@
-Title: Show HN: OpenAgentic — self-hosted, zero-telemetry AI ops platform (chat + flows + 14 cloud/k8s/observability MCPs)
+Title: Show HN: OpenAgentic — self-hosted, zero-telemetry AI ops platform (chat + flows + 9 cloud/k8s/observability MCPs)
 
 URL: https://github.com/agentic-work/openagentic
 
@@ -53,11 +53,10 @@ the machine.
   conversations + uploaded docs.
 - **Flows** — visual agent runbooks (the engine is Flowise-derived): drag-drop
   nodes, branching, tool calls, RAG.
-- **14 first-party MCP servers** — AWS, Azure, GCP, Kubernetes, Prometheus,
-  Loki, Alertmanager, GitHub, plus Web, Knowledge (RAG), Incident, Runbook,
-  Admin, and Agent Architect. All disabled by default; enable what you need.
+- **9 first-party MCP servers** — AWS, Azure, GCP, Kubernetes, Prometheus,
+  Loki, GitHub, admin, and web. All disabled by default; enable what you need.
   The agent routes calls semantically (tools indexed by description in Milvus),
-  so you can have all 14 active and it still picks the right one.
+  so you can have all 9 active and it still picks the right one.
 - **Bring-your-own LLM** — Ollama for free local inference, or plug in
   Anthropic / OpenAI / Azure OpenAI / Vertex keys. Local Ollama is the default,
   which is what makes "zero data leaving the box" a literal default rather than

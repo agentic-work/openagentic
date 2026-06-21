@@ -4,27 +4,26 @@
 OpenAgentic Azure MCP Server - Full Azure SDK for az cli Parity
 
 This MCP provides FULL PARITY with Azure CLI using the official Azure SDK.
-All operations run as the USER authenticated via Azure AD into OpenAgentic.
+All operations run as the configured Azure SERVICE PRINCIPAL (app registration).
 
-CRITICAL SECURITY GUARANTEES:
-1. NO DefaultAzureCredential - we never use it
-2. NO Service Principal - no client_secret, no SP credentials
-3. NO OBO token exchange - user's token is used directly
-4. RUNS AS USER - user's RBAC permissions apply to all operations
-5. HARD FAIL - if no user token, operation fails (no fallback)
+Authentication (OSS self-hosted pattern):
+  azure.identity.ClientSecretCredential(tenant_id, client_id, client_secret)
+  built from AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET env vars.
 
-Token Flow:
-  User Browser → OpenAgentic UI → Azure AD SSO → Tokens for each audience
-  → openagentic-api → mcp-proxy → oap-azure-mcp → Azure SDK (as user)
+  The operator creates an Azure AD app registration + client secret, grants it
+  the required Azure RBAC roles (and Microsoft Graph application permissions for
+  the identity tools), and supplies the three values via the environment. Every
+  operation runs with that single service-principal identity — the SP's RBAC
+  permissions apply to all operations.
 
-The user's experience is identical to: `az login` then using az cli commands.
+There is NO On-Behalf-Of (OBO) / user-token passthrough and no per-user
+credential brokering: this MCP does not depend on a user being logged in via
+an external IdP.
 """
 
 import os
 import json
 import logging
-import base64
-import time
 import asyncio
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, List, Callable, TypeVar
@@ -87,7 +86,7 @@ from azure.storage.blob import BlobServiceClient
 
 # Microsoft Graph
 from msgraph import GraphServiceClient
-from azure.identity import ClientSecretCredential  # Only imported for type reference, NOT USED
+from azure.identity import ClientSecretCredential
 
 from mcp.server.fastmcp import FastMCP
 
@@ -107,143 +106,101 @@ except ImportError:
 
 DEFAULT_SUBSCRIPTION_ID = os.environ.get("AZURE_SUBSCRIPTION_ID", "")
 
+# Service principal (Azure AD app registration) configuration.
+AZURE_TENANT_ID = os.environ.get("AZURE_TENANT_ID", "")
+AZURE_CLIENT_ID = os.environ.get("AZURE_CLIENT_ID", "")
+AZURE_CLIENT_SECRET = os.environ.get("AZURE_CLIENT_SECRET", "")
+
 # =============================================================================
-# USER PASSTHROUGH CREDENTIAL
+# SERVICE PRINCIPAL AUTHENTICATION
 # =============================================================================
-# This is the ONLY credential class used. It passes through the user's token.
-# NO DefaultAzureCredential. NO ServicePrincipal. NO OBO exchange.
+# This MCP authenticates with a single Azure AD service principal (app
+# registration), built from the AZURE_TENANT_ID / AZURE_CLIENT_ID /
+# AZURE_CLIENT_SECRET environment variables via ClientSecretCredential.
+#
+# There is NO user-token passthrough and NO OBO exchange — every operation
+# runs with the service principal's RBAC (and Microsoft Graph application)
+# permissions. The SP's identity is what shows up in the executed_as badge.
 # =============================================================================
 
-class UserPassthroughCredential(TokenCredential):
+# Cached singleton ClientSecretCredential (one per process).
+_sp_credential: Optional["ClientSecretCredential"] = None
+
+
+def _build_service_principal_info() -> dict:
+    """Build the executed_as badge for the configured service principal."""
+    return {
+        "upn": f"sp:{AZURE_CLIENT_ID}" if AZURE_CLIENT_ID else "service-principal",
+        "name": "Azure Service Principal",
+        "oid": AZURE_CLIENT_ID,
+        "tid": AZURE_TENANT_ID,
+        "aud": "",
+        "auth": "service_principal",
+    }
+
+
+def get_service_principal_credential() -> "ClientSecretCredential":
     """
-    Custom credential that passes through the user's Azure AD token.
+    Build (once) and return the ClientSecretCredential for the configured
+    Azure AD service principal.
 
-    CRITICAL GUARANTEES:
-    - Does NOT use DefaultAzureCredential
-    - Does NOT do OBO token exchange
-    - Does NOT use any service principal
-    - Uses the user's DIRECT token from OpenAgentic SSO
-
-    This is equivalent to: user runs `az login` then uses az cli.
-    The user's RBAC permissions apply to all operations.
+    Raises:
+        ValueError: If AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET
+            are not all configured.
     """
+    global _sp_credential
 
-    def __init__(self, token: str):
-        """
-        Initialize with user's access token.
+    missing = [
+        name for name, val in (
+            ("AZURE_TENANT_ID", AZURE_TENANT_ID),
+            ("AZURE_CLIENT_ID", AZURE_CLIENT_ID),
+            ("AZURE_CLIENT_SECRET", AZURE_CLIENT_SECRET),
+        ) if not val
+    ]
+    if missing:
+        raise ValueError(
+            "Azure service principal not configured. Missing environment "
+            f"variable(s): {', '.join(missing)}. Create an Azure AD app "
+            "registration + client secret, grant it the needed RBAC roles "
+            "(and Microsoft Graph application permissions for identity tools), "
+            "then set AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET."
+        )
 
-        Args:
-            token: The user's Azure AD access token from OpenAgentic SSO.
-                   This token must be scoped for the appropriate Azure audience.
+    if _sp_credential is None:
+        _sp_credential = ClientSecretCredential(
+            tenant_id=AZURE_TENANT_ID,
+            client_id=AZURE_CLIENT_ID,
+            client_secret=AZURE_CLIENT_SECRET,
+        )
+        logger.info(f"ClientSecretCredential initialized for service principal: {AZURE_CLIENT_ID}")
 
-        Raises:
-            ValueError: If no token is provided (we REQUIRE user authentication)
-        """
-        if not token:
-            raise ValueError(
-                "User token is REQUIRED. This MCP runs as the authenticated user, "
-                "not a service account. Ensure user logged in via Azure AD SSO."
-            )
+    return _sp_credential
 
-        self._token = token
-        self._expires_on = self._extract_expiry(token)
-        self._user_info = self._extract_user_info(token)
-
-        logger.info(f"UserPassthroughCredential initialized for: {self._user_info.get('upn', 'unknown')}")
-
-    def _extract_expiry(self, token: str) -> int:
-        """Extract expiration timestamp from JWT."""
-        try:
-            payload = token.split('.')[1]
-            padding = 4 - len(payload) % 4
-            if padding != 4:
-                payload += '=' * padding
-            decoded = json.loads(base64.urlsafe_b64decode(payload))
-            return decoded.get('exp', int(time.time()) + 3600)
-        except Exception:
-            return int(time.time()) + 3600
-
-    def _extract_user_info(self, token: str) -> dict:
-        """Extract user information from JWT for audit trail."""
-        try:
-            payload = token.split('.')[1]
-            padding = 4 - len(payload) % 4
-            if padding != 4:
-                payload += '=' * padding
-            decoded = json.loads(base64.urlsafe_b64decode(payload))
-            return {
-                "upn": decoded.get("upn", decoded.get("preferred_username", decoded.get("unique_name", "unknown"))),
-                "name": decoded.get("name", "Unknown User"),
-                "oid": decoded.get("oid", ""),
-                "tid": decoded.get("tid", ""),
-                "aud": decoded.get("aud", "")
-            }
-        except Exception as e:
-            logger.warning(f"Could not extract user info from token: {e}")
-            return {"upn": "unknown", "name": "Unknown User", "oid": "", "tid": "", "aud": ""}
-
-    def get_token(self, *scopes: str, **kwargs: Any) -> AccessToken:
-        """
-        Return the user's direct token. Called by Azure SDK clients.
-
-        This method is called automatically by Azure SDK clients when they
-        need to authenticate. We simply return the user's token - no exchange,
-        no OBO, no service principal involvement.
-
-        Args:
-            *scopes: The scopes requested (logged but not used - token already scoped)
-            **kwargs: Additional arguments (ignored)
-
-        Returns:
-            AccessToken with the user's token and expiration
-        """
-        if scopes:
-            logger.debug(f"get_token called with scopes: {scopes} (using pre-scoped user token)")
-
-        return AccessToken(token=self._token, expires_on=self._expires_on)
-
-    @property
-    def user_info(self) -> dict:
-        """Get user information for the executed_as audit badge."""
-        return self._user_info
 
 def require_user_token(meta: Optional[Dict[str, Any]], token_key: str = "userAccessToken") -> tuple:
     """
-    Extract and validate user token from meta. Returns (credential, user_info) or raises.
+    Return the service-principal credential + its identity badge.
 
-    This is the gatekeeper function - if there's no user token, we fail.
-    NO FALLBACK to service principal or environment credentials.
+    NOTE: the name and signature are retained for compatibility with the ~100
+    tool call sites (and the test suite). The `meta` / `token_key` arguments
+    are accepted but IGNORED — this MCP authenticates with the configured
+    Azure AD service principal, not a per-user token. ClientSecretCredential
+    requests the correct scope per Azure SDK client (ARM / Graph / Key Vault /
+    Storage data planes) automatically, so a single credential serves every
+    token_key that callers used to pass.
 
     Args:
-        meta: The meta object from MCP proxy containing user tokens
-        token_key: Which token to extract (userAccessToken, graphAccessToken, etc.)
+        meta: Ignored (kept for call-site compatibility).
+        token_key: Ignored (kept for call-site compatibility).
 
     Returns:
-        Tuple of (UserPassthroughCredential, user_info dict)
+        Tuple of (ClientSecretCredential, service_principal_info dict)
 
     Raises:
-        ValueError: If no user token is available
+        ValueError: If the service principal env vars are not configured.
     """
-    if not meta or not isinstance(meta, dict):
-        raise ValueError(
-            "No authentication context provided. "
-            "User must be logged in via Azure AD SSO."
-        )
-
-    token = meta.get(token_key)
-    if not token:
-        # Try fallback to primary token
-        token = meta.get("userAccessToken")
-
-    if not token:
-        raise ValueError(
-            f"No user token provided (expected '{token_key}'). "
-            "User must be logged in via Azure AD SSO, not local auth. "
-            "This MCP runs as YOU - it cannot operate without your identity."
-        )
-
-    credential = UserPassthroughCredential(token)
-    return credential, credential.user_info
+    credential = get_service_principal_credential()
+    return credential, _build_service_principal_info()
 
 def error_response(error: Exception, user_info: Optional[dict] = None) -> Dict[str, Any]:
     """Format error response with optional user context."""
@@ -276,8 +233,8 @@ AZURE_SERVER_INSTRUCTIONS = """
 
 **IMPORTANT: Call `azure_help()` first to learn how to use this MCP effectively!**
 
-This MCP runs as YOU - the user logged into OpenAgentic via Azure AD.
-Your Azure RBAC permissions apply to all operations.
+This MCP runs as the configured Azure AD service principal.
+The service principal's Azure RBAC permissions apply to all operations.
 
 ### Getting Started
 ```
@@ -404,8 +361,9 @@ want me to proceed with that?" — then stop and wait for the user.
 
 ### Authentication
 
-All operations use YOUR Azure AD identity. No service principals.
-If an operation fails with 403, you don't have Azure RBAC permission.
+All operations run as the configured Azure AD service principal.
+If an operation fails with 403, the service principal lacks the required
+Azure RBAC role (or Microsoft Graph application permission).
 """
 
 # =============================================================================
@@ -450,9 +408,9 @@ async def azure_help(
 
 ## How This MCP Works
 
-This MCP runs as YOU - the user logged into OpenAgentic via Azure AD.
-Your Azure RBAC permissions apply to ALL operations. If you can't do it
-in the Azure Portal, you can't do it here.
+This MCP runs as the configured Azure AD service principal. The service
+principal's Azure RBAC permissions apply to ALL operations. If the SP can't
+do it in the Azure Portal, you can't do it here.
 
 ## General Workflow
 
@@ -511,32 +469,27 @@ Use `azure_list_resource_groups()` to find them.
 
 ## How Authentication Works
 
-1. User logs into OpenAgentic via Azure AD SSO
-2. Frontend acquires tokens for Azure APIs
-3. Tokens are passed to this MCP
-4. MCP uses tokens directly with Azure SDK
-5. User's RBAC permissions apply
-
-## Token Types
-
-| Token | Used For |
-|-------|----------|
-| userAccessToken | ARM operations (VMs, networking, etc) |
-| graphAccessToken | Microsoft Graph (users, groups) |
-| keyvaultAccessToken | Key Vault data plane (secrets) |
-| storageAccessToken | Storage data plane (blobs) |
+1. The operator creates an Azure AD app registration (service principal) +
+   client secret and grants it the required RBAC roles / Graph permissions.
+2. AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET are provided to
+   this MCP via the environment.
+3. The MCP builds a ClientSecretCredential from those values.
+4. The Azure SDK uses that credential, requesting the right scope per plane
+   (ARM / Microsoft Graph / Key Vault / Storage) automatically.
+5. The service principal's RBAC permissions apply to every operation.
 
 ## Permission Errors
 
 If you get a 403 error:
-- The user doesn't have Azure RBAC permission
+- The service principal doesn't have the required Azure RBAC permission
+  (or Microsoft Graph application permission for identity tools)
 - Check: Azure Portal → Resource → Access Control (IAM)
 - Common roles needed: Reader, Contributor, Owner
 
-## No Service Principal
+## Single Identity
 
-This MCP NEVER uses service principals. Every operation
-runs with the user's identity. This is by design for security.
+This MCP uses ONE configured service principal for all operations. There is
+no per-user token passthrough and no OBO exchange.
 """,
 
         "large_responses": """
@@ -1091,7 +1044,7 @@ azure_list_storage_accounts()
 azure_list_storage_accounts(resource_group="data-rg")
 ```
 
-## List Containers (requires storageAccessToken)
+## List Containers (Storage data plane)
 ```python
 azure_list_containers(
     storage_account="mystorageacct",
@@ -1128,7 +1081,7 @@ User: "Find all PDF reports in our data lake"
 ```
 
 ## Tips
-- Storage data plane requires storageAccessToken (different from ARM token)
+- Storage data-plane operations need the SP granted a Storage data role (e.g. Storage Blob Data Reader/Contributor)
 - Use prefix filter to narrow down results
 - max_results defaults to 100 to avoid huge responses
 """,
@@ -1177,7 +1130,7 @@ User: "I need the database connection string"
 ```
 
 ## Tips
-- Key Vault data plane requires keyvaultAccessToken
+- Key Vault data-plane operations need the SP granted a Key Vault access policy / data role
 - User needs "Key Vault Secrets User" role to read secrets
 - User needs "Key Vault Secrets Officer" role to write secrets
 - Secret values are returned in plain text - handle carefully
@@ -1229,8 +1182,8 @@ User: "Why is our Azure bill so high this month?"
 
 ## Subscription Resolution
 - All three cost tools accept `subscription_id` as an OPTIONAL argument.
-- When you omit it (or pass `null`), the tool auto-resolves the caller's
-  visible subscriptions via the OBO token and fans the query across each,
+- When you omit it (or pass `null`), the tool auto-resolves the service
+  principal's visible subscriptions and fans the query across each,
   aggregating into a single answer. Use this for "show me my total Azure
   cost" prompts — DON'T chain `azure_list_subscriptions` first.
 - Pass an explicit UUID only when the user wants one specific subscription.
@@ -1275,7 +1228,7 @@ User: "Who is the manager of john@company.com?"
 ```
 
 ## Tips
-- Graph operations require graphAccessToken
+- Graph operations need the SP granted Microsoft Graph application permissions
 - User needs appropriate Graph permissions
 - Can search by UPN (email) or object ID
 """,
@@ -1285,13 +1238,14 @@ User: "Who is the manager of john@company.com?"
 
 ## Common Errors
 
-### "No user token provided"
-**Cause**: User not logged in via Azure AD SSO
-**Fix**: User must log into OpenAgentic with Azure AD, not local auth
+### "Azure service principal not configured"
+**Cause**: AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET not all set
+**Fix**: Create an Azure AD app registration + client secret and set the three
+env vars for this MCP
 
 ### "403 Forbidden"
-**Cause**: User lacks Azure RBAC permission
-**Fix**: Grant appropriate role in Azure Portal:
+**Cause**: Service principal lacks the required Azure RBAC permission
+**Fix**: Grant the appropriate role to the service principal in Azure Portal:
 - Reader: View resources
 - Contributor: Create/modify resources
 - Owner: Full control including IAM
@@ -1374,7 +1328,7 @@ async def azure_list_subscriptions(
     List the Azure AD tenant subscriptions visible to the caller.
 
     Resource: Azure subscriptions (sometimes called "subs" or "billing accounts").
-    Read-only. Uses the caller's OBO token; no extra consent prompt required.
+    Read-only. Uses the configured service principal credential.
     RBAC-filtered: if the user has no role assignments on any subscription, the
     list is empty (an error of fact, not a permissions bug).
 
@@ -1404,7 +1358,7 @@ async def azure_list_subscriptions(
         # Lighthouse delegations). Fall back to the validated JWT's `tid`
         # claim from user_info (require_user_token decoded it at line 163)
         # — that's the authenticated user's home tenant, which matches the
-        # subs they own in the OBO chain. Last-resort literal "unknown"
+        # subs the service principal can see. Last-resort literal "unknown"
         # was harming UI rendering of subscription tables.
         user_tid = user_info.get("tid", "") if isinstance(user_info, dict) else ""
         return {
@@ -1609,7 +1563,7 @@ async def azure_get_resource_group_inventory(
         # env default exists. Without this, Azure SDK throws InvalidSubscriptionId
         # and the model has no way to recover unless azure_list_subscriptions
         # happens to be in its top-K tool shortlist — which it often isn't.
-        # We list the user's OBO-accessible subs and either:
+        # We list the service principal's accessible subs and either:
         #   1 sub  → auto-pick it (transparent: result annotated)
         #   >1 sub → return structured error with `available_subscriptions`
         #            so the model can pick + retry without a follow-up tool
@@ -3649,7 +3603,7 @@ async def azure_list_containers(
         credential, user_info = require_user_token(meta, "storageAccessToken")
         sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
 
-        # Use data plane with user token
+        # Use data plane with the service principal credential
         account_url = f"https://{storage_account}.blob.core.windows.net"
         blob_client = BlobServiceClient(account_url=account_url, credential=credential)
 
@@ -3997,7 +3951,7 @@ def _resolve_cost_subscriptions(
     Resolution order:
       1. Explicit `subscription_id` argument (single-sub mode).
       2. `DEFAULT_SUBSCRIPTION_ID` env var if non-empty (single-sub mode).
-      3. SubscriptionClient.list() via the user's OBO token (fan-out mode).
+      3. SubscriptionClient.list() via the service principal (fan-out mode).
 
     Returns the list of subscription UUIDs to query. Raises ValueError if
     the user has no visible subscriptions — the caller turns that into a
@@ -4013,7 +3967,7 @@ def _resolve_cost_subscriptions(
     if not subs:
         raise ValueError(
             "No subscription_id provided and the caller has no visible Azure "
-            "subscriptions (OBO returned an empty list). Pass `subscription_id` "
+            "subscriptions (the service principal sees none). Pass `subscription_id` "
             "explicitly or call `azure_list_subscriptions` to see what's available."
         )
     return subs
@@ -4051,7 +4005,7 @@ async def azure_cost_query(
         granularity: Time granularity - 'Daily', 'Monthly', or 'None'
         group_by: List of dimensions to group by (e.g., ['ResourceType', 'ResourceGroup'])
         subscription_id: Optional Azure subscription ID. When omitted, the
-            tool auto-resolves the caller's visible subscriptions via OBO
+            tool auto-resolves the service principal's visible subscriptions
             and fans the cost query across each, returning aggregated data.
             Pass an explicit UUID to scope to one subscription.
     """
@@ -4150,7 +4104,7 @@ async def azure_cost_by_service(
         days: Number of days to analyze
         top_n: Number of top services to return
         subscription_id: Optional Azure subscription ID. When omitted, the
-            tool auto-resolves the caller's visible subscriptions via OBO,
+            tool auto-resolves the service principal's visible subscriptions,
             queries each, and returns top services aggregated across all
             of them. Pass an explicit UUID to scope to one subscription.
     """
@@ -4240,7 +4194,7 @@ async def azure_cost_forecast(
     Args:
         forecast_days: Number of days to forecast
         subscription_id: Optional Azure subscription ID. When omitted, the
-            tool auto-resolves the caller's visible subscriptions via OBO
+            tool auto-resolves the service principal's visible subscriptions
             and sums forecasted spend across each. Pass an explicit UUID to
             scope to one subscription.
     """
@@ -7692,7 +7646,7 @@ async def azure_resource_graph_query(
     bump to 50000+ for tenant-wide audits.
 
     CROSS-SUBSCRIPTION: omit `subscriptions` to query ALL subscriptions the
-    user's token has access to. Use `management_groups` to scope by MG
+    service principal has access to. Use `management_groups` to scope by MG
     hierarchy. Either way, a single query covers 100+ subs in one call.
 
     Use this for questions like:
@@ -7827,14 +7781,14 @@ async def azure_resource_graph_query_tenant_wide(
     meta: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
-    Run a KQL Resource Graph query across EVERY subscription the user's token
+    Run a KQL Resource Graph query across EVERY subscription the service principal
     can see — in ONE call. Use this for any question that should span the
     whole tenant: "find all X", "list biggest Y across all subs", "count Z
     by subscription", etc.
 
     Implementation: Azure Resource Graph already handles tenant-wide scope
     natively when the `subscriptions` filter is omitted — the service uses
-    the caller's token to enumerate every accessible subscription server-side.
+    the service principal to enumerate every accessible subscription server-side.
     This tool just delegates to that path with auto-pagination up to
     `max_results` rows. NO client-side sub enumeration, NO batching, NO
     fan-out loops — all of that used to be here and caused 120s timeouts
@@ -7891,7 +7845,7 @@ async def azure_resource_graph_query_tenant_wide(
             )
             request = QueryRequest(
                 query=query,
-                subscriptions=scoped_sub_ids,  # None → tenant scope via user token
+                subscriptions=scoped_sub_ids,  # None → tenant scope via service principal
                 options=request_options,
             )
             response = client.resources(request)
@@ -9694,11 +9648,11 @@ def main():
     logger.info("OpenAgentic Azure MCP Server - Full Azure SDK (az cli Parity)")
     logger.info("=" * 70)
     logger.info("")
-    logger.info("SECURITY GUARANTEES:")
-    logger.info("  - NO DefaultAzureCredential")
-    logger.info("  - NO Service Principal")
-    logger.info("  - NO OBO token exchange")
-    logger.info("  - Runs as USER authenticated via Azure AD")
+    logger.info("AUTHENTICATION:")
+    logger.info("  - Azure AD service principal (ClientSecretCredential)")
+    logger.info("  - From AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET")
+    logger.info("  - NO OBO / user-token passthrough")
+    logger.info(f"  - Service principal configured: {'Yes' if (AZURE_TENANT_ID and AZURE_CLIENT_ID and AZURE_CLIENT_SECRET) else 'No (set the AZURE_* env vars)'}")
     logger.info("")
     logger.info(f"Default Subscription: {DEFAULT_SUBSCRIPTION_ID[:8] if DEFAULT_SUBSCRIPTION_ID else 'Not set'}...")
     logger.info("")

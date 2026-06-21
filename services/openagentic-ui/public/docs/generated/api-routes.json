@@ -4,7 +4,7 @@
   "description": "HTTP routes registered across the API",
   "icon": "route",
   "category": "core",
-  "generatedAt": "2026-06-09T23:11:03.436Z",
+  "generatedAt": "2026-06-21T00:19:24.553Z",
   "sourceFiles": [
     "services/openagentic-api/src/routes/admin-agents.ts",
     "services/openagentic-api/src/routes/admin-aif-metrics.ts",
@@ -37,6 +37,7 @@
     "services/openagentic-api/src/routes/admin-user-context.ts",
     "services/openagentic-api/src/routes/admin-workflow-secrets.ts",
     "services/openagentic-api/src/routes/admin.ts",
+    "services/openagentic-api/src/routes/agenticode.ts",
     "services/openagentic-api/src/routes/agents.ts",
     "services/openagentic-api/src/routes/artifacts.ts",
     "services/openagentic-api/src/routes/auth.ts",
@@ -52,7 +53,6 @@
     "services/openagentic-api/src/routes/images.ts",
     "services/openagentic-api/src/routes/local-auth.ts",
     "services/openagentic-api/src/routes/mcp-logs.ts",
-    "services/openagentic-api/src/routes/memories.ts",
     "services/openagentic-api/src/routes/model-selector.ts",
     "services/openagentic-api/src/routes/monitoring-websocket.ts",
     "services/openagentic-api/src/routes/openai-compatible.ts",
@@ -80,6 +80,7 @@
     "services/openagentic-api/src/routes/internal/agent-search.ts",
     "services/openagentic-api/src/routes/internal/embed.ts",
     "services/openagentic-api/src/routes/internal/hitl-policy.ts",
+    "services/openagentic-api/src/routes/internal/mcp-gate.ts",
     "services/openagentic-api/src/routes/internal/refresh-models.ts",
     "services/openagentic-api/src/routes/internal/result-storage.ts",
     "services/openagentic-api/src/routes/internal/tool-search.ts",
@@ -201,6 +202,17 @@
           "properties": {
             "method": "POST",
             "path": "/skills/import"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/admin-agents.ts"
+        },
+        {
+          "id": "GET-_skill-sources",
+          "name": "GET /skill-sources",
+          "description": "GET /skill-sources",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/skill-sources"
           },
           "sourceFile": "services/openagentic-api/src/routes/admin-agents.ts"
         },
@@ -1690,6 +1702,39 @@
           "sourceFile": "services/openagentic-api/src/routes/admin.ts"
         },
         {
+          "id": "GET-_health",
+          "name": "GET /health",
+          "description": "GET /health",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/health"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/agenticode.ts"
+        },
+        {
+          "id": "GET-_config",
+          "name": "GET /config",
+          "description": "GET /config",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/config"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/agenticode.ts"
+        },
+        {
+          "id": "GET-_downloads",
+          "name": "GET /downloads",
+          "description": "GET /downloads",
+          "type": "http-route",
+          "properties": {
+            "method": "GET",
+            "path": "/downloads"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/agenticode.ts"
+        },
+        {
           "id": "GET-_",
           "name": "GET /",
           "description": "GET /",
@@ -2458,94 +2503,6 @@
             "path": "/mcp-logs/stats"
           },
           "sourceFile": "services/openagentic-api/src/routes/mcp-logs.ts"
-        },
-        {
-          "id": "GET-_memories",
-          "name": "GET /memories",
-          "description": "GET /memories",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/memories"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/memories.ts"
-        },
-        {
-          "id": "POST-_memories_search",
-          "name": "POST /memories/search",
-          "description": "POST /memories/search",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/memories/search"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/memories.ts"
-        },
-        {
-          "id": "POST-_memories",
-          "name": "POST /memories",
-          "description": "POST /memories",
-          "type": "http-route",
-          "properties": {
-            "method": "POST",
-            "path": "/memories"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/memories.ts"
-        },
-        {
-          "id": "GET-_memories__id",
-          "name": "GET /memories/:id",
-          "description": "GET /memories/:id",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/memories/:id"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/memories.ts"
-        },
-        {
-          "id": "PATCH-_memories__id",
-          "name": "PATCH /memories/:id",
-          "description": "PATCH /memories/:id",
-          "type": "http-route",
-          "properties": {
-            "method": "PATCH",
-            "path": "/memories/:id"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/memories.ts"
-        },
-        {
-          "id": "DELETE-_memories__id",
-          "name": "DELETE /memories/:id",
-          "description": "DELETE /memories/:id",
-          "type": "http-route",
-          "properties": {
-            "method": "DELETE",
-            "path": "/memories/:id"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/memories.ts"
-        },
-        {
-          "id": "GET-_memories_clusters",
-          "name": "GET /memories/clusters",
-          "description": "GET /memories/clusters",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/memories/clusters"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/memories.ts"
-        },
-        {
-          "id": "GET-_memories_export",
-          "name": "GET /memories/export",
-          "description": "GET /memories/export",
-          "type": "http-route",
-          "properties": {
-            "method": "GET",
-            "path": "/memories/export"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/memories.ts"
         },
         {
           "id": "GET-_model-selector_status",
@@ -3890,6 +3847,17 @@
             "path": "/api/internal/hitl/policy"
           },
           "sourceFile": "services/openagentic-api/src/routes/internal/hitl-policy.ts"
+        },
+        {
+          "id": "POST-_api_internal_mcp_exec",
+          "name": "POST /api/internal/mcp/exec",
+          "description": "POST /api/internal/mcp/exec",
+          "type": "http-route",
+          "properties": {
+            "method": "POST",
+            "path": "/api/internal/mcp/exec"
+          },
+          "sourceFile": "services/openagentic-api/src/routes/internal/mcp-gate.ts"
         },
         {
           "id": "POST-_refresh-all-models",

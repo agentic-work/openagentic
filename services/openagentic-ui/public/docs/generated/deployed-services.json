@@ -4,7 +4,7 @@
   "description": "Services deployed by the compose stack, source-derived from docker-compose.yml.",
   "icon": "infra",
   "category": "infrastructure",
-  "generatedAt": "2026-06-09T23:11:03.381Z",
+  "generatedAt": "2026-06-21T00:19:24.508Z",
   "sourceFiles": [
     "docker-compose.yml"
   ],
@@ -135,9 +135,20 @@
     {
       "id": "auxiliary",
       "title": "Auxiliary",
-      "description": "5 auxiliary service(s)",
+      "description": "7 auxiliary service(s)",
       "adminOnly": false,
       "items": [
+        {
+          "id": "loki",
+          "name": "loki",
+          "description": "Service `loki` (image: grafana/loki:3.4.2)",
+          "type": "compose-service",
+          "properties": {
+            "category": "auxiliary",
+            "image": "grafana/loki:3.4.2"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
         {
           "id": "ollama",
           "name": "ollama",
@@ -168,6 +179,17 @@
           "properties": {
             "category": "auxiliary",
             "image": "prom/prometheus:v2.54.1"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
+        {
+          "id": "promtail",
+          "name": "promtail",
+          "description": "Service `promtail` (image: grafana/promtail:3.4.2)",
+          "type": "compose-service",
+          "properties": {
+            "category": "auxiliary",
+            "image": "grafana/promtail:3.4.2"
           },
           "sourceFile": "docker-compose.yml"
         },

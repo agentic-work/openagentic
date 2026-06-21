@@ -331,7 +331,7 @@ const WelcomePage: React.FC = () => {
       Number((summaryItems.find((i) => i.id === id)?.properties as { value?: number } | undefined)?.value ?? 0);
 
     const mcpFromSummary = findCount('mcp-server-count');
-    const mcp = mcpFromSummary || (loadedManifests.get('mcp-servers')?.sections.length ?? 14);
+    const mcp = mcpFromSummary || (loadedManifests.get('mcp-servers')?.sections.length ?? 9);
 
     const nodeTypes = loadedManifests.get('node-types');
     const nodeCount =
@@ -342,7 +342,7 @@ const WelcomePage: React.FC = () => {
       agentTypes?.sections.reduce((n, s) => n + s.items.length, 0) ?? 0;
 
     return {
-      mcp: mcp || 14,
+      mcp: mcp || 9,
       nodes: nodeCount || 71,
       agents: agentCount || 8,
     };

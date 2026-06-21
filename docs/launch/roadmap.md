@@ -19,10 +19,9 @@ These are in `main` and work on a fresh `docker compose up -d`:
   past conversations and uploaded docs (RAG + memory).
 - **Flows** — visual agent runbooks: drag-drop nodes, branching, tool
   calls, RAG, the whole thing.
-- **14 first-party MCP servers** — AWS, Azure, GCP, Kubernetes,
-  Prometheus, Loki, Alertmanager, GitHub, Web, Knowledge, Incident,
-  Runbook, Admin, Agent Architect. All disabled by default; semantically
-  routed (Milvus-indexed) so all 14 can be active at once.
+- **9 first-party MCP servers** — AWS, Azure, GCP, Kubernetes,
+  Prometheus, Loki, GitHub, admin, web. All disabled by default; semantically
+  routed (Milvus-indexed) so all 9 can be active at once.
 - **Bring-your-own everything** — any Ollama / Anthropic / OpenAI / Azure
   OpenAI / Vertex model; any Claude-Desktop-format MCP config pasted into
   the admin panel.

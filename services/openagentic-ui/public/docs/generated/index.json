@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-09T23:11:03.457Z",
+  "generatedAt": "2026-06-21T00:19:24.570Z",
   "version": "1.0.0",
   "codename": "Open Field",
   "categories": [
@@ -87,7 +87,7 @@
       "category": "infrastructure",
       "file": "deployed-services.json",
       "sectionCount": 4,
-      "itemCount": 14,
+      "itemCount": 16,
       "adminOnly": false
     },
     {
@@ -97,7 +97,7 @@
       "category": "infrastructure",
       "file": "helm-templates.json",
       "sectionCount": 1,
-      "itemCount": 14,
+      "itemCount": 15,
       "adminOnly": false
     },
     {
@@ -107,7 +107,7 @@
       "category": "core",
       "file": "api-routes.json",
       "sectionCount": 13,
-      "itemCount": 543,
+      "itemCount": 540,
       "adminOnly": false
     },
     {

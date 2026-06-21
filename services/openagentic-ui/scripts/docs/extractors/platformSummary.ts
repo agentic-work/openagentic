@@ -74,7 +74,7 @@ async function countComposeServices(composeAbs: string): Promise<number> {
  * version + codename. Emitted to public/docs/generated/platform-summary.json
  * on every build.
  *
- * Why: docs pages (Welcome / About / MCP overview) quote numbers like "14
+ * Why: docs pages (Welcome / About / MCP overview) quote numbers like "9
  * built-in MCP servers" and a version string. Those were hand-typed and drift.
  * This makes them a generated FACT pinned to the real source on disk, and the
  * sync-guard test asserts each count matches what's actually in the repo.

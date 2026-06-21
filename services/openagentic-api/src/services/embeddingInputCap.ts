@@ -11,7 +11,7 @@
  *   `Ollama embedding request failed: 500 Internal Server Error -
  *    {"error":"the input length exceeds the context length"}`
  *   thrown from UniversalEmbeddingService.generateOllamaEmbedding while
- *   MCPToolIndexingService.indexToolsInMilvus batch-embedded 14 MCP tool
+ *   MCPToolIndexingService.indexToolsInMilvus batch-embedded 9 MCP tool
  *   descriptions. ONE pathological description zeroed out the entire catalog.
  *
  * Truncation (vs. chunking) is acceptable for semantic tool discovery: the

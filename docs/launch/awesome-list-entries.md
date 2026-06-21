@@ -17,7 +17,7 @@ awesome-selfhosted format is:
 `- [Name](url) - Description. ([Demo](...), [Source Code](...)) \`License\` \`Language\``
 
 ```markdown
-- [OpenAgentic](https://github.com/agentic-work/openagentic) - Self-hosted, zero-telemetry AIOps platform: chat + visual ops flows + RAG/memory + admin dashboards, with 14 bundled MCPs that actually touch AWS, Kubernetes, Prometheus, Loki and GitHub. Every write goes behind a human-approval gate with an immutable audit log. `Apache-2.0` `TypeScript`
+- [OpenAgentic](https://github.com/agentic-work/openagentic) - Self-hosted, zero-telemetry AIOps platform: chat + visual ops flows + RAG/memory + admin dashboards, with 9 bundled MCPs that actually touch AWS, Azure, GCP, Kubernetes, Prometheus, Loki and GitHub. Every write goes behind a human-approval gate with an immutable audit log. `Apache-2.0` `TypeScript`
 ```
 
 ---
@@ -31,7 +31,7 @@ lists split **Closed-source** vs **Open-source**; this goes under Open-source).
 Typical format: `- **[Name](url)** - Description.`
 
 ```markdown
-- **[OpenAgentic](https://github.com/agentic-work/openagentic)** - Open-source, self-hosted agentic ops platform you can `docker compose up` on your own hardware. Bring your own model (Ollama, Anthropic, OpenAI, Azure, Vertex); 14 built-in MCP tools for AWS/K8s/Prometheus/Loki/GitHub; human-approval gates + immutable audit log on every write. Apache-2.0, no phone-home.
+- **[OpenAgentic](https://github.com/agentic-work/openagentic)** - Open-source, self-hosted agentic ops platform you can `docker compose up` on your own hardware. Bring your own model (Ollama, Anthropic, OpenAI, Azure, Vertex); 9 built-in MCP servers for AWS/Azure/GCP/Kubernetes/Prometheus/Loki/GitHub/admin/web; human-approval gates + immutable audit log on every write. Apache-2.0, no phone-home.
 ```
 
 ---
@@ -61,7 +61,7 @@ language and scope, e.g. `- [name](url) 🎖️ 🏷️ ☁️ - Description.`
 target fork doesn't use them.
 
 ```markdown
-- [OpenAgentic](https://github.com/agentic-work/openagentic) 📇 ☁️ - Self-hosted bundle of 14 MCP servers (AWS, Azure, GCP, Kubernetes, Prometheus, Loki, Alertmanager, GitHub, and more) plus an MCP proxy and full chat/flows/RAG UI. Scoped egress proxy, human-approval write gates, Apache-2.0.
+- [OpenAgentic](https://github.com/agentic-work/openagentic) 📇 ☁️ - Self-hosted bundle of 9 MCP servers (AWS, Azure, GCP, Kubernetes, Prometheus, Loki, GitHub, admin, web) plus an MCP proxy and full chat/flows/RAG UI. Scoped egress proxy, human-approval write gates, Apache-2.0.
 ```
 
 ---
