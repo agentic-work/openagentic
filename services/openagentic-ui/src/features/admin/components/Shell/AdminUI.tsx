@@ -209,10 +209,8 @@ export const AdminCard: React.FC<AdminCardProps> = ({
 
   return (
     <div
-      className={`admin-card ${className}`}
+      className={`admin-card ${hoverable ? 'hoverable' : ''} ${className}`}
       style={cardStyle}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
       {cardBody}
     </div>

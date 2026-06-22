@@ -58,7 +58,7 @@ function parseCronField(field: string, min: number, max: number): Set<number> {
     if (trimmed.includes('/')) {
       const [rangePart, stepStr] = trimmed.split('/');
       const step = Number.parseInt(stepStr, 10);
-      if (isNaN(step) || step <= 0) continue;
+      if (Number.isNaN(step) || step <= 0) continue;
 
       let start = min;
       let end = max;
@@ -94,7 +94,7 @@ function parseCronField(field: string, min: number, max: number): Set<number> {
 
     // Handle single value
     const val = Number.parseInt(trimmed, 10);
-    if (!isNaN(val) && val >= min && val <= max) {
+    if (!Number.isNaN(val) && val >= min && val <= max) {
       values.add(val);
     }
   }

@@ -62,7 +62,7 @@ function coerceValue(value: string, type: VariableType): any {
   switch (type) {
     case 'number': {
       const n = Number(value);
-      return isNaN(n) ? 0 : n;
+      return Number.isNaN(n) ? 0 : n;
     }
     case 'boolean':
       return value === 'true' || value === '1';

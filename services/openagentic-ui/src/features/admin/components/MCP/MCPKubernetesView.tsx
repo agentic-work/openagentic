@@ -127,7 +127,7 @@ function buildPodRows(
     if (!pod || seen.has(pod)) continue;
     seen.add(pod);
     const node = s.metric?.node ?? '—';
-    const created = Number(s.value?.[1] ?? NaN);
+    const created = Number(s.value?.[1] ?? Number.NaN);
     rows.push({
       name: pod,
       phase: phaseByPod.get(pod) ?? 'Unknown',

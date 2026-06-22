@@ -365,7 +365,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       if (timeframe) {
         const now = new Date();
         const timeframeHours = Number.parseInt(timeframe);
-        if (!isNaN(timeframeHours)) {
+        if (!Number.isNaN(timeframeHours)) {
           where.createdAt = {
             gte: new Date(now.getTime() - timeframeHours * 60 * 60 * 1000)
           };

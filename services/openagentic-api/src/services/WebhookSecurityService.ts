@@ -487,7 +487,7 @@ class WebhookSecurityService {
     if (!ts) return { valid: true }; // No timestamp = skip check
 
     const requestTime = Number.parseInt(ts, 10);
-    if (isNaN(requestTime)) return { valid: false, reason: 'Invalid timestamp' };
+    if (Number.isNaN(requestTime)) return { valid: false, reason: 'Invalid timestamp' };
 
     const age = Math.abs(Math.floor(Date.now() / 1000) - requestTime);
     if (age > maxAgeSeconds) {
@@ -626,7 +626,7 @@ class WebhookSecurityService {
 
   private ipToNum(ip: string): number | null {
     const parts = ip.split('.').map(Number);
-    if (parts.length !== 4 || parts.some(isNaN)) return null;
+    if (parts.length !== 4 || parts.some(Number.isNaN)) return null;
     return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0;
   }
 }

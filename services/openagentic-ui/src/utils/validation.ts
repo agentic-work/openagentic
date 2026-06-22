@@ -83,7 +83,7 @@ export function validateChartData(data: any[]): any[] {
       if (value === undefined || value === null) {
         return false;
       }
-      if (typeof value === 'number' && !isFinite(value)) {
+      if (typeof value === 'number' && !Number.isFinite(value)) {
         return false;
       }
     }

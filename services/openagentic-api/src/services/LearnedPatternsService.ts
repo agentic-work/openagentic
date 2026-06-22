@@ -137,7 +137,7 @@ export class LearnedPatternsService {
         const dimParam = (vec?.type_params ?? []).find(
           (p: any) => p?.key === 'dim',
         );
-        const existingDim = dimParam ? Number(dimParam.value) : NaN;
+        const existingDim = dimParam ? Number(dimParam.value) : Number.NaN;
         if (Number.isFinite(existingDim) && existingDim !== this.dim) {
           this.logger?.warn?.(
             {

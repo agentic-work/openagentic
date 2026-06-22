@@ -568,7 +568,7 @@ const Chip: React.FC<ChipProps> = ({ field, label, color, value, dirty, onCommit
       onCommit(field, draft === 'true');
     } else {
       const n = Number.parseFloat(draft);
-      if (!isNaN(n)) onCommit(field, n);
+      if (!Number.isNaN(n)) onCommit(field, n);
     }
     setEditing(false);
   };
@@ -668,7 +668,7 @@ const FloorCard: React.FC<FloorCardProps> = ({ meta, value, dirty, onCommit }) =
 
   const commit = () => {
     const n = Number.parseFloat(draft);
-    if (!isNaN(n)) onCommit(meta.key, n);
+    if (!Number.isNaN(n)) onCommit(meta.key, n);
     setEditing(false);
   };
 
@@ -1715,7 +1715,7 @@ const RouterTuningView: React.FC = () => {
           validate={(parsed) => {
             if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return 'must be a JSON object';
             for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
-              if (typeof v !== 'number' || isNaN(v as number)) return `value at "${k}" must be a number`;
+              if (typeof v !== 'number' || Number.isNaN(v as number)) return `value at "${k}" must be a number`;
               if ((v as number) < 0 || (v as number) > 1) return `value at "${k}" must be in [0, 1]`;
             }
             return null;
@@ -1731,7 +1731,7 @@ const RouterTuningView: React.FC = () => {
           validate={(parsed) => {
             if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return 'must be a JSON object';
             for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
-              if (typeof v !== 'number' || isNaN(v as number) || !Number.isInteger(v)) return `value at "${k}" must be an integer`;
+              if (typeof v !== 'number' || Number.isNaN(v as number) || !Number.isInteger(v)) return `value at "${k}" must be an integer`;
               if ((v as number) < 0) return `value at "${k}" must be ≥ 0`;
             }
             return null;

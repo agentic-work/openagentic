@@ -913,7 +913,7 @@ export const RouterTuningPage: React.FC = () => {
           validate={(p) => {
             if (p === null || typeof p !== 'object' || Array.isArray(p)) return 'must be a JSON object'
             for (const [k, v] of Object.entries(p as Record<string, unknown>)) {
-              if (typeof v !== 'number' || isNaN(v as number)) return `value at "${k}" must be a number`
+              if (typeof v !== 'number' || Number.isNaN(v as number)) return `value at "${k}" must be a number`
               if ((v as number) < 0 || (v as number) > 1) return `value at "${k}" must be in [0, 1]`
             }
             return null
@@ -934,7 +934,7 @@ export const RouterTuningPage: React.FC = () => {
           validate={(p) => {
             if (p === null || typeof p !== 'object' || Array.isArray(p)) return 'must be a JSON object'
             for (const [k, v] of Object.entries(p as Record<string, unknown>)) {
-              if (typeof v !== 'number' || isNaN(v as number) || !Number.isInteger(v)) return `value at "${k}" must be an integer`
+              if (typeof v !== 'number' || Number.isNaN(v as number) || !Number.isInteger(v)) return `value at "${k}" must be an integer`
               if ((v as number) < 0) return `value at "${k}" must be ≥ 0`
             }
             return null

@@ -432,7 +432,7 @@ export class RouterTuningService {
 
     for (const field of numericFields) {
       const val = patch[field];
-      if (val !== undefined && (typeof val !== 'number' || isNaN(val as number))) {
+      if (val !== undefined && (typeof val !== 'number' || Number.isNaN(val as number))) {
         throw new TypeError(`RouterTuning.${field} must be a number, got ${typeof val}`);
       }
     }
@@ -464,7 +464,7 @@ export class RouterTuningService {
         );
       }
       for (const [k, v] of Object.entries(val)) {
-        if (typeof v !== 'number' || isNaN(v as number)) {
+        if (typeof v !== 'number' || Number.isNaN(v as number)) {
           throw new TypeError(
             `RouterTuning.${field}["${k}"] must be a number, got ${typeof v}`,
           );

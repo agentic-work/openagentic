@@ -86,7 +86,7 @@ export class RAGHealthCheckService {
       }
 
       // Check that we got reasonable numeric values
-      const hasValidNumbers = embedding.every(val => typeof val === 'number' && !isNaN(val));
+      const hasValidNumbers = embedding.every(val => typeof val === 'number' && !Number.isNaN(val));
       if (!hasValidNumbers) {
         throw new Error('Invalid embedding response: contains non-numeric values');
       }

@@ -271,7 +271,7 @@ function hasSubstantiveContent(trContent: unknown): boolean {
       const v = (trContent as Record<string, unknown>)[k];
       return (typeof v === 'string' && v.trim().length > 4) ||
              (Array.isArray(v) && v.length > 0) ||
-             (typeof v === 'number' && isFinite(v));
+             (typeof v === 'number' && Number.isFinite(v));
     });
   }
   return false;

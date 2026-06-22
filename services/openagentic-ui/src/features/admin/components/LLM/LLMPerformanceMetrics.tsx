@@ -62,7 +62,7 @@ export function parsePromText(text: string): PrometheusSample[] {
     if (spaceIdx < 0) continue;
     const valueStr = line.slice(spaceIdx + 1);
     const valueNum = Number.parseFloat(valueStr);
-    if (isNaN(valueNum)) continue;
+    if (Number.isNaN(valueNum)) continue;
     const metricPart = line.slice(0, spaceIdx).trim();
 
     let name: string;

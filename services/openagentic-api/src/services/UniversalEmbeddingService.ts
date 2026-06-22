@@ -380,7 +380,7 @@ export class UniversalEmbeddingService {
     const envDimensions = process.env.EMBEDDING_DIMENSIONS || process.env.AZURE_OPENAI_EMBEDDING_DIMENSION;
     if (envDimensions) {
       const parsed = Number.parseInt(envDimensions, 10);
-      if (!isNaN(parsed) && parsed > 0) {
+      if (!Number.isNaN(parsed) && parsed > 0) {
         this.logger.info({ dimensions: parsed, source: 'EMBEDDING_DIMENSIONS' }, 'Using dimensions from environment');
         return parsed;
       }

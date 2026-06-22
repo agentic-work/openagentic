@@ -957,7 +957,7 @@ export class MultiModelOrchestrator {
 
     if (costEnv) {
       const [inp, out] = costEnv.split(',').map(Number);
-      if (!isNaN(inp) && !isNaN(out)) {
+      if (!Number.isNaN(inp) && !Number.isNaN(out)) {
         inputCost = inp;
         outputCost = out;
       }

@@ -414,7 +414,7 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
 
     // (3) Expiry check
     const expiresAtRaw = (stateRow.details as any)?.expires_at;
-    const expiresAt = typeof expiresAtRaw === 'string' ? Date.parse(expiresAtRaw) : NaN;
+    const expiresAt = typeof expiresAtRaw === 'string' ? Date.parse(expiresAtRaw) : Number.NaN;
     if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
       return reply.code(400).send({ success: false, error: 'state expired' });
     }

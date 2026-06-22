@@ -3485,7 +3485,7 @@ pre.shiki-fallback {
 /* Admin Card Hover */
 .admin-card.hoverable:hover {
   border-color: var(--color-borderHover);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-shadow) 8%, transparent);
 }
 
 /* Admin section spacing */

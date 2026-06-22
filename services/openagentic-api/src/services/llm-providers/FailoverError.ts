@@ -362,7 +362,7 @@ function extractRetryAfter(error: unknown): number {
   const header = e.headers?.['retry-after'] ?? e.response?.headers?.['retry-after'];
   if (header) {
     const seconds = Number.parseFloat(header);
-    if (!isNaN(seconds)) return Math.min(seconds * 1000, 60_000);
+    if (!Number.isNaN(seconds)) return Math.min(seconds * 1000, 60_000);
   }
   return 5000; // Default 5s
 }

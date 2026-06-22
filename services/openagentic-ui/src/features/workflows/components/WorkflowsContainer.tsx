@@ -94,7 +94,7 @@ function applyDagreLayout(nodes: Node[], edges: Edge[], direction: 'TB' | 'LR' =
 
 /** Ensure all nodes have valid position data, applying layout if needed */
 function ensureNodePositions(nodes: Node[], edges: Edge[]): Node[] {
-  const needsLayout = nodes.some(n => !n.position || typeof n.position.x !== 'number' || isNaN(n.position.x));
+  const needsLayout = nodes.some(n => !n.position || typeof n.position.x !== 'number' || Number.isNaN(n.position.x));
   if (needsLayout && nodes.length > 0) {
     return applyDagreLayout(nodes, edges);
   }

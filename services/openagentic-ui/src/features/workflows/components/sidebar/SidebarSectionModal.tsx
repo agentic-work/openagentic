@@ -1233,7 +1233,7 @@ function inferType(value: any): VariableType {
 
 function coerceValue(value: string, type: VariableType): any {
   switch (type) {
-    case 'number': { const n = Number(value); return isNaN(n) ? 0 : n; }
+    case 'number': { const n = Number(value); return Number.isNaN(n) ? 0 : n; }
     case 'boolean': return value === 'true' || value === '1';
     case 'json': try { return JSON.parse(value); } catch { return value; }
     default: return value;

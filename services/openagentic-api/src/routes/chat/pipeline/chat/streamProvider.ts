@@ -525,11 +525,11 @@ function translateCanonicalEvent(
 }
 
 function numOrZero(v: unknown): number {
-  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : Number.NaN;
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 function numOrUndef(v: unknown): number | undefined {
-  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : Number.NaN;
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
