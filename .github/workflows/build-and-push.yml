@@ -109,12 +109,17 @@ jobs:
       # ── QEMU + buildx ─────────────────────────────────────────────────────────
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3.6.0
+        with:
+          # setup-qemu pulls its binfmt image from Docker Hub DIRECTLY (not via
+          # buildx), so it also hit the anonymous rate limit — pull it via the mirror.
+          image: mirror.gcr.io/tonistiigi/binfmt:latest
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.10.0
         with:
           driver: docker-container
           driver-opts: |
+            image=mirror.gcr.io/moby/buildkit:buildx-stable-1
             env.BUILDKIT_STEP_LOG_MAX_SIZE=10485760
           # Pull docker.io base images through Google's Docker Hub mirror so the
           # cumulative multi-arch base-image pulls across the 5-image matrix don't
