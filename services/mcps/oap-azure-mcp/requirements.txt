@@ -23,7 +23,7 @@ azure-mgmt-containerregistry>=14.0.0 # ACR registries, repos, tasks
 azure-mgmt-appcontainers>=4.0.0     # Container Apps, environments
 
 # Networking (includes App Gateway, Load Balancer, etc)
-azure-mgmt-network>=30.0.0          # VNets, subnets, NSGs, App Gateway, LB,
+azure-mgmt-network>=30.2.0          # VNets, subnets, NSGs, App Gateway, LB,
                                     # Front Door, ExpressRoute, VPN, Firewall
 azure-mgmt-dns>=9.0.0               # Public DNS zones
 azure-mgmt-privatedns>=1.2.0        # Private DNS zones
