@@ -87,7 +87,7 @@
     "bull": "^4.16.3",
     "canvas": "^2.11.2",
     "chart.js": "^4.5.0",
-    "chartjs-node-canvas": "^4.1.6",
+    "chartjs-node-canvas": "^5.0.0",
     "chokidar": "^4.0.3",
     "docx": "9.6.1",
     "dotenv": "^16.4.7",
