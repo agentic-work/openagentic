@@ -19,4 +19,4 @@ pydantic>=2.0.0
 
 # YAML parsing for apply/template operations
 pyyaml>=6.0.0
-structlog>=24.1.0
+structlog>=26.1.0
