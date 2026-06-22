@@ -19,8 +19,8 @@ export default async function pipelineRoutes(fastify: FastifyInstance) {
         enableRAG: process.env.ENABLE_RAG === 'true',
         enableCaching: process.env.ENABLE_CACHING !== 'false',
         enableAnalytics: process.env.ENABLE_ANALYTICS !== 'false',
-        maxConcurrentRequests: parseInt(process.env.MAX_CONCURRENT_REQUESTS || '60'),
-        requestTimeoutMs: parseInt(process.env.REQUEST_TIMEOUT_MS || '120000')
+        maxConcurrentRequests: Number.parseInt(process.env.MAX_CONCURRENT_REQUESTS || '60'),
+        requestTimeoutMs: Number.parseInt(process.env.REQUEST_TIMEOUT_MS || '120000')
       };
 
       // Get MCP status from environment and known issues

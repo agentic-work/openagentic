@@ -808,12 +808,12 @@ export class MilvusVectorService {
         typeDistribution[type] = (typeDistribution[type] || 0) + 1;
         const metadata = artifact.metadata as any;
         if (metadata?.fileSize) {
-          totalSize += parseInt(metadata.fileSize || '0');
+          totalSize += Number.parseInt(metadata.fileSize || '0');
         }
       }
       
       return {
-        totalArtifacts: parseInt(stats.data.row_count || '0'),
+        totalArtifacts: Number.parseInt(stats.data.row_count || '0'),
         totalSize,
         typeDistribution,
         storageUsed: totalSize, // In bytes

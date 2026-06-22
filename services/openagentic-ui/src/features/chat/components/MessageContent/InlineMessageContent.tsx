@@ -55,7 +55,7 @@ const InlineMessageContent: React.FC<InlineMessageContentProps> = ({
             }
 
             // Add the tool call
-            const toolIndex = parseInt(match[1]);
+            const toolIndex = Number.parseInt(match[1]);
             if (validToolCalls[toolIndex]) {
               segments.push({
                 type: 'tool',

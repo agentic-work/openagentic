@@ -41,7 +41,7 @@ interface AdaptiveCard {
 function resolveJwksCacheMs(): number {
   const env = process.env.TEAMS_JWKS_CACHE_MS;
   if (env && env.trim().length > 0) {
-    const parsed = parseInt(env, 10);
+    const parsed = Number.parseInt(env, 10);
     if (!isNaN(parsed) && parsed > 0) return parsed;
   }
   return 10 * 60 * 1000; // 10 minutes
@@ -53,7 +53,7 @@ function resolveJwksCacheMs(): number {
 function resolveJwksRateLimit(): number {
   const env = process.env.TEAMS_JWKS_RATE_LIMIT_PER_MIN;
   if (env && env.trim().length > 0) {
-    const parsed = parseInt(env, 10);
+    const parsed = Number.parseInt(env, 10);
     if (!isNaN(parsed) && parsed > 0) return parsed;
   }
   return 10;
@@ -66,7 +66,7 @@ function resolveJwksRateLimit(): number {
 function resolveClockToleranceSec(): number {
   const env = process.env.TEAMS_JWT_CLOCK_TOLERANCE_SEC;
   if (env && env.trim().length > 0) {
-    const parsed = parseInt(env, 10);
+    const parsed = Number.parseInt(env, 10);
     if (!isNaN(parsed) && parsed >= 0) return parsed;
   }
   return 300; // 5 minutes

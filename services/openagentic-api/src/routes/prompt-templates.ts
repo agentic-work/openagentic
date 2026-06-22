@@ -88,7 +88,7 @@ const promptTemplateRoutes: FastifyPluginAsync = async (fastify, opts) => {
         const { id } = request.params;
 
         const template = await prisma.promptTemplate.findUnique({
-          where: { id: parseInt(id) }
+          where: { id: Number.parseInt(id) }
         });
 
         if (!template) {
@@ -145,7 +145,7 @@ const promptTemplateRoutes: FastifyPluginAsync = async (fastify, opts) => {
         const { id } = request.params;
 
         const template = await prisma.promptTemplate.update({
-          where: { id: parseInt(id) },
+          where: { id: Number.parseInt(id) },
           data: request.body
         });
 
@@ -168,7 +168,7 @@ const promptTemplateRoutes: FastifyPluginAsync = async (fastify, opts) => {
         const { id } = request.params;
 
         await prisma.promptTemplate.delete({
-          where: { id: parseInt(id) }
+          where: { id: Number.parseInt(id) }
         });
 
         return reply.status(204).send();

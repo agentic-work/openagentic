@@ -79,7 +79,7 @@ export function rateLimitMiddleware(options: RateLimitOptions) {
   const store = process.env.REDIS_HOST && process.env.NODE_ENV !== 'test' 
     ? new RedisStore({
         host: process.env.REDIS_HOST || 'redis',
-        port: parseInt(process.env.REDIS_PORT || '6379'),
+        port: Number.parseInt(process.env.REDIS_PORT || '6379'),
         password: process.env.REDIS_PASSWORD
       })
     : new MemoryStore(); // Fallback to memory for testing/development

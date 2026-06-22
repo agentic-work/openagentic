@@ -25,7 +25,7 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     // Slower actions for visibility
     launchOptions: {
-      slowMo: process.env.SLOW_MO ? parseInt(process.env.SLOW_MO) : 50,
+      slowMo: process.env.SLOW_MO ? Number.parseInt(process.env.SLOW_MO) : 50,
       env: {
         ...process.env,
         LD_LIBRARY_PATH: [

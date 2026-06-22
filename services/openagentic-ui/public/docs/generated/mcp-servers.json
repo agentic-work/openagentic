@@ -4,7 +4,7 @@
   "description": "Model Context Protocol servers and their tools",
   "icon": "tool",
   "category": "tools",
-  "generatedAt": "2026-06-21T00:19:24.482Z",
+  "generatedAt": "2026-06-21T18:49:53.889Z",
   "sourceFiles": [
     "services/mcps/oap-admin-mcp/server.py",
     "services/mcps/oap-admin-mcp/src/admin_mcp_server/server.py",
@@ -756,7 +756,7 @@
           "description": "Execute ANY Google Cloud Platform API operation.",
           "type": "mcp-tool",
           "properties": {
-            "params": "service: str,\n    method: str,\n    path: str,\n    project_id: Optional[str] = None,\n    body: Optional[Dict] = None,\n    meta: Optional[Dict] = None"
+            "params": "service: str,\n    method: str,\n    path: str,\n    project_id: Optional[str] = None,\n    body: Optional[Dict] = None"
           },
           "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
         },

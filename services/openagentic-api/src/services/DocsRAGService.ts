@@ -505,7 +505,7 @@ export class DocsRAGService {
       if (!has.value) return { exists: false, rowCount: 0, loaded: false };
 
       const stats = await client.getCollectionStatistics({ collection_name: COLLECTION_NAME });
-      const rowCount = parseInt(stats.data?.row_count || '0', 10);
+      const rowCount = Number.parseInt(stats.data?.row_count || '0', 10);
 
       return { exists: true, rowCount, loaded: true };
     } catch (err: any) {

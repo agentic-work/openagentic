@@ -4,7 +4,7 @@
   "description": "Build-time feature flags that determine what ships in the UI.",
   "icon": "shield",
   "category": "core",
-  "generatedAt": "2026-06-21T00:19:24.563Z",
+  "generatedAt": "2026-06-21T18:49:53.962Z",
   "sourceFiles": [
     "services/openagentic-ui/src/config/featureFlags.ts"
   ],

@@ -534,7 +534,7 @@ export class AdvancedMemoryContextService {
     if (peakHour) {
       patterns.push({
         type: 'peak_access_hour',
-        hour: parseInt(peakHour[0]),
+        hour: Number.parseInt(peakHour[0]),
         frequency: peakHour[1],
         confidence: 0.8
       });

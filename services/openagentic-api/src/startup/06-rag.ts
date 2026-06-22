@@ -118,8 +118,8 @@ export const INIT_RAG: BootstrapStep = {
           subscriptionId: azureSubscriptionId,
           resourceGroupName: azureResourceGroup,
           accountName: azureOpenAIAccount,
-          metricsTimeRangeMinutes: parseInt(process.env.AIF_METRICS_TIME_RANGE_MINUTES || '10080'),
-          refreshIntervalMinutes: parseInt(process.env.AIF_METRICS_REFRESH_INTERVAL_MINUTES || '5')
+          metricsTimeRangeMinutes: Number.parseInt(process.env.AIF_METRICS_TIME_RANGE_MINUTES || '10080'),
+          refreshIntervalMinutes: Number.parseInt(process.env.AIF_METRICS_REFRESH_INTERVAL_MINUTES || '5')
         }, loggers.services);
         await aifMetricsService.startPeriodicCollection();
         loggers.services.info({ subscriptionId: azureSubscriptionId, resourceGroup: azureResourceGroup,

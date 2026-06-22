@@ -76,7 +76,7 @@ async function readLastAppliedVersion(prisma: any): Promise<number> {
   });
   if (!row || !row.value) return 0;
   const v = (row.value as any).version;
-  const parsed = typeof v === 'number' ? v : parseInt(String(v ?? ''), 10);
+  const parsed = typeof v === 'number' ? v : Number.parseInt(String(v ?? ''), 10);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
@@ -128,7 +128,7 @@ export async function seedRegistryFromHelm(
 
   // ── 1. Parse SEEDER_VERSION ──────────────────────────────────────────────
   const rawVersion = (env as any).SEEDER_VERSION ?? '';
-  const SEEDER_VERSION = parseInt(String(rawVersion), 10);
+  const SEEDER_VERSION = Number.parseInt(String(rawVersion), 10);
   const currentVersion = Number.isFinite(SEEDER_VERSION) ? SEEDER_VERSION : 0;
 
   // ── 2. Gate: warm-restart no-op ──────────────────────────────────────────

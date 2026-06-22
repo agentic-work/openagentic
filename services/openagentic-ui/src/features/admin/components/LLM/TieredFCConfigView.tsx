@@ -719,7 +719,7 @@ const TieredFCConfigView: React.FC = () => {
                           type="number"
                           min="0"
                           value={testToolCount}
-                          onChange={(e) => setTestToolCount(parseInt(e.target.value) || 0)}
+                          onChange={(e) => setTestToolCount(Number.parseInt(e.target.value) || 0)}
                           className="w-full px-3 py-2 border border-border rounded-lg bg-surface-primary text-text-primary"
                         />
                       </div>
@@ -869,7 +869,7 @@ const TieredFCConfigView: React.FC = () => {
                 type="number"
                 min="0"
                 value={editForm.decisionCacheTtlSeconds ?? 300}
-                onChange={(e) => setEditForm({ ...editForm, decisionCacheTtlSeconds: parseInt(e.target.value) || 300 })}
+                onChange={(e) => setEditForm({ ...editForm, decisionCacheTtlSeconds: Number.parseInt(e.target.value) || 300 })}
                 className="w-full px-3 py-2 border border-border rounded-lg bg-surface-primary text-text-primary"
               />
             </SlideInPanelField>

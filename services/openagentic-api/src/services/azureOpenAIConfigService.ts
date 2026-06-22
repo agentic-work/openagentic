@@ -196,9 +196,9 @@ export class AzureOpenAIConfigService {
       
       // Default quotas - Environment configurable
       defaultQuotas: {
-        dailyTokenLimit: parseInt(process.env.AZURE_OPENAI_DAILY_TOKEN_LIMIT || process.env.DEFAULT_DAILY_TOKEN_LIMIT || '0'),
-        monthlyTokenLimit: parseInt(process.env.AZURE_OPENAI_MONTHLY_TOKEN_LIMIT || process.env.DEFAULT_MONTHLY_TOKEN_LIMIT || '0'),
-        maxTokensPerRequest: parseInt(process.env.AZURE_OPENAI_MAX_TOKENS_PER_REQUEST || process.env.DEFAULT_MAX_TOKENS_PER_REQUEST || '0')
+        dailyTokenLimit: Number.parseInt(process.env.AZURE_OPENAI_DAILY_TOKEN_LIMIT || process.env.DEFAULT_DAILY_TOKEN_LIMIT || '0'),
+        monthlyTokenLimit: Number.parseInt(process.env.AZURE_OPENAI_MONTHLY_TOKEN_LIMIT || process.env.DEFAULT_MONTHLY_TOKEN_LIMIT || '0'),
+        maxTokensPerRequest: Number.parseInt(process.env.AZURE_OPENAI_MAX_TOKENS_PER_REQUEST || process.env.DEFAULT_MAX_TOKENS_PER_REQUEST || '0')
       },
       
       // Model permissions are dynamic - remove hardcoded models

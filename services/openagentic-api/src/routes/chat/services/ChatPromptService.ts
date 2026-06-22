@@ -537,7 +537,7 @@ export class ChatPromptService {
       await prisma.userPromptAssignment.create({
         data: {
           user_id: userId,
-          prompt_template_id: parseInt(promptTemplateId),
+          prompt_template_id: Number.parseInt(promptTemplateId),
           assigned_by: assignedBy,
           assigned_at: new Date(),
           updated_at: new Date()

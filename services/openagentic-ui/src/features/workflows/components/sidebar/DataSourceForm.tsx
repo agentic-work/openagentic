@@ -224,7 +224,7 @@ export const DataSourceForm: React.FC<DataSourceFormProps> = ({
               <input
                 type="number"
                 value={form.port}
-                onChange={e => updateField('port', parseInt(e.target.value) || 0)}
+                onChange={e => updateField('port', Number.parseInt(e.target.value) || 0)}
                 style={inputStyle}
               />
             </div>

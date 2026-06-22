@@ -127,7 +127,7 @@ export default async function sharedKBRoutes(fastify: FastifyInstance) {
     try {
       const body = (request.body || {}) as any;
       const query = body.query as string;
-      const limit = parseInt(body.limit, 10) || 5;
+      const limit = Number.parseInt(body.limit, 10) || 5;
       if (!query) return reply.code(400).send({ error: 'query is required' });
       const results = await service.search(query, limit);
       return reply.send({ query, results, count: results.length });

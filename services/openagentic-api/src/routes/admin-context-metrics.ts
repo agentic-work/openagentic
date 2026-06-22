@@ -216,9 +216,9 @@ export const adminContextMetricsRoutes: FastifyPluginAsync = async (fastify) => 
           minUtilization
         } = request.query;
 
-        const limitNum = Math.min(parseInt(limit, 10), 1000);
-        const offsetNum = parseInt(offset, 10);
-        const minUtil = minUtilization ? parseFloat(minUtilization) : undefined;
+        const limitNum = Math.min(Number.parseInt(limit, 10), 1000);
+        const offsetNum = Number.parseInt(offset, 10);
+        const minUtil = minUtilization ? Number.parseFloat(minUtilization) : undefined;
 
         // Check cache
         const cacheKey = `context:${limitNum}:${offsetNum}:${sortBy}:${sortOrder}:${userId || ''}:${minUtilization || ''}`;
@@ -309,7 +309,7 @@ export const adminContextMetricsRoutes: FastifyPluginAsync = async (fastify) => 
           contextTokensTotal: session.context_tokens_total || 0,
           contextWindowSize: session.context_window_size || null,
           contextUtilizationPct: session.context_utilization_pct
-            ? Math.min(100, Math.max(0, parseFloat(session.context_utilization_pct.toString())))
+            ? Math.min(100, Math.max(0, Number.parseFloat(session.context_utilization_pct.toString())))
             : null,
           createdAt: session.created_at.toISOString(),
           updatedAt: session.updated_at.toISOString()
@@ -320,10 +320,10 @@ export const adminContextMetricsRoutes: FastifyPluginAsync = async (fastify) => 
           total,
           statistics: {
             averageUtilization: stats._avg.context_utilization_pct
-              ? Math.min(100, Math.max(0, parseFloat(stats._avg.context_utilization_pct.toString())))
+              ? Math.min(100, Math.max(0, Number.parseFloat(stats._avg.context_utilization_pct.toString())))
               : 0,
             maxUtilization: stats._max.context_utilization_pct
-              ? Math.min(100, Math.max(0, parseFloat(stats._max.context_utilization_pct.toString())))
+              ? Math.min(100, Math.max(0, Number.parseFloat(stats._max.context_utilization_pct.toString())))
               : 0,
             totalSessions: stats._count,
             highUtilizationSessions: highUtilizationCount
@@ -444,7 +444,7 @@ export const adminContextMetricsRoutes: FastifyPluginAsync = async (fastify) => 
           contextTokensTotal: session.context_tokens_total || 0,
           contextWindowSize: session.context_window_size || null,
           contextUtilizationPct: session.context_utilization_pct
-            ? Math.min(100, Math.max(0, parseFloat(session.context_utilization_pct.toString())))
+            ? Math.min(100, Math.max(0, Number.parseFloat(session.context_utilization_pct.toString())))
             : null
         };
 

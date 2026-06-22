@@ -98,7 +98,7 @@ export class SlackIntegrationService {
    */
   verifySignature(signingSecret: string, timestamp: string, body: string, signature: string): boolean {
     const fiveMinutesAgo = Math.floor(Date.now() / 1000) - 60 * 5;
-    if (parseInt(timestamp) < fiveMinutesAgo) return false;
+    if (Number.parseInt(timestamp) < fiveMinutesAgo) return false;
 
     const sigBasestring = `v0:${timestamp}:${body}`;
     const mySignature = 'v0=' + crypto.createHmac('sha256', signingSecret).update(sigBasestring).digest('hex');

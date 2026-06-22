@@ -25,7 +25,7 @@ function validateParameterizedQuery(query: string, params: any[]): void {
   const placeholderMatches = query.match(/\$\d+/g) || [];
   let maxPlaceholder = 0;
   for (const match of placeholderMatches) {
-    const num = parseInt(match.substring(1), 10);
+    const num = Number.parseInt(match.substring(1), 10);
     maxPlaceholder = Math.max(maxPlaceholder, num);
   }
 

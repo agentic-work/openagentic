@@ -61,14 +61,14 @@ export const validatePositiveInteger = (name: string, n: unknown): number => {
 
 export const coerceInteger = (value: unknown): number => {
   if (typeof value === 'number') return Math.round(value);
-  if (typeof value === 'string') return parseInt(value, 10);
+  if (typeof value === 'string') return Number.parseInt(value, 10);
 
   throw new AnthropicError(`Could not coerce ${value} (type: ${typeof value}) into a number`);
 };
 
 export const coerceFloat = (value: unknown): number => {
   if (typeof value === 'number') return value;
-  if (typeof value === 'string') return parseFloat(value);
+  if (typeof value === 'string') return Number.parseFloat(value);
 
   throw new AnthropicError(`Could not coerce ${value} (type: ${typeof value}) into a number`);
 };

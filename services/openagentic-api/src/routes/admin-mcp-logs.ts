@@ -42,8 +42,8 @@ const adminMCPLogsRoutes: FastifyPluginAsync = async (fastify) => {
     onRequest: adminMiddleware
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const query = request.query as any;
-    const page = parseInt(query.page) || 1;
-    const limit = Math.min(parseInt(query.limit) || 50, 100); // Max 100 per page
+    const page = Number.parseInt(query.page) || 1;
+    const limit = Math.min(Number.parseInt(query.limit) || 50, 100); // Max 100 per page
     const { status, toolName, userId, serverName, startDate, endDate } = query;
 
     try {
@@ -270,7 +270,7 @@ const adminMCPLogsRoutes: FastifyPluginAsync = async (fastify) => {
     onRequest: adminMiddleware
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const query = request.query as { lines?: string; server?: string };
-    const lines = parseInt(query.lines || '200');
+    const lines = Number.parseInt(query.lines || '200');
     const serverFilter = query.server;
 
     try {

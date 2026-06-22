@@ -153,9 +153,9 @@ export class ToolSuccessTrackingService {
           let existingDim = 0;
           if (Array.isArray(vectorField.type_params)) {
             const dimParam = vectorField.type_params.find((p: any) => p.key === 'dim');
-            existingDim = dimParam ? parseInt(String(dimParam.value) || '0') : 0;
+            existingDim = dimParam ? Number.parseInt(String(dimParam.value) || '0') : 0;
           } else if (typeof vectorField.type_params === 'object') {
-            existingDim = parseInt(String((vectorField.type_params as any).dim) || '0');
+            existingDim = Number.parseInt(String((vectorField.type_params as any).dim) || '0');
           }
           if (existingDim !== EMBEDDING_DIMENSIONS) {
             serviceLogger.warn({
@@ -651,7 +651,7 @@ export class ToolSuccessTrackingService {
       });
 
       return {
-        totalRecords: parseInt(stats.data.row_count || '0'),
+        totalRecords: Number.parseInt(stats.data.row_count || '0'),
         uniqueTools: 0,  // Would need aggregation query
         uniqueUsers: 0
       };

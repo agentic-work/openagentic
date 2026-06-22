@@ -218,7 +218,7 @@ export class MilvusService {
     if (ids && 'int_id' in ids && ids.int_id?.data && ids.int_id.data.length > 0) {
       insertedId = Number(ids.int_id.data[0]);
     } else if (ids && 'str_id' in ids && ids.str_id?.data && ids.str_id.data.length > 0) {
-      insertedId = parseInt(String(ids.str_id.data[0]), 10);
+      insertedId = Number.parseInt(String(ids.str_id.data[0]), 10);
     } else {
       throw new Error('Unable to extract inserted ID from response');
     }
@@ -345,7 +345,7 @@ export class MilvusService {
 
     // Extract row count from stats
     const rowCountStat = stats.stats.find((stat: any) => stat.key === 'row_count');
-    const totalMemories = rowCountStat ? parseInt(String(rowCountStat.value), 10) : 0;
+    const totalMemories = rowCountStat ? Number.parseInt(String(rowCountStat.value), 10) : 0;
 
     return {
       totalMemories,

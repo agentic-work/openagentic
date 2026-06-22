@@ -167,8 +167,8 @@ export const artifactsRoutes = async (fastify: FastifyInstance) => {
       const options = {
         type: (request.query as any).type,
         tags: (request.query as any).tags,
-        limit: (request.query as any).limit ? parseInt((request.query as any).limit) : undefined,
-        offset: (request.query as any).offset ? parseInt((request.query as any).offset) : undefined,
+        limit: (request.query as any).limit ? Number.parseInt((request.query as any).limit) : undefined,
+        offset: (request.query as any).offset ? Number.parseInt((request.query as any).offset) : undefined,
         sortBy: (request.query as any).sortBy,
         sortOrder: (request.query as any).sortOrder
       };

@@ -478,7 +478,7 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     // Timeout configuration - default 120 seconds (Anthropic Claude with many tools can be slow)
     // Can be overridden via config or environment variable
     this.requestTimeout = config?.requestTimeout ||
-                          parseInt(process.env.AIF_REQUEST_TIMEOUT || '120000', 10);
+                          Number.parseInt(process.env.AIF_REQUEST_TIMEOUT || '120000', 10);
 
     // Detect API format from endpoint URL
     this.isAnthropicFormat = this.endpointUrl.includes('/anthropic/');
@@ -1536,8 +1536,8 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     // GPT-4.1+ and GPT-5+ use max_completion_tokens
     const gptMatch = modelLower.match(/gpt-?(\d+)\.?(\d*)/);
     if (gptMatch) {
-      const major = parseInt(gptMatch[1]);
-      const minor = parseInt(gptMatch[2] || '0');
+      const major = Number.parseInt(gptMatch[1]);
+      const minor = Number.parseInt(gptMatch[2] || '0');
       if (major >= 5 || (major === 4 && minor >= 1)) {
         return true;
       }
@@ -1633,7 +1633,7 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     // Phase 0.4 (2026-05-12) — SDK adapter is SoT for the Anthropic
     // Messages wire shape on AIF. Same helper as direct Anthropic +
     // Bedrock-Claude (proven via REAL round-trip tests).
-    const anthropicDefaultTemp = parseFloat(process.env.AIF_TEMPERATURE || '1.0');
+    const anthropicDefaultTemp = Number.parseFloat(process.env.AIF_TEMPERATURE || '1.0');
     const anthropicRequest = buildAnthropicWireBody(
       {
         ...request,
@@ -1839,7 +1839,7 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     //   - normalizeAifToolParameters on every tool's JSON Schema
     //   - reasoning_effort pass-through
     //   - stream_options { include_usage: true } on streaming only
-    const defaultTemperature = parseFloat(process.env.AIF_TEMPERATURE || '1.0');
+    const defaultTemperature = Number.parseFloat(process.env.AIF_TEMPERATURE || '1.0');
     const aifRequest = buildAifChatCompletionsBody(request, {
       model: selectedModel,
       defaultTemperature,

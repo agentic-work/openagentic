@@ -298,12 +298,12 @@ export class EnhancedPromptOrchestrator {
             enabled: userSettings.self_consistency_enabled || false,
             samples: userSettings.self_consistency_samples || 3,
             temperature: 0.7,
-            threshold: parseFloat(userSettings.self_consistency_threshold || '0.6'),
+            threshold: Number.parseFloat(userSettings.self_consistency_threshold || '0.6'),
             criticalOnly: true
           },
           rag: {
             enabled: userSettings.rag_enabled || true,
-            similarityThreshold: parseFloat(userSettings.rag_similarity_threshold || '0.5'),
+            similarityThreshold: Number.parseFloat(userSettings.rag_similarity_threshold || '0.5'),
             topK: 3
           },
           directives: {

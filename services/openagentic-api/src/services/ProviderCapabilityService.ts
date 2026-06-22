@@ -757,7 +757,7 @@ export class ProviderCapabilityService {
 
     switch (cap.configKey) {
       case 'googleSearchRetrieval':
-        base.dynamicThreshold = parseFloat(process.env.GEMINI_GROUNDING_THRESHOLD || '0.7');
+        base.dynamicThreshold = Number.parseFloat(process.env.GEMINI_GROUNDING_THRESHOLD || '0.7');
         base.mode = 'MODE_DYNAMIC';
         break;
 
@@ -794,8 +794,8 @@ export class ProviderCapabilityService {
         base.searchEndpoint = process.env.AZURE_SEARCH_ENDPOINT;
         base.searchIndex = process.env.AZURE_SEARCH_INDEX;
         base.queryType = 'vector_semantic_hybrid';
-        base.strictness = parseInt(process.env.AZURE_SEARCH_STRICTNESS || '3', 10);
-        base.topNDocuments = parseInt(process.env.AZURE_SEARCH_TOP_N || '5', 10);
+        base.strictness = Number.parseInt(process.env.AZURE_SEARCH_STRICTNESS || '3', 10);
+        base.topNDocuments = Number.parseInt(process.env.AZURE_SEARCH_TOP_N || '5', 10);
         break;
 
       case 'azureDataZones':

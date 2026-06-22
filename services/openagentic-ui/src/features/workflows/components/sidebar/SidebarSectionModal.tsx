@@ -2568,12 +2568,12 @@ const SettingsContent: React.FC<{
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Default Timeout (s)</label>
-              <input type="number" value={settings.execution?.defaultTimeout || 60} onChange={e => updateSetting('execution.defaultTimeout', parseInt(e.target.value) || 60)}
+              <input type="number" value={settings.execution?.defaultTimeout || 60} onChange={e => updateSetting('execution.defaultTimeout', Number.parseInt(e.target.value) || 60)}
                 min={1} className={inputClass} style={inputStyle} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Max Execution Time (s)</label>
-              <input type="number" value={settings.execution?.maxExecutionTime || 3600} onChange={e => updateSetting('execution.maxExecutionTime', parseInt(e.target.value) || 3600)}
+              <input type="number" value={settings.execution?.maxExecutionTime || 3600} onChange={e => updateSetting('execution.maxExecutionTime', Number.parseInt(e.target.value) || 3600)}
                 min={1} className={inputClass} style={inputStyle} />
             </div>
           </div>
@@ -2589,17 +2589,17 @@ const SettingsContent: React.FC<{
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Per-Execution Budget ($)</label>
-              <input type="number" value={settings.costs?.perExecution || ''} onChange={e => updateSetting('costs.perExecution', parseFloat(e.target.value) || undefined)}
+              <input type="number" value={settings.costs?.perExecution || ''} onChange={e => updateSetting('costs.perExecution', Number.parseFloat(e.target.value) || undefined)}
                 min={0} step={0.01} placeholder="No limit" className={inputClass} style={inputStyle} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Daily Budget ($)</label>
-              <input type="number" value={settings.costs?.daily || ''} onChange={e => updateSetting('costs.daily', parseFloat(e.target.value) || undefined)}
+              <input type="number" value={settings.costs?.daily || ''} onChange={e => updateSetting('costs.daily', Number.parseFloat(e.target.value) || undefined)}
                 min={0} step={0.01} placeholder="No limit" className={inputClass} style={inputStyle} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Monthly Budget ($)</label>
-              <input type="number" value={settings.costs?.monthly || ''} onChange={e => updateSetting('costs.monthly', parseFloat(e.target.value) || undefined)}
+              <input type="number" value={settings.costs?.monthly || ''} onChange={e => updateSetting('costs.monthly', Number.parseFloat(e.target.value) || undefined)}
                 min={0} step={0.01} placeholder="No limit" className={inputClass} style={inputStyle} />
             </div>
           </div>
@@ -2623,12 +2623,12 @@ const SettingsContent: React.FC<{
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Default Retry Count</label>
-              <input type="number" value={settings.retry?.count || 3} onChange={e => updateSetting('retry.count', parseInt(e.target.value) || 3)}
+              <input type="number" value={settings.retry?.count || 3} onChange={e => updateSetting('retry.count', Number.parseInt(e.target.value) || 3)}
                 min={0} max={10} className={inputClass} style={inputStyle} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Default Delay (ms)</label>
-              <input type="number" value={settings.retry?.delayMs || 1000} onChange={e => updateSetting('retry.delayMs', parseInt(e.target.value) || 1000)}
+              <input type="number" value={settings.retry?.delayMs || 1000} onChange={e => updateSetting('retry.delayMs', Number.parseInt(e.target.value) || 1000)}
                 min={100} className={inputClass} style={inputStyle} />
             </div>
           </div>

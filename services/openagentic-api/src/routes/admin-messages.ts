@@ -51,8 +51,8 @@ const adminMessagesRoutes: FastifyPluginAsync = async (fastify) => {
         endDate
       } = request.query;
 
-      const limitNum = Math.min(parseInt(limit), 200);
-      const offsetNum = parseInt(offset);
+      const limitNum = Math.min(Number.parseInt(limit), 200);
+      const offsetNum = Number.parseInt(offset);
 
       // Build WHERE clause
       const conditions: any = {};

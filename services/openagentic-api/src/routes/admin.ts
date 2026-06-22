@@ -307,8 +307,8 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
             }
           },
           orderBy: { created_at: 'desc' },
-          take: parseInt(limit),
-          skip: parseInt(offset)
+          take: Number.parseInt(limit),
+          skip: Number.parseInt(offset)
         }),
         
         prisma.user.count({ where })
@@ -334,9 +334,9 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         users: enhancedUsers,
         pagination: {
           total: totalCount,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          hasMore: totalCount > parseInt(offset) + parseInt(limit)
+          limit: Number.parseInt(limit),
+          offset: Number.parseInt(offset),
+          hasMore: totalCount > Number.parseInt(offset) + Number.parseInt(limit)
         }
       });
     } catch (error) {
@@ -364,7 +364,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
 
       if (timeframe) {
         const now = new Date();
-        const timeframeHours = parseInt(timeframe);
+        const timeframeHours = Number.parseInt(timeframe);
         if (!isNaN(timeframeHours)) {
           where.createdAt = {
             gte: new Date(now.getTime() - timeframeHours * 60 * 60 * 1000)
@@ -379,8 +379,8 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
           _count: { select: { messages: true } }
         },
         orderBy: { created_at: 'desc' },
-        take: parseInt(limit),
-        skip: parseInt(offset)
+        take: Number.parseInt(limit),
+        skip: Number.parseInt(offset)
       });
 
       const total = await prisma.chatSession.count({ where });
@@ -437,8 +437,8 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
             }
           },
           orderBy: { updated_at: 'desc' },
-          take: parseInt(limit),
-          skip: parseInt(offset)
+          take: Number.parseInt(limit),
+          skip: Number.parseInt(offset)
         }),
         
         prisma.chatSession.count({ where })
@@ -460,9 +460,9 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         sessions: enhancedSessions,
         pagination: {
           total: totalCount,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          hasMore: totalCount > parseInt(offset) + parseInt(limit)
+          limit: Number.parseInt(limit),
+          offset: Number.parseInt(offset),
+          hasMore: totalCount > Number.parseInt(offset) + Number.parseInt(limit)
         }
       });
     } catch (error) {
@@ -702,7 +702,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
 
             return {
               name,
-              row_count: parseInt(stats.data?.row_count || '0'),
+              row_count: Number.parseInt(stats.data?.row_count || '0'),
               status: describe.status?.code === 0 ? 'loaded' : 'created',
               fields: describe.schema?.fields?.length || 0,
               created_at: describe.created_timestamp || null,
@@ -762,7 +762,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       for (const name of collectionNames) {
         try {
           const stats = await client.getCollectionStatistics({ collection_name: name });
-          const rowCount = parseInt(stats.data?.row_count || '0');
+          const rowCount = Number.parseInt(stats.data?.row_count || '0');
           totalDocuments += rowCount;
           collectionStats[name] = {
             row_count: rowCount,

@@ -167,7 +167,7 @@ export class ModelCapabilityDiscoveryService {
     this.discoveryMode = modeEnv && ['lazy', 'eager', 'disabled'].includes(modeEnv) ? modeEnv : 'lazy';
 
     // Initialize rate limiter with configurable cooldown
-    const cooldownMs = parseInt(process.env.CAPABILITY_DISCOVERY_COOLDOWN_MS || '60000');
+    const cooldownMs = Number.parseInt(process.env.CAPABILITY_DISCOVERY_COOLDOWN_MS || '60000');
     this.rateLimiter = new DiscoveryRateLimiter(cooldownMs);
 
     // Initialize Milvus client

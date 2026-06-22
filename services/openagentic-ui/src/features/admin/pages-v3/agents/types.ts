@@ -80,7 +80,7 @@ export function fmtDuration(ms?: number | null): string {
 // fmtUsdFromCents normalizes the cents path; fmtUsd handles dollars.
 export function fmtUsdFromCents(cents?: number | string | null): string {
   if (cents == null) return '—'
-  const n = typeof cents === 'string' ? parseFloat(cents) : cents
+  const n = typeof cents === 'string' ? Number.parseFloat(cents) : cents
   if (!Number.isFinite(n)) return '—'
   const d = n / 100
   if (d === 0) return '$0.00'

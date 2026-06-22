@@ -76,7 +76,7 @@ function describeCron(expression: string): string {
   if (month !== '*') segments.push(`in month ${month}`);
   if (dow !== '*') {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const dayNum = parseInt(dow);
+    const dayNum = Number.parseInt(dow);
     segments.push(`on ${days[dayNum] || dow}`);
   }
 
@@ -559,7 +559,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
                     min={1}
                     max={10}
                     value={formMaxConcurrent}
-                    onChange={e => setFormMaxConcurrent(parseInt(e.target.value) || 1)}
+                    onChange={e => setFormMaxConcurrent(Number.parseInt(e.target.value) || 1)}
                     className="w-20 px-3 py-1.5 rounded-lg text-sm outline-none"
                     style={inputStyle}
                   />

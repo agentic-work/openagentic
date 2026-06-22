@@ -46,7 +46,7 @@ export class ProviderConfigService {
     // not override admin-configured state. Global failover/load-balancing
     // flags are still env-tunable because they are deploy-level knobs, not
     // registry state (see CLAUDE.md "database is SoT" rule).
-    const imageGenTimeout = parseInt(process.env.LLM_IMAGE_GEN_TIMEOUT || '180000'); // 3 min default
+    const imageGenTimeout = Number.parseInt(process.env.LLM_IMAGE_GEN_TIMEOUT || '180000'); // 3 min default
     if (!Number.isFinite(imageGenTimeout) || imageGenTimeout <= 0) {
       throw new Error(
         `LLM_IMAGE_GEN_TIMEOUT must be a positive integer (ms); got "${process.env.LLM_IMAGE_GEN_TIMEOUT}". ` +
@@ -58,8 +58,8 @@ export class ProviderConfigService {
       providers,
       defaultProvider: providers[0]?.name,
       enableFailover: process.env.LLM_ENABLE_FAILOVER !== 'false', // Default true
-      failoverTimeout: parseInt(process.env.LLM_FAILOVER_TIMEOUT || '30000'), // 30s default (stream TTFB)
-      nonStreamFailoverTimeout: parseInt(process.env.LLM_NONSTREAM_TIMEOUT_MS || '0') || undefined, // env override; ProviderManager defaults to 10x failoverTimeout
+      failoverTimeout: Number.parseInt(process.env.LLM_FAILOVER_TIMEOUT || '30000'), // 30s default (stream TTFB)
+      nonStreamFailoverTimeout: Number.parseInt(process.env.LLM_NONSTREAM_TIMEOUT_MS || '0') || undefined, // env override; ProviderManager defaults to 10x failoverTimeout
       imageGenTimeout, // 180s default (image gen — separate budget)
       enableLoadBalancing: process.env.LLM_ENABLE_LOAD_BALANCING === 'true', // Default false
       loadBalancingStrategy: (process.env.LLM_LOAD_BALANCING_STRATEGY || 'priority') as 'round-robin' | 'least-latency' | 'priority'

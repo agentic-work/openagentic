@@ -74,7 +74,7 @@ async function main() {
       const options: any = {};
       
       if (last30Days || lastNDays) {
-        const days = lastNDays ? parseInt(lastNDays) : 30;
+        const days = lastNDays ? Number.parseInt(lastNDays) : 30;
         options.startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
         logger.info(`Ingesting chats from last ${days} days`);
       }

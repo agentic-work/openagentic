@@ -53,7 +53,7 @@ export class RAGService {
     // Initialize Redis cache for RAG acceleration
     this.redisClient = getRedisClient();
     this.enableRagCache = process.env.ENABLE_RAG_CACHE === 'true';
-    this.ragCacheTTL = parseInt(process.env.RAG_CACHE_TTL || '300'); // 5 minutes default
+    this.ragCacheTTL = Number.parseInt(process.env.RAG_CACHE_TTL || '300'); // 5 minutes default
 
     // Initialize Universal Embedding Service
     try {
@@ -156,7 +156,7 @@ export class RAGService {
             const embeddingField = collectionInfo.schema.fields.find((f: any) => f.name === 'embedding');
             if (embeddingField && embeddingField.type_params) {
               const dimValue = embeddingField.type_params.find((p: any) => p.key === 'dim')?.value;
-              currentDim = typeof dimValue === 'number' ? dimValue : parseInt(String(dimValue || '0'));
+              currentDim = typeof dimValue === 'number' ? dimValue : Number.parseInt(String(dimValue || '0'));
             }
           }
           
@@ -512,7 +512,7 @@ export class RAGService {
       }
 
       return {
-        totalVectors: parseInt((stats.stats as any).row_count || '0'),
+        totalVectors: Number.parseInt((stats.stats as any).row_count || '0'),
         indexType: 'IVF_FLAT', // Default if we can't get from info
         metricType: 'COSINE'    // Default if we can't get from info
       };

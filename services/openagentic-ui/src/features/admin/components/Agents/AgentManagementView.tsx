@@ -839,7 +839,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                     <input
                       type="number"
                       value={editingAgent.model_config?.maxIterations || 5}
-                      onChange={e => setEditingAgent({ ...editingAgent, model_config: { ...editingAgent.model_config, maxIterations: parseInt(e.target.value) || 5 } })}
+                      onChange={e => setEditingAgent({ ...editingAgent, model_config: { ...editingAgent.model_config, maxIterations: Number.parseInt(e.target.value) || 5 } })}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                       style={{
                         backgroundColor: 'var(--color-bg-primary, var(--color-bg))',
@@ -854,7 +854,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                       type="number"
                       step="0.1"
                       value={editingAgent.model_config?.temperature ?? 0.7}
-                      onChange={e => setEditingAgent({ ...editingAgent, model_config: { ...editingAgent.model_config, temperature: parseFloat(e.target.value) || 0.7 } })}
+                      onChange={e => setEditingAgent({ ...editingAgent, model_config: { ...editingAgent.model_config, temperature: Number.parseFloat(e.target.value) || 0.7 } })}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                       style={{
                         backgroundColor: 'var(--color-bg-primary, var(--color-bg))',
@@ -868,7 +868,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                     <input
                       type="number"
                       value={editingAgent.model_config?.maxTokens || 4000}
-                      onChange={e => setEditingAgent({ ...editingAgent, model_config: { ...editingAgent.model_config, maxTokens: parseInt(e.target.value) || 4000 } })}
+                      onChange={e => setEditingAgent({ ...editingAgent, model_config: { ...editingAgent.model_config, maxTokens: Number.parseInt(e.target.value) || 4000 } })}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                       style={{
                         backgroundColor: 'var(--color-bg-primary, var(--color-bg))',
@@ -1253,7 +1253,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                       min={1}
                       max={5}
                       value={editingAgent.max_spawn_depth ?? 3}
-                      onChange={e => setEditingAgent({ ...editingAgent, max_spawn_depth: Math.min(5, Math.max(1, parseInt(e.target.value) || 1)) })}
+                      onChange={e => setEditingAgent({ ...editingAgent, max_spawn_depth: Math.min(5, Math.max(1, Number.parseInt(e.target.value) || 1)) })}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                       style={{
                         backgroundColor: 'var(--color-bg-primary, var(--color-bg))',
@@ -1271,7 +1271,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                       min={1}
                       max={20}
                       value={editingAgent.max_children ?? 5}
-                      onChange={e => setEditingAgent({ ...editingAgent, max_children: Math.min(20, Math.max(1, parseInt(e.target.value) || 1)) })}
+                      onChange={e => setEditingAgent({ ...editingAgent, max_children: Math.min(20, Math.max(1, Number.parseInt(e.target.value) || 1)) })}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                       style={{
                         backgroundColor: 'var(--color-bg-primary, var(--color-bg))',

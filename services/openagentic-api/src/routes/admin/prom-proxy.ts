@@ -48,7 +48,7 @@ function isAllowedQuery(raw: string): boolean {
 function upstreamBase() {
   return {
     host: process.env.PROMETHEUS_HOST || DEFAULT_HOST,
-    port: parseInt(process.env.PROMETHEUS_PORT || String(DEFAULT_PORT), 10),
+    port: Number.parseInt(process.env.PROMETHEUS_PORT || String(DEFAULT_PORT), 10),
   };
 }
 

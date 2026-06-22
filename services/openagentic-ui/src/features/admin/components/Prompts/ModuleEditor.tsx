@@ -252,7 +252,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({
               min={1}
               max={100}
               value={form.priority}
-              onChange={(e) => setForm((f) => ({ ...f, priority: parseInt(e.target.value, 10) || 1 }))}
+              onChange={(e) => setForm((f) => ({ ...f, priority: Number.parseInt(e.target.value, 10) || 1 }))}
               style={inputStyle}
             />
           </div>

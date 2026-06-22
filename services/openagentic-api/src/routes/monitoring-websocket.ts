@@ -56,7 +56,7 @@ async function fetchMCPServerData(userId: string, isAdmin: boolean = false) {
       capabilities: server.capabilities,
       instance: server.instances?.[0] ? {
         id: server.instances[0].instance_id,
-        pid: parseInt(server.instances[0].process_id || '0'),
+        pid: Number.parseInt(server.instances[0].process_id || '0'),
         port: server.instances[0].config?.port || 0,
         startedAt: server.instances[0].started_at
       } : null,

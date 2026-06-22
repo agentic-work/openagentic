@@ -199,7 +199,7 @@ export class ChatAuthService {
       try {
         const cached = await redis.get(cacheKey);
         if (cached !== null) {
-          return parseInt(cached, 10);
+          return Number.parseInt(cached, 10);
         }
       } catch (e) {
         // Fall through to DB query
@@ -246,7 +246,7 @@ export class ChatAuthService {
       try {
         const cached = await redis.get(cacheKey);
         if (cached !== null) {
-          return parseInt(cached, 10);
+          return Number.parseInt(cached, 10);
         }
       } catch (e) {
         // Fall through to DB query

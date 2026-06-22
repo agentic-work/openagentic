@@ -3931,7 +3931,7 @@ data.on("data", (chunk: Buffer) => {
               return reply.code(409).send({ error: `Collection "${collectionName}" already exists` });
             }
 
-            const embeddingDim = parseInt(process.env.EMBEDDING_DIMENSIONS || '1536', 10);
+            const embeddingDim = Number.parseInt(process.env.EMBEDDING_DIMENSIONS || '1536', 10);
 
             await client.createCollection({
               collection_name: collectionName,
@@ -3962,7 +3962,7 @@ data.on("data", (chunk: Buffer) => {
         // 3072-dim embeddings (text-embedding-3-large, our AIF model)
         // can be HNSW-indexed; `vector` tops out at 2000 dims for HNSW.
         try {
-          const dims = parseInt(process.env.EMBEDDING_DIMENSIONS || '3072', 10);
+          const dims = Number.parseInt(process.env.EMBEDDING_DIMENSIONS || '3072', 10);
           await prisma.$executeRawUnsafe(`
             CREATE TABLE IF NOT EXISTS "${collectionName}" (
               id TEXT PRIMARY KEY,

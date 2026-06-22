@@ -1042,7 +1042,7 @@ const UserPermissionsView: React.FC = () => {
                         value={editingPermissions.daily_token_limit || ''}
                         onChange={(e) => setEditingPermissions({
                           ...editingPermissions,
-                          daily_token_limit: e.target.value ? parseInt(e.target.value) : null
+                          daily_token_limit: e.target.value ? Number.parseInt(e.target.value) : null
                         })}
                         placeholder="Unlimited"
                         className="w-full px-3 py-2 rounded-lg text-sm"
@@ -1055,7 +1055,7 @@ const UserPermissionsView: React.FC = () => {
                         value={editingPermissions.monthly_token_limit || ''}
                         onChange={(e) => setEditingPermissions({
                           ...editingPermissions,
-                          monthly_token_limit: e.target.value ? parseInt(e.target.value) : null
+                          monthly_token_limit: e.target.value ? Number.parseInt(e.target.value) : null
                         })}
                         placeholder="Unlimited"
                         className="w-full px-3 py-2 rounded-lg text-sm"
@@ -1071,7 +1071,7 @@ const UserPermissionsView: React.FC = () => {
                       <input
                         type="number"
                         value={editingDailyRequestLimit || ''}
-                        onChange={(e) => setEditingDailyRequestLimit(e.target.value ? parseInt(e.target.value) : null)}
+                        onChange={(e) => setEditingDailyRequestLimit(e.target.value ? Number.parseInt(e.target.value) : null)}
                         placeholder="Unlimited"
                         className="w-full px-3 py-2 rounded-lg text-sm"
                         style={{ border: '1px solid var(--color-border)', backgroundColor: 'var(--color-background)', color: 'var(--color-text)' }}
@@ -1081,7 +1081,7 @@ const UserPermissionsView: React.FC = () => {
                       <input
                         type="number"
                         value={editingMonthlyRequestLimit || ''}
-                        onChange={(e) => setEditingMonthlyRequestLimit(e.target.value ? parseInt(e.target.value) : null)}
+                        onChange={(e) => setEditingMonthlyRequestLimit(e.target.value ? Number.parseInt(e.target.value) : null)}
                         placeholder="Unlimited"
                         className="w-full px-3 py-2 rounded-lg text-sm"
                         style={{ border: '1px solid var(--color-border)', backgroundColor: 'var(--color-background)', color: 'var(--color-text)' }}
@@ -1153,7 +1153,7 @@ const UserPermissionsView: React.FC = () => {
                         value={editingBudget?.budgetDollars ?? ''}
                         onChange={(e) => setEditingBudget({
                           ...editingBudget!,
-                          budgetDollars: e.target.value ? parseFloat(e.target.value) : null
+                          budgetDollars: e.target.value ? Number.parseFloat(e.target.value) : null
                         })}
                         placeholder="Unlimited"
                         className="w-full px-3 py-2 rounded-lg text-sm"
@@ -1168,7 +1168,7 @@ const UserPermissionsView: React.FC = () => {
                         value={editingBudget?.warningThreshold ?? 80}
                         onChange={(e) => setEditingBudget({
                           ...editingBudget!,
-                          warningThreshold: parseInt(e.target.value) || 80
+                          warningThreshold: Number.parseInt(e.target.value) || 80
                         })}
                         className="w-full px-3 py-2 rounded-lg text-sm"
                         style={{ border: '1px solid var(--color-border)', backgroundColor: 'var(--color-background)', color: 'var(--color-text)' }}

@@ -186,8 +186,8 @@ export class MCPToolIndexingService {
         if (!forceReindex && this.redisClient) {
           const lastIndexTime = await this.redisClient.get('mcp:tools:last_index_time');
           if (lastIndexTime) {
-            const lastIndexMs = parseInt(lastIndexTime);
-            const staleTtlMs = parseInt(process.env.MCP_INDEX_STALE_TTL_MS || '3600000'); // 1 hour default
+            const lastIndexMs = Number.parseInt(lastIndexTime);
+            const staleTtlMs = Number.parseInt(process.env.MCP_INDEX_STALE_TTL_MS || '3600000'); // 1 hour default
             if (Date.now() - lastIndexMs < staleTtlMs) {
               this.logger.info({
                 lastIndexed: new Date(lastIndexMs).toISOString(),

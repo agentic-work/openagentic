@@ -61,7 +61,7 @@ export async function getDatabaseCredentials(): Promise<{
   
   return {
     host: process.env.POSTGRES_HOST || 'postgres',
-    port: parseInt(process.env.POSTGRES_PORT || '5432'),
+    port: Number.parseInt(process.env.POSTGRES_PORT || '5432'),
     database: process.env.POSTGRES_DB || 'openagentic',
     username: process.env.POSTGRES_USER || 'openagentic',
     password: process.env.POSTGRES_PASSWORD || ''
@@ -177,7 +177,7 @@ export async function getRedisConfig(): Promise<{
       const secrets = await vault.getSecret('openagentic/redis');
       return {
         host: secrets.host || 'redis',
-        port: parseInt(secrets.port || '6379'),
+        port: Number.parseInt(secrets.port || '6379'),
         password: secrets.password,
         url: secrets.url || `redis://${secrets.host}:${secrets.port}`
       };
@@ -188,7 +188,7 @@ export async function getRedisConfig(): Promise<{
   
   return {
     host: process.env.REDIS_HOST || 'redis',
-    port: parseInt(process.env.REDIS_PORT || '6379'),
+    port: Number.parseInt(process.env.REDIS_PORT || '6379'),
     password: process.env.REDIS_PASSWORD,
     url: process.env.REDIS_URL || 'redis://redis:6379'
   };
@@ -211,7 +211,7 @@ export async function getMilvusConfig(): Promise<{
       const secrets = await vault.getSecret('openagentic/milvus');
       return {
         host: secrets.host || 'milvus-standalone',
-        port: parseInt(secrets.port || '19530'),
+        port: Number.parseInt(secrets.port || '19530'),
         address: secrets.address || `${secrets.host}:${secrets.port}`,
         username: secrets.username,
         password: secrets.password
@@ -223,7 +223,7 @@ export async function getMilvusConfig(): Promise<{
   
   return {
     host: process.env.MILVUS_HOST || 'milvus-standalone',
-    port: parseInt(process.env.MILVUS_PORT || '19530'),
+    port: Number.parseInt(process.env.MILVUS_PORT || '19530'),
     address: process.env.MILVUS_ADDRESS || 'milvus-standalone:19530',
     username: process.env.MILVUS_USERNAME,
     password: process.env.MILVUS_PASSWORD

@@ -195,8 +195,8 @@ export const sessionHandler = {
         }
 
         const options = {
-          limit: request.query.limit ? parseInt(request.query.limit, 10) : 50,
-          offset: request.query.offset ? parseInt(request.query.offset, 10) : 0,
+          limit: request.query.limit ? Number.parseInt(request.query.limit, 10) : 50,
+          offset: request.query.offset ? Number.parseInt(request.query.offset, 10) : 0,
           sortBy: request.query.sortBy || 'updated_at',
           sortOrder: request.query.sortOrder || 'desc'
         };
@@ -491,8 +491,8 @@ export const sessionHandler = {
         }
 
         const options = {
-          limit: request.query.limit ? parseInt(request.query.limit, 10) : 20,
-          offset: request.query.offset ? parseInt(request.query.offset, 10) : 0
+          limit: request.query.limit ? Number.parseInt(request.query.limit, 10) : 20,
+          offset: request.query.offset ? Number.parseInt(request.query.offset, 10) : 0
         };
 
         // Validate pagination parameters

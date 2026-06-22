@@ -748,7 +748,7 @@ export class AzureSDKKnowledgeIngester {
       });
 
       return {
-        totalChunks: parseInt(collectionInfo.data.row_count) || 0,
+        totalChunks: Number.parseInt(collectionInfo.data.row_count) || 0,
         byCategory: {}, // Would require additional queries
         lastIngested: null // Would require additional queries
       };

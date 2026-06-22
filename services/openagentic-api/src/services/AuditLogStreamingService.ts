@@ -41,8 +41,8 @@ export class AuditLogStreamingService {
 
   constructor() {
     this.sink = (process.env.AUDIT_LOG_SINK || 'stdout').toLowerCase();
-    this.batchSize = parseInt(process.env.AUDIT_BATCH_SIZE || '100', 10);
-    this.flushIntervalMs = parseInt(process.env.AUDIT_FLUSH_INTERVAL || '5000', 10);
+    this.batchSize = Number.parseInt(process.env.AUDIT_BATCH_SIZE || '100', 10);
+    this.flushIntervalMs = Number.parseInt(process.env.AUDIT_FLUSH_INTERVAL || '5000', 10);
   }
 
   /**

@@ -486,7 +486,7 @@ class WebhookSecurityService {
     const ts = h('x-slack-request-timestamp');
     if (!ts) return { valid: true }; // No timestamp = skip check
 
-    const requestTime = parseInt(ts, 10);
+    const requestTime = Number.parseInt(ts, 10);
     if (isNaN(requestTime)) return { valid: false, reason: 'Invalid timestamp' };
 
     const age = Math.abs(Math.floor(Date.now() / 1000) - requestTime);
@@ -616,7 +616,7 @@ class WebhookSecurityService {
     for (const cidr of cidrs) {
       const [base, bits] = cidr.split('/');
       const baseNum = this.ipToNum(base);
-      const mask = bits ? ~((1 << (32 - parseInt(bits))) - 1) >>> 0 : 0xFFFFFFFF;
+      const mask = bits ? ~((1 << (32 - Number.parseInt(bits))) - 1) >>> 0 : 0xFFFFFFFF;
       if (baseNum !== null && (ipNum & mask) === (baseNum & mask)) {
         return true;
       }

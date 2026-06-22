@@ -2715,8 +2715,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
     const nodemailer = require('nodemailer');
     const transport = nodemailer.createTransport({
       host: smtpHost || process.env.SMTP_HOST,
-      port: smtpPort || parseInt(process.env.SMTP_PORT || '587'),
-      secure: (smtpPort || parseInt(process.env.SMTP_PORT || '587')) === 465,
+      port: smtpPort || Number.parseInt(process.env.SMTP_PORT || '587'),
+      secure: (smtpPort || Number.parseInt(process.env.SMTP_PORT || '587')) === 465,
       auth: { user: smtpUser || process.env.SMTP_USER, pass: smtpPasswordRef || process.env.SMTP_PASS },
     });
 

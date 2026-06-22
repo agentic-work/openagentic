@@ -185,7 +185,7 @@ export function parseSkillMarkdown(markdown: string): {
       val = val.slice(1, -1).split(',').map((s: string) => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
     } else if (val === 'true') val = true;
     else if (val === 'false') val = false;
-    else if (/^\d+$/.test(val)) val = parseInt(val, 10);
+    else if (/^\d+$/.test(val)) val = Number.parseInt(val, 10);
     else val = val.replace(/^["']|["']$/g, '');
     meta[key] = val;
   }

@@ -337,8 +337,8 @@ export function getDefaultMultiModelConfig(): MultiModelConfig {
         enabled: true,
         primaryModel: process.env.MULTI_MODEL_REASONING_PRIMARY || '',
         fallbackModel: process.env.MULTI_MODEL_REASONING_FALLBACK,
-        temperature: parseFloat(process.env.MULTI_MODEL_REASONING_TEMP || '0.7'),
-        thinkingBudget: parseInt(process.env.MULTI_MODEL_REASONING_THINKING_BUDGET || '8000', 10),
+        temperature: Number.parseFloat(process.env.MULTI_MODEL_REASONING_TEMP || '0.7'),
+        thinkingBudget: Number.parseInt(process.env.MULTI_MODEL_REASONING_THINKING_BUDGET || '8000', 10),
         options: {
           enableThinking: process.env.MULTI_MODEL_REASONING_ENABLE_THINKING !== 'false'
         }
@@ -348,7 +348,7 @@ export function getDefaultMultiModelConfig(): MultiModelConfig {
         enabled: true,
         primaryModel: process.env.MULTI_MODEL_TOOL_PRIMARY || '',
         fallbackModel: process.env.MULTI_MODEL_TOOL_FALLBACK,
-        temperature: parseFloat(process.env.MULTI_MODEL_TOOL_TEMP || '0.3'),
+        temperature: Number.parseFloat(process.env.MULTI_MODEL_TOOL_TEMP || '0.3'),
         options: {
           streamTools: true,
           preserveToolContext: true
@@ -359,20 +359,20 @@ export function getDefaultMultiModelConfig(): MultiModelConfig {
         enabled: true,
         primaryModel: process.env.MULTI_MODEL_SYNTHESIS_PRIMARY || '',
         fallbackModel: process.env.MULTI_MODEL_SYNTHESIS_FALLBACK,
-        temperature: parseFloat(process.env.MULTI_MODEL_SYNTHESIS_TEMP || '0.5')
+        temperature: Number.parseFloat(process.env.MULTI_MODEL_SYNTHESIS_TEMP || '0.5')
       },
       [ModelRole.FALLBACK]: {
         role: ModelRole.FALLBACK,
         enabled: true,
         primaryModel: process.env.MULTI_MODEL_FALLBACK_PRIMARY || '',
-        temperature: parseFloat(process.env.MULTI_MODEL_FALLBACK_TEMP || '0.5')
+        temperature: Number.parseFloat(process.env.MULTI_MODEL_FALLBACK_TEMP || '0.5')
       }
     },
     routing: {
-      complexityThreshold: parseInt(process.env.MULTI_MODEL_COMPLEXITY_THRESHOLD || '60', 10),
+      complexityThreshold: Number.parseInt(process.env.MULTI_MODEL_COMPLEXITY_THRESHOLD || '60', 10),
       alwaysMultiModelPatterns: (process.env.MULTI_MODEL_TRIGGER_PATTERNS || 'analyze,compare,audit,comprehensive,investigate').split(','),
       preferCheaperToolModel: process.env.MULTI_MODEL_PREFER_CHEAP_TOOLS !== 'false',
-      maxHandoffs: parseInt(process.env.MULTI_MODEL_MAX_HANDOFFS || '5', 10)
+      maxHandoffs: Number.parseInt(process.env.MULTI_MODEL_MAX_HANDOFFS || '5', 10)
     }
   };
 }

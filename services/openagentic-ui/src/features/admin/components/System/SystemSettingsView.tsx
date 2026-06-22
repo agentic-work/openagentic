@@ -248,7 +248,7 @@ const SystemSettingsView: React.FC<SystemSettingsViewProps> = () => {
                 <input
                   type="number"
                   value={tieredFCConfig.decisionCacheTTL}
-                  onChange={(e) => handleTieredFCChange('decisionCacheTTL', parseInt(e.target.value) || 300)}
+                  onChange={(e) => handleTieredFCChange('decisionCacheTTL', Number.parseInt(e.target.value) || 300)}
                   className="ml-2 w-24 px-2 py-1 rounded"
                   style={{
                     backgroundColor: 'var(--color-surface)',

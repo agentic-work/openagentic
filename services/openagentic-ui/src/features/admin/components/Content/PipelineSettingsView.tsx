@@ -1381,7 +1381,7 @@ export const PipelineSettingsView: React.FC = () => {
         min={min}
         max={max}
         step={step || 1}
-        onChange={(e) => updateStageConfig(stageName, field, parseFloat(e.target.value) || 0)}
+        onChange={(e) => updateStageConfig(stageName, field, Number.parseFloat(e.target.value) || 0)}
         className="w-28 px-3 py-1.5 text-sm rounded-lg bg-surface-secondary border border-border text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500"
       />
     </div>
@@ -1509,7 +1509,7 @@ export const PipelineSettingsView: React.FC = () => {
         min={min}
         max={max}
         step={step || 1}
-        onChange={(e) => updateNestedConfig(stageName, path, parseFloat(e.target.value) || 0)}
+        onChange={(e) => updateNestedConfig(stageName, path, Number.parseFloat(e.target.value) || 0)}
         className="w-28 px-3 py-1.5 text-sm rounded-lg bg-surface-secondary border border-border text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500"
       />
     </div>

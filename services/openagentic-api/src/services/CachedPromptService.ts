@@ -212,7 +212,7 @@ export class CachedPromptService {
    */
   async getTemplateById(templateId: string): Promise<any> {
     if (!this.options.enableCache || !this.options.cacheTemplates) {
-      return this.promptService.getTemplateById(parseInt(templateId));
+      return this.promptService.getTemplateById(Number.parseInt(templateId));
     }
 
     const cacheKey = `prompt:template:${templateId}`;
@@ -227,7 +227,7 @@ export class CachedPromptService {
 
       // Cache miss - get from database
       this.logger.debug({ templateId }, 'Template by ID cache miss, fetching from database');
-      const template = await this.promptService.getTemplateById(parseInt(templateId));
+      const template = await this.promptService.getTemplateById(Number.parseInt(templateId));
       
       // Cache the result
       if (template) {
@@ -239,7 +239,7 @@ export class CachedPromptService {
     } catch (error) {
       this.logger.error({ error, templateId }, 'Error in cached template by ID lookup');
       // Fallback to direct database access
-      return this.promptService.getTemplateById(parseInt(templateId));
+      return this.promptService.getTemplateById(Number.parseInt(templateId));
     }
   }
 
@@ -251,7 +251,7 @@ export class CachedPromptService {
       // Perform the assignment
       const result = await this.promptService.assignTemplateToUser({
         userId, 
-        templateId: parseInt(templateId), 
+        templateId: Number.parseInt(templateId), 
         assignedBy
       });
       
@@ -295,7 +295,7 @@ export class CachedPromptService {
    */
   async updateTemplate(templateId: string, updates: any): Promise<any> {
     try {
-      const result = await this.promptService.updateTemplate(parseInt(templateId), updates);
+      const result = await this.promptService.updateTemplate(Number.parseInt(templateId), updates);
       
       // Invalidate template caches
       if (this.options.enableCache) {
@@ -323,7 +323,7 @@ export class CachedPromptService {
    */
   async deleteTemplate(templateId: string): Promise<void> {
     try {
-      await this.promptService.deleteTemplate(parseInt(templateId));
+      await this.promptService.deleteTemplate(Number.parseInt(templateId));
       
       // Invalidate template caches
       if (this.options.enableCache) {

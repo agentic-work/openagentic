@@ -163,7 +163,7 @@ export class OllamaProvider extends BaseLLMProvider {
 
     // Max concurrent completions — single GPU can handle 2-3 concurrent requests
     // before context thrashing kills throughput
-    const maxConcurrent = parseInt(process.env.OLLAMA_MAX_CONCURRENT || '2', 10);
+    const maxConcurrent = Number.parseInt(process.env.OLLAMA_MAX_CONCURRENT || '2', 10);
     this.completionSemaphore = new Semaphore(maxConcurrent);
 
     this.initialized = true; // Ollama doesn't require async init
@@ -561,7 +561,7 @@ export class OllamaProvider extends BaseLLMProvider {
       // gpt-oss thinking chunk size: break thinking into smaller chunks for interleaved display
       // gpt-oss outputs all thinking at once, so we artificially chunk it for better UX
       // Set via OLLAMA_GPT_OSS_THINKING_CHUNK_SIZE env var (default: 100 chars per chunk)
-      const gptOssThinkingChunkSize = parseInt(process.env.OLLAMA_GPT_OSS_THINKING_CHUNK_SIZE || '100', 10);
+      const gptOssThinkingChunkSize = Number.parseInt(process.env.OLLAMA_GPT_OSS_THINKING_CHUNK_SIZE || '100', 10);
 
       // Thinking detection: enable if the request asks for it (adaptive or enabled)
       // OR if env var OLLAMA_THINKING_MODELS lists it. No env vars needed for the
@@ -1642,7 +1642,7 @@ export class OllamaProvider extends BaseLLMProvider {
       // Parse Modelfile parameters (e.g., "temperature 0.8\nnum_predict 128\n...")
       const parseParam = (name: string): number | undefined => {
         const match = modelfile.match(new RegExp(`^${name}\\s+([\\d.eE+-]+)`, 'm'));
-        return match ? parseFloat(match[1]) : undefined;
+        return match ? Number.parseFloat(match[1]) : undefined;
       };
 
       // Extract context length from model_info

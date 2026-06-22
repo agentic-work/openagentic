@@ -200,7 +200,7 @@ export const AgentExecutionDashboard: React.FC<AgentExecutionDashboardProps> = (
           pattern: exec.orchestration || exec.pattern,
           status: exec.status,
           startedAt: exec.created_at || exec.startedAt,
-          costCents: exec.total_cost_cents != null ? parseFloat(exec.total_cost_cents) : exec.costCents,
+          costCents: exec.total_cost_cents != null ? Number.parseFloat(exec.total_cost_cents) : exec.costCents,
           toolCalls: exec.tool_calls_count ?? 0,
           userId: exec.user_id,
         }));
@@ -237,7 +237,7 @@ export const AgentExecutionDashboard: React.FC<AgentExecutionDashboardProps> = (
           user_id: exec.user_id,
           status: exec.status,
           duration_ms: exec.total_duration_ms ?? exec.duration_ms,
-          cost_cents: exec.total_cost_cents != null ? parseFloat(exec.total_cost_cents) : exec.cost_cents,
+          cost_cents: exec.total_cost_cents != null ? Number.parseFloat(exec.total_cost_cents) : exec.cost_cents,
           tool_calls_count: exec.tool_calls_count ?? exec.results?.reduce((sum: number, r: any) => sum + (r.toolCalls?.length || 0), 0) ?? 0,
           tokens_used: exec.total_tokens ?? exec.tokens_used,
           created_at: exec.created_at,

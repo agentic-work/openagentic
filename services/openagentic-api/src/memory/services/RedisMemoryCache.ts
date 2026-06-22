@@ -434,8 +434,8 @@ export class RedisMemoryCache {
       return acc;
     }, {} as Record<string, string>);
 
-    const hits = parseInt(stats.keyspace_hits || '0');
-    const misses = parseInt(stats.keyspace_misses || '0');
+    const hits = Number.parseInt(stats.keyspace_hits || '0');
+    const misses = Number.parseInt(stats.keyspace_misses || '0');
     const total = hits + misses;
     
     return {
@@ -443,7 +443,7 @@ export class RedisMemoryCache {
       missRate: total > 0 ? misses / total : 0,
       evictionRate: 0, // Would need additional Redis configuration to track
       averageLatency: this.calculateAverageLatency(),
-      memoryUsage: parseInt(stats.used_memory || '0'),
+      memoryUsage: Number.parseInt(stats.used_memory || '0'),
       keyCount: dbsize,
       lastUpdated: Date.now()
     };

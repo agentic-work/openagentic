@@ -6,8 +6,8 @@ import type { PromptModule, ModuleCategory } from './types.js';
 const log = loggers.prompt;
 
 const REDIS_KEY = 'prompt:modules:all';
-const REDIS_TTL = parseInt(process.env.PROMPT_MODULE_CACHE_TTL || '300'); // 5 minutes default
-const MEM_CACHE_TTL = parseInt(process.env.PROMPT_MODULE_MEM_TTL || '60000'); // 1 minute in-memory
+const REDIS_TTL = Number.parseInt(process.env.PROMPT_MODULE_CACHE_TTL || '300'); // 5 minutes default
+const MEM_CACHE_TTL = Number.parseInt(process.env.PROMPT_MODULE_MEM_TTL || '60000'); // 1 minute in-memory
 
 function dbRowToModule(row: any): PromptModule {
   return {

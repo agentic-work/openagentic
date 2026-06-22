@@ -60,7 +60,7 @@ interface BedrockSku {
  * defensively — AWS has been known to change units silently on new models.
  */
 function normalizeToPerMillion(priceStr: string, unit: string): number {
-  const price = parseFloat(priceStr);
+  const price = Number.parseFloat(priceStr);
   if (!Number.isFinite(price)) {
     throw new Error(`unparseable pricePerUnit.USD: ${priceStr}`);
   }
@@ -91,7 +91,7 @@ function firstOnDemandRate(sku: BedrockSku): {
     for (const dim of Object.values(dims)) {
       const raw = dim.pricePerUnit?.USD;
       if (raw === undefined) continue;
-      return { usd: parseFloat(raw), unit: dim.unit ?? 'tokens' };
+      return { usd: Number.parseFloat(raw), unit: dim.unit ?? 'tokens' };
     }
   }
   return undefined;

@@ -467,7 +467,7 @@ export class ImageStorageService {
       });
 
       const rowCountStat = stats.stats.find((stat: any) => stat.key === 'row_count');
-      const totalImages = rowCountStat ? parseInt(String(rowCountStat.value), 10) : 0;
+      const totalImages = rowCountStat ? Number.parseInt(String(rowCountStat.value), 10) : 0;
 
       return {
         totalImages,

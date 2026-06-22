@@ -76,7 +76,7 @@ class DynamicModelManager {
       };
     }
 
-    const dimensions = parseInt(dimensionStr);
+    const dimensions = Number.parseInt(dimensionStr);
 
     logger.info({
       model: embeddingModel,

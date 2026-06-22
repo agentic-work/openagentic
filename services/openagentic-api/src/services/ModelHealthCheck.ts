@@ -20,7 +20,7 @@ export class ModelHealthCheckService {
   private lastCheckTime?: Date;
   // Default to 5 minutes (300000ms) to reduce API calls and avoid rate limiting
   // Previous default of 30s was too aggressive and caused rate limiting with Azure AI Foundry
-  private checkIntervalMs = parseInt(process.env.MODEL_HEALTH_CHECK_INTERVAL_MS || '300000');
+  private checkIntervalMs = Number.parseInt(process.env.MODEL_HEALTH_CHECK_INTERVAL_MS || '300000');
   private healthCheckDisabled = process.env.DISABLE_MODEL_HEALTH_CHECK === 'true';
 
   constructor(logger: FastifyBaseLogger, providerManager: ProviderManager) {

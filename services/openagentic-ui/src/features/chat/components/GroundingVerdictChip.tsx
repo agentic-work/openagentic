@@ -145,9 +145,9 @@ export function parseGroundingVerdict(text: string | undefined | null): Groundin
 
     if (paren) {
       const srcMatch = paren.match(/(\d+)\s*sources?/);
-      if (srcMatch) sources = parseInt(srcMatch[1], 10);
+      if (srcMatch) sources = Number.parseInt(srcMatch[1], 10);
       const cpMatch = paren.match(/(\d+)\s*counterpoints?/);
-      if (cpMatch) counterpoints = parseInt(cpMatch[1], 10);
+      if (cpMatch) counterpoints = Number.parseInt(cpMatch[1], 10);
     }
   } else {
     // Verdict-line-only fallback — model gave us the claim but no

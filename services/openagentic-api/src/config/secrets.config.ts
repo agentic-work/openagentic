@@ -162,7 +162,7 @@ export function loadSecrets(logger?: Logger): SecretsConfig {
         url: validateSecret('DATABASE_URL', process.env.DATABASE_URL),
         password: validateSecret('DB_PASSWORD', process.env.DB_PASSWORD ||
           (isDevelopment ? 'dev_password_only' : undefined), true),
-        poolSize: parseInt(process.env.DB_POOL_SIZE || '10', 10)
+        poolSize: Number.parseInt(process.env.DB_POOL_SIZE || '10', 10)
       },
 
       redis: {

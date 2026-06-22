@@ -36,7 +36,7 @@ const GLOBAL_SLIDER_KEY = 'global_intelligence_slider';
 // Default to ECONOMICAL mode (30) to use cheaper models for simple queries
 // Can be overridden via DEFAULT_SLIDER_POSITION env var
 // Slider modes: 0-40 = ECONOMICAL (Haiku), 41-60 = BALANCED, 61-100 = PREMIUM (Sonnet/Opus)
-const DEFAULT_SLIDER_POSITION = parseInt(process.env.DEFAULT_SLIDER_POSITION || '30', 10);
+const DEFAULT_SLIDER_POSITION = Number.parseInt(process.env.DEFAULT_SLIDER_POSITION || '30', 10);
 
 // Cache for slider configs
 interface CachedSlider {

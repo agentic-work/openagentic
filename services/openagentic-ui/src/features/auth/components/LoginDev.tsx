@@ -32,7 +32,7 @@ const isIpInRange = (ip: string, range: string): boolean => {
   const [rangeIp, cidr] = range.split('/');
   const rangeParts = rangeIp.split('.').map(Number);
   const ipParts = ip.split('.').map(Number);
-  const mask = ~(0xffffffff >>> parseInt(cidr));
+  const mask = ~(0xffffffff >>> Number.parseInt(cidr));
 
   const rangeInt = (rangeParts[0] << 24) + (rangeParts[1] << 16) + (rangeParts[2] << 8) + rangeParts[3];
   const ipInt = (ipParts[0] << 24) + (ipParts[1] << 16) + (ipParts[2] << 8) + ipParts[3];

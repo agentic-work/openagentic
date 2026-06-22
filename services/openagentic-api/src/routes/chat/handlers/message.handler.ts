@@ -71,8 +71,8 @@ export const messageHandler = {
 
         // Parse query parameters
         const options = {
-          limit: request.query.limit ? parseInt(request.query.limit, 10) : 1000, // Default to 1000 messages
-          offset: request.query.offset ? parseInt(request.query.offset, 10) : 0,
+          limit: request.query.limit ? Number.parseInt(request.query.limit, 10) : 1000, // Default to 1000 messages
+          offset: request.query.offset ? Number.parseInt(request.query.offset, 10) : 0,
           before: request.query.before,
           after: request.query.after,
           includeSystem: request.query.includeSystem === 'true'
@@ -341,7 +341,7 @@ export const messageHandler = {
         }
 
         const { sessionId, messageId } = request.params;
-        const contextSize = request.query.contextSize ? parseInt(request.query.contextSize, 10) : 5;
+        const contextSize = request.query.contextSize ? Number.parseInt(request.query.contextSize, 10) : 5;
 
         if (!sessionId || !messageId) {
           return reply.code(400).send({
@@ -432,7 +432,7 @@ export const messageHandler = {
 
         const { sessionId } = request.params;
         const { q: query, role } = request.query;
-        const limit = request.query.limit ? parseInt(request.query.limit, 10) : 20;
+        const limit = request.query.limit ? Number.parseInt(request.query.limit, 10) : 20;
 
         if (!sessionId) {
           return reply.code(400).send({

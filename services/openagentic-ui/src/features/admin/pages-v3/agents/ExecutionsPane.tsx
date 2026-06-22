@@ -140,7 +140,7 @@ export const ExecutionsPane: React.FC<ExecutionsPaneProps> = ({
         // observed payloads from agentRunLog.
         const raw = r.estimated_cost
         if (raw == null) return <span style={{ color: 'var(--fg-3)' }}>—</span>
-        const n = typeof raw === 'string' ? parseFloat(raw) : raw
+        const n = typeof raw === 'string' ? Number.parseFloat(raw) : raw
         if (!Number.isFinite(n)) return <span style={{ color: 'var(--fg-3)' }}>—</span>
         const dollars = n < 1 ? n : n / 100
         if (dollars === 0) return <span style={{ color: 'var(--fg-3)' }}>$0.00</span>

@@ -23,8 +23,8 @@ export default async function adminAuditLogRoutes(fastify: FastifyInstance) {
     };
   }>('/audit-log', { onRequest: adminMiddleware }, async (request, reply) => {
     const q = request.query;
-    const page = Math.max(parseInt(q.page ?? '1', 10) || 1, 1);
-    const limit = Math.min(parseInt(q.limit ?? '50', 10) || 50, 100);
+    const page = Math.max(Number.parseInt(q.page ?? '1', 10) || 1, 1);
+    const limit = Math.min(Number.parseInt(q.limit ?? '50', 10) || 50, 100);
 
     const where: Record<string, unknown> = {};
     if (q.decision) where.decision = q.decision;

@@ -207,7 +207,7 @@ function parseRankingResponse(
     for (const line of lines) {
       const match = line.trim().match(/^(\d+)/);
       if (match) {
-        const index = parseInt(match[1]) - 1; // Convert to 0-based index
+        const index = Number.parseInt(match[1]) - 1; // Convert to 0-based index
         if (index >= 0 && index < originalTools.length) {
           rankedIndices.push(index);
         }

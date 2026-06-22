@@ -337,7 +337,7 @@ export const INIT_PROVIDERS: BootstrapStep = {
             azureDeployment: mc.embeddingModel,
             endpoint: pc.baseUrl,
             model: mc.embeddingModel,
-            dimensions: pc.embeddingDimensions ? parseInt(pc.embeddingDimensions) : undefined,
+            dimensions: pc.embeddingDimensions ? Number.parseInt(pc.embeddingDimensions) : undefined,
           });
           loggers.services.info({
             provider: embProvider,

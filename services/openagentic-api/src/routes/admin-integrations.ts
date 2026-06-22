@@ -225,8 +225,8 @@ const adminIntegrationRoutes: FastifyPluginAsync = async (fastify: FastifyInstan
   fastify.get<{ Params: { id: string } }>('/integrations/:id/logs', async (request, reply) => {
     const { id } = request.params;
     const query = request.query as { limit?: string; offset?: string };
-    const limit = parseInt(query.limit || '50');
-    const offset = parseInt(query.offset || '0');
+    const limit = Number.parseInt(query.limit || '50');
+    const offset = Number.parseInt(query.offset || '0');
 
     const [logs, total] = await Promise.all([
       prisma.integrationLog.findMany({

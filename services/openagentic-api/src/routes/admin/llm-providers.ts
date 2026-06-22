@@ -390,7 +390,7 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
           ? Math.round(results.reduce((sum, r) => sum + r.performance.averageLatency, 0) / results.length)
           : 0,
         totalTokens: results.reduce((sum, r) => sum + r.usage.totalTokens, 0),
-        totalCost: results.reduce((sum, r) => sum + parseFloat(r.usage.estimatedCost), 0).toFixed(4)
+        totalCost: results.reduce((sum, r) => sum + Number.parseFloat(r.usage.estimatedCost), 0).toFixed(4)
       };
 
       return reply.send({
@@ -4759,7 +4759,7 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
   }>('/llm-providers/available-models', async (request, reply) => {
     try {
       const { provider, search, category, limit: limitStr } = request.query;
-      const limit = parseInt(limitStr || '50', 10);
+      const limit = Number.parseInt(limitStr || '50', 10);
 
       const allModels: Array<{
         id: string;

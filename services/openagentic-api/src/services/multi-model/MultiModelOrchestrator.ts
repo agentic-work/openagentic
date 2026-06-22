@@ -91,7 +91,7 @@ export class MultiModelOrchestrator {
       enableThinking: true
     };
     baseConfig.roles[ModelRole.REASONING].thinkingBudget =
-      parseInt(process.env.MULTI_MODEL_PREMIUM_THINKING_BUDGET || '16000', 10);
+      Number.parseInt(process.env.MULTI_MODEL_PREMIUM_THINKING_BUDGET || '16000', 10);
 
     return { roles: baseConfig.roles };
   }

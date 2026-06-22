@@ -4,7 +4,7 @@
   "description": "Kubernetes templates in the platform Helm chart",
   "icon": "infra",
   "category": "infrastructure",
-  "generatedAt": "2026-06-21T00:19:24.509Z",
+  "generatedAt": "2026-06-21T18:49:53.916Z",
   "sourceFiles": [
     "helm/openagentic/templates/api.yaml",
     "helm/openagentic/templates/ingress.yaml",

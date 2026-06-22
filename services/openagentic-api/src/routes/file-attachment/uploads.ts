@@ -376,8 +376,8 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
         prisma.fileAttachment.findMany({
           where,
           orderBy: { [sortBy]: sortOrder },
-          take: parseInt(limit.toString()),
-          skip: parseInt(offset.toString())
+          take: Number.parseInt(limit.toString()),
+          skip: Number.parseInt(offset.toString())
         }),
         
         prisma.fileAttachment.count({ where })
@@ -399,9 +399,9 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
         files: enhancedFiles,
         pagination: {
           total: totalCount,
-          limit: parseInt(limit.toString()),
-          offset: parseInt(offset.toString()),
-          hasMore: totalCount > parseInt(offset.toString()) + parseInt(limit.toString())
+          limit: Number.parseInt(limit.toString()),
+          offset: Number.parseInt(offset.toString()),
+          hasMore: totalCount > Number.parseInt(offset.toString()) + Number.parseInt(limit.toString())
         },
         stats: {
           totalFiles: totalCount,
@@ -994,7 +994,7 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
       const results = await documentIndexingService.searchDocuments(
         userId,
         query,
-        Math.min(parseInt(limit.toString()), 20) // Max 20 results
+        Math.min(Number.parseInt(limit.toString()), 20) // Max 20 results
       );
 
       return reply.send({

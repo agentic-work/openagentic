@@ -345,7 +345,7 @@ export class VaultInitService {
     const secrets = await this.getSecret('openagentic/database');
     return {
       host: secrets.host || process.env.POSTGRES_HOST!,
-      port: parseInt(secrets.port || process.env.POSTGRES_PORT || '5432'),
+      port: Number.parseInt(secrets.port || process.env.POSTGRES_PORT || '5432'),
       database: secrets.database || process.env.POSTGRES_DB!,
       username: secrets.username || process.env.POSTGRES_USER!,
       password: secrets.password || process.env.POSTGRES_PASSWORD!,

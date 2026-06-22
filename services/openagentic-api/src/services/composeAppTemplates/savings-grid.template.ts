@@ -16,7 +16,7 @@ import { buildHtml, CDN_LIB, escHtml } from './_shared.js';
 
 /** Coerce numeric strings to numbers — model occasionally emits "540.00" instead of 540. */
 const numOrStr = z.union([z.number().nonnegative(), z.string().transform((v) => {
-  const n = parseFloat(v.replace(/[,$]/g, ''));
+  const n = Number.parseFloat(v.replace(/[,$]/g, ''));
   return isNaN(n) || n < 0 ? 0 : n;
 })]);
 

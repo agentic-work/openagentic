@@ -428,7 +428,7 @@ export class MilvusService {
       });
 
       return {
-        rowCount: parseInt(String(stats.stats.find((s: any) => s.key === 'row_count')?.value || '0'), 10)
+        rowCount: Number.parseInt(String(stats.stats.find((s: any) => s.key === 'row_count')?.value || '0'), 10)
       };
 
     } catch (error) {

@@ -31,7 +31,7 @@ import { seedTemplatesOnBoot } from './services/templateSeeder.js';
 import { withTenant } from './utils/tenantPrismaExtension.js';
 
 const logger = loggers.server;
-const PORT = parseInt(process.env.PORT || '3400', 10);
+const PORT = Number.parseInt(process.env.PORT || '3400', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 
 const compiler = new WorkflowCompiler();

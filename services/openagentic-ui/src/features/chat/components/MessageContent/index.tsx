@@ -327,12 +327,12 @@ const MessageContent: React.FC<MessageContentProps> = ({ message, theme }) => {
             const ranges = (highlightMatch[1] || highlightMatch[2]).split(',');
             ranges.forEach(range => {
               if (range.includes('-')) {
-                const [start, end] = range.split('-').map(n => parseInt(n.trim()));
+                const [start, end] = range.split('-').map(n => Number.parseInt(n.trim()));
                 for (let i = start; i <= end; i++) {
                   highlightLines.push(i);
                 }
               } else {
-                highlightLines.push(parseInt(range.trim()));
+                highlightLines.push(Number.parseInt(range.trim()));
               }
             });
           }
@@ -343,12 +343,12 @@ const MessageContent: React.FC<MessageContentProps> = ({ message, theme }) => {
             const ranges = (errorMatch[1] || errorMatch[2]).split(',');
             ranges.forEach(range => {
               if (range.includes('-')) {
-                const [start, end] = range.split('-').map(n => parseInt(n.trim()));
+                const [start, end] = range.split('-').map(n => Number.parseInt(n.trim()));
                 for (let i = start; i <= end; i++) {
                   errorLines.push(i);
                 }
               } else {
-                errorLines.push(parseInt(range.trim()));
+                errorLines.push(Number.parseInt(range.trim()));
               }
             });
           }

@@ -69,7 +69,7 @@ export const searchRoutes: FastifyPluginAsync<SearchRoutesOptions> = async (
     reply: any,
   ) => {
     const q = (request.query?.q ?? '').toString().trim();
-    let k = parseInt(String(request.query?.k ?? DEFAULT_K), 10);
+    let k = Number.parseInt(String(request.query?.k ?? DEFAULT_K), 10);
     if (!Number.isFinite(k)) k = DEFAULT_K;
     if (k < MIN_K) k = MIN_K;
     if (k > MAX_K) k = MAX_K;

@@ -4,7 +4,7 @@
   "description": "Built-in sub-agent personas the supervisor can delegate to, source-derived from the API built-in agent directory.",
   "icon": "agent",
   "category": "agents",
-  "generatedAt": "2026-06-21T00:19:24.487Z",
+  "generatedAt": "2026-06-21T18:49:53.901Z",
   "sourceFiles": [
     "services/openagentic-api/src/agents/built-in/artifact-creation.md",
     "services/openagentic-api/src/agents/built-in/cloud-operations.md",

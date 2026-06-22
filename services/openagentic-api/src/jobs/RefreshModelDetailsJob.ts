@@ -35,7 +35,7 @@ function decimalToNumberOrNull(d: any): number | null {
   if (d == null) return null;
   if (typeof d === 'number') return d;
   if (typeof d.toString === 'function') {
-    const n = parseFloat(d.toString());
+    const n = Number.parseFloat(d.toString());
     return Number.isFinite(n) ? n : null;
   }
   return null;

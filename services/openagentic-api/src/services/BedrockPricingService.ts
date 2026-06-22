@@ -181,7 +181,7 @@ export class BedrockPricingService {
       const dimKey = Object.keys(priceDimensions)[0];
       if (!dimKey) return;
 
-      const pricePerUnit = parseFloat(priceDimensions[dimKey]?.pricePerUnit?.USD || '0');
+      const pricePerUnit = Number.parseFloat(priceDimensions[dimKey]?.pricePerUnit?.USD || '0');
 
       // Create cache key (model + region)
       const cacheKey = `${modelName.toLowerCase().replace(/\s+/g, '-')}-${region}`;
@@ -311,9 +311,9 @@ export class BedrockPricingService {
     const outputCost = (outputTokens / 1000) * pricing.outputPricePer1k;
 
     return {
-      inputCost: parseFloat(inputCost.toFixed(8)),
-      outputCost: parseFloat(outputCost.toFixed(8)),
-      totalCost: parseFloat((inputCost + outputCost).toFixed(8)),
+      inputCost: Number.parseFloat(inputCost.toFixed(8)),
+      outputCost: Number.parseFloat(outputCost.toFixed(8)),
+      totalCost: Number.parseFloat((inputCost + outputCost).toFixed(8)),
       source: pricing.source
     };
   }

@@ -373,7 +373,7 @@ export class DatabaseService {
    */
   private static async resolveActiveEmbeddingDim(): Promise<number | null> {
     // 1. Explicit env override (escape hatch for ops — deploy config, not source)
-    const envDim = parseInt(process.env.EMBEDDING_DIMENSIONS || '', 10);
+    const envDim = Number.parseInt(process.env.EMBEDDING_DIMENSIONS || '', 10);
     if (envDim > 0) {
       logger.info({ dim: envDim, source: 'EMBEDDING_DIMENSIONS env' }, '  resolved embedding dim from env override');
       return envDim;
@@ -428,7 +428,7 @@ export class DatabaseService {
         SELECT extversion FROM pg_extension WHERE extname = 'vector'
       `;
       const version = result[0]?.extversion || '0.0.0';
-      const [maj, min] = version.split('.').map((s) => parseInt(s, 10));
+      const [maj, min] = version.split('.').map((s) => Number.parseInt(s, 10));
       if (!(maj > 0 || (maj === 0 && min >= 7))) {
         logger.warn({ version }, 'pgvector version too old for halfvec — skipping (needs 0.7.0+)');
         return;
@@ -499,7 +499,7 @@ export class DatabaseService {
 
         // Parse dim out of full_type if present
         const dimMatch = fullType.match(/\((\d+)\)/);
-        const currentDim = dimMatch ? parseInt(dimMatch[1], 10) : null;
+        const currentDim = dimMatch ? Number.parseInt(dimMatch[1], 10) : null;
         const isHalfvec = udtName === 'halfvec';
         const isVector = udtName === 'vector';
 

@@ -39,11 +39,11 @@ class UnifiedRedisClient {
     this.config = {
       url: process.env.REDIS_URL,
       host: process.env.REDIS_HOST || 'openagentic-redis',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
+      port: Number.parseInt(process.env.REDIS_PORT || '6379'),
       password: process.env.REDIS_PASSWORD || undefined,
       db: 0,
       keyPrefix: 'openagentic:',
-      defaultTTL: parseInt(process.env.CACHE_DEFAULT_TTL || '3600'),
+      defaultTTL: Number.parseInt(process.env.CACHE_DEFAULT_TTL || '3600'),
       maxRetries: 50,
       retryDelay: 2000,
       connectTimeout: 10000

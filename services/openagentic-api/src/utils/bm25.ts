@@ -215,7 +215,7 @@ export function toMilvusSparseVector(sparseVector: SparseVector): { indices: num
   const values: number[] = [];
 
   Object.entries(sparseVector).forEach(([termId, score]) => {
-    indices.push(parseInt(termId));
+    indices.push(Number.parseInt(termId));
     values.push(score);
   });
 
@@ -245,7 +245,7 @@ export function getTopTerms(
 ): Array<{ term: string; score: number }> {
   const entries = Object.entries(sparseVector)
     .map(([termId, score]) => ({
-      term: vocabulary.idToTerm.get(parseInt(termId)) || 'unknown',
+      term: vocabulary.idToTerm.get(Number.parseInt(termId)) || 'unknown',
       score
     }))
     .sort((a, b) => b.score - a.score)

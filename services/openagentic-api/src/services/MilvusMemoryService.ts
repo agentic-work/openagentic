@@ -382,7 +382,7 @@ export class MilvusMemoryService {
       });
       
       return {
-        totalMemories: parseInt(stats.data?.row_count || '0'),
+        totalMemories: Number.parseInt(stats.data?.row_count || '0'),
         collections: [collectionName]
       };
       

@@ -4,7 +4,7 @@
   "description": "HTTP routes registered across the API",
   "icon": "route",
   "category": "core",
-  "generatedAt": "2026-06-21T00:19:24.553Z",
+  "generatedAt": "2026-06-21T18:49:53.950Z",
   "sourceFiles": [
     "services/openagentic-api/src/routes/admin-agents.ts",
     "services/openagentic-api/src/routes/admin-aif-metrics.ts",

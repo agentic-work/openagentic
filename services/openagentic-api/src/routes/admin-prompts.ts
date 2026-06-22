@@ -263,7 +263,7 @@ export const adminPromptsRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params;
 
       const template = await prisma.promptTemplate.findUnique({
-        where: { id: parseInt(id) },
+        where: { id: Number.parseInt(id) },
         include: {
           assignments: {
             include: {
@@ -377,14 +377,14 @@ export const adminPromptsRoutes: FastifyPluginAsync = async (fastify) => {
         await prisma.promptTemplate.updateMany({
           where: {
             is_default: true,
-            id: { not: parseInt(id) }
+            id: { not: Number.parseInt(id) }
           },
           data: { is_default: false }
         });
       }
 
       const template = await prisma.promptTemplate.update({
-        where: { id: parseInt(id) },
+        where: { id: Number.parseInt(id) },
         data: {
           name,
           content,
@@ -427,7 +427,7 @@ export const adminPromptsRoutes: FastifyPluginAsync = async (fastify) => {
 
       // Check if it's the default template
       const template = await prisma.promptTemplate.findUnique({
-        where: { id: parseInt(id) }
+        where: { id: Number.parseInt(id) }
       });
 
       if (template?.is_default) {
@@ -438,7 +438,7 @@ export const adminPromptsRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       await prisma.promptTemplate.delete({
-        where: { id: parseInt(id) }
+        where: { id: Number.parseInt(id) }
       });
 
       logger.info({ templateId: id }, 'Template deleted');
@@ -521,7 +521,7 @@ export const adminPromptsRoutes: FastifyPluginAsync = async (fastify) => {
 
       // Set this template as default
       const template = await prisma.promptTemplate.update({
-        where: { id: parseInt(id) },
+        where: { id: Number.parseInt(id) },
         data: { is_default: true }
       });
 
@@ -567,7 +567,7 @@ export const adminPromptsRoutes: FastifyPluginAsync = async (fastify) => {
 
       // Check if template exists
       const template = await prisma.promptTemplate.findUnique({
-        where: { id: parseInt(id) }
+        where: { id: Number.parseInt(id) }
       });
 
       if (!template) {
@@ -588,12 +588,12 @@ export const adminPromptsRoutes: FastifyPluginAsync = async (fastify) => {
         where: {
           user_id_prompt_template_id: {
             user_id,
-            prompt_template_id: parseInt(id)
+            prompt_template_id: Number.parseInt(id)
           }
         },
         create: {
           user_id,
-          prompt_template_id: parseInt(id),
+          prompt_template_id: Number.parseInt(id),
           assigned_by
         },
         update: {
@@ -639,7 +639,7 @@ export const adminPromptsRoutes: FastifyPluginAsync = async (fastify) => {
         where: {
           user_id_prompt_template_id: {
             user_id: userId,
-            prompt_template_id: parseInt(id)
+            prompt_template_id: Number.parseInt(id)
           }
         }
       });
@@ -667,7 +667,7 @@ export const adminPromptsRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params;
 
       const assignments = await prisma.userPromptAssignment.findMany({
-        where: { prompt_template_id: parseInt(id) },
+        where: { prompt_template_id: Number.parseInt(id) },
         include: {
           user: {
             select: { id: true, email: true, name: true, is_admin: true }

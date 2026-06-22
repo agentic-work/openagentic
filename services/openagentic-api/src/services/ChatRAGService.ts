@@ -49,7 +49,7 @@ export class ChatRAGService {
     // Embedding dim must match what UniversalEmbeddingService produces.
     // Reads EMBEDDING_DIMENSIONS (3072 for Azure text-embedding-3-large in
     // the dev environment; 768 for Ollama nomic-embed-text in self-hosted only setups).
-    this.embeddingDim = parseInt(process.env.EMBEDDING_DIMENSIONS || '3072', 10);
+    this.embeddingDim = Number.parseInt(process.env.EMBEDDING_DIMENSIONS || '3072', 10);
   }
 
   /**

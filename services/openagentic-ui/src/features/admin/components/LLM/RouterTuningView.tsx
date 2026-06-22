@@ -567,7 +567,7 @@ const Chip: React.FC<ChipProps> = ({ field, label, color, value, dirty, onCommit
     if (typeof value === 'boolean') {
       onCommit(field, draft === 'true');
     } else {
-      const n = parseFloat(draft);
+      const n = Number.parseFloat(draft);
       if (!isNaN(n)) onCommit(field, n);
     }
     setEditing(false);
@@ -667,7 +667,7 @@ const FloorCard: React.FC<FloorCardProps> = ({ meta, value, dirty, onCommit }) =
   };
 
   const commit = () => {
-    const n = parseFloat(draft);
+    const n = Number.parseFloat(draft);
     if (!isNaN(n)) onCommit(meta.key, n);
     setEditing(false);
   };

@@ -71,7 +71,7 @@ export async function execute(
     );
   }
 
-  const port = parseInt(portRaw || '587', 10);
+  const port = Number.parseInt(portRaw || '587', 10);
 
   ctx.logger.info(
     { nodeId: node.id, to: resolvedTo, host, port, user },

@@ -19,7 +19,7 @@ const userContextRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
     const query = request.query as any;
 
     const sources = query.sources ? (query.sources as string).split(',') : undefined;
-    const maxTokens = query.maxTokens ? parseInt(query.maxTokens as string) : 4000;
+    const maxTokens = query.maxTokens ? Number.parseInt(query.maxTokens as string) : 4000;
     const relevancyQuery = query.query as string | undefined;
 
     const context = await userContextService.getUserContext(user.id, {
@@ -65,7 +65,7 @@ const userContextRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
 
     const results = await userContextService.searchUserContext(user.id, query.q, {
       sources: query.sources ? (query.sources as string).split(',') as any : undefined,
-      limit: query.limit ? parseInt(query.limit) : 20,
+      limit: query.limit ? Number.parseInt(query.limit) : 20,
     });
 
     return reply.send({ results });

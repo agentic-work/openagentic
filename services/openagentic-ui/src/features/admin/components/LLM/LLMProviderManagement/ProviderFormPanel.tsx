@@ -322,7 +322,7 @@ export const ProviderFormPanel: React.FC<{
       </div>
       <div className="grid grid-cols-3 gap-3">
         <FormField label="Priority" help="Lower = higher priority">
-          <input type="number" min={1} max={100} value={fd.priority} onChange={e => setFd(prev => ({ ...prev, priority: parseInt(e.target.value) || 1 }))} className={inputCls} style={inputStyle} />
+          <input type="number" min={1} max={100} value={fd.priority} onChange={e => setFd(prev => ({ ...prev, priority: Number.parseInt(e.target.value) || 1 }))} className={inputCls} style={inputStyle} />
         </FormField>
         <FormField label="Status">
           <button type="button" onClick={() => setFd(prev => ({ ...prev, enabled: !prev.enabled }))}

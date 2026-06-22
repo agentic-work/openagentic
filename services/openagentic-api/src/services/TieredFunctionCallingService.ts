@@ -175,7 +175,7 @@ export class TieredFunctionCallingService {
       premiumModel: process.env[ENV_VARS.FUNCTION_CALLING_PREMIUM] || '',
       toolStrippingEnabled: process.env[ENV_VARS.TOOL_STRIPPING_ENABLED] !== 'false',
       decisionCacheEnabled: process.env[ENV_VARS.FUNCTION_DECISION_CACHE_ENABLED] !== 'false',
-      decisionCacheTtlSeconds: parseInt(process.env[ENV_VARS.FUNCTION_DECISION_CACHE_TTL] || '300', 10),
+      decisionCacheTtlSeconds: Number.parseInt(process.env[ENV_VARS.FUNCTION_DECISION_CACHE_TTL] || '300', 10),
     };
   }
 

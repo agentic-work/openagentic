@@ -382,7 +382,7 @@ export class ToolResultCacheService {
 
     // Initialize Milvus client
     const milvusHost = config?.milvusHost || process.env.MILVUS_HOST || 'milvus';
-    const milvusPort = config?.milvusPort || parseInt(process.env.MILVUS_PORT || '19530');
+    const milvusPort = config?.milvusPort || Number.parseInt(process.env.MILVUS_PORT || '19530');
 
     try {
       this.milvusClient = new MilvusClient({

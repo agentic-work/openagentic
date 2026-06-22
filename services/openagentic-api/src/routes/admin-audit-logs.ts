@@ -52,8 +52,8 @@ interface FeedQuery {
 }
 
 function parsePaging(q: FeedQuery, defLimit = 50, maxLimit = 200) {
-  const page = Math.max(parseInt(q.page ?? '1', 10) || 1, 1);
-  const limit = Math.min(Math.max(parseInt(q.limit ?? String(defLimit), 10) || defLimit, 1), maxLimit);
+  const page = Math.max(Number.parseInt(q.page ?? '1', 10) || 1, 1);
+  const limit = Math.min(Math.max(Number.parseInt(q.limit ?? String(defLimit), 10) || defLimit, 1), maxLimit);
   return { page, limit };
 }
 

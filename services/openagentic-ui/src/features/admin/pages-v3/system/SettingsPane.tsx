@@ -187,7 +187,7 @@ export const SettingsPane: React.FC = () => {
                 }
                 onChange={(e) => {
                   const v = e.target.value
-                  set('decisionCacheTTL', v === '' ? undefined : parseInt(v, 10))
+                  set('decisionCacheTTL', v === '' ? undefined : Number.parseInt(v, 10))
                 }}
                 placeholder="(unset)"
               />

@@ -1545,7 +1545,7 @@ export class InitializationService {
 
       // Configure discovery service with sensible defaults to minimize API calls
       const testingEnabled = process.env.DISABLE_MODEL_TESTING !== 'true';
-      const cacheTtlMs = parseInt(process.env.MODEL_DISCOVERY_CACHE_TTL_MS || '86400000'); // Default 24 hours
+      const cacheTtlMs = Number.parseInt(process.env.MODEL_DISCOVERY_CACHE_TTL_MS || '86400000'); // Default 24 hours
 
       const discoveryConfig = {
         providers: {
@@ -1778,7 +1778,7 @@ export class InitializationService {
         const hasCollection = await checkMilvus.hasCollection({ collection_name: 'mcp_tools' });
         if (hasCollection.value) {
           const stats = await checkMilvus.getCollectionStatistics({ collection_name: 'mcp_tools' });
-          const rowCount = parseInt(stats.data?.row_count || '0');
+          const rowCount = Number.parseInt(stats.data?.row_count || '0');
           if (rowCount > 10) { // Assume at least 10 tools means already indexed
             this.logger.info({
               existingTools: rowCount
@@ -1821,7 +1821,7 @@ export class InitializationService {
         this.logger.info('MCP tools successfully indexed from MCP Proxy into Milvus');
 
         // Start periodic indexing (every 30 minutes by default)
-        const indexingInterval = parseInt(process.env.MCP_INDEXING_INTERVAL_MINUTES || '30');
+        const indexingInterval = Number.parseInt(process.env.MCP_INDEXING_INTERVAL_MINUTES || '30');
 
         // Don't await this - let it run in background
         mcpIndexingService.startPeriodicIndexing(indexingInterval).catch(error => {

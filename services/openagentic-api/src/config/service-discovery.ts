@@ -71,7 +71,7 @@ export class ServiceDiscovery {
       const urlParts = new URL(url);
       return {
         host: urlParts.hostname,
-        port: parseInt(urlParts.port) || defaultPort,
+        port: Number.parseInt(urlParts.port) || defaultPort,
         url: url,
         healthEndpoint: `${url}${healthPath}`
       };
@@ -79,7 +79,7 @@ export class ServiceDiscovery {
     
     // Standard pattern: <SERVICE>_HOST and <SERVICE>_PORT
     const host = process.env[`${serviceName}_HOST`] || this.getDefaultHost(serviceName);
-    const port = parseInt(process.env[`${serviceName}_PORT`] || '') || defaultPort;
+    const port = Number.parseInt(process.env[`${serviceName}_PORT`] || '') || defaultPort;
     const protocol = this.requiresHttps(serviceName) ? 'https' : 'http';
     
     return {
@@ -92,7 +92,7 @@ export class ServiceDiscovery {
   
   private createRedisEndpoint(): ServiceEndpoint {
     const host = process.env.REDIS_HOST || this.getDefaultHost('REDIS');
-    const port = parseInt(process.env.REDIS_PORT || '') || 6379;
+    const port = Number.parseInt(process.env.REDIS_PORT || '') || 6379;
     const password = process.env.REDIS_PASSWORD || '';
 
     // Build URL with or without password

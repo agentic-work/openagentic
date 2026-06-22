@@ -568,11 +568,11 @@ class ModelConfigurationServiceClass {
       models.push({
         modelId: bedrockModel,
         provider: 'aws-bedrock',
-        priority: parseInt(process.env.AWS_BEDROCK_PRIORITY || '1'),
+        priority: Number.parseInt(process.env.AWS_BEDROCK_PRIORITY || '1'),
         supportsThinking: this.supportsThinking(bedrockModel),
         supportsTools: true,
         supportsVision: false,
-        maxTokens: parseInt(process.env.AWS_BEDROCK_MAX_TOKENS || '16000'),
+        maxTokens: Number.parseInt(process.env.AWS_BEDROCK_MAX_TOKENS || '16000'),
         contextWindow: 200000,
       });
     }
@@ -583,11 +583,11 @@ class ModelConfigurationServiceClass {
       models.push({
         modelId: vertexModel,
         provider: 'vertex-ai',
-        priority: parseInt(process.env.VERTEX_AI_PRIORITY || '2'),
+        priority: Number.parseInt(process.env.VERTEX_AI_PRIORITY || '2'),
         supportsThinking: this.supportsThinking(vertexModel),
         supportsTools: true,
         supportsVision: true,
-        maxTokens: parseInt(process.env.VERTEX_AI_MAX_TOKENS || '8192'),
+        maxTokens: Number.parseInt(process.env.VERTEX_AI_MAX_TOKENS || '8192'),
         contextWindow: 200000,
       });
     }
@@ -598,11 +598,11 @@ class ModelConfigurationServiceClass {
       models.push({
         modelId: azureModel,
         provider: 'azure-openai',
-        priority: parseInt(process.env.AZURE_OPENAI_PRIORITY || '3'),
+        priority: Number.parseInt(process.env.AZURE_OPENAI_PRIORITY || '3'),
         supportsThinking: false, // OpenAI models don't have Claude-style thinking
         supportsTools: true,
         supportsVision: azureModel.includes('gpt-4'),
-        maxTokens: parseInt(process.env.AZURE_OPENAI_MAX_TOKENS || '16000'),
+        maxTokens: Number.parseInt(process.env.AZURE_OPENAI_MAX_TOKENS || '16000'),
         contextWindow: 128000,
       });
     }
@@ -613,11 +613,11 @@ class ModelConfigurationServiceClass {
       models.push({
         modelId: ollamaModel,
         provider: 'ollama',
-        priority: parseInt(process.env.OLLAMA_PRIORITY || '10'),
+        priority: Number.parseInt(process.env.OLLAMA_PRIORITY || '10'),
         supportsThinking: false,
         supportsTools: false,
         supportsVision: false,
-        maxTokens: parseInt(process.env.OLLAMA_MAX_TOKENS || '4096'),
+        maxTokens: Number.parseInt(process.env.OLLAMA_MAX_TOKENS || '4096'),
         contextWindow: 32000,
       });
     }

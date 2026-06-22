@@ -55,7 +55,7 @@ export class ConversationCompactionWorker {
   constructor(config: CompactionConfig) {
     this.config = {
       enabled: process.env.COMPACTION_ENABLED !== 'false',
-      delayHours: parseInt(process.env.COMPACTION_DELAY_HOURS || '1'),
+      delayHours: Number.parseInt(process.env.COMPACTION_DELAY_HOURS || '1'),
       ...config
     };
 

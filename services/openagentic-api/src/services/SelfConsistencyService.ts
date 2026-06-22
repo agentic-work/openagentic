@@ -310,7 +310,7 @@ REASONING: [your explanation]`;
     if (recommendationMatch && confidenceMatch && reasoningMatch) {
       return {
         response: recommendationMatch[1].trim(),
-        confidence: parseInt(confidenceMatch[1]) / 100,
+        confidence: Number.parseInt(confidenceMatch[1]) / 100,
         reasoning: reasoningMatch[1].trim()
       };
     }

@@ -347,7 +347,7 @@ export default async function adminMetricsExtraRoutes(fastify: FastifyInstance) 
       for (const name of names) {
         try {
           const stats = await client.getCollectionStatistics({ collection_name: name });
-          totalRows += parseInt((stats as any).data?.row_count || '0', 10) || 0;
+          totalRows += Number.parseInt((stats as any).data?.row_count || '0', 10) || 0;
         } catch {
           /* per-collection stat failure is non-fatal */
         }

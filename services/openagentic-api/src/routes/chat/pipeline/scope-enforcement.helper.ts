@@ -267,5 +267,5 @@ export async function getScopeViolationCount(
   const key = `scope_violations:${userId}`;
   const count = await redis.get(key);
 
-  return count ? parseInt(count, 10) : 0;
+  return count ? Number.parseInt(count, 10) : 0;
 }

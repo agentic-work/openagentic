@@ -61,7 +61,7 @@ export function parsePromText(text: string): PrometheusSample[] {
     const spaceIdx = line.lastIndexOf(' ');
     if (spaceIdx < 0) continue;
     const valueStr = line.slice(spaceIdx + 1);
-    const valueNum = parseFloat(valueStr);
+    const valueNum = Number.parseFloat(valueStr);
     if (isNaN(valueNum)) continue;
     const metricPart = line.slice(0, spaceIdx).trim();
 
@@ -262,7 +262,7 @@ const RouterHealthSection: React.FC = () => {
   // bucket-based p50 / p95 approximation
   const buckets = samples
     .filter((s) => s.name === 'openagentic_router_route_request_duration_ms_bucket' && s.labels['le'])
-    .map((s) => ({ le: parseFloat(s.labels['le']), count: s.value }))
+    .map((s) => ({ le: Number.parseFloat(s.labels['le']), count: s.value }))
     .sort((a, b) => a.le - b.le);
 
   function approxPercentile(pct: number): number | null {
@@ -1117,7 +1117,7 @@ const LLMPerformanceMetrics: React.FC<LLMPerformanceMetricsProps> = () => {
           <SectionHeader icon={<Activity size={16} />} title="Provider Health" tooltip="Real-time status of each LLM provider based on success rates" />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {providerMetrics.map((p) => {
-              const pct = parseFloat(p.successRate) || 0;
+              const pct = Number.parseFloat(p.successRate) || 0;
               const status = pct >= 99 ? 'Healthy' : pct >= 95 ? 'Degraded' : 'Unhealthy';
               return (
                 <div
@@ -1372,7 +1372,7 @@ const LLMPerformanceMetrics: React.FC<LLMPerformanceMetricsProps> = () => {
               </thead>
               <tbody>
                 {providerMetrics.map((p) => {
-                  const pct = parseFloat(p.successRate) || 0;
+                  const pct = Number.parseFloat(p.successRate) || 0;
                   return (
                     <tr key={p.provider} style={{ borderBottom: '1px solid color-mix(in srgb, var(--color-border) 50%, transparent)' }}>
                       <td className="py-2.5 font-medium capitalize" style={{ color: 'var(--text-primary)' }}>{p.provider.replace(/-/g, ' ')}</td>

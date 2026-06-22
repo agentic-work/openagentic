@@ -17,7 +17,7 @@ import resolveRoutes from './routes/resolve';
 import { searchRoutes } from './routes/search';
 import { register, onRequestHook, onResponseHook } from './metrics';
 
-const PORT = parseInt(process.env.PORT || '3300', 10);
+const PORT = Number.parseInt(process.env.PORT || '3300', 10);
 const MCP_PROXY_URL = process.env.MCP_PROXY_URL || 'http://openagentic-mcp-proxy:5001';
 const API_URL = process.env.API_URL || 'http://openagentic-api:8000';
 

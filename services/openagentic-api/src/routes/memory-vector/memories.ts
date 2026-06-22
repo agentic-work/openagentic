@@ -96,8 +96,8 @@ export const memoriesRoutes: FastifyPluginAsync = async (fastify) => {
         prisma.userMemory.findMany({
           where,
           orderBy: { [sortBy]: sortOrder },
-          take: parseInt(limit.toString()),
-          skip: parseInt(offset.toString())
+          take: Number.parseInt(limit.toString()),
+          skip: Number.parseInt(offset.toString())
         }),
         
         prisma.userMemory.count({ where })
@@ -124,9 +124,9 @@ export const memoriesRoutes: FastifyPluginAsync = async (fastify) => {
         })),
         pagination: {
           total: totalCount,
-          limit: parseInt(limit.toString()),
-          offset: parseInt(offset.toString()),
-          hasMore: totalCount > parseInt(offset.toString()) + parseInt(limit.toString())
+          limit: Number.parseInt(limit.toString()),
+          offset: Number.parseInt(offset.toString()),
+          hasMore: totalCount > Number.parseInt(offset.toString()) + Number.parseInt(limit.toString())
         },
         categories: categories.map(cat => ({
           name: cat.category,
@@ -535,7 +535,7 @@ export const memoriesRoutes: FastifyPluginAsync = async (fastify) => {
           importance: {
             distribution: analytics.importanceDistribution,
             averageImportance: Object.entries(analytics.importanceDistribution)
-              .reduce((acc, [importance, count]) => acc + (parseInt(importance) * count), 0) / 
+              .reduce((acc, [importance, count]) => acc + (Number.parseInt(importance) * count), 0) / 
               Object.values(analytics.importanceDistribution).reduce((acc, count) => acc + count, 0) || 0
           },
           patterns: {

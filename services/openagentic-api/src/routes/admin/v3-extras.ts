@@ -53,7 +53,7 @@ function windowToHours(raw: unknown, def = 24): number {
   if (typeof raw !== 'string') return def;
   const m = raw.trim().toLowerCase().match(/^(\d+)\s*(h|d)?$/);
   if (!m) return def;
-  const n = parseInt(m[1], 10);
+  const n = Number.parseInt(m[1], 10);
   if (!Number.isFinite(n) || n <= 0) return def;
   const unit = m[2] ?? 'h';
   return unit === 'd' ? n * 24 : n;
@@ -723,7 +723,7 @@ const adminV3ExtrasRoutes: FastifyPluginAsync = async (fastify) => {
         .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
         .map(([timestamp, agg]) => ({
           timestamp,
-          cost: parseFloat(agg.cost.toFixed(6)),
+          cost: Number.parseFloat(agg.cost.toFixed(6)),
           runs: agg.runs,
           failed: agg.failed,
         }));
@@ -781,7 +781,7 @@ const adminV3ExtrasRoutes: FastifyPluginAsync = async (fastify) => {
             return {
               path: route,
               calls: n,
-              errorRate: n > 0 ? parseFloat((err / n).toFixed(4)) : 0,
+              errorRate: n > 0 ? Number.parseFloat((err / n).toFixed(4)) : 0,
               avgMs: cnt > 0 ? Math.round((sumS / cnt) * 1000) : 0,
             };
           })
@@ -819,7 +819,7 @@ const adminV3ExtrasRoutes: FastifyPluginAsync = async (fastify) => {
         .map(([path, agg]) => ({
           path,
           calls: agg.calls,
-          errorRate: agg.calls > 0 ? parseFloat((agg.errors / agg.calls).toFixed(4)) : 0,
+          errorRate: agg.calls > 0 ? Number.parseFloat((agg.errors / agg.calls).toFixed(4)) : 0,
           avgMs: agg.calls > 0 ? Math.round(agg.latencySumMs / agg.calls) : 0,
         }))
         .sort((a, b) => b.calls - a.calls)

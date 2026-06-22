@@ -697,7 +697,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           max="2"
           step="0.1"
           value={nodeData.temperature ?? 0.7}
-          onChange={(e) => updateData('temperature', parseFloat(e.target.value))}
+          onChange={(e) => updateData('temperature', Number.parseFloat(e.target.value))}
           className="w-full"
         />
         <div className="flex justify-between text-xs text-text-muted">
@@ -716,7 +716,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <input
           type="number"
           value={nodeData.maxTokens || 1000}
-          onChange={(e) => updateData('maxTokens', parseInt(e.target.value))}
+          onChange={(e) => updateData('maxTokens', Number.parseInt(e.target.value))}
           min="1"
           max="32000"
           className="glass-field px-3 py-2 focus:outline-none"
@@ -1037,7 +1037,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         onChange={(v) => updateData('model', v)} placeholder="Leave empty for auto routing"
         helpText="Pin a specific model for this node; leave blank for Smart Router." />
       <FormInput label="Max Turns" value={fieldNum('maxIterations', 10)}
-        onChange={(v) => updateData('maxIterations', parseInt(v) || 10)} type="number" min={1} max={50}
+        onChange={(v) => updateData('maxIterations', Number.parseInt(v) || 10)} type="number" min={1} max={50}
         helpText="Maximum reasoning/tool-use turns." />
       <div className="flex items-center gap-3 py-1">
         <input type="checkbox" checked={fieldBool('enableThinking')}
@@ -1049,7 +1049,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       </div>
       {fieldBool('enableThinking') && (
         <FormInput label="Thinking Budget (tokens)" value={fieldNum('thinkingBudget', 8192)}
-          onChange={(v) => updateData('thinkingBudget', parseInt(v) || 8192)} type="number"
+          onChange={(v) => updateData('thinkingBudget', Number.parseInt(v) || 8192)} type="number"
           min={1024} max={32000} helpText="Token budget for the thinking phase." />
       )}
 
@@ -1106,10 +1106,10 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       {/* Budgets & Approval */}
       <SectionLabel label="Budgets" />
       <FormInput label="Cost Budget ($)" value={fieldStr('costBudget')}
-        onChange={(v) => updateData('costBudget', parseFloat(v) || undefined)} type="number" min={0}
+        onChange={(v) => updateData('costBudget', Number.parseFloat(v) || undefined)} type="number" min={0}
         placeholder="No limit" helpText="Maximum cost this agent can spend." />
       <FormInput label="Tool Call Limit" value={fieldStr('toolCallLimit')}
-        onChange={(v) => updateData('toolCallLimit', parseInt(v) || undefined)} type="number" min={1}
+        onChange={(v) => updateData('toolCallLimit', Number.parseInt(v) || undefined)} type="number" min={1}
         placeholder="25 (default)" helpText="Maximum tool calls before forcing a final answer." />
       <FormSelect label="Approval Policy" value={fieldStr('approvalPolicy', 'none')}
         options={[
@@ -1165,13 +1165,13 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             Temperature: {nodeData.temperature ?? 0.7}
           </label>
           <input type="range" min="0" max="2" step="0.1" value={nodeData.temperature ?? 0.7}
-            onChange={(e) => updateData('temperature', parseFloat(e.target.value))} className="w-full" />
+            onChange={(e) => updateData('temperature', Number.parseFloat(e.target.value))} className="w-full" />
           <div className="flex justify-between text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
             <span>Precise</span><span>Creative</span>
           </div>
         </div>
         <FormInput label="Max Tokens" value={nodeData.maxTokens || 1000}
-          onChange={(v) => updateData('maxTokens', parseInt(v) || 1000)} type="number" isDark={isDark}
+          onChange={(v) => updateData('maxTokens', Number.parseInt(v) || 1000)} type="number" isDark={isDark}
           min={1} max={32000} helpText="Maximum tokens the model can generate." />
       </AdvancedToggle>
     </div>
@@ -1288,7 +1288,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             max="2"
             step="0.1"
             value={nodeData.temperature ?? 0.7}
-            onChange={(e) => updateData('temperature', parseFloat(e.target.value))}
+            onChange={(e) => updateData('temperature', Number.parseFloat(e.target.value))}
             className="w-full"
           />
           <div className="flex justify-between text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -1302,7 +1302,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <FormInput
           label="Max Tokens"
           value={nodeData.maxTokens || 1000}
-          onChange={(v) => updateData('maxTokens', parseInt(v) || 1000)}
+          onChange={(v) => updateData('maxTokens', Number.parseInt(v) || 1000)}
           type="number"
           isDark={isDark}
           min={1}
@@ -1353,7 +1353,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             max="2"
             step="0.1"
             value={nodeData.temperature ?? 0.7}
-            onChange={(e) => updateData('temperature', parseFloat(e.target.value))}
+            onChange={(e) => updateData('temperature', Number.parseFloat(e.target.value))}
             className="w-full"
           />
           <div className="flex justify-between text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -1367,7 +1367,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <FormInput
           label="Max Tokens"
           value={nodeData.maxTokens || 1000}
-          onChange={(v) => updateData('maxTokens', parseInt(v) || 1000)}
+          onChange={(v) => updateData('maxTokens', Number.parseInt(v) || 1000)}
           type="number"
           isDark={isDark}
           min={1}
@@ -1412,7 +1412,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             max="2"
             step="0.1"
             value={nodeData.temperature ?? 0.7}
-            onChange={(e) => updateData('temperature', parseFloat(e.target.value))}
+            onChange={(e) => updateData('temperature', Number.parseFloat(e.target.value))}
             className="w-full"
           />
           <div className="flex justify-between text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -1426,7 +1426,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <FormInput
           label="Max Tokens"
           value={nodeData.maxTokens || 1000}
-          onChange={(v) => updateData('maxTokens', parseInt(v) || 1000)}
+          onChange={(v) => updateData('maxTokens', Number.parseInt(v) || 1000)}
           type="number"
           isDark={isDark}
           min={1}
@@ -1480,7 +1480,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             Temperature: {nodeData.temperature ?? 0.7}
           </label>
           <input type="range" min="0" max="2" step="0.1" value={nodeData.temperature ?? 0.7}
-            onChange={(e) => updateData('temperature', parseFloat(e.target.value))} className="w-full" />
+            onChange={(e) => updateData('temperature', Number.parseFloat(e.target.value))} className="w-full" />
           <div className="flex justify-between text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
             <span>Precise</span><span>Creative</span>
           </div>
@@ -1489,7 +1489,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           </p>
         </div>
         <FormInput label="Max Tokens" value={nodeData.maxTokens || 4096}
-          onChange={(v) => updateData('maxTokens', parseInt(v) || 4096)} type="number" isDark={isDark} min={1} max={32000}
+          onChange={(v) => updateData('maxTokens', Number.parseInt(v) || 4096)} type="number" isDark={isDark} min={1} max={32000}
           helpText="Maximum tokens the model can generate. Higher values allow longer outputs but cost more." />
         <div className="flex items-center gap-3 py-1">
           <input type="checkbox" checked={fieldBool('enableThinking')}
@@ -1504,7 +1504,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         </p>
         {fieldBool('enableThinking') && (
           <FormInput label="Thinking Budget (tokens)" value={fieldNum('thinkingBudget', 8192)}
-            onChange={(v) => updateData('thinkingBudget', parseInt(v) || 8192)} type="number" isDark={isDark}
+            onChange={(v) => updateData('thinkingBudget', Number.parseInt(v) || 8192)} type="number" isDark={isDark}
             min={1024} max={32000} helpText="Token budget for the thinking phase" />
         )}
       </AdvancedToggle>
@@ -1577,7 +1577,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         </div>
 
         <FormInput label="Max Concurrency" value={fieldNum('maxConcurrency', 5)}
-          onChange={(v) => updateData('maxConcurrency', parseInt(v) || 5)} type="number" isDark={isDark}
+          onChange={(v) => updateData('maxConcurrency', Number.parseInt(v) || 5)} type="number" isDark={isDark}
           min={1} max={20} helpText="Cap on simultaneous agents (parallel pattern only)." />
 
         <FormSelect
@@ -1595,7 +1595,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
         <AdvancedToggle>
           <FormInput label="Total Timeout (ms)" value={fieldNum('timeoutMs', 120000)}
-            onChange={(v) => updateData('timeoutMs', parseInt(v) || 120000)} type="number" isDark={isDark}
+            onChange={(v) => updateData('timeoutMs', Number.parseInt(v) || 120000)} type="number" isDark={isDark}
             min={5000} max={600000} helpText="Wall-clock cap across all agents." />
           <FormSelect
             label="Share context across agents"
@@ -1780,7 +1780,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         placeholder="Leave empty for auto routing"
         helpText="Pin a specific model for this node; leave blank for Smart Router." />
       <FormInput label="Max Turns" value={fieldNum('maxTurns', 5)}
-        onChange={(v) => updateData('maxTurns', parseInt(v) || 5)} type="number" min={1} max={50}
+        onChange={(v) => updateData('maxTurns', Number.parseInt(v) || 5)} type="number" min={1} max={50}
         helpText="Maximum reasoning/tool-use turns before returning." />
       <div className="flex items-center gap-3 py-1">
         <input type="checkbox" checked={fieldBool('enableThinking')}
@@ -1792,7 +1792,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       </div>
       {fieldBool('enableThinking') && (
         <FormInput label="Thinking Budget (tokens)" value={fieldNum('thinkingBudget', 8192)}
-          onChange={(v) => updateData('thinkingBudget', parseInt(v) || 8192)} type="number"
+          onChange={(v) => updateData('thinkingBudget', Number.parseInt(v) || 8192)} type="number"
           min={1024} max={32000} helpText="Token budget for the thinking phase." />
       )}
 
@@ -1848,11 +1848,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       {/* Budgets */}
       <SectionLabel label="Budgets" />
       <FormInput label="Cost Budget ($)" value={fieldStr('costBudget')}
-        onChange={(v) => updateData('costBudget', parseFloat(v) || undefined)} type="number" min={0}
+        onChange={(v) => updateData('costBudget', Number.parseFloat(v) || undefined)} type="number" min={0}
         placeholder="No limit"
         helpText="Maximum cost this agent can spend on LLM calls." />
       <FormInput label="Tool Call Limit" value={fieldStr('toolCallLimit')}
-        onChange={(v) => updateData('toolCallLimit', parseInt(v) || undefined)} type="number" min={1}
+        onChange={(v) => updateData('toolCallLimit', Number.parseInt(v) || undefined)} type="number" min={1}
         placeholder="25 (default)"
         helpText="Maximum number of tool calls before forcing a final answer." />
 
@@ -1906,7 +1906,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         helpText="Custom system prompt. Overrides the role-based default. Use {{input}} for dynamic values." />
 
       <FormInput label="Timeout (ms)" value={fieldNum('timeout', 60000)}
-        onChange={(v) => updateData('timeout', parseInt(v) || 60000)} type="number" min={5000}
+        onChange={(v) => updateData('timeout', Number.parseInt(v) || 60000)} type="number" min={5000}
         helpText="Maximum execution time in milliseconds. Agent is terminated if exceeded." />
     </div>
     );
@@ -1916,7 +1916,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     <div className="space-y-4">
       <SectionLabel label="Agent Pool Configuration" />
       <FormInput label="Concurrency" value={fieldNum('concurrency', 5)}
-        onChange={(v) => updateData('concurrency', parseInt(v) || 5)} type="number" min={1} max={20}
+        onChange={(v) => updateData('concurrency', Number.parseInt(v) || 5)} type="number" min={1} max={20}
         helpText="Maximum agents running in parallel." />
       <FormSelect label="Aggregation Strategy" value={fieldStr('aggregation', 'merge')}
         options={[
@@ -1928,7 +1928,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         onChange={(v) => updateData('aggregation', v)}
         helpText="How to combine results from all agents." />
       <FormInput label="Timeout Per Agent (s)" value={fieldNum('timeoutPerAgent', 60)}
-        onChange={(v) => updateData('timeoutPerAgent', parseInt(v) || 60)} type="number" min={5} max={600}
+        onChange={(v) => updateData('timeoutPerAgent', Number.parseInt(v) || 60)} type="number" min={5} max={600}
         helpText="Maximum time each agent can run before being terminated." />
       <div className="glass-surface-subtle text-[12px] p-2 rounded" style={{ color: 'var(--color-text-secondary)' }}>
         Configure individual agents by connecting Agent nodes to this pool's input handles.
@@ -1948,7 +1948,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         placeholder="e.g., claude-sonnet-4-6"
         helpText="Should be a capable model (e.g., Claude Sonnet or GPT-4o) for planning and delegation." />
       <FormInput label="Max Delegation Rounds" value={fieldNum('maxDelegationRounds', 5)}
-        onChange={(v) => updateData('maxDelegationRounds', parseInt(v) || 5)} type="number" min={1} max={20}
+        onChange={(v) => updateData('maxDelegationRounds', Number.parseInt(v) || 5)} type="number" min={1} max={20}
         helpText="Maximum number of delegation cycles before the supervisor must finalize." />
       <div className="flex items-center gap-3 py-1">
         <input type="checkbox" checked={fieldBool('allowDynamicWorkers')}
@@ -2056,7 +2056,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             <FormInput
               label="Timeout (seconds)"
               value={fieldNum('timeoutMs', 0) ? Math.round(fieldNum('timeoutMs', 0) / 1000) : ''}
-              onChange={(v) => updateData('timeoutMs', v ? parseInt(v) * 1000 : undefined)}
+              onChange={(v) => updateData('timeoutMs', v ? Number.parseInt(v) * 1000 : undefined)}
               type="number"
               placeholder="30"
               isDark={isDark}
@@ -2087,7 +2087,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 <FormInput
                   label="Max Retries"
                   value={retryPolicy.maxRetries ?? 3}
-                  onChange={(v) => writeRetryPolicy({ maxRetries: parseInt(v) || 3 })}
+                  onChange={(v) => writeRetryPolicy({ maxRetries: Number.parseInt(v) || 3 })}
                   type="number"
                   isDark={isDark}
                   min={1}
@@ -2096,7 +2096,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 <FormInput
                   label="Delay (ms)"
                   value={retryPolicy.delayMs ?? 1000}
-                  onChange={(v) => writeRetryPolicy({ delayMs: parseInt(v) || 1000 })}
+                  onChange={(v) => writeRetryPolicy({ delayMs: Number.parseInt(v) || 1000 })}
                   type="number"
                   isDark={isDark}
                   min={100}
@@ -2203,10 +2203,10 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         helpText="Template for error output. Use {{error.message}}, {{error.stack}}, {{nodeId}}." />
       <AdvancedToggle>
         <FormInput label="Max Retries" value={fieldNum('maxRetries', 3)}
-          onChange={(v) => updateData('maxRetries', parseInt(v) || 3)} type="number"
+          onChange={(v) => updateData('maxRetries', Number.parseInt(v) || 3)} type="number"
           min={0} max={10} helpText="Number of retry attempts (for retry action)." />
         <FormInput label="Retry Delay (ms)" value={fieldNum('retryDelay', 1000)}
-          onChange={(v) => updateData('retryDelay', parseInt(v) || 1000)} type="number"
+          onChange={(v) => updateData('retryDelay', Number.parseInt(v) || 1000)} type="number"
           min={100} max={60000} helpText="Delay between retries." />
         <FormSelect label="Backoff" value={fieldStr('backoff', 'exponential')}
           onChange={(v) => updateData('backoff', v)}
@@ -2429,7 +2429,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         ]}
         helpText="How much user context to load." />
       <FormInput label="Max Items" value={fieldNum('maxItems', 10)}
-        onChange={(v) => updateData('maxItems', parseInt(v) || 10)} type="number"
+        onChange={(v) => updateData('maxItems', Number.parseInt(v) || 10)} type="number"
         min={1} max={100} helpText="Maximum context items to include." />
     </div>
   );
@@ -2447,7 +2447,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         helpText="Search query text. Supports {{input}} template variables."
         required error={!fieldStr('queryText').trim()} />
       <FormInput label="Top K" value={fieldNum('topK', 10)}
-        onChange={(v) => updateData('topK', parseInt(v) || 10)} type="number"
+        onChange={(v) => updateData('topK', Number.parseInt(v) || 10)} type="number"
         min={1} max={100} helpText="Number of results to return." />
       <FormTextarea label="Filters (JSON)" value={fieldStr('filters', '{}')}
         onChange={(v) => updateData('filters', v)} rows={2} monospace
@@ -2481,10 +2481,10 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         ]}
         helpText="Where to read the file from." />
       <FormInput label="Chunk Size" value={fieldNum('chunkSize', 512)}
-        onChange={(v) => updateData('chunkSize', parseInt(v) || 512)} type="number"
+        onChange={(v) => updateData('chunkSize', Number.parseInt(v) || 512)} type="number"
         min={64} max={8192} helpText="Characters per chunk for splitting." />
       <FormInput label="Chunk Overlap" value={fieldNum('chunkOverlap', 50)}
-        onChange={(v) => updateData('chunkOverlap', parseInt(v) || 50)} type="number"
+        onChange={(v) => updateData('chunkOverlap', Number.parseInt(v) || 50)} type="number"
         min={0} max={1024} helpText="Overlap between adjacent chunks." />
       <AdvancedToggle>
         <FormSelect label="Embedding Model" value={fieldStr('embeddingModel', 'auto')}
@@ -2501,7 +2501,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   const renderWebhookResponseConfig = () => (
     <div className="space-y-4">
       <FormInput label="Status Code" value={fieldNum('statusCode', 200)}
-        onChange={(v) => updateData('statusCode', parseInt(v) || 200)} type="number"
+        onChange={(v) => updateData('statusCode', Number.parseInt(v) || 200)} type="number"
         min={100} max={599} helpText="HTTP status code to return (e.g. 200, 201, 400)." />
       <FormTextarea label="Headers (JSON)" value={fieldStr('headers', '{}')}
         onChange={(v) => updateData('headers', v)} rows={3} monospace
@@ -2608,7 +2608,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         </p>
       </div>
       <FormInput label="Timeout (ms)" value={fieldNum('timeoutMs', 60000)}
-        onChange={(v) => updateData('timeoutMs', parseInt(v) || 60000)} type="number"
+        onChange={(v) => updateData('timeoutMs', Number.parseInt(v) || 60000)} type="number"
         min={1000} max={600000} helpText="Max time to wait for branches to complete." />
     </div>
   );
@@ -2621,7 +2621,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         helpText="The reasoning prompt. Supports {{input}} template variables."
         required error={!fieldStr('prompt').trim()} />
       <FormInput label="Thinking Budget (tokens)" value={fieldNum('thinkingBudget', 16384)}
-        onChange={(v) => updateData('thinkingBudget', parseInt(v) || 16384)} type="number"
+        onChange={(v) => updateData('thinkingBudget', Number.parseInt(v) || 16384)} type="number"
         min={1024} max={131072} helpText="Maximum tokens allocated for chain-of-thought reasoning." />
       <FormSelect label="Model" value={fieldStr('model', 'auto')}
         onChange={(v) => updateData('model', v)}

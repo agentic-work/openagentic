@@ -1430,13 +1430,13 @@ export class ModelCapabilityRegistry {
 
         switch (property) {
           case 'maxcontext':
-            existing.maxContextTokens = parseInt(value || '0');
+            existing.maxContextTokens = Number.parseInt(value || '0');
             break;
           case 'maxoutput':
-            existing.maxOutputTokens = parseInt(value || '0');
+            existing.maxOutputTokens = Number.parseInt(value || '0');
             break;
           case 'fcaccuracy':
-            existing.functionCallingAccuracy = parseFloat(value || '0');
+            existing.functionCallingAccuracy = Number.parseFloat(value || '0');
             break;
           case 'vision':
             existing.vision = value === 'true';

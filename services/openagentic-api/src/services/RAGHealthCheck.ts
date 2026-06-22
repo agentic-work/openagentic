@@ -17,7 +17,7 @@ export class RAGHealthCheckService {
   private logger: FastifyBaseLogger;
   private lastHealthCheck?: RAGHealthResult;
   private lastCheckTime?: Date;
-  private checkIntervalMs = parseInt(process.env.RAG_HEALTH_CHECK_INTERVAL_MS || '30000'); // Check every 30 seconds
+  private checkIntervalMs = Number.parseInt(process.env.RAG_HEALTH_CHECK_INTERVAL_MS || '30000'); // Check every 30 seconds
 
   constructor(logger: FastifyBaseLogger) {
     this.logger = logger;

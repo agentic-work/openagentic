@@ -698,7 +698,7 @@ Respond with a JSON object in this exact format:
       const metrics = await prisma.multiModelMetrics.findMany({
         where,
         orderBy: { created_at: 'desc' },
-        take: parseInt(limit, 10),
+        take: Number.parseInt(limit, 10),
         include: {
           user: {
             select: {
@@ -835,9 +835,9 @@ Respond with a JSON object in this exact format:
         configuration: {
           hasRuntimeConfig: !!runtimeConfig,
           activeRoleAssignments: roleCount,
-          sliderThreshold: parseInt(process.env.MULTI_MODEL_SLIDER_THRESHOLD || '70', 10),
-          complexityThreshold: parseInt(process.env.MULTI_MODEL_COMPLEXITY_THRESHOLD || '60', 10),
-          maxHandoffs: parseInt(process.env.MULTI_MODEL_MAX_HANDOFFS || '5', 10)
+          sliderThreshold: Number.parseInt(process.env.MULTI_MODEL_SLIDER_THRESHOLD || '70', 10),
+          complexityThreshold: Number.parseInt(process.env.MULTI_MODEL_COMPLEXITY_THRESHOLD || '60', 10),
+          maxHandoffs: Number.parseInt(process.env.MULTI_MODEL_MAX_HANDOFFS || '5', 10)
         },
         activity: {
           lastOrchestration: recentMetrics?.created_at || null,

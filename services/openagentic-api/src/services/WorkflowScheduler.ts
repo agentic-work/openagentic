@@ -27,10 +27,10 @@ const logger = loggers.services;
 const compiler = new WorkflowCompiler();
 
 // How often to poll for due schedules (default: 30 seconds)
-const POLL_INTERVAL_MS = parseInt(process.env.WORKFLOW_SCHEDULER_POLL_MS || '30000', 10);
+const POLL_INTERVAL_MS = Number.parseInt(process.env.WORKFLOW_SCHEDULER_POLL_MS || '30000', 10);
 
 // Maximum schedules to process per poll cycle (prevent thundering herd)
-const MAX_PER_CYCLE = parseInt(process.env.WORKFLOW_SCHEDULER_MAX_PER_CYCLE || '10', 10);
+const MAX_PER_CYCLE = Number.parseInt(process.env.WORKFLOW_SCHEDULER_MAX_PER_CYCLE || '10', 10);
 
 // =============================================================================
 // Cron Expression Parser (5-field: min hour dom month dow)
@@ -57,7 +57,7 @@ function parseCronField(field: string, min: number, max: number): Set<number> {
     // Handle */N (every N)
     if (trimmed.includes('/')) {
       const [rangePart, stepStr] = trimmed.split('/');
-      const step = parseInt(stepStr, 10);
+      const step = Number.parseInt(stepStr, 10);
       if (isNaN(step) || step <= 0) continue;
 
       let start = min;
@@ -69,7 +69,7 @@ function parseCronField(field: string, min: number, max: number): Set<number> {
           start = s;
           end = e;
         } else {
-          start = parseInt(rangePart, 10);
+          start = Number.parseInt(rangePart, 10);
         }
       }
 
@@ -93,7 +93,7 @@ function parseCronField(field: string, min: number, max: number): Set<number> {
     }
 
     // Handle single value
-    const val = parseInt(trimmed, 10);
+    const val = Number.parseInt(trimmed, 10);
     if (!isNaN(val) && val >= min && val <= max) {
       values.add(val);
     }

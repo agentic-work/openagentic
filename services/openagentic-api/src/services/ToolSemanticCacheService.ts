@@ -230,7 +230,7 @@ export class ToolSemanticCacheService {
       throw new Error('MILVUS_HOST and MILVUS_PORT must be configured');
     }
 
-    const milvusTimeout = parseInt(process.env.MILVUS_TIMEOUT || '120000');
+    const milvusTimeout = Number.parseInt(process.env.MILVUS_TIMEOUT || '120000');
     this.client = new MilvusClient({
       address: `${process.env.MILVUS_HOST}:${process.env.MILVUS_PORT}`,
       username: process.env.MILVUS_USERNAME,
@@ -302,7 +302,7 @@ export class ToolSemanticCacheService {
       const stats = await this.client.getCollectionStatistics({
         collection_name: TOOLS_COLLECTION_NAME
       });
-      const toolCount = parseInt(stats.data.row_count || '0');
+      const toolCount = Number.parseInt(stats.data.row_count || '0');
 
       if (toolCount === 0) {
         this.logger.warn({
@@ -585,7 +585,7 @@ export class ToolSemanticCacheService {
       const stats = await this.client.getCollectionStatistics({
         collection_name: TOOLS_COLLECTION_NAME
       });
-      const toolCount = parseInt(stats.data.row_count || '0');
+      const toolCount = Number.parseInt(stats.data.row_count || '0');
       collectionIsEmpty = toolCount === 0;
 
       if (collectionIsEmpty) {
@@ -717,7 +717,7 @@ export class ToolSemanticCacheService {
           const existingStats = await this.client.getCollectionStatistics({
             collection_name: TOOLS_COLLECTION_NAME
           });
-          const existingToolCount = parseInt(existingStats.data.row_count || '0');
+          const existingToolCount = Number.parseInt(existingStats.data.row_count || '0');
           const newToolCount = mcpTools.length;
 
           if (storedToolsHash === newToolsHash && existingToolCount === newToolCount && existingToolCount > 0) {
@@ -1962,7 +1962,7 @@ export class ToolSemanticCacheService {
         const stats = await this.client.getCollectionStatistics({
           collection_name: TOOLS_COLLECTION_NAME
         });
-        totalTools = parseInt(stats.data.row_count || '0');
+        totalTools = Number.parseInt(stats.data.row_count || '0');
       }
 
       return {

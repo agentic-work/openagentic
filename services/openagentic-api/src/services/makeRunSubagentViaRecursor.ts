@@ -259,7 +259,7 @@ export const RECURSOR_CTX_SLOTS = Object.freeze({
  * (depth 3) is REJECTED. Override via env for special cases.
  */
 function getMaxSubagentDepth(): number {
-  const raw = parseInt(process.env.OPENAGENTIC_MAX_SUBAGENT_DEPTH || '2', 10);
+  const raw = Number.parseInt(process.env.OPENAGENTIC_MAX_SUBAGENT_DEPTH || '2', 10);
   return Number.isFinite(raw) && raw > 0 ? raw : 2;
 }
 

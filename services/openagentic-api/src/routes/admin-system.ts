@@ -223,7 +223,7 @@ export const adminSystemRoutes: FastifyPluginAsync = async (fastify) => {
               collection_name: collectionName
             });
             if (statsResult.status.error_code === 'Success') {
-              rowCount = parseInt(statsResult.data.row_count || '0', 10);
+              rowCount = Number.parseInt(statsResult.data.row_count || '0', 10);
             }
 
             // Get collection schema for description
@@ -242,7 +242,7 @@ export const adminSystemRoutes: FastifyPluginAsync = async (fastify) => {
                 metricType = indexParams?.metric_type || 'COSINE';
                 // Get dimension from type_params
                 const typeParams = vectorField.type_params as any;
-                dimension = typeParams?.dim ? parseInt(typeParams.dim, 10) : 0;
+                dimension = typeParams?.dim ? Number.parseInt(typeParams.dim, 10) : 0;
               }
             }
           } catch (err) {

@@ -193,7 +193,7 @@ export class ChatCacheService {
       const key = `rate_limit:${userId}:${window}`;
       const count = await this.redis.get(key);
       
-      return count ? parseInt(count, 10) : 0;
+      return count ? Number.parseInt(count, 10) : 0;
       
     } catch (error) {
       this.logger.error({ 

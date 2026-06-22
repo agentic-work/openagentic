@@ -146,8 +146,8 @@ export default async function adminUserContextRoutes(fastify: FastifyInstance) {
     const { userId, q, limit: limitStr, offset: offsetStr } = request.query;
     if (!userId) return reply.code(400).send({ error: 'userId required' });
 
-    const limit = Math.min(parseInt(limitStr || '50', 10), 200);
-    const offset = parseInt(offsetStr || '0', 10);
+    const limit = Math.min(Number.parseInt(limitStr || '50', 10), 200);
+    const offset = Number.parseInt(offsetStr || '0', 10);
 
     try {
       const where: any = { user_id: userId };

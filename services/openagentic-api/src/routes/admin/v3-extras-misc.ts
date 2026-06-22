@@ -59,7 +59,7 @@ function windowToHours(raw: unknown, def = 24): number {
   if (typeof raw !== 'string') return def;
   const m = raw.trim().toLowerCase().match(/^(\d+)\s*(h|d)?$/);
   if (!m) return def;
-  const n = parseInt(m[1], 10);
+  const n = Number.parseInt(m[1], 10);
   if (!Number.isFinite(n) || n <= 0) return def;
   const unit = m[2] ?? 'h';
   return unit === 'd' ? n * 24 : n;
@@ -259,7 +259,7 @@ const adminV3ExtrasMiscRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const { MilvusClient } = await import('@zilliz/milvus2-sdk-node');
       const milvusHost = process.env.MILVUS_HOST || 'milvus';
-      const milvusPort = parseInt(process.env.MILVUS_PORT || '19530', 10);
+      const milvusPort = Number.parseInt(process.env.MILVUS_PORT || '19530', 10);
       const client = new MilvusClient({ address: `${milvusHost}:${milvusPort}`, timeout: 5_000 });
       const list = await (client as any).showCollections({});
       const collections: string[] = (list?.data ?? []).map((c: any) => c?.name).filter(Boolean);
@@ -694,7 +694,7 @@ const adminV3ExtrasMiscRoutes: FastifyPluginAsync = async (fastify) => {
     '/notifications',
     async (request: FastifyRequest<{ Querystring: { limit?: string } }>, reply: FastifyReply) => {
       try {
-        const cap = Math.min(50, Math.max(1, parseInt(request.query.limit ?? '20', 10) || 20));
+        const cap = Math.min(50, Math.max(1, Number.parseInt(request.query.limit ?? '20', 10) || 20));
         const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7d window
 
         const [audit, dlp] = await Promise.all([

@@ -168,7 +168,7 @@ export class ToolResultValidationService {
         text: match[0].trim(),
         type: 'count',
         importance: 'critical',
-        extractedValue: parseInt(match[1], 10)
+        extractedValue: Number.parseInt(match[1], 10)
       });
     }
 

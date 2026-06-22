@@ -38,7 +38,7 @@ export default async function adminMCPToolsRoutes(fastify: FastifyInstance) {
       for (const key of serverKeys) {
         const serverId = key.replace('mcp:tools:server:', '').replace(':count', '');
         const count = await redis.get(key);
-        serverCounts[serverId] = parseInt(count || '0', 10);
+        serverCounts[serverId] = Number.parseInt(count || '0', 10);
       }
 
       // Get Milvus collection stats
@@ -50,7 +50,7 @@ export default async function adminMCPToolsRoutes(fastify: FastifyInstance) {
           const collectionInfo = await milvus.getCollectionStatistics({ collection_name: 'mcp_tools_cache' });
           milvusStats = {
             exists: true,
-            rowCount: parseInt(collectionInfo.data.row_count || '0', 10)
+            rowCount: Number.parseInt(collectionInfo.data.row_count || '0', 10)
           };
         } else {
           milvusStats = {
@@ -103,10 +103,10 @@ export default async function adminMCPToolsRoutes(fastify: FastifyInstance) {
       return reply.send({
         status: 'success',
         indexing: {
-          lastIndexTime: lastIndexTime ? new Date(parseInt(lastIndexTime, 10)) : null,
+          lastIndexTime: lastIndexTime ? new Date(Number.parseInt(lastIndexTime, 10)) : null,
           lastIndexSuccess: lastIndexSuccess === 'true',
           lastIndexError: lastIndexError || null,
-          totalToolsIndexed: parseInt(totalToolsIndexed || '0', 10)
+          totalToolsIndexed: Number.parseInt(totalToolsIndexed || '0', 10)
         },
         milvus: milvusStats,
         redis: {
@@ -169,7 +169,7 @@ export default async function adminMCPToolsRoutes(fastify: FastifyInstance) {
 
         if (hasCollection.value) {
           const collectionInfo = await milvus.getCollectionStatistics({ collection_name: 'mcp_tools_cache' });
-          toolCount = parseInt(collectionInfo.data.row_count || '0', 10);
+          toolCount = Number.parseInt(collectionInfo.data.row_count || '0', 10);
         }
 
         await redis.set('mcp:tools:total_indexed', toolCount.toString());

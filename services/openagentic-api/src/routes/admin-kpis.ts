@@ -76,7 +76,7 @@ function toCost(cost: unknown): number {
   if (cost == null) return 0;
   if (typeof cost === 'number') return cost;
   // Prisma.Decimal stringifies cleanly; also handles plain string costs.
-  const n = parseFloat(String(cost));
+  const n = Number.parseFloat(String(cost));
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -122,7 +122,7 @@ function buildSeries(
 
   return {
     executions_over_time: execBuckets,
-    cost_over_time: costBuckets.map((c) => parseFloat(c.toFixed(6))),
+    cost_over_time: costBuckets.map((c) => Number.parseFloat(c.toFixed(6))),
     time_labels,
   };
 }
@@ -175,12 +175,12 @@ function computeCore(executions: ExecRow[]): CoreKpis {
     .sort((a, b) => a - b);
 
   const totalCost = executions.reduce((acc, e) => acc + toCost(e.cost), 0);
-  const totalCostRounded = parseFloat(totalCost.toFixed(6));
-  const avgCost = parseFloat((totalCost / total).toFixed(6));
+  const totalCostRounded = Number.parseFloat(totalCost.toFixed(6));
+  const avgCost = Number.parseFloat((totalCost / total).toFixed(6));
 
   return {
     total_executions: total,
-    success_rate: parseFloat(successRate.toFixed(2)),
+    success_rate: Number.parseFloat(successRate.toFixed(2)),
     latency_p50_ms: percentile(latencies, 50),
     latency_p95_ms: percentile(latencies, 95),
     latency_p99_ms: percentile(latencies, 99),
@@ -215,7 +215,7 @@ function pctDelta(current: number, prior: number): number | undefined {
     if (current === 0) return 0;
     return undefined; // no meaningful baseline
   }
-  return parseFloat((((current - prior) / prior) * 100).toFixed(2));
+  return Number.parseFloat((((current - prior) / prior) * 100).toFixed(2));
 }
 
 // ---------------------------------------------------------------------------
@@ -309,7 +309,7 @@ async function buildKpis({ window, workflowId }: BuildArgs): Promise<Record<stri
     .map(([flowId, total]) => ({
       flowId,
       flowName: wfById.get(flowId)?.name ?? flowId,
-      totalCostUsd: parseFloat(total.toFixed(6)),
+      totalCostUsd: Number.parseFloat(total.toFixed(6)),
     }))
     .sort((a, b) => b.totalCostUsd - a.totalCostUsd)
     .slice(0, 10);

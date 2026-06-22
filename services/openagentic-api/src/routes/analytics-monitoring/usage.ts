@@ -192,10 +192,10 @@ export const analyticsRoutes: FastifyPluginAsync = async (fastify) => {
         usage: tokenUsage,
         timeSeries: timeSeriesData.map((row: any) => ({
           period: row.period,
-          requests: parseInt(row.requests),
-          tokens: parseInt(row.tokens || 0),
-          cost: parseFloat(row.cost || 0),
-          uniqueUsers: parseInt(row.unique_users || 0)
+          requests: Number.parseInt(row.requests),
+          tokens: Number.parseInt(row.tokens || 0),
+          cost: Number.parseFloat(row.cost || 0),
+          uniqueUsers: Number.parseInt(row.unique_users || 0)
         })),
         topModels: topModels.map(model => ({
           model: model.model,
@@ -250,7 +250,7 @@ export const analyticsRoutes: FastifyPluginAsync = async (fastify) => {
             total_cost: 'desc'
           }
         },
-        take: parseInt(limit.toString())
+        take: Number.parseInt(limit.toString())
       });
 
       // Get user details
@@ -361,7 +361,7 @@ export const analyticsRoutes: FastifyPluginAsync = async (fastify) => {
         trends: {
           dailyActiveUsers: activityTrends.map((row: any) => ({
             date: row.date,
-            activeUsers: parseInt(row.active_users)
+            activeUsers: Number.parseInt(row.active_users)
           }))
         },
         summary: {
@@ -513,9 +513,9 @@ export const analyticsRoutes: FastifyPluginAsync = async (fastify) => {
         trends: {
           daily: dailyCosts.map((row: any) => ({
             date: row.date,
-            cost: parseFloat(row.cost || 0),
-            tokens: parseInt(row.tokens || 0),
-            requests: parseInt(row.requests || 0)
+            cost: Number.parseFloat(row.cost || 0),
+            tokens: Number.parseInt(row.tokens || 0),
+            requests: Number.parseInt(row.requests || 0)
           }))
         },
         breakdown: {
@@ -853,9 +853,9 @@ export const analyticsRoutes: FastifyPluginAsync = async (fastify) => {
         trends: {
           daily: dailyUsage.map((row: any) => ({
             date: row.date,
-            tokens: parseInt(row.tokens || 0),
-            cost: parseFloat(row.cost || 0),
-            requests: parseInt(row.requests || 0)
+            tokens: Number.parseInt(row.tokens || 0),
+            cost: Number.parseFloat(row.cost || 0),
+            requests: Number.parseInt(row.requests || 0)
           }))
         },
         breakdown: {

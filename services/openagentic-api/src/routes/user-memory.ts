@@ -41,8 +41,8 @@ export const userMemoryRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
     const userId = resolveUserId(request);
     if (!userId) return reply.code(401).send({ error: 'Authentication required' });
 
-    const limit = Math.min(parseInt(request.query.limit || '20', 10), 100);
-    const offset = parseInt(request.query.offset || '0', 10);
+    const limit = Math.min(Number.parseInt(request.query.limit || '20', 10), 100);
+    const offset = Number.parseInt(request.query.offset || '0', 10);
     const source = request.query.source;
 
     try {
@@ -85,7 +85,7 @@ export const userMemoryRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
     const userId = resolveUserId(request);
     if (!userId) return reply.code(401).send({ error: 'Authentication required' });
 
-    const tokenBudget = parseInt(request.query.tokenBudget || '1000', 10);
+    const tokenBudget = Number.parseInt(request.query.tokenBudget || '1000', 10);
     const query = request.query.query || '';
 
     try {

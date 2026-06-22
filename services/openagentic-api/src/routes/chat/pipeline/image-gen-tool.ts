@@ -82,7 +82,7 @@ export async function executeImageGenTool(
       // Per-user hourly limit
       const hourlyKey = `${RATE_LIMIT_KEY_PREFIX}hourly:${userId}`;
       const hourlyVal = await redis.get(hourlyKey);
-      const hourlyCount = (hourlyVal ? parseInt(String(hourlyVal), 10) : 0) + 1;
+      const hourlyCount = (hourlyVal ? Number.parseInt(String(hourlyVal), 10) : 0) + 1;
       await redis.set(hourlyKey, hourlyCount, 3600);
       if (hourlyCount > RATE_LIMIT_PER_USER_HOUR) {
         return {
@@ -100,7 +100,7 @@ export async function executeImageGenTool(
       if (context.executionId) {
         const execKey = `${RATE_LIMIT_KEY_PREFIX}exec:${context.executionId}`;
         const execVal = await redis.get(execKey);
-        const execCount = (execVal ? parseInt(String(execVal), 10) : 0) + 1;
+        const execCount = (execVal ? Number.parseInt(String(execVal), 10) : 0) + 1;
         await redis.set(execKey, execCount, 600);
         if (execCount > RATE_LIMIT_PER_EXECUTION) {
           return {

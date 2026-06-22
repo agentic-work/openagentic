@@ -214,7 +214,7 @@ export const adminPortalEnhancedRoutes: FastifyPluginAsync = async (fastify) => 
     try {
       const { pipelineId } = request.params as any;
       const { limit = 20 } = request.query as any;
-      const executions = await pipelineService.getExecutionHistory(pipelineId, parseInt(limit));
+      const executions = await pipelineService.getExecutionHistory(pipelineId, Number.parseInt(limit));
       return reply.send({ success: true, data: executions });
     } catch (error) {
       logger.error('Failed to get execution history', { error });

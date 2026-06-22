@@ -63,9 +63,9 @@ export class TokenUsageService {
       const completionCost = usage.completionTokens * baseCostPerToken;
 
       return {
-        promptCost: parseFloat(promptCost.toFixed(6)),
-        completionCost: parseFloat(completionCost.toFixed(6)),
-        totalCost: parseFloat(totalCost.toFixed(6))
+        promptCost: Number.parseFloat(promptCost.toFixed(6)),
+        completionCost: Number.parseFloat(completionCost.toFixed(6)),
+        totalCost: Number.parseFloat(totalCost.toFixed(6))
       };
     } catch (error) {
       this.logger.warn(`Failed to get pricing from provider for model ${model}:`, error);
@@ -86,9 +86,9 @@ export class TokenUsageService {
     const totalCost = promptCost + completionCost;
     
     return {
-      promptCost: parseFloat(promptCost.toFixed(6)),
-      completionCost: parseFloat(completionCost.toFixed(6)),
-      totalCost: parseFloat(totalCost.toFixed(6))
+      promptCost: Number.parseFloat(promptCost.toFixed(6)),
+      completionCost: Number.parseFloat(completionCost.toFixed(6)),
+      totalCost: Number.parseFloat(totalCost.toFixed(6))
     };
   }
   
@@ -280,19 +280,19 @@ export class TokenUsageService {
       
       return {
         totalTokens,
-        totalCost: parseFloat(totalCost.toFixed(6)),
+        totalCost: Number.parseFloat(totalCost.toFixed(6)),
         promptTokens,
         completionTokens,
         byModel: Array.from(modelStats.entries()).map(([model, stats]) => ({
           model,
           totalTokens: stats.totalTokens,
-          totalCost: parseFloat(stats.totalCost.toFixed(6)),
+          totalCost: Number.parseFloat(stats.totalCost.toFixed(6)),
           requestCount: stats.requestCount
         })),
         timeline: Array.from(timelineStats.entries()).map(([date, stats]) => ({
           date,
           totalTokens: stats.totalTokens,
-          totalCost: parseFloat(stats.totalCost.toFixed(6)),
+          totalCost: Number.parseFloat(stats.totalCost.toFixed(6)),
           requestCount: stats.requestCount
         }))
       };
@@ -375,7 +375,7 @@ export class TokenUsageService {
       
       return {
         totalTokens: totals.totalTokens,
-        totalCost: parseFloat(totals.totalCost.toFixed(6)),
+        totalCost: Number.parseFloat(totals.totalCost.toFixed(6)),
         messages: messageData
       };
     } catch (error) {

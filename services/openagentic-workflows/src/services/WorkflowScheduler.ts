@@ -29,10 +29,10 @@ const logger = loggers.services;
 const compiler = new WorkflowCompiler();
 
 // How often to poll for due schedules (default: 30 seconds)
-const POLL_INTERVAL_MS = parseInt(process.env.WORKFLOW_SCHEDULER_POLL_MS || '30000', 10);
+const POLL_INTERVAL_MS = Number.parseInt(process.env.WORKFLOW_SCHEDULER_POLL_MS || '30000', 10);
 
 // Maximum schedules to process per poll cycle (prevent thundering herd)
-const MAX_PER_CYCLE = parseInt(process.env.WORKFLOW_SCHEDULER_MAX_PER_CYCLE || '10', 10);
+const MAX_PER_CYCLE = Number.parseInt(process.env.WORKFLOW_SCHEDULER_MAX_PER_CYCLE || '10', 10);
 
 // =============================================================================
 // Cron Helpers — backed by croner (IANA TZ, day names, macros, DST-safe)

@@ -655,7 +655,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       // Adaptive mode carries no budget — leave it undefined so the wire helper
       // skips the budget-floor on max_tokens.
       const thinkingBudget = supportsThinking && thinkingMode === 'enabled'
-        ? parseInt(process.env.BEDROCK_THINKING_BUDGET_TOKENS || '4096', 10)
+        ? Number.parseInt(process.env.BEDROCK_THINKING_BUDGET_TOKENS || '4096', 10)
         : undefined;
       // Sev-1 #794 (2026-05-13) — model's real output-token ceiling.
       // The provider-config layer (ProviderManager.executeCompletion) has
@@ -2485,7 +2485,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       // Prepare request body for Titan embedding model
       const body = {
         inputText: inputText,
-        dimensions: parseInt(process.env.AWS_BEDROCK_EMBEDDING_DIMENSION || process.env.EMBEDDING_DIMENSION || '1024'),
+        dimensions: Number.parseInt(process.env.AWS_BEDROCK_EMBEDDING_DIMENSION || process.env.EMBEDDING_DIMENSION || '1024'),
         normalize: true
       };
 

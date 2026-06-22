@@ -336,8 +336,8 @@ async function initializeServices() {
           subscriptionId: azureSubscriptionId,
           resourceGroupName: azureResourceGroup,
           accountName: azureOpenAIAccount,
-          metricsTimeRangeMinutes: parseInt(process.env.AIF_METRICS_TIME_RANGE_MINUTES || '10080'), // 7 days default
-          refreshIntervalMinutes: parseInt(process.env.AIF_METRICS_REFRESH_INTERVAL_MINUTES || '5')
+          metricsTimeRangeMinutes: Number.parseInt(process.env.AIF_METRICS_TIME_RANGE_MINUTES || '10080'), // 7 days default
+          refreshIntervalMinutes: Number.parseInt(process.env.AIF_METRICS_REFRESH_INTERVAL_MINUTES || '5')
         }, loggers.services);
 
         // Start periodic collection
@@ -2270,7 +2270,7 @@ const start = async () => {
   chatStorage = new ChatStorageService(
     {
       // Prisma uses DATABASE_URL env var, maxConnections still supported for compatibility
-      maxConnections: parseInt(process.env.POSTGRES_MAX_CONNECTIONS || '10'),
+      maxConnections: Number.parseInt(process.env.POSTGRES_MAX_CONNECTIONS || '10'),
       providerManager: providerManager || undefined  // Pass provider manager
     },
     loggers.storage
@@ -2503,7 +2503,7 @@ const start = async () => {
           azureDeployment: mc.embeddingModel,
           endpoint: pc.baseUrl,
           model: mc.embeddingModel,
-          dimensions: pc.embeddingDimensions ? parseInt(pc.embeddingDimensions) : undefined,
+          dimensions: pc.embeddingDimensions ? Number.parseInt(pc.embeddingDimensions) : undefined,
         });
         loggers.services.info({
           provider: embProvider,
@@ -2537,7 +2537,7 @@ const start = async () => {
   }
 
   try {
-    const port = parseInt(process.env.PORT || process.env.API_PORT || '8000');
+    const port = Number.parseInt(process.env.PORT || process.env.API_PORT || '8000');
     await server.listen({ port, host: '0.0.0.0' });
 
     // Disable Node.js 18+ default requestTimeout (5 min) for long-lived SSE streams

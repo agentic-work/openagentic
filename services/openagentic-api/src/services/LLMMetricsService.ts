@@ -171,9 +171,9 @@ export class LLMMetricsService {
       }, 'Calculated Bedrock cost');
 
       return {
-        promptCost: parseFloat((promptCost + cachedCost).toFixed(8)),
+        promptCost: Number.parseFloat((promptCost + cachedCost).toFixed(8)),
         completionCost: bedrockCost.outputCost,
-        totalCost: parseFloat((promptCost + cachedCost + bedrockCost.outputCost).toFixed(8)),
+        totalCost: Number.parseFloat((promptCost + cachedCost + bedrockCost.outputCost).toFixed(8)),
         pricingSource: 'aws-api',
       };
     }
@@ -216,9 +216,9 @@ export class LLMMetricsService {
     }, 'Calculated cost');
 
     return {
-      promptCost: parseFloat((promptCost + cachedCost).toFixed(8)),
-      completionCost: parseFloat(completionCost.toFixed(8)),
-      totalCost: parseFloat((promptCost + cachedCost + completionCost).toFixed(8)),
+      promptCost: Number.parseFloat((promptCost + cachedCost).toFixed(8)),
+      completionCost: Number.parseFloat(completionCost.toFixed(8)),
+      totalCost: Number.parseFloat((promptCost + cachedCost + completionCost).toFixed(8)),
       pricingSource,
     };
   }

@@ -64,8 +64,8 @@ export class SemanticCacheService {
   constructor(redisClient: UnifiedRedisClient, logger: Logger) {
     this.redisClient = redisClient;
     this.logger = logger.child({ service: 'SemanticCache' }) as Logger;
-    this.similarityThreshold = parseFloat(process.env.SEMANTIC_CACHE_THRESHOLD || '0.92');
-    this.ttl = parseInt(process.env.SEMANTIC_CACHE_TTL || '3600'); // 1 hour default
+    this.similarityThreshold = Number.parseFloat(process.env.SEMANTIC_CACHE_THRESHOLD || '0.92');
+    this.ttl = Number.parseInt(process.env.SEMANTIC_CACHE_TTL || '3600'); // 1 hour default
     this.enabled = process.env.ENABLE_SEMANTIC_CACHE !== 'false'; // Enabled by default now
 
     // Initialize local embedding service (uses Ollama if configured)

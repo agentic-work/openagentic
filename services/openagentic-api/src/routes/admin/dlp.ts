@@ -131,7 +131,7 @@ export default async function dlpRoutes(fastify: FastifyInstance) {
       const { limit = '50', offset = '0', severity, action, tool, days = '7' } = request.query;
 
       const since = new Date();
-      since.setDate(since.getDate() - parseInt(days));
+      since.setDate(since.getDate() - Number.parseInt(days));
 
       try {
         const where: any = { timestamp: { gte: since } };
@@ -143,8 +143,8 @@ export default async function dlpRoutes(fastify: FastifyInstance) {
           prisma.dLPFinding.findMany({
             where,
             orderBy: { timestamp: 'desc' },
-            take: parseInt(limit),
-            skip: parseInt(offset),
+            take: Number.parseInt(limit),
+            skip: Number.parseInt(offset),
           }),
           prisma.dLPFinding.count({ where }),
         ]);
@@ -192,8 +192,8 @@ export default async function dlpRoutes(fastify: FastifyInstance) {
         return reply.send({
           events,
           total,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
+          limit: Number.parseInt(limit),
+          offset: Number.parseInt(offset),
           stats: { actionCounts, categoryCounts },
         });
       } catch (error: any) {

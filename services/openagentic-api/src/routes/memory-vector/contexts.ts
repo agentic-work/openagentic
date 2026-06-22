@@ -75,8 +75,8 @@ export const contextsRoutes: FastifyPluginAsync = async (fastify) => {
         prisma.memoryContext.findMany({
           where,
           orderBy: { updated_at: 'desc' },
-          take: parseInt(limit.toString()),
-          skip: parseInt(offset.toString()),
+          take: Number.parseInt(limit.toString()),
+          skip: Number.parseInt(offset.toString()),
           include: includeMemoryCount ? {
             memories: {
               select: { id: true }
@@ -108,9 +108,9 @@ export const contextsRoutes: FastifyPluginAsync = async (fastify) => {
         })),
         pagination: {
           total: totalCount,
-          limit: parseInt(limit.toString()),
-          offset: parseInt(offset.toString()),
-          hasMore: totalCount > parseInt(offset.toString()) + parseInt(limit.toString())
+          limit: Number.parseInt(limit.toString()),
+          offset: Number.parseInt(offset.toString()),
+          hasMore: totalCount > Number.parseInt(offset.toString()) + Number.parseInt(limit.toString())
         },
         categories: categories.map(cat => ({
           name: cat.category,

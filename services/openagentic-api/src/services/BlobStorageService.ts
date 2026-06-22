@@ -200,7 +200,7 @@ export class BlobStorageService {
   private async initMinio(): Promise<void> {
     const endpointParts = (this.config.endpoint || 'localhost:9000').split(':');
     const endpointHost = endpointParts[0];
-    const endpointPort = parseInt(endpointParts[1] || '9000', 10);
+    const endpointPort = Number.parseInt(endpointParts[1] || '9000', 10);
 
     this.minioClient = new MinioClient({
       endPoint: endpointHost,

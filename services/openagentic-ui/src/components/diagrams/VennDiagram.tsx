@@ -93,9 +93,9 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
     ? cleanHex.split('').map(c => c + c).join('')
     : cleanHex;
   return {
-    r: parseInt(fullHex.substring(0, 2), 16) || 0,
-    g: parseInt(fullHex.substring(2, 4), 16) || 0,
-    b: parseInt(fullHex.substring(4, 6), 16) || 0,
+    r: Number.parseInt(fullHex.substring(0, 2), 16) || 0,
+    g: Number.parseInt(fullHex.substring(2, 4), 16) || 0,
+    b: Number.parseInt(fullHex.substring(4, 6), 16) || 0,
   };
 };
 

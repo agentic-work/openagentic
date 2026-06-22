@@ -482,7 +482,7 @@ export const MultiModelConfigView: React.FC = () => {
                 max="1"
                 step="0.1"
                 value={roleConfig.temperature || 0.5}
-                onChange={(e) => handleRoleChange(roleKey, 'temperature', parseFloat(e.target.value))}
+                onChange={(e) => handleRoleChange(roleKey, 'temperature', Number.parseFloat(e.target.value))}
                 className="w-full"
               />
             </div>
@@ -517,7 +517,7 @@ export const MultiModelConfigView: React.FC = () => {
                   max="32000"
                   step="1000"
                   value={roleConfig.thinkingBudget || 8000}
-                  onChange={(e) => handleRoleChange(roleKey, 'thinkingBudget', parseInt(e.target.value))}
+                  onChange={(e) => handleRoleChange(roleKey, 'thinkingBudget', Number.parseInt(e.target.value))}
                   className="w-full"
                 />
               </div>
@@ -710,7 +710,7 @@ export const MultiModelConfigView: React.FC = () => {
               min="0"
               max="100"
               value={config?.routing.complexityThreshold || 60}
-              onChange={(e) => handleRoutingChange('complexityThreshold', parseInt(e.target.value))}
+              onChange={(e) => handleRoutingChange('complexityThreshold', Number.parseInt(e.target.value))}
               className="w-full"
             />
             <p className="text-xs text-text-muted mt-1">
@@ -727,7 +727,7 @@ export const MultiModelConfigView: React.FC = () => {
               min="1"
               max="10"
               value={config?.routing.maxHandoffs || 5}
-              onChange={(e) => handleRoutingChange('maxHandoffs', parseInt(e.target.value))}
+              onChange={(e) => handleRoutingChange('maxHandoffs', Number.parseInt(e.target.value))}
               className="w-full"
             />
             <p className="text-xs text-text-muted mt-1">
@@ -748,7 +748,7 @@ export const MultiModelConfigView: React.FC = () => {
                 ...prev,
                 sliderOverrides: {
                   ...prev.sliderOverrides,
-                  enableAbovePosition: parseInt(e.target.value)
+                  enableAbovePosition: Number.parseInt(e.target.value)
                 }
               } : null)}
               className="w-full"

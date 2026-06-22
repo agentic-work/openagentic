@@ -185,13 +185,13 @@ const adminPromptingRoutes: FastifyPluginAsync = async (fastify, opts) => {
           enabled: settings.self_consistency_enabled ?? false,
           samples: settings.self_consistency_samples ?? 3,
           temperature: 0.7,
-          threshold: parseFloat(settings.self_consistency_threshold || '0.6'),
+          threshold: Number.parseFloat(settings.self_consistency_threshold || '0.6'),
           showAlternatives: true,
           criticalOnly: true
         },
         rag: {
           enabled: settings.rag_enabled ?? true,
-          similarityThreshold: parseFloat(settings.rag_similarity_threshold || '0.5'),
+          similarityThreshold: Number.parseFloat(settings.rag_similarity_threshold || '0.5'),
           topK: 3,
           hybridSearch: true
         },

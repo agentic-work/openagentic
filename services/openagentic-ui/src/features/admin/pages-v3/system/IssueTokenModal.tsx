@@ -246,7 +246,7 @@ export const IssueTokenModal: React.FC<IssueTokenModalProps> = ({ open, onClose 
                 value={expiresInDays === undefined ? '' : String(expiresInDays)}
                 onChange={(e) => {
                   const v = e.target.value
-                  setExpiresInDays(v === '' ? undefined : parseInt(v, 10))
+                  setExpiresInDays(v === '' ? undefined : Number.parseInt(v, 10))
                 }}
               >
                 {EXPIRY_OPTIONS.map((o) => (

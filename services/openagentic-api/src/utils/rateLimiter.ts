@@ -23,7 +23,7 @@ export function initializeRateLimiter(): void {
   try {
     redis = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
+      port: Number.parseInt(process.env.REDIS_PORT || '6379'),
       password: process.env.REDIS_PASSWORD,
       retryStrategy: (times) => {
         if (times > 3) {
@@ -278,7 +278,7 @@ export async function getRateLimitStatus(
       const ttl = await redis.ttl(fullKey);
       
       if (count) {
-        const countNum = parseInt(count);
+        const countNum = Number.parseInt(count);
         return {
           count: countNum,
           remaining: Math.max(0, config.max - countNum),

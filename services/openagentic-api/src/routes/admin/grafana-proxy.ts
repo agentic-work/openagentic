@@ -11,7 +11,7 @@ import { validateAnyToken, extractBearerToken } from '../../auth/tokenValidator.
 import http from 'http';
 
 const GRAFANA_HOST = process.env.GRAFANA_HOST || 'grafana.monitoring-stack.svc.cluster.local';
-const GRAFANA_PORT = parseInt(process.env.GRAFANA_PORT || '3000');
+const GRAFANA_PORT = Number.parseInt(process.env.GRAFANA_PORT || '3000');
 
 /** Admin guard that checks both Authorization header AND cookies */
 async function grafanaAdminGuard(request: FastifyRequest, reply: FastifyReply): Promise<void> {

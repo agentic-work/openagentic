@@ -195,8 +195,8 @@ const adminAnalyticsRoutes: FastifyPluginAsync = async (fastify) => {
     Querystring: { limit?: string; offset?: string };
   }>('/users', async (request, reply) => {
     try {
-      const limit = parseInt(request.query.limit || '50');
-      const offset = parseInt(request.query.offset || '0');
+      const limit = Number.parseInt(request.query.limit || '50');
+      const offset = Number.parseInt(request.query.offset || '0');
 
       const users = await prisma.user.findMany({
         take: limit,
@@ -371,7 +371,7 @@ const adminAnalyticsRoutes: FastifyPluginAsync = async (fastify) => {
   }>('/models', async (request, reply) => {
     try {
       const { startDate, endDate, limit = '20' } = request.query;
-      const limitNum = Math.min(parseInt(limit), 100);
+      const limitNum = Math.min(Number.parseInt(limit), 100);
 
       // Build date filter for Prisma
       const dateFilter: any = {};
@@ -478,7 +478,7 @@ const adminAnalyticsRoutes: FastifyPluginAsync = async (fastify) => {
           totalModels: models.length,
           totalRequests: models.reduce((sum, m) => sum + m.requestCount, 0),
           totalTokens: models.reduce((sum, m) => sum + m.totalTokens, 0),
-          totalEstimatedCost: models.reduce((sum, m) => sum + parseFloat(m.estimatedCost), 0).toFixed(4)
+          totalEstimatedCost: models.reduce((sum, m) => sum + Number.parseFloat(m.estimatedCost), 0).toFixed(4)
         },
         dateRange: { startDate, endDate }
       });
@@ -619,21 +619,21 @@ const adminAnalyticsRoutes: FastifyPluginAsync = async (fastify) => {
           summary: {
             totalRequests,
             totalTokens,
-            totalCost: parseFloat(totalCost.toFixed(4)),
+            totalCost: Number.parseFloat(totalCost.toFixed(4)),
             avgLatencyMs: avgLatency
           },
           byProvider: Object.entries(byProvider).map(([name, data]) => ({
             provider: name,
             requests: data.requests,
             tokens: data.tokens,
-            cost: parseFloat(data.cost.toFixed(4)),
+            cost: Number.parseFloat(data.cost.toFixed(4)),
             avgLatencyMs: data.avgLatency
           })),
           byModel: Object.entries(byModel).map(([name, data]) => ({
             model: name,
             requests: data.requests,
             tokens: data.tokens,
-            cost: parseFloat(data.cost.toFixed(4)),
+            cost: Number.parseFloat(data.cost.toFixed(4)),
             avgLatencyMs: data.avgLatency
           })),
           dailyTrend: Object.entries(dailyTrend)
