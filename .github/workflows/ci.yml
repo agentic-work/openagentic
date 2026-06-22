@@ -290,7 +290,7 @@ jobs:
         continue-on-error: true
         run: pnpm --filter ./services/openagentic-ui exec vitest run --coverage --coverage.reportOnFailure --coverage.thresholds.lines=0 --coverage.thresholds.functions=0 --coverage.thresholds.branches=0 --coverage.thresholds.statements=0 --reporter=dot
       - name: SonarQube scan (in-cluster → internal host, real coverage)
-        uses: SonarSource/sonarqube-scan-action@v3
+        uses: SonarSource/sonarqube-scan-action@v8
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarqube-dev.agenticwork.io
