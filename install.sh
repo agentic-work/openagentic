@@ -359,9 +359,9 @@ else
   # 2. Fetch the EXPECTED digest from the independent GitHub trust anchor. If the
   #    repo is still private (pre-launch 404), fall back to the dist host's
   #    published checksum so a known-good bundle can still be verified.
-  EXPECTED_SHA="$(curl -fsSL --max-time 30 "$BUNDLE_SHA_URL" 2>/dev/null | awk 'NR==1{print $1}')"
+  EXPECTED_SHA="$(curl -fsSL --max-time 30 "$BUNDLE_SHA_URL" 2>/dev/null | awk 'NR==1{print $1}' || true)"
   if [[ -z "$EXPECTED_SHA" ]]; then
-    EXPECTED_SHA="$(curl -fsSL --max-time 30 "$BUNDLE_SHA_FALLBACK_URL" 2>/dev/null | awk 'NR==1{print $1}')"
+    EXPECTED_SHA="$(curl -fsSL --max-time 30 "$BUNDLE_SHA_FALLBACK_URL" 2>/dev/null | awk 'NR==1{print $1}' || true)"
     [[ -n "$EXPECTED_SHA" ]] && info "Source-repo checksum anchor unreachable (repo private pre-launch); using the dist host's published digest."
   fi
   [[ -n "$EXPECTED_SHA" ]] \
