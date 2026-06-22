@@ -14,7 +14,7 @@
 # =============================================================================
 # Stage 1: builder — npm install + Prisma generate + TypeScript compile
 # =============================================================================
-FROM node:22-slim AS builder
+FROM node:26-slim AS builder
 
 # Layout in the builder:
 #   /app                                 workflows service (WORKDIR)
@@ -101,7 +101,7 @@ RUN npm run build \
 # =============================================================================
 # Stage 2: runtime — node:22-slim with curl for health probes
 # =============================================================================
-FROM node:22-slim
+FROM node:26-slim
 
 LABEL org.opencontainers.image.title="openagentic-workflows"
 LABEL org.opencontainers.image.description="OpenAgentic workflow execution service"
