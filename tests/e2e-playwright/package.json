@@ -1,6 +1,7 @@
 {
   "name": "openagentic-e2e-tests",
   "version": "0.6.0",
+  "license": "Apache-2.0",
   "description": "E2E Playwright tests for OpenAgentic",
   "scripts": {
     "test": "playwright test",

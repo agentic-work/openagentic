@@ -1,6 +1,7 @@
 {
   "name": "@openagentic/test-harness",
   "version": "0.6.0",
+  "license": "Apache-2.0",
   "description": "Comprehensive test harness for OpenAgentic platform",
   "type": "module",
   "scripts": {

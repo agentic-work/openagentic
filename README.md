@@ -2,7 +2,7 @@
 
 # ⌥ openagentic
 
-### The open, self-hosted AI-SRE you run yourself — multi-cloud + Kubernetes + observability in one box, where every action is approval-gated and audit-logged, and your data and models never leave your network.
+**The open, self-hosted AI ops platform you run yourself.** Multi-cloud, Kubernetes, and observability MCPs in one box — every action is approval-gated and audit-logged, and your data and models never leave your network.
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-FF5722.svg)](./LICENSE)
 [![Zero telemetry](https://img.shields.io/badge/telemetry-zero-18130C.svg)](./docs/zero-telemetry.md)
@@ -12,38 +12,23 @@
 
 ---
 
-<div align="center">
+## What you get
 
-![Chat with ops MCPs, end to end](./demos/chat.gif)
+- **9 first-party MCP servers that actually do things** — AWS, Azure, GCP, Kubernetes, Prometheus, Loki, Web, GitHub, and Admin. All disabled by default; the agent routes tool calls semantically, so you can enable them all and it still picks the right one. Paste any Claude-Desktop-format JSON into the admin console to add your own.
+- **A human-approval gate on mutating tool calls.** The agent investigates and recommends; changes to your infra wait for you to click Approve.
+- **An append-only, hash-chained audit log** of every tool call proposed and executed, enforced at the application layer (the single seam all tool calls pass through). DB-level row-level-security and audit-immutability triggers ship as part of the hardened-deployment migration path.
+- **Ops Flow templates** — incident-triage, cost-anomaly, and failed-deploy RCA as ready-to-run visual runbooks, pre-wired to the Prometheus / Loki / Kubernetes / AWS MCPs.
+- **A self-hosted web console** — local admin account, per-tool permissions, multi-provider chat with history, RAG, per-user memory, and live Prometheus admin dashboards.
+- **Bring your own models** — Ollama for free local inference, or plug in Anthropic / OpenAI / Azure OpenAI / AWS Bedrock / Google Vertex AI keys. No model IDs hardcoded.
+- **Zero telemetry, no phone-home.** Apache-2.0 — fork it, audit it, run it on your own hardware.
 
-*Alert fires → openagentic queries Prometheus + Loki + kubectl **in parallel** → root-cause narrative **with the evidence** → proposes a fix behind a **human approval gate** → you click Approve → it executes → an **immutable audit-log** entry. 60 seconds, on your laptop, your own Ollama, nothing leaving the box.*
-
-</div>
-
----
-
-## Why not just Claude Code + a few MCP servers?
-
-You *can* point a coding agent at a handful of ops MCP servers — but that gives you a raw CLI with no controls. openagentic is the governed version of that idea, built for running real infrastructure:
-
-- **Governance, at the infrastructure layer.** A **human-approval gate** sits on *every mutating tool call* — the agent investigates and recommends, but nothing that changes your infra runs until you click Approve. Every tool call, proposed and executed, lands in an **immutable, hash-chained audit log**. This is enforced at the one seam every tool call passes through, so it can't be prompted around.
-- **Repeatable incident runbooks as visual Flows.** Incident response shouldn't be ad-hoc prompting. **incident-triage**, **cost-anomaly**, and **failed-deploy RCA** ship as ready-to-run Flow templates, pre-wired to the Prometheus / Loki / Kubernetes / AWS MCPs.
-- **A web console, not a raw CLI.** A self-hosted platform with a local admin account, an admin console, per-tool permissions, and a reviewable audit log — rather than one terminal on one laptop. (The OSS edition is **single-operator, local-auth**; multi-user SSO and team RBAC are in the Enterprise edition.)
-- **Zero-egress, air-gappable self-hosting.** One `docker compose up` (or Helm) box you can **fork, audit, and run on your own hardware**. Local Ollama for inference, **zero telemetry**, no phone-home. Your data and your models never leave your network.
-
-> **For:** the platform / SRE lead at a sovereignty-bound org who wants an AI ops platform they can self-host, audit, and trust — and who is done with both the compliance risk and the bill-shock of SaaS.
-
-## Why
-
-Every credible AI-SRE today is closed SaaS that wants to **ingest your infra logs** to do its job. If you run a DORA-regulated bank, anything touching PHI, a government system, or anything under EU/NIS2, you are often *legally forbidden* from shipping those logs to someone else's model — and you're watching the observability bill climb at the same time.
-
-openagentic is the wedge nobody else ships self-hostable: an ops platform whose **MCPs actually touch** AWS, Azure, GCP, Kubernetes, Prometheus, and Loki, with governance built in. The open point tools (HolmesGPT, k8sgpt, kagent) have no approval gate, no Flows, no console. The cross-domain agents (Cleric, Resolve.ai, the cloud-vendor agents) are closed SaaS that ingest your data.
-
-This is one box you can **fork, audit, and run on your own hardware**. Model-agnostic. **Zero telemetry.** Your data never leaves.
+> The OSS edition is single-operator and local-auth. Multi-user SSO and team RBAC are in the Enterprise edition at [agenticwork.io](https://agenticwork.io).
 
 ## Quickstart
 
-**Docker Compose** — single-node, the quick path. Clone the repo and run the installer from the checkout: it probes Ollama on `localhost:11434`, pulls the embed + chat model if missing, generates random admin / postgres / JWT creds, brings the stack up (lightweight pgvector-only by default — no Milvus), and opens your browser auto-logged-in:
+> The repo is private until launch and prebuilt public images aren't published yet, so use the `git clone … && ./install.sh` form below. Once public, `curl … | bash` becomes the install path.
+
+**Docker Compose** — single-node. The installer probes Ollama on `localhost:11434`, pulls the embed + chat model if missing, generates random admin / postgres / JWT creds, brings the stack up (pgvector-only by default — no Milvus), and opens your browser auto-logged-in:
 
 ```bash
 git clone git@github.com:agentic-work/openagentic.git ~/.openagentic   # SSH — repo is private until launch
@@ -51,90 +36,51 @@ cd ~/.openagentic
 ./install.sh
 ```
 
-> **Once public / images published**, a one-line `curl … | bash` will be the install path:
-> ```bash
-> curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/install.sh | bash
-> ```
-> While the repo is still private, that URL 404s and prebuilt public images aren't published yet, so use the `git clone … && ./install.sh` form above (or the manual steps under *Prerequisites + manual install*).
-
-**Kubernetes (Helm)** — run the same installer with `--helm`. Runs `helm upgrade --install openagentic ./helm/openagentic` into the `openagentic` namespace:
+Once public:
 
 ```bash
-./install.sh --helm          # from the checkout
-# once public / images published:  curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/install.sh | bash -s -- --helm
+curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/install.sh | bash
 ```
 
-Want a careful walk-through (provider keys, MCP picks)? Add `--wizard` — an Ink TUI that writes a `.env` you can commit and re-use on the next box with `./install.sh --env path/to/.env`.
-
-<details>
-<summary><b>Prerequisites + manual install</b></summary>
-
-- **Docker** + **Docker Compose v2** ([install](https://docs.docker.com/get-docker/)) — or **Helm + kubectl** for the k8s path
-- **Node.js 20+** (only the wizard needs it — skip if you use `--env`)
-- **An Ollama host** with at least one embedding model — local or remote. The quick path auto-pulls `nomic-embed-text` + a default chat model if Ollama is on `localhost:11434`
-- ~8 GB RAM, ~20 GB disk for the default stack
+**Kubernetes (Helm)** — run the same installer with `--helm`. It runs `helm upgrade --install openagentic ./helm/openagentic` into the `openagentic` namespace:
 
 ```bash
-git clone git@github.com:agentic-work/openagentic.git ~/.openagentic   # SSH — repo is private until launch
+./install.sh --helm
+```
+
+Want a guided walk-through (provider keys, MCP picks)? Add `--wizard` — an Ink TUI that writes a reusable `.env`.
+
+<details>
+<summary><b>Manual install</b></summary>
+
+Requires **Docker + Docker Compose v2** (or **Helm + kubectl** for the k8s path), **Node 20+** for the wizard, and an **Ollama host** with at least one embedding model. ~8 GB RAM, ~20 GB disk for the default stack.
+
+```bash
+git clone git@github.com:agentic-work/openagentic.git ~/.openagentic
 cd ~/.openagentic
 cp .env.example .env          # set POSTGRES_PASSWORD (required), admin email/password, OLLAMA_HOST, optional provider keys
-docker compose up -d          # lightweight default: pgvector-only, no etcd/minio/milvus
+docker compose up -d          # default: pgvector-only, no etcd/minio/milvus
 open http://localhost:8080
 ```
 
-> **The default is pgvector-only.** A bare `docker compose up -d` boots the lightweight stack — Postgres + `pgvector` backs both RAG and semantic tool search, and the API runs without etcd/minio/milvus. **Milvus is optional**, for HA / large-scale embedding + RAG workloads: bring it up with the gated profile and flip the flag —
-> ```bash
-> MILVUS_ENABLED=true docker compose --profile milvus up -d
-> ```
-> Until prebuilt public images are published, the first run **builds** every service image from source (a cold, multi-GB build), and images are amd64-only today.
+The default is pgvector-only — Postgres + `pgvector` backs both RAG and semantic tool search. Milvus is optional, for large-scale embedding / RAG workloads:
 
-The Helm chart lives at [`helm/openagentic/`](./helm/openagentic/) for the manual k8s path.
+```bash
+MILVUS_ENABLED=true docker compose --profile milvus up -d
+```
+
+Published GHCR `:latest` images are multi-arch (linux/amd64 + linux/arm64). Until public images are published, the first local-checkout run builds every service image from source (a cold, multi-GB build).
 
 </details>
 
-## What's inside
+## Architecture
 
-- **9 first-party MCP servers** — and they *do things*:
-
-  | Cloud | Ops | Knowledge / Meta |
-  |---|---|---|
-  | AWS · Azure · GCP | Kubernetes · Prometheus · Loki | Web · GitHub · Admin |
-
-  These are the MCPs the proxy actually wires (`mcp_manager.initialize_servers`). All disabled by default. The agent routes calls **semantically** (Milvus-indexed by description), so you can have all of them active and it still picks the right one. Paste any Claude-Desktop-format JSON config into the admin panel and `mcp-proxy` installs + indexes your own MCPs too.
-
-- **Ops Flow templates** — **incident-triage**, **cost-anomaly**, and **failed-deploy RCA** ship as ready-to-run visual runbooks, pre-wired to the Prometheus / Loki / Kubernetes / AWS MCPs. Drag-drop nodes, branching, tool calls — the whole loop, on a canvas.
-
-- **Governed by default.** Human approval on every mutating tool call, an immutable hash-chained audit log of everything proposed and executed, a scoped/SSRF-guarded egress path, and sandboxed artifact rendering — all enforced at the infrastructure layer, not the prompt. See the [Security & Compliance posture](./docs/guide/10-security.md) for the full model.
-
-- **Bring your own models** — Ollama for free local inference, or plug in Anthropic / OpenAI / Azure OpenAI / AWS Bedrock / Google Vertex AI keys. Nothing is hardcoded; your models never leave your network unless you choose a hosted provider.
-
-- **Also includes** — multi-provider chat with persistent history; Milvus-backed RAG + per-user memory; and live Prometheus-driven admin dashboards for usage, cost, and model behavior. All in-box, never phoned home.
-
-## Self-host, forever free
-
-The OSS core is **clean, complete, and free forever**. No paywalls, no locked admin screens, no 402 walls, no "demo mode" flags, no usage caps, no calling home. Everything that ships is yours — Apache-2.0 means fork it, rebrand it, run it on prem, ship it to your customers.
-
-### Backed by Agenticwork™
-
-openagentic is built and maintained by **Agenticwork™ LLC**. If you want the commercial edition — advanced chargeback & monitoring, integrations, rate-limit tiers, network- and webhook-security hardening, managed DLP policy, and support with an SLA — there's an **enterprise edition & support** at **[agenticwork.io](https://agenticwork.io)**. Entirely optional. The self-hosted edition here is complete and stays that way.
-
-## Links
-
-- **[openagentics.io](https://openagentics.io)** — docs, releases, changelog.
-- **[agenticwork.io](https://agenticwork.io)** — enterprise edition & support.
-- **[Zero-telemetry proof](./docs/zero-telemetry.md)** — what we checked, and how to verify it yourself.
-- **[Architecture guide](./docs/guide/02-architecture.md)** — the service topology + request/data flow.
+See the [architecture guide](./docs/guide/02-architecture.md) for the service topology and how a chat turn flows through the system.
 
 ## Contributing
 
-Outside contributions welcome — the project is much better with more eyes on it.
-
-1. Read [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the dev loop and review conventions.
-2. Open an issue first for anything bigger than a bug fix.
-3. Run the local checklist before opening a PR. `main` is protected — changes land via PR with maintainer approval. The only PR-time CI is `oss-integrity`; lint, typecheck, and the wizard harness run locally.
-
-By contributing you agree your changes are licensed under Apache-2.0. See also [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md).
+Outside contributions welcome. Read [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the dev loop, open an issue first for anything bigger than a bug fix, and run the local checklist before opening a PR. `main` is protected — changes land via PR with maintainer approval. By contributing you agree your changes are licensed under Apache-2.0. See also [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md).
 
 ## License
 
-[Apache-2.0](./LICENSE) © Agenticwork™ LLC
+[Apache-2.0](./LICENSE) © Agenticwork™ LLC. See [`NOTICE`](./NOTICE) and [`TRADEMARK.md`](./TRADEMARK.md).

@@ -1,6 +1,7 @@
 {
   "name": "@openagentic/workflow-engine",
   "version": "1.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "Shared workflow-engine helpers + node plugin registry. Consumed by openagentic-workflows (executor) and openagentic-api (legacy fallback path) via file:../shared/workflow-engine. Builds independently to dist/ via its own tsconfig; consumers consume the compiled dist/.",
   "type": "module",

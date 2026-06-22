@@ -1,6 +1,7 @@
 {
   "name": "openagentic-api",
   "version": "1.0.0",
+  "license": "Apache-2.0",
   "description": "TypeScript API for OpenAgentic Platform",
   "type": "module",
   "packageManager": "pnpm@10.15.0",

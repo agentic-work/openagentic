@@ -1,6 +1,7 @@
 {
   "name": "@agenticwork/openagentic",
   "version": "1.0.0",
+  "license": "Apache-2.0",
   "type": "module",
   "bin": {
     "openagentic-setup": "dist/index.js"

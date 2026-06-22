@@ -1,6 +1,7 @@
 {
   "name": "openagentic-ui-e2e-tests",
   "version": "1.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "Playwright E2E tests for the openagentic-ui service running against the dev environment",
   "scripts": {

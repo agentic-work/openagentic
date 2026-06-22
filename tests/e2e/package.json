@@ -1,6 +1,7 @@
 {
   "name": "openagentic-e2e-tests",
   "version": "0.6.0",
+  "license": "Apache-2.0",
   "description": "E2E tests for OpenAgentic Chat",
   "scripts": {
     "test": "npx playwright test",
@@ -15,7 +16,6 @@
   "main": "index.js",
   "keywords": [],
   "author": "",
-  "license": "ISC",
   "dependencies": {
     "playwright": "^1.57.0",
     "playwright-core": "^1.57.0"
