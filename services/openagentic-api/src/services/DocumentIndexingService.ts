@@ -13,29 +13,19 @@
  * - Integration with existing RAG pipeline
  *
  * ====================================================================
- * TODO: IMPLEMENT LATER - NOT YET INITIALIZED OR WORKING
+ * STATUS: wired and live (when Milvus is enabled).
  * ====================================================================
  *
- * This service is partially implemented but NOT initialized in server startup.
- * To complete implementation:
+ * Constructed at boot in `server.ts` (`new DocumentIndexingService(...)` +
+ * `initializeCollection()`), exposed via `AppContext.documentIndexingService`,
+ * and invoked by the file-upload routes (`routes/file-attachment/uploads.ts`):
+ * `indexDocument()` on upload, plus the document `/search`, `/stats`, and
+ * `/reindex` endpoints.
  *
- * 1. Initialize in server.ts:
- *    ```
- *    const documentIndexingService = new DocumentIndexingService(prisma, logger, milvusClient);
- *    await documentIndexingService.initialize();
- *    (global as any).documentIndexingService = documentIndexingService;
- *    ```
- *
- * 2. Ensure document text extraction works for:
- *    - PDF files (pdf-parse)
- *    - Word docs (mammoth)
- *    - Plain text/markdown/code files
- *
- * 3. Test semantic search over uploaded documents
- *
- * 4. Wire up to RAG pipeline so AI can search uploaded docs
- *
- * Current status: Service exists but is NOT active in production.
+ * Milvus-gated: in the default pgvector-only deployment (no Milvus) the boot
+ * init fails closed to `null` and these vector paths no-op gracefully, so a
+ * stack without Milvus still runs. Enable Milvus (`MILVUS_ENABLED=true` +
+ * `--profile milvus`) to activate semantic document indexing.
  * ====================================================================
  */
 

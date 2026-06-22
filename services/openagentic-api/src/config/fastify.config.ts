@@ -25,6 +25,7 @@ import swaggerUi from '@fastify/swagger-ui';
 import { swaggerOptions, swaggerUiOptions } from './swagger.config.js';
 import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
+import { isTrustedInternalRequest } from '../middleware/security.js';
 
 /**
  * Fastify body-size ceiling for ALL POST/PUT/PATCH requests.
@@ -257,9 +258,11 @@ export async function createServer(): Promise<FastifyInstance> {
         // X-Internal-Secret in middleware/unifiedAuth, so they're already
         // a trusted service principal — the IP-based throttle here is
         // double-counting and harmful.
-        const from = String(request.headers['x-request-from'] || '').toLowerCase();
-        const INTERNAL = new Set(['internal', 'openagentic-proxy', 'mcp-proxy', 'workflows']);
-        const isInternal = INTERNAL.has(from);
+        // SECURITY: the exemption requires a valid X-Internal-Secret (timing-safe,
+        // same gate as middleware/unifiedAuth) — NOT the x-request-from header
+        // alone, which any external client can spoof to skip all rate limiting.
+        // Fails closed when no secret is configured.
+        const isInternal = isTrustedInternalRequest(request);
         const isHealth = request.url === '/health' || request.url === '/api/health';
         // WebSocket upgrades MUST be exempt — rate limiting WS handshakes
         // causes rapid connect/disconnect storms that break live WS streams.

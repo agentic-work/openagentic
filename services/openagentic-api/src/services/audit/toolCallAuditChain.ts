@@ -232,7 +232,11 @@ export async function verifyToolCallAuditChain(
     }
     return { intact: true, checkedCount: rows.length };
   } catch (error) {
-    loggers.services.warn({ err: (error as any)?.message }, '[AUDIT] tool-call chain verification failed');
-    return { intact: true, checkedCount: 0 };
+    // SECURITY: fail CLOSED. A non-repudiation verifier that returned intact:true
+    // when it could not read/verify the chain would turn a tampering event or a
+    // DB outage into a false clean bill of health. Callers checking .intact must
+    // see false on any verification error.
+    loggers.services.warn({ err: (error as any)?.message }, '[AUDIT] tool-call chain verification failed — reporting NOT intact (fail-closed)');
+    return { intact: false, reason: 'verification-error', checkedCount: 0 };
   }
 }

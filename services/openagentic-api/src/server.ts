@@ -14,6 +14,7 @@ const getDefaultModel = () => MODELS.default;
 
 import { prisma } from './utils/prisma.js';
 import { getSecrets, logSecrets } from './config/secrets.config.js';
+import { isTrustedInternalRequest } from './middleware/security.js';
 
 import Fastify from 'fastify';
 import { randomBytes as cryptoRandomBytes } from 'node:crypto';
@@ -777,7 +778,10 @@ try {
       return request.user?.userId || request.user?.id || request.ip;
     },
     allowList: (request: any) => {
-      const isInternal = request.headers['x-request-from'] === 'internal';
+      // SECURITY: internal-service exemption requires a valid X-Internal-Secret,
+      // not just the x-request-from header (which any client can spoof). Mirrors
+      // middleware/unifiedAuth — fails closed.
+      const isInternal = isTrustedInternalRequest(request);
       const isHealth = request.url === '/health' || request.url === '/api/health';
       // WebSocket upgrades MUST be exempt — rate limiting WS handshakes
       // causes rapid connect/disconnect storms on long-lived streams.

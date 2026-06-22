@@ -233,7 +233,10 @@ export async function verifyAdminAuditChain(
     }
     return { intact: true, checkedCount: events.length };
   } catch (error) {
-    loggers.services.warn({ err: (error as any)?.message }, '[AUDIT] chain verification failed');
-    return { intact: true, checkedCount: 0 };
+    // SECURITY: fail CLOSED — a verification error must NOT report the chain as
+    // intact (that would turn a tampering event or DB outage into a false clean
+    // bill of health on a non-repudiation control). Callers checking .intact see false.
+    loggers.services.warn({ err: (error as any)?.message }, '[AUDIT] admin chain verification failed — reporting NOT intact (fail-closed)');
+    return { intact: false, checkedCount: 0 };
   }
 }

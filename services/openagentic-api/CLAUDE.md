@@ -114,8 +114,9 @@ Safe for vitest: test workers start fresh per file, and tests `await import(plug
 
 ## DB Migration Patterns
 
-- Schema changes are forward-only. Edit `prisma/schema.prisma` → `prisma migrate dev --name <slug>` locally → commit the generated `prisma/migrations/<ts>_<slug>/migration.sql`. The boot path (`docker-entrypoint.sh`) runs `prisma migrate deploy`, with P3005 auto-baseline for legacy environments. Never `prisma db push --accept-data-loss` on a live DB — it bypasses the migration log and silently drops drifted columns. Pinned by `__tests__/architecture/no-destructive-migration-at-boot.source-regression.test.ts`.
-- Never `psql INSERT/UPDATE/DELETE` directly on live DB — use helm seeder or API admin endpoints.
+- **Boot schema sync (current, single-node Docker install):** `docker-entrypoint.sh` runs `prisma db push --accept-data-loss --skip-generate` before `node dist/server.js`. This is deliberate — the repo ships no committed `prisma/migrations/` history, so `db push` brings a fresh database to the current `prisma/schema.prisma` in one idempotent step (a no-op once the DB is aligned). `--accept-data-loss` only drops columns on a **drifted** schema; against the image's own schema there is no drift, so nothing is lost on a normal boot.
+- **Tradeoff + hardening path:** `db push` bypasses an auditable migration log. For multi-tenant / regulated / long-lived deployments, prefer wiring `prisma migrate deploy` against a committed `prisma/migrations/` history (with P3005 baseline for pre-existing DBs) and add a boot-path regression test. Tracked as a hardening follow-up — do NOT claim it is in place until the migrations + test actually exist.
+- Edit `prisma/schema.prisma` for schema changes; run `prisma generate` to refresh the client. Never run `psql INSERT/UPDATE/DELETE` directly on a live DB — use the helm seeder or API admin endpoints.
 
 ## V2 Cascade Architecture (chatmode tool routing)
 
