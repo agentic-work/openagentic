@@ -139,6 +139,15 @@ port_in_use() {
   elif command -v nc >/dev/null 2>&1; then nc -z localhost "$p" >/dev/null 2>&1
   else return 1; fi
 }
+# Portable sha256 of a file → prints the bare hex digest, nothing else.
+# Linux ships `sha256sum`; macOS ships `shasum -a 256`. Returns non-zero if
+# neither is available so the caller can fail closed.
+sha256_of() {
+  local f="$1"
+  if   command -v sha256sum >/dev/null 2>&1; then sha256sum "$f" | awk '{print $1}'
+  elif command -v shasum    >/dev/null 2>&1; then shasum -a 256 "$f" | awk '{print $1}'
+  else return 1; fi
+}
 
 # ─── Args ───────────────────────────────────────────────────────────────────
 # Default is the interactive Ink-TUI wizard: it lets the user pick Docker (compose)
@@ -280,10 +289,54 @@ else
   BUNDLE_URL="${DIST_BASE}/openagentic-compose.tgz"
   info "Fetching the compose bundle from ${C_BOLD}${DIST_BASE}${C_RESET}…"
 
-  curl -fsSL --max-time 60 "$BUNDLE_URL" | tar -xz -C "$INSTALL_DIR" \
+  # The expected sha256 is fetched from the PUBLIC GitHub repo — an INDEPENDENT
+  # trust anchor that does NOT share a host (or DNS) with the download server.
+  # A compromise of install.openagentics.io alone cannot forge a matching digest
+  # because the checksum lives in the source repo. Overridable for mirrors that
+  # publish their own (e.g. air-gapped) checksum, but it defaults to GitHub.
+  BUNDLE_SHA_URL="${OPENAGENTIC_BUNDLE_SHA_URL:-https://raw.githubusercontent.com/agentic-work/openagentic/main/install/openagentic-compose.tgz.sha256}"
+
+  # 1. Download to a temp file — never pipe straight into tar. Streaming into the
+  #    extractor would run it on bytes we have not verified yet (extract-while-
+  #    streaming), so we materialize the bundle first, verify, THEN extract.
+  TMP_BUNDLE="$(mktemp "${TMPDIR:-/tmp}/openagentic-compose.XXXXXX.tgz")" \
+    || fatal 'Could not create a temp file for the download.'
+  # Clean up the temp file on ANY exit from here on (success or failure). We
+  # chain into the existing on_exit handler rather than clobber it, so the help
+  # block still prints if a fatal trips before we extract.
+  trap 'rm -f "$TMP_BUNDLE"; on_exit' EXIT
+  curl -fsSL --max-time 60 "$BUNDLE_URL" -o "$TMP_BUNDLE" \
     || fatal "Could not download the compose bundle from ${DIST_BASE}." \
              "Check your network and try again." \
              "You can mirror the bundle and set OPENAGENTIC_DIST_BASE to its host."
+
+  # 2. Fetch the EXPECTED digest from the independent GitHub trust anchor.
+  EXPECTED_SHA="$(curl -fsSL --max-time 30 "$BUNDLE_SHA_URL" 2>/dev/null | awk 'NR==1{print $1}')"
+  [[ -n "$EXPECTED_SHA" ]] \
+    || fatal 'Could not fetch the expected bundle checksum from the source repo — refusing to extract an unverified bundle; the download host may be compromised.' \
+             "Checksum URL: $BUNDLE_SHA_URL" \
+             "Check your network, or override the anchor with OPENAGENTIC_BUNDLE_SHA_URL."
+
+  # 3. Compute the ACTUAL digest portably (sha256sum on Linux, shasum on macOS).
+  ACTUAL_SHA="$(sha256_of "$TMP_BUNDLE")" \
+    || fatal 'No sha256 tool found (need sha256sum or shasum) — cannot verify the bundle, refusing to extract.' \
+             'Install coreutils (sha256sum) or perl/openssl (shasum) and re-run.'
+
+  # 4. FAIL CLOSED on mismatch — do NOT extract a tampered/corrupt bundle.
+  if [[ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]]; then
+    fatal 'Bundle checksum MISMATCH — refusing to extract an unverified bundle; the download host may be compromised.' \
+          "expected: $EXPECTED_SHA" \
+          "actual:   $ACTUAL_SHA" \
+          "If you intentionally mirror a different bundle, publish its sha256 and set OPENAGENTIC_BUNDLE_SHA_URL."
+  fi
+  ok "Bundle verified (sha256 matches the source-repo anchor)"
+
+  # 5. Verified — extract from the temp file, then drop it.
+  tar -xzf "$TMP_BUNDLE" -C "$INSTALL_DIR" \
+    || fatal "Could not extract the verified compose bundle into ${INSTALL_DIR}."
+  rm -f "$TMP_BUNDLE"
+  # Restore the plain on_exit handler now the temp file is gone.
+  trap on_exit EXIT
   ok "Bundle downloaded"
 
   # Record version + pin the public registry so compose pulls pre-built images.
