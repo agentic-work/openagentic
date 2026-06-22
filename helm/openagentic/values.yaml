@@ -54,6 +54,11 @@ secrets:
 #                                   pulls ONLY the embed model (no GPU needed).
 # Example remote GPU host: http://gpu-host.example.internal:11434  (model e.g. gpt-oss:20b)
 ollama:
+  # OPT-IN. The platform is provider-agnostic — it never defaults to / forces a
+  # provider. Set `enabled: false` to run with NO Ollama (the api boots healthy
+  # and you wire a provider via `bootstrapProvider:` below or the admin UI).
+  # When false, the in-cluster Ollama Deployment is also skipped (templates/ollama.yaml).
+  enabled: true
   embedModel: nomic-embed-text
   chatModel: llama3.2:3b
   chatHost: ""          # remote chat Ollama endpoint; empty = use in-cluster

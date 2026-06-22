@@ -7,6 +7,7 @@ import { mcpsThatNeedAuth } from '../lib/mcps.ts';
 
 const describeStrategy = (s: LlmStrategy): string => {
   switch (s) {
+    case 'none':   return 'none chosen — chat will fail until you pick a provider';
     case 'ollama': return 'local Ollama only';
     case 'cloud':  return 'AWS Bedrock (Claude via IAM)';
     case 'vertex': return 'Google Vertex AI (Gemini via service account)';

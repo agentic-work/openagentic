@@ -1,3 +1,6 @@
+{{- if .Values.ollama.enabled }}
+{{- /* In-cluster Ollama is OPT-IN. Rendered ONLY when ollama.enabled is true so
+       a provider-agnostic deploy ships no Ollama Deployment/PVC/Service. */ -}}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -127,3 +130,4 @@ spec:
               echo "Chat model served remotely at {{ .Values.ollama.chatHost }} — in-cluster Ollama serves embeddings only."
               {{- end }}
               echo "Models ready."
+{{- end }}

@@ -19,10 +19,13 @@
 #                  The wizard writes the same .env shape that --env consumes.
 #
 #   --quick        Five-minute zero-config Docker path:
-#                    - probes Ollama at localhost:11434
-#                    - auto-pulls the embed + chat model if missing
 #                    - generates random admin / postgres / JWT creds
 #                    - brings the stack up (no Milvus on the default profile)
+#                    - DETECTS an Ollama you already run (localhost / host
+#                      gateway) and wires it as the provider IF present. It does
+#                      NOT install or force Ollama on you — if none is running
+#                      the stack still boots provider-agnostic and you pick a
+#                      provider in the admin UI (or re-run with --wizard).
 #                    - opens your browser auto-logged-in via a one-shot
 #                      magic link, pre-pointed at your local Azure / AWS /
 #                      GCP / k8s creds (mounted read-only into mcp-proxy).
@@ -189,7 +192,7 @@ Usage:
 
 Modes:
   (default)      Launch the interactive Ink TUI wizard (Docker or Helm).
-  --quick        Five-minute zero-config Docker path (probes/pulls Ollama models).
+  --quick        Five-minute zero-config Docker path (uses an Ollama you already run if present; never force-installs one).
   --wizard       Explicitly launch the wizard (same as the default).
   --helm         One-line Kubernetes install (needs helm + kubectl + a cluster).
   --env PATH     Skip ALL prompts; copy PATH to ./.env and bring the stack up.
@@ -633,72 +636,78 @@ fi
 # ─── Quick path ─────────────────────────────────────────────────────────────
 step "Quick install"
 
-# 1. Resolve Ollama endpoint and probe it from the host.
+# 1. Detect an Ollama the user ALREADY runs — never install or force one.
+#    --quick is provider-agnostic: if an Ollama daemon is reachable we wire it
+#    as the provider (the user already chose to run it). If none is found we do
+#    NOT fatal and do NOT install Ollama — the stack boots provider-agnostic and
+#    the user picks a provider in the admin UI (or re-runs with --wizard).
 OLLAMA_HOST="${OLLAMA_HOST_OVERRIDE:-${OLLAMA_HOST:-}}"
-if [[ -z "$OLLAMA_HOST" ]]; then
+HAVE_OLLAMA=0
+if [[ -n "$OLLAMA_HOST" ]]; then
+  # Explicit endpoint (--ollama URL or OLLAMA_HOST in env) — trust the user.
+  HAVE_OLLAMA=1
+else
   # Default-route gateway — how a WSL2 distro (and Linux containers) reach an
   # Ollama bound on the Windows/host network when it is NOT on this box's
   # localhost. Reachable from both the host shell and the containers.
   OLLAMA_GW="$(ip route show default 2>/dev/null | awk '/default/{print $3; exit}')"
   if curl -fsS --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1; then
-    OLLAMA_HOST="http://host.docker.internal:11434"
+    OLLAMA_HOST="http://host.docker.internal:11434"; HAVE_OLLAMA=1
     ok 'Found Ollama on localhost:11434 — containers will reach it via host.docker.internal'
   elif [[ -n "$OLLAMA_GW" ]] && curl -fsS --max-time 2 "http://$OLLAMA_GW:11434/api/tags" >/dev/null 2>&1; then
     # e.g. WSL2 with Ollama on the Windows host, exposed on the network.
-    OLLAMA_HOST="http://$OLLAMA_GW:11434"
+    OLLAMA_HOST="http://$OLLAMA_GW:11434"; HAVE_OLLAMA=1
     ok "Found Ollama on the host network at $OLLAMA_GW:11434 — using it directly (works from host + containers)"
   else
-    warn "No Ollama detected on localhost:11434${OLLAMA_GW:+ or the host gateway $OLLAMA_GW:11434}."
-    warn 'Install Ollama (https://ollama.com/download) and re-run, or pass --ollama URL.'
-    warn 'On WSL2, make sure Ollama is started with OLLAMA_HOST=0.0.0.0 so the network can reach it.'
-    fatal 'Ollama is required for the quick install path. Use --wizard for cloud-LLM-only setups.'
+    HAVE_OLLAMA=0
+    info "No Ollama detected — booting provider-agnostic (no provider is installed or assumed)."
+    info 'Pick a provider in the admin UI after launch, or re-run with --wizard to choose one up front.'
+    info 'To use local Ollama: install it (https://ollama.com/download) and re-run --quick, or pass --ollama URL.'
   fi
 fi
-# Reach the same daemon Docker will hit, but from the host shell.
-LOCAL_OLLAMA="${OLLAMA_HOST//host.docker.internal/localhost}"
 
-# 2. Make sure embed + chat models exist.
-#    Embed model: small (~270MB), always nomic-embed-text. Pull if missing.
-#    Chat model: detect the best tool-capable model the user already has, in
-#    rough order of quality. Only auto-pull when nothing usable is present —
-#    avoids a 5GB+ surprise on a box that already has e.g. llama3.1:8b loaded.
+# 2. When (and only when) an Ollama is present, make sure embed + chat models
+#    exist. We pull into an EXISTING daemon the user runs — never install one.
 EMBED_MODEL="${OLLAMA_EMBED_MODEL:-nomic-embed-text}"
 DEFAULT_CHAT="${OLLAMA_CHAT_MODEL:-qwen2.5:7b}"
-have_model() {
-  curl -fsS --max-time 5 "$LOCAL_OLLAMA/api/tags" 2>/dev/null \
-    | grep -qE "\"(name|model)\"[[:space:]]*:[[:space:]]*\"$1(:[^\"]*)?\""
-}
-# Embed model
-if have_model "$EMBED_MODEL"; then
-  ok "Ollama has $EMBED_MODEL"
-else
-  info "Pulling $EMBED_MODEL (~270MB)…"
-  curl -fsS -X POST "$LOCAL_OLLAMA/api/pull" -d "{\"name\":\"$EMBED_MODEL\"}" >/dev/null 2>&1 \
-    || warn "Pull failed; try manually later: ollama pull $EMBED_MODEL"
-fi
-
-# Chat model — auto-detect.
 CHAT_MODEL=""
-# Pull all available model names once; grep for tool-capable families in order.
-all_models=$(curl -fsS --max-time 5 "$LOCAL_OLLAMA/api/tags" 2>/dev/null | \
-  grep -oE "\"(name|model)\"[[:space:]]*:[[:space:]]*\"[^\"]+\"" | \
-  sed -E 's/.*"([^"]+)"$/\1/' | sort -u)
-# Priority order: small-and-strong first, then large-and-strongest, then any tool-capable family.
-for pat in 'qwen2\.5' 'qwen3' 'gpt-oss' 'llama3\.3' 'llama3\.1' 'llama-?3' 'mistral' 'gemma'; do
-  match=$(echo "$all_models" | grep -E "^$pat(:|$)" | head -1)
-  if [[ -n "$match" ]]; then CHAT_MODEL="$match"; break; fi
-done
-if [[ -n "$CHAT_MODEL" ]]; then
-  ok "Using existing chat model: $CHAT_MODEL"
-else
-  info "No tool-capable chat model found. Pulling $DEFAULT_CHAT (~4.7GB; ~3min on broadband)…"
-  if curl -fsS -X POST "$LOCAL_OLLAMA/api/pull" -d "{\"name\":\"$DEFAULT_CHAT\"}" >/dev/null 2>&1; then
-    ok "Pulled $DEFAULT_CHAT"
-    CHAT_MODEL="$DEFAULT_CHAT"
+if [[ "$HAVE_OLLAMA" == "1" ]]; then
+  # Reach the same daemon Docker will hit, but from the host shell.
+  LOCAL_OLLAMA="${OLLAMA_HOST//host.docker.internal/localhost}"
+  have_model() {
+    curl -fsS --max-time 5 "$LOCAL_OLLAMA/api/tags" 2>/dev/null \
+      | grep -qE "\"(name|model)\"[[:space:]]*:[[:space:]]*\"$1(:[^\"]*)?\""
+  }
+  # Embed model: small (~270MB), always nomic-embed-text. Pull if missing.
+  if have_model "$EMBED_MODEL"; then
+    ok "Ollama has $EMBED_MODEL"
   else
-    warn "Pull failed; the stack will boot but chat will fail until you pull a model:"
-    warn "  ollama pull $DEFAULT_CHAT"
-    CHAT_MODEL="$DEFAULT_CHAT"
+    info "Pulling $EMBED_MODEL (~270MB)…"
+    curl -fsS -X POST "$LOCAL_OLLAMA/api/pull" -d "{\"name\":\"$EMBED_MODEL\"}" >/dev/null 2>&1 \
+      || warn "Pull failed; try manually later: ollama pull $EMBED_MODEL"
+  fi
+
+  # Chat model: detect the best tool-capable model the user already has, in
+  # rough order of quality. Only auto-pull when nothing usable is present —
+  # avoids a 5GB+ surprise on a box that already has e.g. llama3.1:8b loaded.
+  all_models=$(curl -fsS --max-time 5 "$LOCAL_OLLAMA/api/tags" 2>/dev/null | \
+    grep -oE "\"(name|model)\"[[:space:]]*:[[:space:]]*\"[^\"]+\"" | \
+    sed -E 's/.*"([^"]+)"$/\1/' | sort -u)
+  for pat in 'qwen2\.5' 'qwen3' 'gpt-oss' 'llama3\.3' 'llama3\.1' 'llama-?3' 'mistral' 'gemma'; do
+    match=$(echo "$all_models" | grep -E "^$pat(:|$)" | head -1)
+    if [[ -n "$match" ]]; then CHAT_MODEL="$match"; break; fi
+  done
+  if [[ -n "$CHAT_MODEL" ]]; then
+    ok "Using existing chat model: $CHAT_MODEL"
+  else
+    info "No tool-capable chat model found. Pulling $DEFAULT_CHAT (~4.7GB; ~3min on broadband)…"
+    if curl -fsS -X POST "$LOCAL_OLLAMA/api/pull" -d "{\"name\":\"$DEFAULT_CHAT\"}" >/dev/null 2>&1; then
+      ok "Pulled $DEFAULT_CHAT"; CHAT_MODEL="$DEFAULT_CHAT"
+    else
+      warn "Pull failed; the stack will boot but chat will fail until you pull a model:"
+      warn "  ollama pull $DEFAULT_CHAT"
+      CHAT_MODEL="$DEFAULT_CHAT"
+    fi
   fi
 fi
 
@@ -729,11 +738,35 @@ SIGNING_SECRET=$SIGN_SEC
 INTERNAL_API_KEY=$INTERNAL_KEY
 FRONTEND_SECRET=$FRONTEND_SEC
 INTERNAL_SERVICE_SECRET=$INTERNAL_SVC_SEC
+UI_HOST_PORT=8080
+EOF
+  if [[ "$HAVE_OLLAMA" == "1" ]]; then
+    # The user runs Ollama — wire it as THE provider explicitly. The compose
+    # defaults are provider-agnostic (Ollama off, empty bootstrap), so --quick
+    # must write the Ollama enablement + bootstrap block for the detected daemon.
+    cat >> .env <<EOF
+# Ollama provider (detected on the host — not installed by this script).
+OLLAMA_ENABLED=true
 OLLAMA_HOST=$OLLAMA_HOST
 OLLAMA_EMBED_MODEL=$EMBED_MODEL
 OLLAMA_CHAT_MODEL=$CHAT_MODEL
-UI_HOST_PORT=8080
+EMBEDDING_PROVIDER=ollama
+BOOTSTRAP_PROVIDER_NAME=ollama-local
+BOOTSTRAP_PROVIDER_DISPLAY_NAME=Ollama (local)
+BOOTSTRAP_PROVIDER_TYPE=ollama
+BOOTSTRAP_PROVIDER_CONFIG={"endpoint":"$OLLAMA_HOST"}
+BOOTSTRAP_PROVIDER_DEFAULTS={"chat":"$CHAT_MODEL","embedding":"$EMBED_MODEL","embeddingDimension":768}
+SEEDER_VERSION=6
 EOF
+  else
+    # No provider chosen — leave Ollama off and seed NO provider. The stack boots
+    # healthy and provider-agnostic; the user wires a provider in the admin UI.
+    cat >> .env <<EOF
+# No LLM provider configured (none detected, none installed). Pick one in the
+# admin UI after launch, or re-run install.sh --wizard to choose up front.
+OLLAMA_ENABLED=false
+EOF
+  fi
   if [[ "$USE_MILVUS" == "1" ]]; then
     # Opted into Milvus (HA / large-scale RAG): enable RAG + the vector store.
     cat >> .env <<EOF

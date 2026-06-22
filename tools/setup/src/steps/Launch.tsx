@@ -164,22 +164,44 @@ function toEnv(c: WizardConfig): Record<string, string> {
     MCPS_ENABLED: c.mcps.join(','),
   };
 
-  // Ollama envs only when the strategy includes it. When skipped/cloud-only
-  // we explicitly disable Ollama so the api doesn't try to hit a phantom
-  // endpoint on first boot.
+  // Ollama envs only when the user EXPLICITLY chose an Ollama-backed strategy.
+  // The compose defaults are now provider-agnostic (OLLAMA_ENABLED=false, empty
+  // BOOTSTRAP_PROVIDER_*), so for any other strategy we leave Ollama fully off —
+  // nothing is pushed, no model server is started.
   if (useOllama) {
     env.OLLAMA_HOST = c.ollama.host;
     env.OLLAMA_EMBED_MODEL = c.ollama.embedModel;
     env.OLLAMA_ENABLED = 'true';
+    // Ollama serves embeddings for both Ollama-only and Both. The api needs an
+    // explicit embedding provider now that the compose default is empty.
+    env.EMBEDDING_PROVIDER = 'ollama';
     // Under "Both", seed gpt-oss:20b as a SECOND, selectable chat model.
     // OLLAMA_CHAT_MODEL drives ollama-init's pre-pull AND the secondary-Ollama
     // provider seed (LLMProviderSeeder.seedSecondaryOllamaProvider), which
     // lands the ollama chat row at a HIGHER priority number than the Bedrock
     // bootstrap (priority 10) — so Bedrock Claude Sonnet 4.6 stays the default
-    // chat model. Ollama-only mode leaves chat to env-fallback (no bootstrap
-    // provider), so we don't set it there.
+    // chat model.
     if (c.llmStrategy === 'both') {
       env.OLLAMA_CHAT_MODEL = OLLAMA_CHAT_MODEL;
+    }
+    // Ollama-ONLY: the user picked Ollama as THE provider, so seed an Ollama
+    // bootstrap provider explicitly. (Previously this rode the compose default
+    // BOOTSTRAP_PROVIDER_NAME=ollama-local; that default is now empty so a bare
+    // `up` pushes nothing — the wizard must write it for the user's choice.)
+    // The chat-role row only seeds when a chat model tag is set, so pre-pull +
+    // seed gpt-oss:20b for a working out-of-the-box local chat.
+    if (c.llmStrategy === 'ollama') {
+      env.OLLAMA_CHAT_MODEL = OLLAMA_CHAT_MODEL;
+      env.BOOTSTRAP_PROVIDER_NAME = 'ollama-local';
+      env.BOOTSTRAP_PROVIDER_DISPLAY_NAME = 'Ollama (local)';
+      env.BOOTSTRAP_PROVIDER_TYPE = 'ollama';
+      env.BOOTSTRAP_PROVIDER_CONFIG = JSON.stringify({ endpoint: c.ollama.host });
+      env.BOOTSTRAP_PROVIDER_DEFAULTS = JSON.stringify({
+        chat: OLLAMA_CHAT_MODEL,
+        embedding: c.ollama.embedModel,
+        embeddingDimension: BOOTSTRAP_EMBED_DIM,
+      });
+      env.SEEDER_VERSION = BEDROCK_SEEDER_VERSION;
     }
   } else {
     env.OLLAMA_ENABLED = 'false';

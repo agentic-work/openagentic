@@ -28,12 +28,13 @@ export const OllamaStep: React.FC<Props> = ({ initial, step, total, onDone }) =>
         </Box>
         <Box marginTop={1}>
           <Hint>
-            Default http://ollama:11434 = the bundled container (recommended).
-            Use http://host.docker.internal:11434 to reach Ollama on your host.
+            http://ollama:11434 = the bundled container (started by the `ollama`
+            compose profile). Use http://host.docker.internal:11434 to reach an
+            Ollama you already run on your host instead.
           </Hint>
         </Box>
         <Box>
-          <Hint>Ollama provides embeddings (semantic tool routing). The bundled container pre-pulls the embed model on first boot.</Hint>
+          <Hint>You chose Ollama, so the platform will start it and pre-pull the embed model on first boot. No other provider is touched.</Hint>
         </Box>
       </Box>
     </Screen>

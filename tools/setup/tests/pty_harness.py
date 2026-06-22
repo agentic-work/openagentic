@@ -134,8 +134,8 @@ def script_minimal(child: pexpect.spawn) -> None:
     # password — must be >= 8 chars
     type_and_enter(child, "hunter2!!")
 
-    expect_screen(child, "How should the platform call LLMs?")
-    send(child, DOWN); send(child, DOWN)       # pick "Both" (3rd option)
+    expect_screen(child, "Which LLM provider should the platform use?")
+    send(child, DOWN); send(child, DOWN); send(child, DOWN); send(child, DOWN)  # "Both" (skips the no-provider sentinel + ollama/cloud/vertex)
     send(child, ENTER)
 
     expect_screen(child, "Where is your Ollama?")
@@ -190,8 +190,8 @@ def script_all_mcps_inline(child: pexpect.spawn) -> None:
     send(child, ENTER)
     type_and_enter(child, "supersecret")
 
-    expect_screen(child, "How should the platform call LLMs?")
-    send(child, DOWN); send(child, DOWN)
+    expect_screen(child, "Which LLM provider should the platform use?")
+    send(child, DOWN); send(child, DOWN); send(child, DOWN); send(child, DOWN)  # "Both" (skips the no-provider sentinel + ollama/cloud/vertex)
     send(child, ENTER)
 
     expect_screen(child, "Where is your Ollama?")
@@ -311,8 +311,8 @@ def script_skip_all_cloud(child: pexpect.spawn) -> None:
     expect_screen(child, "Create your admin account")
     send(child, ENTER)
     type_and_enter(child, "passw0rd!")
-    expect_screen(child, "How should the platform call LLMs?")
-    send(child, DOWN); send(child, DOWN)
+    expect_screen(child, "Which LLM provider should the platform use?")
+    send(child, DOWN); send(child, DOWN); send(child, DOWN); send(child, DOWN)  # "Both" (skips the no-provider sentinel + ollama/cloud/vertex)
     send(child, ENTER)
     expect_screen(child, "Where is your Ollama?")
     send(child, ENTER)
@@ -392,8 +392,8 @@ def script_cloud_only(child: pexpect.spawn) -> None:
     send(child, ENTER)
     type_and_enter(child, "passw0rd!")
 
-    expect_screen(child, "How should the platform call LLMs?")
-    send(child, DOWN)                          # "AWS Bedrock" — 2nd option
+    expect_screen(child, "Which LLM provider should the platform use?")
+    send(child, DOWN); send(child, DOWN)                      # "AWS Bedrock" (skips the no-provider sentinel + ollama)
     send(child, ENTER)
 
     # Ollama step MUST be skipped — we should land on the Bedrock picker next.
@@ -474,8 +474,8 @@ def script_bedrock_both(child: pexpect.spawn) -> None:
     send(child, ENTER)
     type_and_enter(child, "passw0rd!")
 
-    expect_screen(child, "How should the platform call LLMs?")
-    send(child, DOWN); send(child, DOWN)       # "Both" — 3rd option
+    expect_screen(child, "Which LLM provider should the platform use?")
+    send(child, DOWN); send(child, DOWN); send(child, DOWN); send(child, DOWN)  # "Both" (skips the no-provider sentinel + ollama/cloud/vertex)
     send(child, ENTER)
 
     expect_screen(child, "Where is your Ollama?")

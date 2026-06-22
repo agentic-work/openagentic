@@ -1,6 +1,11 @@
 export type DeployTarget = 'docker' | 'helm';
-/** See steps/LlmStrategy.tsx for the user-facing copy. */
-export type LlmStrategy = 'ollama' | 'cloud' | 'vertex' | 'both' | 'skip';
+/** See steps/LlmStrategy.tsx for the user-facing copy.
+ *  `'none'` is the un-chosen sentinel: it is the default in DEFAULT_CONFIG and
+ *  the highlighted first row in the LLM-strategy menu, so NO real provider is
+ *  ever pre-selected. The user must explicitly move to and pick a provider —
+ *  the platform never defaults to, forces, or pushes one (least of all Ollama).
+ *  Selecting the sentinel is a no-op (the menu just re-prompts). */
+export type LlmStrategy = 'none' | 'ollama' | 'cloud' | 'vertex' | 'both' | 'skip';
 
 export interface WizardConfig {
   target: DeployTarget;
@@ -65,17 +70,22 @@ export interface WizardConfig {
 
 export const DEFAULT_CONFIG: WizardConfig = {
   target: 'docker',
-  llmStrategy: 'both',
+  // No provider is chosen until the user explicitly picks one in the LLM-strategy
+  // step. The platform NEVER defaults to / forces / pushes a provider (Ollama
+  // included). 'none' is the un-chosen sentinel; the strategy step blocks until
+  // a real provider (or an explicit "skip / configure later") is selected.
+  llmStrategy: 'none',
   admin: {
     email: 'admin@openagentic.local',
     password: '',
     name: 'Admin',
   },
   ollama: {
-    // The bundled compose `ollama` service (ollama-init pre-pulls the embed
-    // model into it). This is the turnkey default and works on every platform.
-    // Point at http://host.docker.internal:11434 instead only if you run Ollama
-    // on the host (e.g. macOS Metal GPU) rather than the bundled container.
+    // ONLY used when the user explicitly chooses an Ollama strategy. The bundled
+    // compose `ollama` service (started by the `ollama` profile) serves this
+    // endpoint; point at http://host.docker.internal:11434 instead to reach an
+    // Ollama you already run on the host. Never written to .env unless Ollama
+    // is the chosen provider.
     host: 'http://ollama:11434',
     embedModel: 'nomic-embed-text',
   },

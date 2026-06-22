@@ -71,6 +71,9 @@ spec:
             # Ollama is shared between chat/tools and embeddings.
             - name: DISABLE_RAG
               value: "true"
+            {{- if .Values.ollama.enabled }}
+            # Ollama is OPT-IN (ollama.enabled). It is wired ONLY when the operator
+            # chose it — the platform never defaults to / forces a provider.
             - name: OLLAMA_ENABLED
               value: "true"
             # Chat host — a REMOTE Ollama (e.g. a GPU box) when ollama.chatHost
@@ -97,6 +100,11 @@ spec:
               value: {{ .Values.ollama.embedModel | quote }}
             - name: EMBEDDING_MODEL
               value: {{ .Values.ollama.embedModel | quote }}
+            {{- else }}
+            # Provider-agnostic: no Ollama unless the operator opts in.
+            - name: OLLAMA_ENABLED
+              value: "false"
+            {{- end }}
             {{- if .Values.bootstrapProvider.enabled }}
             # AWS Bedrock (Claude via IAM) is the SOLE chat bootstrap provider.
             # Seeds claude-sonnet-4-6 as the default chat + flows model. CONFIG
@@ -115,9 +123,11 @@ spec:
               value: '{"chat":"{{ .Values.bootstrapProvider.chatModel }}","embedding":"{{ .Values.ollama.embedModel }}","embeddingDimension":768}'
             - name: SEEDER_VERSION
               value: {{ .Values.bootstrapProvider.seederVersion | quote }}
-            {{- else }}
-            # Seed a local Ollama provider on first boot so a bare install chats
-            # with zero API keys. Chat role seeds only when chatModel is set.
+            {{- else if .Values.ollama.enabled }}
+            # Operator chose Ollama (and no other bootstrap provider): seed a local
+            # Ollama provider so a bare install chats with zero API keys. Chat role
+            # seeds only when chatModel is set. This is NOT a default — it runs only
+            # because ollama.enabled is true.
             - name: BOOTSTRAP_PROVIDER_NAME
               value: ollama-local
             - name: BOOTSTRAP_PROVIDER_DISPLAY_NAME
@@ -129,6 +139,9 @@ spec:
             - name: BOOTSTRAP_PROVIDER_DEFAULTS
               value: '{"chat":"{{ .Values.ollama.chatModel }}","embedding":"{{ .Values.ollama.embedModel }}","embeddingDimension":768}'
             {{- end }}
+            # When neither bootstrapProvider.enabled nor ollama.enabled is set, NO
+            # BOOTSTRAP_PROVIDER_* is emitted above → the seeder is a no-op and the
+            # platform stays provider-agnostic (admin UI wires a provider).
             - name: API_HOST
               value: api
             - name: API_PORT

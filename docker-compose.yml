@@ -127,15 +127,23 @@ services:
       timeout: 5s
       retries: 10
 
-  # ─── Local model runtime (REQUIRED for semantic tool indexing) ────────────
+  # ─── Local model runtime (OPT-IN — only when you choose Ollama) ───────────
+  # Ollama is NOT started by a bare `docker compose up`. It lives behind the
+  # `ollama` compose profile, mirroring how `milvus` is profile-gated. The
+  # platform never pushes a provider: start Ollama ONLY if you picked it —
+  #   docker compose --profile ollama up -d
+  # (the setup wizard adds `--profile ollama` automatically when you select an
+  # Ollama-backed strategy). With no provider chosen the api boots healthy and
+  # waits for whatever provider you configure.
 
   ollama:
     <<: *defaults
+    profiles: ["ollama"]
     image: ollama/ollama:latest
     # CPU by default (portable). For GPU acceleration, layer a GPU override:
     #   Linux + nvidia-container-toolkit → docker-compose.gpu-nvidia.yml
     #   WSL2 (no toolkit)                → docker-compose.gpu-wsl.yml
-    # e.g.  docker compose -f docker-compose.yml -f docker-compose.gpu-wsl.yml up -d
+    # e.g.  docker compose --profile ollama -f docker-compose.yml -f docker-compose.gpu-wsl.yml up -d
     volumes:
       - ollama-data:/root/.ollama
     healthcheck:
@@ -144,9 +152,11 @@ services:
       timeout: 5s
       retries: 5
 
-  # One-shot: pull the embedding model on first boot, then exit.
+  # One-shot: pull the embedding model on first boot, then exit. Profile-gated
+  # alongside `ollama` so a bare `up` pulls NO model.
   ollama-init:
     image: ollama/ollama:latest
+    profiles: ["ollama"]
     networks: [oap]
     depends_on:
       ollama: { condition: service_healthy }
@@ -208,7 +218,12 @@ services:
       MILVUS_HOST: ${MILVUS_HOST:-milvus}
       MILVUS_PORT: "19530"
       SKIP_TOOL_SEMANTIC_CACHE: ${SKIP_TOOL_SEMANTIC_CACHE:-true}
-      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-true}
+      # Provider-agnostic by default: Ollama is OFF unless the user explicitly
+      # chose it (the wizard / .env sets OLLAMA_ENABLED=true and starts the
+      # `ollama` profile). featureFlags.ollamaEnabled also defaults false, so the
+      # api makes no Ollama calls on a bare `up`. The HOST/MODEL vars below are
+      # only consulted when OLLAMA_ENABLED=true — harmless when it's false.
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
@@ -225,22 +240,25 @@ services:
       # when the embed is fast) so cloud tools resolve.
       TOOL_SEARCH_TIMEOUT_MS: ${TOOL_SEARCH_TIMEOUT_MS:-35000}
       TOOL_SEARCH_COLD_TIMEOUT_MS: ${TOOL_SEARCH_COLD_TIMEOUT_MS:-45000}
-      # Default ollama; the setup wizard's Vertex strategy overrides to vertex-ai.
-      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
-      # Bootstrap an Ollama LLM provider on first boot so a bare install can
-      # chat with zero API keys. Seeds ONE provider row only when the provider
-      # table is empty (admin UI owns it thereafter). The chat role is seeded
-      # only when OLLAMA_CHAT_MODEL is set (a chat model was pulled). Set
-      # BOOTSTRAP_PROVIDER_NAME= (empty) in .env to opt out.
-      BOOTSTRAP_PROVIDER_NAME: ${BOOTSTRAP_PROVIDER_NAME-ollama-local}
-      BOOTSTRAP_PROVIDER_DISPLAY_NAME: ${BOOTSTRAP_PROVIDER_DISPLAY_NAME-Ollama (local)}
-      BOOTSTRAP_PROVIDER_TYPE: ${BOOTSTRAP_PROVIDER_TYPE-ollama}
-      # CONFIG/DEFAULTS are overridable so the setup wizard's AWS Bedrock JSON
-      # (BOOTSTRAP_PROVIDER_TYPE=aws-bedrock, CONFIG={"region":...}, DEFAULTS with
-      # chat=anthropic.claude-sonnet-4-6) wins over these inline Ollama literals.
-      # When unset (.env has neither), they fall back to the Ollama defaults below.
-      BOOTSTRAP_PROVIDER_CONFIG: ${BOOTSTRAP_PROVIDER_CONFIG-{"endpoint":"${OLLAMA_HOST:-http://ollama:11434}"}}
-      BOOTSTRAP_PROVIDER_DEFAULTS: ${BOOTSTRAP_PROVIDER_DEFAULTS-{"chat":"${OLLAMA_CHAT_MODEL:-}","embedding":"${OLLAMA_EMBED_MODEL:-nomic-embed-text}","embeddingDimension":768}}
+      # Embedding provider — EMPTY by default (no forced provider). It is set ONLY
+      # when the user picks a provider: the wizard writes EMBEDDING_PROVIDER=ollama
+      # for an Ollama strategy, =vertex-ai for Vertex, etc. With nothing chosen the
+      # api seeds no embedding path (tool semantic cache is off by default anyway —
+      # SKIP_TOOL_SEMANTIC_CACHE=true), so a bare `up` calls no provider.
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-}
+      # Bootstrap LLM provider — EMPTY by default so NO provider is seeded/pushed
+      # on a bare `up`. The LLMProviderSeeder skips entirely when NAME is empty
+      # (the admin UI owns provider CRUD). The wizard / .env fills these in for
+      # the provider the user actually chose:
+      #   Ollama   → NAME=ollama-local  TYPE=ollama   CONFIG={"endpoint":...}
+      #   Bedrock  → NAME=aws-bedrock   TYPE=aws-bedrock  CONFIG={"region":...}
+      #   Vertex   → NAME=google-vertex TYPE=vertex-ai    CONFIG={"projectId":...}
+      # Provider-agnostic: the platform never defaults to one (Ollama included).
+      BOOTSTRAP_PROVIDER_NAME: ${BOOTSTRAP_PROVIDER_NAME-}
+      BOOTSTRAP_PROVIDER_DISPLAY_NAME: ${BOOTSTRAP_PROVIDER_DISPLAY_NAME-}
+      BOOTSTRAP_PROVIDER_TYPE: ${BOOTSTRAP_PROVIDER_TYPE-}
+      BOOTSTRAP_PROVIDER_CONFIG: ${BOOTSTRAP_PROVIDER_CONFIG-}
+      BOOTSTRAP_PROVIDER_DEFAULTS: ${BOOTSTRAP_PROVIDER_DEFAULTS-}
       # Registry seeder version — the wizard bumps this (SEEDER_VERSION=6) on a
       # Bedrock install so the role='chat' assignment row is (re)written on boot.
       SEEDER_VERSION: ${SEEDER_VERSION-}
@@ -340,9 +358,12 @@ services:
       # empty device when Vertex isn't used (mounted but never read).
       - ${GCP_SA_KEY_FILE:-/dev/null}:/var/secrets/gcp/key.json:ro
     depends_on:
+      # Ollama is intentionally NOT a depends_on: it is opt-in (the `ollama`
+      # profile). Listing it here would force-start it on a bare `up`, defeating
+      # the gate. The api tolerates a missing Ollama at boot — it connects lazily
+      # when (and only when) an Ollama provider is configured.
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
-      ollama: { condition: service_healthy }
 
   ui:
     <<: *defaults
