@@ -37,7 +37,7 @@ jobs:
   # ---- Gating: shared workspace packages (built in dependency order) ----------
   llm-sdk:
     name: tsc — shared/llm-sdk (gate)
-    runs-on: ubuntu-latest
+    runs-on: openagentic-runners
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -54,7 +54,7 @@ jobs:
 
   workflow-engine:
     name: tsc — shared/workflow-engine (gate)
-    runs-on: ubuntu-latest
+    runs-on: openagentic-runners
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -75,7 +75,7 @@ jobs:
 
   api:
     name: tsc — openagentic-api (gate)
-    runs-on: ubuntu-latest
+    runs-on: openagentic-runners
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -100,7 +100,7 @@ jobs:
 
   workflows:
     name: tsc — openagentic-workflows (gate)
-    runs-on: ubuntu-latest
+    runs-on: openagentic-runners
     # openagentic-workflows is NOT part of the pnpm workspace; it is npm-managed and
     # carries an external file: dep that breaks `npm ci`, so install with `npm install`.
     defaults:
@@ -131,7 +131,7 @@ jobs:
   # grandfathered. The count can only ratchet down.
   eslint-ratchet:
     name: no-explicit-any ratchet (changed files, gate)
-    runs-on: ubuntu-latest
+    runs-on: openagentic-runners
     steps:
       - uses: actions/checkout@v4
         with:
@@ -182,7 +182,7 @@ jobs:
   # ---- Non-gating: UI -----------------------------------------------------------
   ui:
     name: tsc — openagentic-ui (non-blocking)
-    runs-on: ubuntu-latest
+    runs-on: openagentic-runners
     # TODO: promote the UI to a hard gate (drop continue-on-error) once its tsc
     # surface is confirmed stable in CI. It currently type-checks clean locally,
     # but is kept non-blocking to avoid flapping the gate on its large/churny
