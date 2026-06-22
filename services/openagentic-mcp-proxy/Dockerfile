@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 ARG SRC_PATH=services/openagentic-mcp-proxy
 
