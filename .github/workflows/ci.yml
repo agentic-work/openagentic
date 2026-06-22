@@ -108,11 +108,23 @@ jobs:
         working-directory: services/openagentic-workflows
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: services/openagentic-workflows/package-lock.json
+      # workflows imports @openagentic/workflow-engine (a pnpm workspace pkg) via its
+      # file: dep, which resolves to the built dist — build it (+ its llm-sdk dep)
+      # first, or the type-check 404s on it and cascades implicit-any errors.
+      - name: Build shared workflow-engine (pnpm)
+        working-directory: ${{ github.workspace }}
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts --config.public-hoist-pattern='${{ env.PNPM_PUBLIC_HOIST }}'
+          pnpm --filter @agentic-work/llm-sdk run build
+          pnpm --filter @openagentic/workflow-engine run build
       # Lockfile carries an external "file:" link target that breaks `npm ci`, so use `npm install`.
       - name: Install dependencies
         run: npm install --no-audit --no-fund
