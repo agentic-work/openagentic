@@ -199,7 +199,7 @@ def format_log_entry(entry, stream: Dict[str, str]) -> str:
     # Parse timestamp if it's a nanosecond timestamp
     if isinstance(timestamp, (int, str)) and str(timestamp).isdigit():
         ts = int(timestamp) // 1_000_000_000
-        timestamp = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.fromtimestamp(ts, timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 
     # Get key labels
     app = stream.get("app", stream.get("container", stream.get("job", "unknown")))
@@ -518,7 +518,7 @@ async def loki_count_logs(
             output.append(f"Stream: {{{stream_labels}}}")
 
             for ts, count in values:
-                ts_formatted = datetime.utcfromtimestamp(int(ts) // 1_000_000_000).strftime('%H:%M:%S')
+                ts_formatted = datetime.fromtimestamp(int(ts, timezone.utc) // 1_000_000_000).strftime('%H:%M:%S')
                 count_val = int(float(count))
                 total_count += count_val
                 bar = "#" * min(count_val // 10, 50)
