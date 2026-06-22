@@ -95,7 +95,7 @@ azure-keyvault-certificates>=4.9.0
 
 # Storage Data Plane (blob operations)
 azure-storage-blob>=12.24.0
-azure-storage-file-share>=12.19.0
+azure-storage-file-share>=12.26.0
 
 # Microsoft Graph (Azure AD / Entra ID)
 msgraph-sdk>=1.16.0                 # Users, groups, apps, service principals
