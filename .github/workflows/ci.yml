@@ -142,7 +142,13 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       # Minimal, pinned toolchain — no project install needed for an inline rule.
       - name: Install eslint + ts parser/plugin
-        run: npm install --no-save --no-audit --no-fund eslint@8.57.1 @typescript-eslint/parser@7 @typescript-eslint/eslint-plugin@7
+        # Install into a temp dir OUTSIDE the pnpm workspace: `npm install` in the
+        # workspace root throws "Cannot read properties of null (reading 'matches')"
+        # (npm choking on the pnpm lockfile). A temp --prefix sidesteps it entirely.
+        run: |
+          mkdir -p "$RUNNER_TEMP/lint"
+          npm install --prefix "$RUNNER_TEMP/lint" --no-audit --no-fund \
+            eslint@8.57.1 @typescript-eslint/parser@7 @typescript-eslint/eslint-plugin@7
       - name: Compute changed TS/TSX files
         id: changed
         run: |
@@ -172,8 +178,9 @@ jobs:
         if: steps.changed.outputs.files != ''
         run: |
           echo "${{ steps.changed.outputs.files }}" | tr '\n' '\0' | xargs -0 -r \
-            npx --no-install eslint \
+            "$RUNNER_TEMP/lint/node_modules/.bin/eslint" \
               --no-eslintrc \
+              --resolve-plugins-relative-to "$RUNNER_TEMP/lint" \
               --parser @typescript-eslint/parser \
               --parser-options ecmaVersion:2022,sourceType:module,ecmaFeatures:{jsx:true} \
               --plugin @typescript-eslint \
