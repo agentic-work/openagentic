@@ -43,7 +43,7 @@ async function testFormattingService() {
   const systemPromptSection = service.generateSystemPromptSection();
   console.log(`Generated system prompt section (${systemPromptSection.length} characters)`);
   console.log('   First 500 chars:');
-  console.log('   ' + systemPromptSection.substring(0, 500).replaceAll(/\n/g, '\n   '));
+  console.log('   ' + systemPromptSection.substring(0, 500).replaceAll('\n', '\n   '));
   console.log('   ...\n');
 
   // Test 4: Query-based guidance

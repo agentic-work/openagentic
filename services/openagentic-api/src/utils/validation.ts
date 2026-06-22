@@ -127,9 +127,9 @@ export const SQLValidator = {
    */
   escapeLike(value: string): string {
     return value
-      .replaceAll(/\\/g, '\\\\')
-      .replaceAll(/%/g, '\\%')
-      .replaceAll(/_/g, '\\_');
+      .replaceAll('\\', '\\\\')
+      .replaceAll('%', '\\%')
+      .replaceAll('_', '\\_');
   }
 };
 
@@ -278,7 +278,7 @@ export function sanitizeObject(obj: any): any {
  */
 export function sanitizePath(path: string): string {
   return path
-    .replaceAll(/\.\./g, '') // Remove parent directory references
+    .replaceAll('..', '') // Remove parent directory references
     .replace(/[^\w\s\-./]/g, '') // Remove special characters
     .replace(/\/+/g, '/'); // Normalize multiple slashes
 }

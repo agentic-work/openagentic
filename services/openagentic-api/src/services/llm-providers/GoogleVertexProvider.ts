@@ -95,11 +95,11 @@ export class GoogleVertexProvider extends BaseLLMProvider {
   private unescapeContent(text: string): string {
     if (!text) return text;
     return text
-      .replaceAll(/\\n/g, '\n')   // Literal \n to actual newline
-      .replaceAll(/\\t/g, '\t')   // Literal \t to actual tab
-      .replaceAll(/\\r/g, '\r')   // Literal \r to carriage return
-      .replaceAll(/\\"/g, '"')    // Literal \" to quote
-      .replaceAll(/\\\\/g, '\\'); // Literal \\ to single backslash (must be last)
+      .replaceAll('\\n', '\n')   // Literal \n to actual newline
+      .replaceAll('\\t', '\t')   // Literal \t to actual tab
+      .replaceAll('\\r', '\r')   // Literal \r to carriage return
+      .replaceAll('\\"', '"')    // Literal \" to quote
+      .replaceAll('\\\\', '\\'); // Literal \\ to single backslash (must be last)
   }
 
   constructor(logger: Logger) {

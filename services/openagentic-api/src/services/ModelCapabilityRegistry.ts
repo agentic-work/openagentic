@@ -1260,7 +1260,7 @@ function sameModelVersion(a: string, b: string): boolean {
   const ver = (s: string): string | null => {
     // Capture the family+version core, e.g. "opus-4-8" / "sonnet-4.6".
     const m = s.match(/(opus|sonnet|haiku|fable|mythos|gpt|gemini|claude)[-.]?(\d+(?:[-.]\d+)*)/i);
-    return m ? m[2].replaceAll(/-/g, '.') : null;
+    return m ? m[2].replaceAll('-', '.') : null;
   };
   const va = ver(a);
   const vb = ver(b);

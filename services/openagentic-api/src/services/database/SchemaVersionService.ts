@@ -66,7 +66,7 @@ export class SchemaVersionService {
       const schemaContent = readFileSync(this.schemaPath, 'utf-8');
       // Normalize line endings and remove comments for consistent checksums
       const normalized = schemaContent
-        .replaceAll(/\r\n/g, '\n')
+        .replaceAll('\r\n', '\n')
         .replace(/\/\/.*$/gm, '') // Remove single-line comments
         .replace(/\s+/g, ' ') // Normalize whitespace
         .trim();

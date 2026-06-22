@@ -511,7 +511,7 @@ export class FileAttachmentService {
   private sanitizeFilename(filename: string): string {
     // Remove directory traversal attempts
     const sanitized = filename
-      .replaceAll(/\.\./g, '')
+      .replaceAll('..', '')
       .replace(/[\/\\]/g, '')
       .replace(/[<>:"|?*]/g, '_')
       .trim();

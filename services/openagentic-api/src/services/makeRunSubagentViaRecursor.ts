@@ -149,7 +149,7 @@ export function makeRunSubagentViaRecursor(
     // dispatch path tolerated both shapes; we keep the back-compat
     // surface so the model isn't trained off a slug it can no longer hit.
     const requestedRole = (spec.role ?? '').trim();
-    const altRole = requestedRole.replaceAll(/_/g, '-');
+    const altRole = requestedRole.replaceAll('_', '-');
     let agent: RecursorAgentLookupEntry | BuiltInAgentRegistryEntry | undefined;
     try {
       const agents = getAgents();

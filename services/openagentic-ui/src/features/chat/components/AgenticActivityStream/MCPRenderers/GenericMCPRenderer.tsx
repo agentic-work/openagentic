@@ -401,6 +401,77 @@ export const GenericMCPRenderer: React.FC<MCPRendererProps> = ({
     }
   }, [contentShape]);
 
+  const headerInner = (
+    <>
+      {/* Status icon */}
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+        {status === 'calling' ? (
+          <Loader2 size={14} style={{ color: colors.icon, animation: 'spin 1s linear infinite' }} />
+        ) : status === 'error' ? (
+          <XCircle size={14} style={{ color: colors.icon }} />
+        ) : status === 'success' ? (
+          <Check size={14} style={{ color: colors.icon }} />
+        ) : (
+          <Terminal size={14} style={{ color: colors.icon }} />
+        )}
+      </div>
+
+      {/* Tool name */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+        {hasDetails && (
+          expanded
+            ? <ChevronDown size={12} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+            : <ChevronRight size={12} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+        )}
+        <span
+          style={{
+            fontWeight: 500,
+            fontSize: 12,
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--color-text-secondary)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {toolName}
+        </span>
+      </div>
+
+      {/* Collapsed summary */}
+      {!expanded && collapsedSummary && status !== 'calling' && (
+        <span style={{
+          fontSize: 11,
+          color: contentShape.kind === 'error' ? 'var(--ap-error)' : 'var(--color-text-muted)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          maxWidth: '40%',
+          flexShrink: 1,
+        }}>
+          {collapsedSummary}
+        </span>
+      )}
+
+      {/* Duration badge */}
+      {duration != null && status === 'success' && (
+        <span
+          style={{
+            fontSize: 10,
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--color-text-muted)',
+            padding: '1px 6px',
+            borderRadius: 3,
+            background: 'var(--color-bg-tertiary)',
+            flexShrink: 0,
+          }}
+        >
+          {duration}ms
+        </span>
+      )}
+    </>
+  );
+
   return (
     <div
       style={{
@@ -413,87 +484,41 @@ export const GenericMCPRenderer: React.FC<MCPRendererProps> = ({
       }}
     >
       {/* Header */}
-      <div
-        role={hasDetails ? 'button' : undefined}
-        tabIndex={hasDetails ? 0 : undefined}
-        aria-expanded={hasDetails ? expanded : undefined}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '8px 12px',
-          cursor: hasDetails ? 'pointer' : 'default',
-        }}
-        onClick={hasDetails ? () => setExpanded(!expanded) : undefined}
-        onKeyDown={hasDetails ? onKeyActivate(() => setExpanded(!expanded)) : undefined}
-      >
-        {/* Status icon */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-          {status === 'calling' ? (
-            <Loader2 size={14} style={{ color: colors.icon, animation: 'spin 1s linear infinite' }} />
-          ) : status === 'error' ? (
-            <XCircle size={14} style={{ color: colors.icon }} />
-          ) : status === 'success' ? (
-            <Check size={14} style={{ color: colors.icon }} />
-          ) : (
-            <Terminal size={14} style={{ color: colors.icon }} />
-          )}
+      {hasDetails ? (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 12px',
+            cursor: 'pointer',
+            width: '100%',
+            textAlign: 'left',
+            background: 'none',
+            border: 0,
+            font: 'inherit',
+            color: 'inherit',
+          }}
+          onClick={() => setExpanded(!expanded)}
+          onKeyDown={onKeyActivate(() => setExpanded(!expanded))}
+        >
+          {headerInner}
+        </button>
+      ) : (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 12px',
+            cursor: 'default',
+          }}
+        >
+          {headerInner}
         </div>
-
-        {/* Tool name */}
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-          {hasDetails && (
-            expanded
-              ? <ChevronDown size={12} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-              : <ChevronRight size={12} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-          )}
-          <span
-            style={{
-              fontWeight: 500,
-              fontSize: 12,
-              fontFamily: 'var(--font-mono)',
-              color: 'var(--color-text-secondary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {toolName}
-          </span>
-        </div>
-
-        {/* Collapsed summary */}
-        {!expanded && collapsedSummary && status !== 'calling' && (
-          <span style={{
-            fontSize: 11,
-            color: contentShape.kind === 'error' ? 'var(--ap-error)' : 'var(--color-text-muted)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            maxWidth: '40%',
-            flexShrink: 1,
-          }}>
-            {collapsedSummary}
-          </span>
-        )}
-
-        {/* Duration badge */}
-        {duration != null && status === 'success' && (
-          <span
-            style={{
-              fontSize: 10,
-              fontFamily: 'var(--font-mono)',
-              color: 'var(--color-text-muted)',
-              padding: '1px 6px',
-              borderRadius: 3,
-              background: 'var(--color-bg-tertiary)',
-              flexShrink: 0,
-            }}
-          >
-            {duration}ms
-          </span>
-        )}
-      </div>
+      )}
 
       {/* Expanded details */}
       {expanded && hasDetails && (

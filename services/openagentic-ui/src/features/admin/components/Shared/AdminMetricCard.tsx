@@ -41,31 +41,15 @@ export const AdminMetricCard: React.FC<AdminMetricCardProps> = ({
   const trendArrow =
     trend?.direction === 'up' ? '\u2191' : trend?.direction === 'down' ? '\u2193' : '\u2192';
 
-  const card = (
-    <div
-      className={`rounded-lg p-4 transition-all duration-150 ${className}`}
-      style={{
-        backgroundColor: 'var(--color-surface)',
-        border: '1px solid var(--color-border)',
-        cursor: onClick ? 'pointer' : undefined,
-      }}
-      onClick={onClick}
-      onKeyDown={onClick ? onKeyActivate(onClick) : undefined}
-      onMouseEnter={(e) => {
-        if (onClick) {
-          e.currentTarget.style.borderColor = 'var(--color-primary)';
-          e.currentTarget.style.boxShadow = '0 2px 8px color-mix(in srgb, var(--color-shadow) 10%, transparent)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (onClick) {
-          e.currentTarget.style.borderColor = 'var(--color-border)';
-          e.currentTarget.style.boxShadow = 'none';
-        }
-      }}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-    >
+  const cardClassName = `rounded-lg p-4 transition-all duration-150 ${className}`;
+  const cardStyle: React.CSSProperties = {
+    backgroundColor: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
+    cursor: onClick ? 'pointer' : undefined,
+  };
+
+  const cardBody = (
+    <>
       {loading ? (
         <LoadingSkeleton />
       ) : (
@@ -125,6 +109,30 @@ export const AdminMetricCard: React.FC<AdminMetricCardProps> = ({
           )}
         </>
       )}
+    </>
+  );
+
+  const card = onClick ? (
+    <button
+      type="button"
+      className={`${cardClassName} text-left w-full`}
+      style={cardStyle}
+      onClick={onClick}
+      onKeyDown={onKeyActivate(onClick)}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'var(--color-primary)';
+        e.currentTarget.style.boxShadow = '0 2px 8px color-mix(in srgb, var(--color-shadow) 10%, transparent)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'var(--color-border)';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      {cardBody}
+    </button>
+  ) : (
+    <div className={cardClassName} style={cardStyle}>
+      {cardBody}
     </div>
   );
 

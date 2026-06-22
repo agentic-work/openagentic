@@ -696,14 +696,20 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
 
       {/* Prompt Preview Modal */}
       {previewPrompt !== null && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_60%,transparent)] backdrop-blur-sm" role="button" tabIndex={0} aria-label="Close" onClick={() => setPreviewPrompt(null)} onKeyDown={onKeyActivate(() => setPreviewPrompt(null))}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_60%,transparent)] backdrop-blur-sm">
+          <button
+            type="button"
+            aria-label="Close"
+            className="fixed inset-0 cursor-default border-0 bg-transparent p-0"
+            onClick={() => setPreviewPrompt(null)}
+            onKeyDown={onKeyActivate(() => setPreviewPrompt(null))}
+          />
           <div
-            className="rounded-xl w-[640px] max-h-[75vh] flex flex-col shadow-2xl"
+            className="relative rounded-xl w-[640px] max-h-[75vh] flex flex-col shadow-2xl"
             style={{
               backgroundColor: 'var(--color-bg-surface, var(--color-surface))',
               border: '1px solid var(--color-border, var(--color-border-default))',
             }}
-            onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid var(--color-border, var(--color-border-default))' }}>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Composed Prompt Preview</h3>
@@ -720,14 +726,20 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
 
       {/* Edit Modal */}
       {editingAgent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" role="button" tabIndex={0} aria-label="Close" onClick={() => setEditingAgent(null)} onKeyDown={onKeyActivate(() => setEditingAgent(null))}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm">
+          <button
+            type="button"
+            aria-label="Close"
+            className="fixed inset-0 cursor-default border-0 bg-transparent p-0"
+            onClick={() => setEditingAgent(null)}
+            onKeyDown={onKeyActivate(() => setEditingAgent(null))}
+          />
           <div
-            className="rounded-xl w-[680px] max-h-[85vh] overflow-y-auto shadow-2xl"
+            className="relative rounded-xl w-[680px] max-h-[85vh] overflow-y-auto shadow-2xl"
             style={{
               backgroundColor: 'var(--color-bg-surface, var(--color-surface))',
               border: '1px solid var(--color-border, var(--color-border-default))',
             }}
-            onClick={e => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--color-border, var(--color-border-default))' }}>

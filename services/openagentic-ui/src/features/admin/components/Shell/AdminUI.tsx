@@ -193,18 +193,17 @@ export const AdminCard: React.FC<AdminCardProps> = ({
 
   if (onClick) {
     return (
-      <div
+      <button
+        type="button"
         className={`admin-card ${className}`}
-        role="button"
-        tabIndex={0}
         onClick={onClick}
         onKeyDown={onKeyActivate(onClick)}
-        style={cardStyle}
+        style={{ ...cardStyle, textAlign: 'left', width: '100%', font: 'inherit' }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
         {cardBody}
-      </div>
+      </button>
     );
   }
 

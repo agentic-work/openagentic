@@ -10,7 +10,7 @@
  * - Keyboard navigation
  */
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Sparkles, Search } from '@/shared/icons';
 import clsx from 'clsx';
@@ -181,12 +181,17 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
     };
   }, [buttonRef, position]);
 
-  // Handle keyboard
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onClose();
-    }
+  // Handle keyboard — listen at the document level so the dialog container
+  // (a non-interactive element) doesn't carry its own keyboard listener.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
   // Close on click outside
@@ -226,7 +231,6 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
         display: 'flex',
         flexDirection: 'column',
       }}
-      onKeyDown={handleKeyDown}
       tabIndex={-1}
     >
       {/* RIPPED: Search bar inside the model selector. The Registry shows

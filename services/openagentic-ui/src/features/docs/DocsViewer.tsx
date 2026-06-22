@@ -205,9 +205,12 @@ export const DocsViewer: React.FC<DocsViewerProps> = ({
             >
               {/* Drag handle */}
               <div
-                role="separator"
+                role="slider"
                 aria-orientation="vertical"
                 aria-label="Resize chat panel"
+                aria-valuemin={320}
+                aria-valuemax={800}
+                aria-valuenow={chatWidth}
                 tabIndex={0}
                 onMouseDown={handleMouseDown}
                 onKeyDown={(e) => {

@@ -51,10 +51,10 @@ export interface SessionFactsBuilderDeps {
  */
 function escapeXmlAttr(v: string): string {
   return String(v)
-    .replaceAll(/&/g, '&amp;')
-    .replaceAll(/</g, '&lt;')
-    .replaceAll(/>/g, '&gt;')
-    .replaceAll(/"/g, '&quot;');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 }
 
 export class SessionFactsBuilder {

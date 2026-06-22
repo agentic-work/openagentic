@@ -355,6 +355,9 @@ export class ExtendedCapabilitiesService extends EventEmitter {
   private imageGenBenchmarks: ImageGenerationBenchmarkSuite;
   private toolTester: MCPToolTester;
 
+  /** Memoised auto-discovery promise — populated lazily by ensureDiscovered(), never in the constructor. */
+  private discoveryPromise: Promise<void> | null = null;
+
   constructor(
     private config: {
       autoDiscovery?: boolean;
@@ -372,14 +375,28 @@ export class ExtendedCapabilitiesService extends EventEmitter {
 
     // Synchronous setup only — no async work in the constructor.
     this.registerConfiguredProviders();
+  }
 
-    // Optional capability discovery is async; kick it off detached with its
-    // own error handling so the constructor never holds an unawaited promise.
-    if (this.config.autoDiscovery) {
-      this.discoverAllCapabilities().catch(error => {
-        this.emit('error', error);
-      });
+  /**
+   * Lazily run auto-discovery at most once, on first use of the discovered
+   * capabilities. Keeps the constructor fully synchronous (no detached async).
+   * No-op when `autoDiscovery` is disabled; safe to call repeatedly — the
+   * in-flight/settled promise is memoised. Errors are surfaced both via the
+   * 'error' event (legacy behaviour) and to the awaiting caller.
+   */
+  public async ensureDiscovered(): Promise<void> {
+    if (!this.config.autoDiscovery) return;
+    if (!this.discoveryPromise) {
+      this.discoveryPromise = this.discoverAllCapabilities()
+        .then(() => undefined)
+        .catch(error => {
+          // Allow a later call to retry, and preserve the legacy 'error' emit.
+          this.discoveryPromise = null;
+          this.emit('error', error);
+          throw error;
+        });
     }
+    return this.discoveryPromise;
   }
 
   /** Register providers passed via constructor config + composite strategies (sync). */
@@ -597,6 +614,9 @@ export class ExtendedCapabilitiesService extends EventEmitter {
   public async recommendCapabilities(
     requirements: ExtendedTaskRequirements
   ): Promise<CapabilityRecommendation> {
+    // Lazily run auto-discovery on first use (replaces the old constructor kickoff).
+    await this.ensureDiscovered();
+
     // Check if task requires composite capabilities
     if (this.requiresCompositeCapabilities(requirements)) {
       return this.recommendCompositeCapabilities(requirements);

@@ -489,11 +489,6 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
       {preview && (
         <div
           data-testid="artifact-preview-modal"
-          role="button"
-          tabIndex={0}
-          aria-label="Close preview"
-          onClick={closePreview}
-          onKeyDown={onKeyActivate(closePreview)}
           style={{
             position: 'fixed',
             inset: 0,
@@ -505,13 +500,27 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
             padding: 24,
           }}
         >
+          <button
+            type="button"
+            aria-label="Close preview"
+            onClick={closePreview}
+            onKeyDown={onKeyActivate(closePreview)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'transparent',
+              border: 0,
+              padding: 0,
+              margin: 0,
+              cursor: 'default',
+            }}
+          />
           <div
             role="dialog"
             aria-modal="true"
             aria-label="Artifact preview"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
             style={{
+              position: 'relative',
               width: 'min(960px, 100%)',
               maxHeight: '90vh',
               display: 'flex',

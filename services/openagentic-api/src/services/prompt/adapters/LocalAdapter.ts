@@ -10,9 +10,9 @@ function stripFormatting(text: string): string {
   return text
     .replace(/<[^>]+>/g, '')   // XML tags
     .replace(/#{1,6}\s+/g, '') // Markdown headers
-    .replaceAll(/\*\*/g, '')      // Bold
-    .replaceAll(/\*/g, '')        // Italic
-    .replaceAll(/`/g, '')         // Code
+    .replaceAll('**', '')      // Bold
+    .replaceAll('*', '')        // Italic
+    .replaceAll('`', '')         // Code
     .trim();
 }
 

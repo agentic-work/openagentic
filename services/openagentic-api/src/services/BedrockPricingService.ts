@@ -253,9 +253,9 @@ export class BedrockPricingService {
   private normalizeModelId(modelId: string): string {
     return modelId
       .toLowerCase()
-      .replaceAll(/anthropic\./g, '')
-      .replaceAll(/amazon\./g, '')
-      .replaceAll(/stability\./g, '')
+      .replaceAll('anthropic.', '')
+      .replaceAll('amazon.', '')
+      .replaceAll('stability.', '')
       .replace(/-\d{8}-v\d+:\d+/g, '') // Remove version suffix like -20251001-v1:0
       .replace(/\s+/g, '-');
   }
@@ -268,7 +268,7 @@ export class BedrockPricingService {
 
     // Try to find a matching fallback
     for (const [key, prices] of Object.entries(FALLBACK_PRICING)) {
-      if (normalized.includes(key.toLowerCase().replaceAll(/\./g, '-'))) {
+      if (normalized.includes(key.toLowerCase().replaceAll('.', '-'))) {
         return {
           modelId: modelId,
           modelName: key,

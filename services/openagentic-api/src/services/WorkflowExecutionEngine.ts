@@ -1641,7 +1641,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     // MCP proxy registers servers with underscores (e.g. openagentic_azure) but workflow
     // nodes may store hyphens (e.g. oap-azure-mcp)
     const normalizedServer = toolServer
-      ? toolServer.replaceAll(/-/g, '_').replace(/_mcp$/, '')
+      ? toolServer.replaceAll('-', '_').replace(/_mcp$/, '')
       : toolServer;
 
     // Interpolate variables in arguments (support all field names: arguments, toolArgs, toolParams)

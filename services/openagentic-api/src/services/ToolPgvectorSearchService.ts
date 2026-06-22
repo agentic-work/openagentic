@@ -415,7 +415,7 @@ export class ToolPgvectorSearchService {
       // Build WHERE clause with optional server filtering
       let whereClause = 'is_enabled = true';
       if (options?.serverIds && options.serverIds.length > 0) {
-        const serverList = options.serverIds.map(s => `'${s.replaceAll(/'/g, "''")}'`).join(', ');
+        const serverList = options.serverIds.map(s => `'${s.replaceAll("'", "''")}'`).join(', ');
         whereClause += ` AND server_id IN (${serverList})`;
       }
 

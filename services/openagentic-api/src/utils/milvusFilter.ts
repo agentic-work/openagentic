@@ -29,8 +29,8 @@ const UNSAFE_CHARS = /["\\\x00-\x1f\x7f]/;
 export function escapeMilvusFilterValue(value: unknown): string {
   return String(value ?? '')
     .replace(CONTROL_CHARS, '') // drop control chars
-    .replaceAll(/\\/g, '\\\\') // backslash first
-    .replaceAll(/"/g, '\\"'); // then double-quote
+    .replaceAll('\\', '\\\\') // backslash first
+    .replaceAll('"', '\\"'); // then double-quote
 }
 
 /**

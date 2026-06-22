@@ -912,7 +912,7 @@ export class MilvusVectorService {
     try {
       // Ensure we have a collection
       const hasCollection = await this.client.hasCollection({
-        collection_name: `user_memories_${userId.replaceAll(/-/g, '_')}`
+        collection_name: `user_memories_${userId.replaceAll('-', '_')}`
       });
 
       if (!hasCollection.value) {
@@ -925,7 +925,7 @@ export class MilvusVectorService {
       
       // Search in user's memory collection
       const searchResult = await this.client.search({
-        collection_name: `user_memories_${userId.replaceAll(/-/g, '_')}`,
+        collection_name: `user_memories_${userId.replaceAll('-', '_')}`,
         data: [queryEmbedding],
         limit: query.maxResults || 10,
         output_fields: ['memory_id', 'type', 'content', 'summary', 'entities', 'timestamp', 'session_id'],
@@ -961,7 +961,7 @@ export class MilvusVectorService {
   async storeMemory(userId: string, memory: any): Promise<void> {
     try {
       // Ensure collection exists
-      const collectionName = `user_memories_${userId.replaceAll(/-/g, '_')}`;
+      const collectionName = `user_memories_${userId.replaceAll('-', '_')}`;
       const hasCollection = await this.client.hasCollection({
         collection_name: collectionName
       });
@@ -1311,7 +1311,7 @@ SUMMARY:
     const headerMatch = table.match(/\|([^|]+)/g);
     if (headerMatch) {
       headerMatch.forEach(h => {
-        const clean = h.replaceAll(/\|/g, '').trim().toLowerCase();
+        const clean = h.replaceAll('|', '').trim().toLowerCase();
         if (clean && clean.length > 2 && clean !== '---') {
           entities.push(clean);
         }

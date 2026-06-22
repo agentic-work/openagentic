@@ -128,24 +128,30 @@ export const ToolsIndexedPill: React.FC = () => {
 
       {open && createPortal(
         <div
-          role="button"
-          aria-label="Close tool index status"
-          tabIndex={0}
-          onClick={() => setOpen(false)}
-          onKeyDown={onKeyActivate(() => setOpen(false))}
           style={{
             position: 'fixed', inset: 0, zIndex: 1000,
             background: 'color-mix(in srgb, var(--cm-text) 55%, transparent)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
+          <button
+            type="button"
+            aria-label="Close tool index status"
+            onClick={() => setOpen(false)}
+            onKeyDown={onKeyActivate(() => setOpen(false))}
+            style={{
+              position: 'fixed', inset: 0,
+              background: 'transparent',
+              border: 0, padding: 0, margin: 0,
+              cursor: 'default',
+            }}
+          />
           <div
             role="dialog"
             aria-modal="true"
             aria-label="MCP tool index status"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
             style={{
+              position: 'relative',
               background: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
               borderRadius: 12,

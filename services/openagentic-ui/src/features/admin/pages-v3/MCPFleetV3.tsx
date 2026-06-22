@@ -1783,29 +1783,40 @@ const LiveActivityDrawer = ({
                   e.status === 'error' || e.level === 'error' ? 'err'
                   : e.level === 'warn' ? 'warn'
                   : 'ok'
-                return (
-                  <div
-                    key={`${e.id ?? ''}-${e.ts}-${i}`}
-                    role={e.server ? 'button' : undefined}
-                    tabIndex={e.server ? 0 : undefined}
-                    onClick={() => e.server && onPick(String(e.server))}
-                    onKeyDown={e.server ? onKeyActivate(() => onPick(String(e.server))) : undefined}
-                    title={e.server ? 'click to drill into this server' : undefined}
-                    style={{ cursor: e.server ? 'pointer' : 'default' }}
+                const rowContent = (
+                  <FeedRow
+                    ts={fmtClockShort(e.ts)}
+                    status={status}
+                    who={e.server}
+                    act={
+                      <>
+                        {e.tool && <span className="accent">{e.tool}</span>}
+                        {e.tool && e.message && ' · '}
+                        {e.message}
+                      </>
+                    }
+                    right={typeof e.duration_ms === 'number' ? `${e.duration_ms}ms` : undefined}
+                  />
+                )
+                const rowKey = `${e.id ?? ''}-${e.ts}-${i}`
+                return e.server ? (
+                  <button
+                    key={rowKey}
+                    type="button"
+                    onClick={() => onPick(String(e.server))}
+                    onKeyDown={onKeyActivate(() => onPick(String(e.server)))}
+                    title="click to drill into this server"
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      background: 'none', border: 0, padding: 0, font: 'inherit', color: 'inherit',
+                      cursor: 'pointer',
+                    }}
                   >
-                    <FeedRow
-                      ts={fmtClockShort(e.ts)}
-                      status={status}
-                      who={e.server}
-                      act={
-                        <>
-                          {e.tool && <span className="accent">{e.tool}</span>}
-                          {e.tool && e.message && ' · '}
-                          {e.message}
-                        </>
-                      }
-                      right={typeof e.duration_ms === 'number' ? `${e.duration_ms}ms` : undefined}
-                    />
+                    {rowContent}
+                  </button>
+                ) : (
+                  <div key={rowKey} style={{ cursor: 'default' }}>
+                    {rowContent}
                   </div>
                 )
               })}

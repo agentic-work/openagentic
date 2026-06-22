@@ -21,7 +21,7 @@
  * underscores.
  */
 export function agentSlugToType(slug: string): string {
-  return slug.replaceAll(/-/g, '_');
+  return slug.replaceAll('-', '_');
 }
 
 /**
@@ -29,5 +29,5 @@ export function agentSlugToType(slug: string): string {
  * (`cloud-operations`). Inverse of `agentSlugToType`.
  */
 export function agentTypeToSlug(type: string): string {
-  return type.replaceAll(/_/g, '-');
+  return type.replaceAll('_', '-');
 }

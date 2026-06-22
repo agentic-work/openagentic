@@ -1433,22 +1433,17 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
     ? `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`
     : `${elapsed}s`;
 
-  return (
-    <div style={{ position: 'relative' }}>
-      {/* Main step row */}
-      <div
-        className={stepClass}
-        style={{
-          paddingTop: depth > 0 ? 2 : 4,
-          paddingBottom: depth > 0 ? 2 : 4,
-          cursor: isExpandable ? 'pointer' : 'default',
-        }}
-        onClick={isExpandable ? () => setShowDetail(!showDetail) : undefined}
-        onKeyDown={isExpandable ? onKeyActivate(() => setShowDetail(!showDetail)) : undefined}
-        role={isExpandable ? 'button' : undefined}
-        tabIndex={isExpandable ? 0 : undefined}
-      >
-        <div style={{
+  // The row body can contain nested interactive content (e.g. SummaryLinks
+  // renders <a> tags), so the clickable wrapper must stay a <div> with an
+  // explicit button role rather than a native <button>. Splitting the
+  // expandable / non-expandable cases keeps role + tabIndex statically paired.
+  const rowStyle: React.CSSProperties = {
+    paddingTop: depth > 0 ? 2 : 4,
+    paddingBottom: depth > 0 ? 2 : 4,
+    cursor: isExpandable ? 'pointer' : 'default',
+  };
+  const rowInner = (
+    <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: 8,
@@ -1604,7 +1599,27 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
             <ChevronDown size={12} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
           )}
         </div>
-      </div>
+  );
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Main step row */}
+      {isExpandable ? (
+        <div
+          className={stepClass}
+          style={rowStyle}
+          role="button"
+          tabIndex={0}
+          onClick={() => setShowDetail(!showDetail)}
+          onKeyDown={onKeyActivate(() => setShowDetail(!showDetail))}
+        >
+          {rowInner}
+        </div>
+      ) : (
+        <div className={stepClass} style={rowStyle}>
+          {rowInner}
+        </div>
+      )}
 
       {/* Nested agent children */}
       {childAgents.length > 0 && (

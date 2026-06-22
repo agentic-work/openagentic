@@ -44,11 +44,11 @@ export const CDN_LIB = {
 /** HTML-escape a string for safe interpolation between tags. */
 export function escHtml(value: unknown): string {
   return String(value ?? '')
-    .replaceAll(/&/g, '&amp;')
-    .replaceAll(/</g, '&lt;')
-    .replaceAll(/>/g, '&gt;')
-    .replaceAll(/"/g, '&quot;')
-    .replaceAll(/'/g, '&#39;');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 /** Embed a JSON object inside an inline `<script type="application/json">`

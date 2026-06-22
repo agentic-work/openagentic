@@ -653,7 +653,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
       /** Derive a DB-safe id from a server name */
       function slugify(name: string): string {
         const safe = name.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-        return safe || `mcp_${randomUUID().replaceAll(/-/g, '').substring(0, 8)}`;
+        return safe || `mcp_${randomUUID().replaceAll('-', '').substring(0, 8)}`;
       }
 
       // ── Format 1: Claude Desktop { mcpServers: { name: config } } ──────────
@@ -768,7 +768,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
           let serverId = entry.id;
           const existing = await prisma.mCPServerConfig.findUnique({ where: { id: serverId } });
           if (existing) {
-            serverId = `${serverId}_${randomUUID().replaceAll(/-/g, '').substring(0, 6)}`;
+            serverId = `${serverId}_${randomUUID().replaceAll('-', '').substring(0, 6)}`;
           }
 
           const server = await prisma.mCPServerConfig.create({
