@@ -466,7 +466,7 @@ export class ToolResultValidationService {
   private hashResult(result: string): string {
     let hash = 0;
     for (let i = 0; i < result.length; i++) {
-      const char = result.charCodeAt(i);
+      const char = result.codePointAt(i)!;
       hash = ((hash << 5) - hash) + char;
       hash = hash & hash;
     }

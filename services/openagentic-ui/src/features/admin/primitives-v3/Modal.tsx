@@ -24,11 +24,6 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, fo
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      tabIndex={-1}
-      onClick={onClose}
-      onKeyDown={onKeyActivate(onClose)}
       style={{
         position: 'fixed',
         inset: 0,
@@ -38,11 +33,28 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, fo
         placeItems: 'center',
       }}
     >
+      <button
+        type="button"
+        aria-label="close"
+        onClick={onClose}
+        onKeyDown={onKeyActivate(onClose)}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'transparent',
+          border: 0,
+          padding: 0,
+          margin: 0,
+          cursor: 'default',
+        }}
+      />
       <div
         className="glass"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
         style={{
+          position: 'relative',
           width,
           maxWidth: '92vw',
           maxHeight: '92vh',

@@ -51,6 +51,7 @@ export const LottieIcon: React.FC<LottieIconProps> = ({
 
   return (
     <div
+      role="presentation"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       className={className}

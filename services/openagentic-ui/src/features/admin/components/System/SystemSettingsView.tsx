@@ -203,6 +203,7 @@ const SystemSettingsView: React.FC<SystemSettingsViewProps> = () => {
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
+              aria-label="Tool Stripping"
               checked={tieredFCConfig.toolStrippingEnabled}
               onChange={(e) => handleTieredFCChange('toolStrippingEnabled', e.target.checked)}
               className="w-5 h-5 rounded"
@@ -227,6 +228,7 @@ const SystemSettingsView: React.FC<SystemSettingsViewProps> = () => {
           <label className="flex items-center gap-3 cursor-pointer mb-3">
             <input
               type="checkbox"
+              aria-label="Decision Caching"
               checked={tieredFCConfig.decisionCacheEnabled}
               onChange={(e) => handleTieredFCChange('decisionCacheEnabled', e.target.checked)}
               className="w-5 h-5 rounded"
@@ -245,6 +247,7 @@ const SystemSettingsView: React.FC<SystemSettingsViewProps> = () => {
             <div className="ml-8 mt-2">
               <label className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Cache TTL (seconds)
+                {' '}
                 <input
                   type="number"
                   value={tieredFCConfig.decisionCacheTTL}

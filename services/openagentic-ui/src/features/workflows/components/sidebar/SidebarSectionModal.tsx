@@ -694,12 +694,12 @@ const AgentsContent: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs mb-1" style={{ color: 'var(--color-text-tertiary)' }}>Max turns</label>
-                  <input type="number" value={newAgent.max_turns} onChange={e => setNewAgent(a => ({ ...a, max_turns: Number(e.target.value) }))} className={inputClass} style={inputStyle} />
+                  <label htmlFor="ssm-newagent-max-turns" className="block text-xs mb-1" style={{ color: 'var(--color-text-tertiary)' }}>Max turns</label>
+                  <input id="ssm-newagent-max-turns" type="number" value={newAgent.max_turns} onChange={e => setNewAgent(a => ({ ...a, max_turns: Number(e.target.value) }))} className={inputClass} style={inputStyle} />
                 </div>
                 <div>
-                  <label className="block text-xs mb-1" style={{ color: 'var(--color-text-tertiary)' }}>Budget (tokens, 0 = unlimited)</label>
-                  <input type="number" value={newAgent.budget} onChange={e => setNewAgent(a => ({ ...a, budget: Number(e.target.value) }))} className={inputClass} style={inputStyle} />
+                  <label htmlFor="ssm-newagent-budget" className="block text-xs mb-1" style={{ color: 'var(--color-text-tertiary)' }}>Budget (tokens, 0 = unlimited)</label>
+                  <input id="ssm-newagent-budget" type="number" value={newAgent.budget} onChange={e => setNewAgent(a => ({ ...a, budget: Number(e.target.value) }))} className={inputClass} style={inputStyle} />
                 </div>
               </div>
               <button onClick={handleCreate} disabled={saving || !newAgent.display_name.trim()} className={`${btnPrimary} w-full`} style={btnPrimaryStyle}>
@@ -2557,8 +2557,8 @@ const SettingsContent: React.FC<{
         </h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Default Model</label>
-            <input type="text" value={settings.execution?.defaultModel || ''} onChange={e => updateSetting('execution.defaultModel', e.target.value)}
+            <label htmlFor="ssm-exec-default-model" className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Default Model</label>
+            <input id="ssm-exec-default-model" type="text" value={settings.execution?.defaultModel || ''} onChange={e => updateSetting('execution.defaultModel', e.target.value)}
               placeholder="auto (platform routing)" className={inputClass} style={inputStyle} />
             <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>Leave empty to use platform-level intelligent routing.</p>
           </div>
@@ -2567,13 +2567,13 @@ const SettingsContent: React.FC<{
               budget caps live in UserModelBudgetService. */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Default Timeout (s)</label>
-              <input type="number" value={settings.execution?.defaultTimeout || 60} onChange={e => updateSetting('execution.defaultTimeout', Number.parseInt(e.target.value) || 60)}
+              <label htmlFor="ssm-exec-default-timeout" className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Default Timeout (s)</label>
+              <input id="ssm-exec-default-timeout" type="number" value={settings.execution?.defaultTimeout || 60} onChange={e => updateSetting('execution.defaultTimeout', Number.parseInt(e.target.value) || 60)}
                 min={1} className={inputClass} style={inputStyle} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Max Execution Time (s)</label>
-              <input type="number" value={settings.execution?.maxExecutionTime || 3600} onChange={e => updateSetting('execution.maxExecutionTime', Number.parseInt(e.target.value) || 3600)}
+              <label htmlFor="ssm-exec-max-time" className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Max Execution Time (s)</label>
+              <input id="ssm-exec-max-time" type="number" value={settings.execution?.maxExecutionTime || 3600} onChange={e => updateSetting('execution.maxExecutionTime', Number.parseInt(e.target.value) || 3600)}
                 min={1} className={inputClass} style={inputStyle} />
             </div>
           </div>
@@ -2588,24 +2588,24 @@ const SettingsContent: React.FC<{
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Per-Execution Budget ($)</label>
-              <input type="number" value={settings.costs?.perExecution || ''} onChange={e => updateSetting('costs.perExecution', Number.parseFloat(e.target.value) || undefined)}
+              <label htmlFor="ssm-cost-per-exec" className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Per-Execution Budget ($)</label>
+              <input id="ssm-cost-per-exec" type="number" value={settings.costs?.perExecution || ''} onChange={e => updateSetting('costs.perExecution', Number.parseFloat(e.target.value) || undefined)}
                 min={0} step={0.01} placeholder="No limit" className={inputClass} style={inputStyle} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Daily Budget ($)</label>
-              <input type="number" value={settings.costs?.daily || ''} onChange={e => updateSetting('costs.daily', Number.parseFloat(e.target.value) || undefined)}
+              <label htmlFor="ssm-cost-daily" className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Daily Budget ($)</label>
+              <input id="ssm-cost-daily" type="number" value={settings.costs?.daily || ''} onChange={e => updateSetting('costs.daily', Number.parseFloat(e.target.value) || undefined)}
                 min={0} step={0.01} placeholder="No limit" className={inputClass} style={inputStyle} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Monthly Budget ($)</label>
-              <input type="number" value={settings.costs?.monthly || ''} onChange={e => updateSetting('costs.monthly', Number.parseFloat(e.target.value) || undefined)}
+              <label htmlFor="ssm-cost-monthly" className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Monthly Budget ($)</label>
+              <input id="ssm-cost-monthly" type="number" value={settings.costs?.monthly || ''} onChange={e => updateSetting('costs.monthly', Number.parseFloat(e.target.value) || undefined)}
                 min={0} step={0.01} placeholder="No limit" className={inputClass} style={inputStyle} />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>On Budget Exceeded</label>
-            <select value={settings.costs?.onExceeded || 'pause'} onChange={e => updateSetting('costs.onExceeded', e.target.value)} className={inputClass} style={inputStyle}>
+            <label htmlFor="ssm-cost-on-exceeded" className="block text-sm font-medium mb-2" style={fieldLabelStyle}>On Budget Exceeded</label>
+            <select id="ssm-cost-on-exceeded" value={settings.costs?.onExceeded || 'pause'} onChange={e => updateSetting('costs.onExceeded', e.target.value)} className={inputClass} style={inputStyle}>
               <option value="pause">Pause Execution</option>
               <option value="downgrade">Downgrade Model Tier</option>
               <option value="abort">Abort Workflow</option>
@@ -2622,19 +2622,19 @@ const SettingsContent: React.FC<{
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Default Retry Count</label>
-              <input type="number" value={settings.retry?.count || 3} onChange={e => updateSetting('retry.count', Number.parseInt(e.target.value) || 3)}
+              <label htmlFor="ssm-retry-count" className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Default Retry Count</label>
+              <input id="ssm-retry-count" type="number" value={settings.retry?.count || 3} onChange={e => updateSetting('retry.count', Number.parseInt(e.target.value) || 3)}
                 min={0} max={10} className={inputClass} style={inputStyle} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Default Delay (ms)</label>
-              <input type="number" value={settings.retry?.delayMs || 1000} onChange={e => updateSetting('retry.delayMs', Number.parseInt(e.target.value) || 1000)}
+              <label htmlFor="ssm-retry-delay" className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Default Delay (ms)</label>
+              <input id="ssm-retry-delay" type="number" value={settings.retry?.delayMs || 1000} onChange={e => updateSetting('retry.delayMs', Number.parseInt(e.target.value) || 1000)}
                 min={100} className={inputClass} style={inputStyle} />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Backoff Strategy</label>
-            <select value={settings.retry?.backoff || 'fixed'} onChange={e => updateSetting('retry.backoff', e.target.value)} className={inputClass} style={inputStyle}>
+            <label htmlFor="ssm-retry-backoff" className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Backoff Strategy</label>
+            <select id="ssm-retry-backoff" value={settings.retry?.backoff || 'fixed'} onChange={e => updateSetting('retry.backoff', e.target.value)} className={inputClass} style={inputStyle}>
               <option value="fixed">Fixed</option>
               <option value="exponential">Exponential</option>
             </select>

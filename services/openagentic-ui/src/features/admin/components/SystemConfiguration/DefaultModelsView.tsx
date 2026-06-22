@@ -189,6 +189,7 @@ const ModelPicker: React.FC<ModelPickerProps> = ({ category, value, registryMode
       <div
         role="combobox"
         aria-expanded={open}
+        aria-controls={`dropdown-${category}`}
         aria-label={`model picker for ${category}`}
         tabIndex={0}
         style={{
@@ -213,6 +214,7 @@ const ModelPicker: React.FC<ModelPickerProps> = ({ category, value, registryMode
 
       {open && (
         <div
+          id={`dropdown-${category}`}
           data-testid={`dropdown-${category}`}
           style={{
             background: 'var(--ap-bg-secondary)',
@@ -661,7 +663,7 @@ const DefaultModelsView: React.FC = () => {
             width: 6, height: 6, borderRadius: '50%', background: 'var(--color-success)',
             display: 'inline-block',
           }} />
-          Live · propagates to all pods
+          <span>Live · propagates to all pods</span>
         </span>
       </div>
 

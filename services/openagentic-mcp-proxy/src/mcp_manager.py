@@ -950,7 +950,7 @@ class MCPManager:
                 raise ValueError("mcpServers object is empty")
 
             # Get the first (and usually only) server
-            server_name = list(mcp_servers.keys())[0]
+            server_name = next(iter(mcp_servers.keys()))
             server_config = mcp_servers[server_name]
 
             # Merge extracted config

@@ -369,7 +369,7 @@ export function validateNode(
   // eslint-disable-next-line no-new-func
   if (nodeType === 'code' && data?.code) {
     try {
-      Function('input', data.code);
+      new Function('input', data.code);
     } catch (e: any) {
       issues.push({
         code: 'INVALID_CODE_SYNTAX',
@@ -394,7 +394,7 @@ export function validateNode(
       // on every template that branches on upstream data.
       const rawExpr = String(data.condition || data.expression);
       const parseSafeExpr = rawExpr.replace(/\{\{[^}]+\}\}/g, '__cv');
-      Function('input', `return (${parseSafeExpr})`);
+      new Function('input', `return (${parseSafeExpr})`);
     } catch (e: any) {
       issues.push({
         code: 'INVALID_CONDITION',

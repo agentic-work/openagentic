@@ -59,14 +59,14 @@ export const CapabilityMatrix: React.FC<{
                         <input type="radio" name={`primary-${cap.key}`} checked={isPrimary && hasCap}
                           onChange={() => onCapabilityChange(p.id, cap.key, 'primary')}
                           className="accent-primary-500" style={{ width: 12, height: 12 }} />
-                        Primary
+                        {' '}Primary
                       </label>
                       {/* Fallback checkbox */}
                       <label className="flex items-center gap-1 text-xs cursor-pointer" style={{ color: isFallback ? 'var(--ap-accent)' : 'var(--text-tertiary)' }}>
                         <input type="checkbox" checked={hasCap && !isPrimary}
                           onChange={e => onCapabilityChange(p.id, cap.key, e.target.checked ? 'fallback' : 'none')}
                           className="rounded" style={{ width: 12, height: 12, accentColor: 'var(--ap-accent)' }} />
-                        Fallback
+                        {' '}Fallback
                       </label>
                     </div>
                   </td>

@@ -2,7 +2,9 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { vi } from 'vitest';
 
-export async function build(opts = { test: true }): Promise<FastifyInstance> {
+const DEFAULT_BUILD_OPTS = { test: true };
+
+export async function build(opts = DEFAULT_BUILD_OPTS): Promise<FastifyInstance> {
   const app = Fastify({
     logger: opts.test ? false : true
   });

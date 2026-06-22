@@ -75,10 +75,8 @@ export class LargeResultStorageService {
   private redis: UnifiedRedisClient | null = null;
 
   constructor(private readonly logger: Logger) {
-    this.initRedis();
-  }
-
-  private async initRedis(): Promise<void> {
+    // getRedisClient() is synchronous (returns the shared client handle),
+    // so we wire it directly here — no async work in the constructor.
     try {
       this.redis = getRedisClient();
     } catch (error) {

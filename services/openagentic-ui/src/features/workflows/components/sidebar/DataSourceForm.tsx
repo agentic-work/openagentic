@@ -167,8 +167,9 @@ export const DataSourceForm: React.FC<DataSourceFormProps> = ({
 
       {/* Name */}
       <div style={{ marginBottom: '6px' }}>
-        <label style={labelStyle}>Name</label>
+        <label htmlFor="datasource-name" style={labelStyle}>Name</label>
         <input
+          id="datasource-name"
           value={form.name}
           onChange={e => updateField('name', e.target.value)}
           placeholder="My Database"
@@ -178,7 +179,7 @@ export const DataSourceForm: React.FC<DataSourceFormProps> = ({
 
       {/* Type selector grid */}
       <div style={{ marginBottom: '6px' }}>
-        <label style={labelStyle}>Type</label>
+        <span style={labelStyle}>Type</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '3px' }}>
           {TYPE_OPTIONS.map(opt => (
             <button
@@ -210,8 +211,9 @@ export const DataSourceForm: React.FC<DataSourceFormProps> = ({
       {(isSqlType || isRedisType) && (
         <>
           <div style={{ marginBottom: '4px' }}>
-            <label style={labelStyle}>Host</label>
+            <label htmlFor="datasource-host" style={labelStyle}>Host</label>
             <input
+              id="datasource-host"
               value={form.host}
               onChange={e => updateField('host', e.target.value)}
               placeholder="localhost"
@@ -220,8 +222,9 @@ export const DataSourceForm: React.FC<DataSourceFormProps> = ({
           </div>
           <div style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Port</label>
+              <label htmlFor="datasource-port" style={labelStyle}>Port</label>
               <input
+                id="datasource-port"
                 type="number"
                 value={form.port}
                 onChange={e => updateField('port', Number.parseInt(e.target.value) || 0)}
@@ -230,8 +233,9 @@ export const DataSourceForm: React.FC<DataSourceFormProps> = ({
             </div>
             {isSqlType && (
               <div style={{ flex: 2 }}>
-                <label style={labelStyle}>Database</label>
+                <label htmlFor="datasource-database" style={labelStyle}>Database</label>
                 <input
+                  id="datasource-database"
                   value={form.database}
                   onChange={e => updateField('database', e.target.value)}
                   placeholder="mydb"
@@ -246,8 +250,9 @@ export const DataSourceForm: React.FC<DataSourceFormProps> = ({
       {/* Connection fields — URL types */}
       {isUrlType && (
         <div style={{ marginBottom: '4px' }}>
-          <label style={labelStyle}>Base URL</label>
+          <label htmlFor="datasource-baseurl" style={labelStyle}>Base URL</label>
           <input
+            id="datasource-baseurl"
             value={form.baseUrl}
             onChange={e => updateField('baseUrl', e.target.value)}
             placeholder="https://api.example.com"
@@ -260,8 +265,9 @@ export const DataSourceForm: React.FC<DataSourceFormProps> = ({
       {isS3Type && (
         <>
           <div style={{ marginBottom: '4px' }}>
-            <label style={labelStyle}>Endpoint</label>
+            <label htmlFor="datasource-endpoint" style={labelStyle}>Endpoint</label>
             <input
+              id="datasource-endpoint"
               value={form.endpoint}
               onChange={e => updateField('endpoint', e.target.value)}
               placeholder="http://minio:9000"
@@ -269,8 +275,9 @@ export const DataSourceForm: React.FC<DataSourceFormProps> = ({
             />
           </div>
           <div style={{ marginBottom: '4px' }}>
-            <label style={labelStyle}>Bucket</label>
+            <label htmlFor="datasource-bucket" style={labelStyle}>Bucket</label>
             <input
+              id="datasource-bucket"
               value={form.bucket}
               onChange={e => updateField('bucket', e.target.value)}
               placeholder="my-bucket"
@@ -283,8 +290,9 @@ export const DataSourceForm: React.FC<DataSourceFormProps> = ({
       {/* Credential selector */}
       {secrets && secrets.length > 0 && (
         <div style={{ marginBottom: '4px' }}>
-          <label style={labelStyle}>Credential</label>
+          <label htmlFor="datasource-credential" style={labelStyle}>Credential</label>
           <select
+            id="datasource-credential"
             value={form.credentialId}
             onChange={e => updateField('credentialId', e.target.value)}
             style={{ ...inputStyle, appearance: 'auto' as any }}

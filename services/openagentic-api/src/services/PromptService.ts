@@ -72,6 +72,7 @@ export class PromptService {
   private milvusService?: MilvusVectorService;
   private useSemanticSearch: boolean;
   private semanticSearchInitialized: boolean = false;
+  private semanticSearchInit?: Promise<void>;
 
   constructor(logger: Logger, redisClient?: UnifiedRedisClient, milvusService?: MilvusVectorService) {
     this.logger = logger;
@@ -89,14 +90,26 @@ export class PromptService {
 
     if (this.useSemanticSearch && this.milvusService) {
       this.logger.info('PromptService initialized with Milvus semantic search for prompt templates');
-      // Initialize prompt templates in Milvus asynchronously
-      this.initializePromptTemplatesInMilvus().catch(err => {
-        this.logger.warn({ err }, 'Failed to initialize prompt templates in Milvus, falling back to keyword search');
-        this.useSemanticSearch = false;
-      });
+      // Milvus template indexing runs lazily on first template lookup
+      // (ensureSemanticSearchInit) — no async work in the constructor.
     } else {
       this.logger.info('PromptService using keyword-based search (set ENABLE_PROMPT_SEMANTIC_SEARCH=true and provide MilvusVectorService to enable)');
     }
+  }
+
+  /**
+   * Index prompt templates into Milvus at most once, lazily, on first template
+   * lookup. Best-effort: a failure falls back to keyword search.
+   */
+  private async ensureSemanticSearchInit(): Promise<void> {
+    if (!this.useSemanticSearch || !this.milvusService || this.semanticSearchInitialized) return;
+    if (!this.semanticSearchInit) {
+      this.semanticSearchInit = this.initializePromptTemplatesInMilvus().catch(err => {
+        this.logger.warn({ err }, 'Failed to initialize prompt templates in Milvus, falling back to keyword search');
+        this.useSemanticSearch = false;
+      });
+    }
+    await this.semanticSearchInit;
   }
 
   /**
@@ -402,6 +415,9 @@ export class PromptService {
     try {
       // Check if user is admin
       const isAdmin = await this.isUserAdmin(userId, userGroups);
+
+      // Lazily index templates into Milvus on first lookup.
+      await this.ensureSemanticSearchInit();
 
       // Use Milvus semantic search if available and initialized
       if (this.useSemanticSearch && this.milvusService && this.semanticSearchInitialized) {

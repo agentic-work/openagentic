@@ -339,7 +339,7 @@ const AgentRow: React.FC<{
   }
 
   return (
-    <div role="treeitem" style={{ marginTop: 6 }}>
+    <div role="treeitem" aria-selected={false} style={{ marginTop: 6 }}>
       {/* Agent header row */}
       <div
         style={{

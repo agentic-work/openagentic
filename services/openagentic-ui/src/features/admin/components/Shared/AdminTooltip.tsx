@@ -51,6 +51,7 @@ export const AdminTooltip: React.FC<AdminTooltipProps> = ({
 
   return (
     <div
+      role="presentation"
       className="relative inline-flex"
       onMouseEnter={show}
       onMouseLeave={hide}

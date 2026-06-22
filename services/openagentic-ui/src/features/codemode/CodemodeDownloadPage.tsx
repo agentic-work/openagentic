@@ -89,6 +89,7 @@ export const CodemodeDownloadPage: React.FC = () => {
       <div
         className="flex-1 rounded-xl p-6 flex flex-col items-center text-center transition-colors"
         style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+        role="presentation"
         onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-accent, var(--color-primary))')}
         onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}
       >
@@ -123,8 +124,8 @@ export const CodemodeDownloadPage: React.FC = () => {
       <div className="text-center">
         <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Code Mode</h1>
         <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          <strong>agenticode</strong> is a local coding agent that runs on your machine and uses
-          <strong> this openagentic instance</strong> as its model provider — your code never leaves your box,
+          <strong>agenticode</strong> is a local coding agent that runs on your machine and uses{' '}
+          <strong>this openagentic instance</strong> as its model provider — your code never leaves your box,
           and inference runs through the endpoint you downloaded it from.
         </p>
       </div>
@@ -156,8 +157,7 @@ export const CodemodeDownloadPage: React.FC = () => {
         </div>
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            Provider endpoint:&nbsp;
-            <code style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-code)' }}>{INSTANCE_ORIGIN}</code>
+            Provider endpoint:&nbsp;<code style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-code)' }}>{INSTANCE_ORIGIN}</code>
             <button onClick={copyOrigin} className="ml-2 inline-flex items-center align-middle hover:opacity-70" style={{ color: 'var(--text-tertiary)' }} title="Copy">
               {copied ? <Check size={12} /> : <Copy size={12} />}
             </button>

@@ -273,18 +273,23 @@ const MilvusImage: React.FC<MilvusImageProps> = memo(({ src, alt, theme }) => {
             <div className="text-xs" style={{ color: 'var(--color-textSecondary)' }}>Loading image...</div>
           </div>
         )}
-        <img
-          src={finalSrc}
-          alt={alt || 'Generated image'}
-          role="button"
-          tabIndex={0}
-          className="rounded-lg shadow-lg max-w-full h-auto cursor-pointer transition-opacity hover:opacity-90"
-          style={{ maxHeight: '512px', objectFit: 'contain', display: imgLoaded || isImageProtocol ? 'block' : 'none' }}
+        <button
+          type="button"
+          aria-label="Expand image"
+          className="block p-0 m-0 bg-transparent border-0 cursor-pointer"
+          style={{ display: imgLoaded || isImageProtocol ? 'block' : 'none' }}
           onClick={() => setIsFullscreen(true)}
           onKeyDown={onKeyActivate(() => setIsFullscreen(true))}
-          onError={() => setImageError(true)}
-          onLoad={() => setImgLoaded(true)}
-        />
+        >
+          <img
+            src={finalSrc}
+            alt={alt || 'Generated image'}
+            className="rounded-lg shadow-lg max-w-full h-auto cursor-pointer transition-opacity hover:opacity-90"
+            style={{ maxHeight: '512px', objectFit: 'contain', display: 'block' }}
+            onError={() => setImageError(true)}
+            onLoad={() => setImgLoaded(true)}
+          />
+        </button>
         <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-all rounded-lg pointer-events-none">
           <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium bg-black/50 px-3 py-1 rounded-full">
             Click to expand
@@ -1101,6 +1106,7 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
                 {isStreaming && (
                   <div className="absolute top-2 right-2 z-10 flex items-center gap-2 px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                    {' '}
                     Live
                   </div>
                 )}

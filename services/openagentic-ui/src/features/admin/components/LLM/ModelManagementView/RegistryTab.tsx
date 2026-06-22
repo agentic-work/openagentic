@@ -488,7 +488,7 @@ export const RegistryTab: React.FC<{
                   {effectiveEnabled ? 'Active' : 'Off'}
                 </span>
               </span>
-              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
+              <div className="flex items-center gap-1" role="presentation" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
                 {/* Test model — low-token health probe (#54) */}
                 <button onClick={() => handleTestModel(model)} disabled={testingModel === model.id}
                   className="px-2 py-0.5 rounded text-[10px] font-medium bg-[color-mix(in_srgb,var(--color-ok)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-ok)_25%,transparent)] text-ok border border-[color-mix(in_srgb,var(--color-ok)_30%,transparent)] transition-colors disabled:opacity-50 flex-shrink-0"
@@ -536,8 +536,9 @@ export const RegistryTab: React.FC<{
                     <div className="grid grid-cols-3 gap-4">
                       {/* Max Output Tokens */}
                       <div>
-                        <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Max Output Tokens</label>
+                        <label htmlFor={`rt-${model.id}-max-output`} className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Max Output Tokens</label>
                         <input
+                          id={`rt-${model.id}-max-output`}
                           type="number" min={1} max={200000}
                           value={editConfig.maxOutputTokens || ''}
                           onChange={e => setEditConfig(c => ({ ...c, maxOutputTokens: Number(e.target.value) }))}
@@ -547,8 +548,9 @@ export const RegistryTab: React.FC<{
                       </div>
                       {/* Max Input Tokens */}
                       <div>
-                        <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Max Input Tokens (Context)</label>
+                        <label htmlFor={`rt-${model.id}-max-input`} className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Max Input Tokens (Context)</label>
                         <input
+                          id={`rt-${model.id}-max-input`}
                           type="number" min={1} max={2000000}
                           value={editConfig.maxInputTokens || ''}
                           onChange={e => setEditConfig(c => ({ ...c, maxInputTokens: Number(e.target.value) }))}
@@ -558,8 +560,9 @@ export const RegistryTab: React.FC<{
                       </div>
                       {/* Rate Limit Requests/hr */}
                       <div>
-                        <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Rate Limit (req/hr, 0=unlimited)</label>
+                        <label htmlFor={`rt-${model.id}-rl-req`} className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Rate Limit (req/hr, 0=unlimited)</label>
                         <input
+                          id={`rt-${model.id}-rl-req`}
                           type="number" min={0}
                           value={editConfig.rateLimitRequestsPerHour ?? 0}
                           onChange={e => setEditConfig(c => ({ ...c, rateLimitRequestsPerHour: Number(e.target.value) }))}
@@ -569,8 +572,9 @@ export const RegistryTab: React.FC<{
                       </div>
                       {/* Rate Limit Tokens/hr */}
                       <div>
-                        <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Rate Limit (tokens/hr, 0=unlimited)</label>
+                        <label htmlFor={`rt-${model.id}-rl-tok`} className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Rate Limit (tokens/hr, 0=unlimited)</label>
                         <input
+                          id={`rt-${model.id}-rl-tok`}
                           type="number" min={0}
                           value={editConfig.rateLimitTokensPerHour ?? 0}
                           onChange={e => setEditConfig(c => ({ ...c, rateLimitTokensPerHour: Number(e.target.value) }))}
@@ -607,7 +611,7 @@ export const RegistryTab: React.FC<{
                     </div>
                     {/* Roles */}
                     <div>
-                      <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Roles</label>
+                      <span className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Roles</span>
                       <div className="flex flex-wrap gap-2">
                         {MODEL_ROLES.map(role => {
                           const active = editConfig.roles?.includes(role);
@@ -639,7 +643,7 @@ export const RegistryTab: React.FC<{
                     {/* (#69) Capability toggles — admin overrides for SDK guesses */}
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Capabilities (overrides SDK)</label>
+                        <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Capabilities (overrides SDK)</span>
                         <button
                           onClick={() => pullFromProvider(model)}
                           disabled={pullingFromProvider}
@@ -684,8 +688,9 @@ export const RegistryTab: React.FC<{
                     {/* (#69) Cost tier + pricing fields */}
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Cost Tier</label>
+                        <label htmlFor={`rt-${model.id}-cost-tier`} className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Cost Tier</label>
                         <select
+                          id={`rt-${model.id}-cost-tier`}
                           value={editConfig.costTier ?? ''}
                           onChange={e => setEditConfig(c => ({ ...c, costTier: (e.target.value || undefined) as any }))}
                           className="w-full px-2.5 py-1.5 text-xs rounded-lg border outline-none"
@@ -700,8 +705,9 @@ export const RegistryTab: React.FC<{
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>$ / M Tok Input</label>
+                        <label htmlFor={`rt-${model.id}-cost-in`} className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>$ / M Tok Input</label>
                         <input
+                          id={`rt-${model.id}-cost-in`}
                           type="number" min={0} step={0.01}
                           value={editConfig.costPerMTokInput ?? ''}
                           onChange={e => setEditConfig(c => ({ ...c, costPerMTokInput: e.target.value === '' ? undefined : Number(e.target.value) }))}
@@ -711,8 +717,9 @@ export const RegistryTab: React.FC<{
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>$ / M Tok Output</label>
+                        <label htmlFor={`rt-${model.id}-cost-out`} className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>$ / M Tok Output</label>
                         <input
+                          id={`rt-${model.id}-cost-out`}
                           type="number" min={0} step={0.01}
                           value={editConfig.costPerMTokOutput ?? ''}
                           onChange={e => setEditConfig(c => ({ ...c, costPerMTokOutput: e.target.value === '' ? undefined : Number(e.target.value) }))}
@@ -862,6 +869,7 @@ export const RegistryTab: React.FC<{
           <div
             className="max-w-lg w-full rounded-xl border shadow-2xl"
             style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+            role="presentation"
             onClick={e => e.stopPropagation()}
             onKeyDown={e => e.stopPropagation()}
           >

@@ -117,6 +117,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               setError('Failed to load video');
             }}
           >
+            <track kind="captions" />
             Your browser does not support the video tag.
           </video>
         </div>
@@ -144,6 +145,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
                 setError('Failed to load audio');
               }}
             >
+              <track kind="captions" />
               Your browser does not support the audio tag.
             </audio>
           </div>

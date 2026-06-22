@@ -674,16 +674,20 @@ const MessageContent: React.FC<MessageContentProps> = ({ message, theme }) => {
                         img: ({ src, alt }) => {
                           if (!src) return null;
                           return (
-                            <img
-                              src={src}
-                              alt={alt}
-                              role="button"
-                              tabIndex={0}
+                            <button
+                              type="button"
+                              aria-label="Expand image"
+                              className="block p-0 m-0 bg-transparent border-0 cursor-pointer max-w-full"
                               onClick={() => setViewerImage({ url: src, alt })}
                               onKeyDown={onKeyActivate(() => setViewerImage({ url: src, alt }))}
-                              className="max-w-full h-auto cursor-pointer"
-                              loading="lazy"
-                            />
+                            >
+                              <img
+                                src={src}
+                                alt={alt}
+                                className="max-w-full h-auto cursor-pointer"
+                                loading="lazy"
+                              />
+                            </button>
                           );
                         },
                       }}

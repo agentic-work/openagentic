@@ -559,6 +559,7 @@ export const RouterTuningPage: React.FC = () => {
         meta={
           <>
             Smart Router scoring weights
+            {' '}
             <span style={{ margin: '0 8px', color: 'var(--fg-3)' }}>·</span>
             <StatusDot status={tuningQ.isError ? 'err' : 'ok'} />
             <span style={{ marginLeft: 6 }}>{podBadge}</span>
@@ -717,6 +718,7 @@ export const RouterTuningPage: React.FC = () => {
             onChange={(e) => setVal('fcaQualityGatedByComplexity', e.target.checked)}
             style={{ margin: 0 }}
           />
+          {' '}
           gated by complexity
         </label>
         <br />

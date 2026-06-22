@@ -133,7 +133,7 @@ const SLUG_INDEX: Map<string, ComposeAppTemplate> = new Map(
  * a hyphen).
  */
 function underscoreAlias(slug: string): string {
-  return slug.replace(/-/g, '_');
+  return slug.replaceAll(/-/g, '_');
 }
 
 const ALIAS_INDEX: Map<string, ComposeAppTemplate> = new Map(

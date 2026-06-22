@@ -687,8 +687,9 @@ export const AuthAccessControlView: React.FC = () => {
             <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">Add Allowed User</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-text-secondary mb-1">Email *</label>
+                <label htmlFor="add-user-email" className="block text-sm text-text-secondary mb-1">Email *</label>
                 <AdminInput
+                  id="add-user-email"
                   type="email"
                   placeholder="user@example.com"
                   value={newUserEmail}
@@ -696,8 +697,9 @@ export const AuthAccessControlView: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm text-text-secondary mb-1">Display Name</label>
+                <label htmlFor="add-user-display-name" className="block text-sm text-text-secondary mb-1">Display Name</label>
                 <AdminInput
+                  id="add-user-display-name"
                   type="text"
                   placeholder="John Doe"
                   value={newUserDisplayName}
@@ -705,8 +707,9 @@ export const AuthAccessControlView: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm text-text-secondary mb-1">Notes</label>
+                <label htmlFor="add-user-notes" className="block text-sm text-text-secondary mb-1">Notes</label>
                 <AdminInput
+                  id="add-user-notes"
                   type="text"
                   placeholder="Optional notes..."
                   value={newUserNotes}
@@ -745,8 +748,9 @@ export const AuthAccessControlView: React.FC = () => {
             <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">Add Allowed Domain</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-text-secondary mb-1">Domain *</label>
+                <label htmlFor="add-domain-name" className="block text-sm text-text-secondary mb-1">Domain *</label>
                 <AdminInput
+                  id="add-domain-name"
                   type="text"
                   placeholder="example.com"
                   value={newDomain}
@@ -757,8 +761,9 @@ export const AuthAccessControlView: React.FC = () => {
                 </p>
               </div>
               <div>
-                <label className="block text-sm text-text-secondary mb-1">Notes</label>
+                <label htmlFor="add-domain-notes" className="block text-sm text-text-secondary mb-1">Notes</label>
                 <AdminInput
+                  id="add-domain-notes"
                   type="text"
                   placeholder="Optional notes..."
                   value={newDomainNotes}
@@ -797,24 +802,27 @@ export const AuthAccessControlView: React.FC = () => {
             <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">Edit User</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-text-secondary mb-1">Email</label>
+                <label htmlFor="edit-user-email" className="block text-sm text-text-secondary mb-1">Email</label>
                 <AdminInput
+                  id="edit-user-email"
                   type="email"
                   value={editingUser.email}
                   onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
                 />
               </div>
               <div>
-                <label className="block text-sm text-text-secondary mb-1">Display Name</label>
+                <label htmlFor="edit-user-display-name" className="block text-sm text-text-secondary mb-1">Display Name</label>
                 <AdminInput
+                  id="edit-user-display-name"
                   type="text"
                   value={editingUser.display_name || ''}
                   onChange={(e) => setEditingUser({ ...editingUser, display_name: e.target.value })}
                 />
               </div>
               <div>
-                <label className="block text-sm text-text-secondary mb-1">Notes</label>
+                <label htmlFor="edit-user-notes" className="block text-sm text-text-secondary mb-1">Notes</label>
                 <AdminInput
+                  id="edit-user-notes"
                   type="text"
                   value={editingUser.notes || ''}
                   onChange={(e) => setEditingUser({ ...editingUser, notes: e.target.value })}

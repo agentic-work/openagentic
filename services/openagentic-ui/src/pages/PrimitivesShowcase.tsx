@@ -179,8 +179,7 @@ export default function PrimitivesShowcase(): JSX.Element {
           Visual smoke test for every primitive shipped under{' '}
           <code style={{ fontFamily: 'JetBrains Mono, monospace' }}>
             @/features/chat/components/v2
-          </code>
-          . Sample data sourced from <code>mocks/UX/01-cloud-ops.html</code>.
+          </code>. Sample data sourced from <code>mocks/UX/01-cloud-ops.html</code>.
         </p>
 
         <Section name="SavingsCard" reference="mocks/UX/01-cloud-ops.html:1142-1155">

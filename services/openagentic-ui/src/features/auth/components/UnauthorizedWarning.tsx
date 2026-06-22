@@ -317,7 +317,7 @@ const UnauthorizedWarning: React.FC<UnauthorizedWarningProps> = ({ clientIp }) =
 
       {/* Warning icons floating in background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(8)].map((_, i) => (
+        {[...new Array(8)].map((_, i) => (
           <motion.div
             key={i}
             initial={{

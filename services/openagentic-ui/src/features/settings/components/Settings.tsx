@@ -324,9 +324,9 @@ const Settings = () => {
               
               <div className="space-y-6">
                 <div>
-                  <label className="text-sm font-medium text-[var(--color-textSecondary)] mb-3 block">
+                  <span className="text-sm font-medium text-[var(--color-textSecondary)] mb-3 block">
                     Theme
-                  </label>
+                  </span>
                   <div className="grid grid-cols-3 gap-3">
                     <button
                       onClick={() => handleThemeChange('light')}
@@ -370,9 +370,9 @@ const Settings = () => {
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium text-[var(--color-textSecondary)] mb-3 block">
+                  <span className="text-sm font-medium text-[var(--color-textSecondary)] mb-3 block">
                     Accent Color
-                  </label>
+                  </span>
                   <div className="flex flex-wrap gap-3">
                     {accentColors.map((color) => (
                       <button
@@ -407,9 +407,9 @@ const Settings = () => {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-[var(--color-textSecondary)] mb-3 block">
+                  <span className="text-sm font-medium text-[var(--color-textSecondary)] mb-3 block">
                     Background Effect
-                  </label>
+                  </span>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setBackgroundEffect('off')}
@@ -447,9 +447,9 @@ const Settings = () => {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-[var(--color-textSecondary)] mb-3 block">
+                  <span className="text-sm font-medium text-[var(--color-textSecondary)] mb-3 block">
                     Keyboard Shortcuts
-                  </label>
+                  </span>
                   <div className="p-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]/30">
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="flex items-center justify-between">
@@ -481,9 +481,9 @@ const Settings = () => {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-[var(--color-textSecondary)] mb-3 block">
+                  <span className="text-sm font-medium text-[var(--color-textSecondary)] mb-3 block">
                     Onboarding Tutorial
-                  </label>
+                  </span>
                   <button
                     onClick={() => {
                       localStorage.removeItem('onboarding_completed');
@@ -683,6 +683,7 @@ const Settings = () => {
                       type="checkbox"
                       checked={value}
                       onChange={(e) => setNotifications({ ...notifications, [key]: e.target.checked })}
+                      aria-label={key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                       className="sr-only"
                     />
                     <div className={`relative w-12 h-6 rounded-full transition-colors ${
@@ -779,10 +780,11 @@ const Settings = () => {
               
               <div className="space-y-6">
                 <div>
-                  <label className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
+                  <label htmlFor="settings-api-rate-limit" className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
                     Rate Limit (requests/hour)
                   </label>
                   <input
+                    id="settings-api-rate-limit"
                     type="number"
                     value={apiSettings.rateLimit}
                     onChange={(e) => setApiSettings({ ...apiSettings, rateLimit: e.target.value })}
@@ -791,10 +793,11 @@ const Settings = () => {
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
+                  <label htmlFor="settings-api-timeout" className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
                     Request Timeout (seconds)
                   </label>
                   <input
+                    id="settings-api-timeout"
                     type="number"
                     value={apiSettings.timeout}
                     onChange={(e) => setApiSettings({ ...apiSettings, timeout: e.target.value })}
@@ -803,10 +806,11 @@ const Settings = () => {
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
+                  <label htmlFor="settings-api-max-retries" className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
                     Max Retries
                   </label>
                   <input
+                    id="settings-api-max-retries"
                     type="number"
                     value={apiSettings.maxRetries}
                     onChange={(e) => setApiSettings({ ...apiSettings, maxRetries: e.target.value })}
@@ -827,9 +831,9 @@ const Settings = () => {
               <div className="space-y-6">
                 {/* Model Provider Selection */}
                 <div>
-                  <label className="text-sm font-medium text-[var(--color-textSecondary)] mb-3 block">
+                  <span className="text-sm font-medium text-[var(--color-textSecondary)] mb-3 block">
                     Model Provider
-                  </label>
+                  </span>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setAiModelSettings({ ...aiModelSettings, provider: 'ollama' })}
@@ -871,10 +875,11 @@ const Settings = () => {
                     </div>
                     
                     <div>
-                      <label className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
+                      <label htmlFor="settings-azure-endpoint" className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
                         Azure OpenAI Endpoint
                       </label>
                       <input
+                        id="settings-azure-endpoint"
                         type="url"
                         value={aiModelSettings.azureEndpoint}
                         onChange={(e) => setAiModelSettings({ ...aiModelSettings, azureEndpoint: e.target.value })}
@@ -884,10 +889,11 @@ const Settings = () => {
                     </div>
                     
                     <div>
-                      <label className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
+                      <label htmlFor="settings-azure-api-key" className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
                         API Key
                       </label>
                       <input
+                        id="settings-azure-api-key"
                         type="password"
                         value={aiModelSettings.azureApiKey}
                         onChange={(e) => setAiModelSettings({ ...aiModelSettings, azureApiKey: e.target.value })}
@@ -897,10 +903,11 @@ const Settings = () => {
                     </div>
                     
                     <div>
-                      <label className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
+                      <label htmlFor="settings-azure-deployment" className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
                         Deployment Name
                       </label>
                       <input
+                        id="settings-azure-deployment"
                         type="text"
                         value={aiModelSettings.azureDeploymentName}
                         onChange={(e) => setAiModelSettings({ ...aiModelSettings, azureDeploymentName: e.target.value })}
@@ -910,10 +917,11 @@ const Settings = () => {
                     </div>
                     
                     <div>
-                      <label className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
+                      <label htmlFor="settings-azure-api-version" className="text-sm font-medium text-[var(--color-textSecondary)] mb-2 block">
                         API Version
                       </label>
                       <select
+                        id="settings-azure-api-version"
                         value={aiModelSettings.azureApiVersion}
                         onChange={(e) => setAiModelSettings({ ...aiModelSettings, azureApiVersion: e.target.value })}
                         className="w-full px-4 py-2 bg-[var(--color-background)]/50 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:border-[var(--color-primary)] focus:outline-none"

@@ -435,13 +435,13 @@ const MCPServersDropdown: React.FC<{
             {onToggleMCPIndicators && (
               <label className="flex items-center gap-1.5 cursor-pointer text-xs" style={{ color: 'var(--color-textMuted)' }}>
                 <input type="checkbox" checked={showMCPIndicators} onChange={onToggleMCPIndicators} className="rounded" style={{ width: 12, height: 12 }} />
-                Tool calls
+                {' '}Tool calls
               </label>
             )}
             {onToggleModelBadges && (
               <label className="flex items-center gap-1.5 cursor-pointer text-xs" style={{ color: 'var(--color-textMuted)' }}>
                 <input type="checkbox" checked={showModelBadges} onChange={onToggleModelBadges} className="rounded" style={{ width: 12, height: 12 }} />
-                Model badges
+                {' '}Model badges
               </label>
             )}
           </div>

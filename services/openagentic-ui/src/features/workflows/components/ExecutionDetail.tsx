@@ -188,7 +188,7 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
                         background: 'var(--color-info)',
                         animation: 'wf-agent-pulse 1.4s ease-in-out infinite',
                       }} />
-                      …
+                      {' '}…
                     </span>
                   )}
                   {/* P3: Retry button for failed nodes after execution completes */}

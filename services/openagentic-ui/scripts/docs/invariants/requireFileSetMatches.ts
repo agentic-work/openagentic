@@ -17,7 +17,7 @@ export function requireFileSetMatches(
       return { ok: false, message: `requireFileSetMatches: glob has no wildcard: ${globExpr}` };
     }
     const parentRel = parts.slice(0, lastIdx).join('/');
-    const pattern = new RegExp('^' + parts[lastIdx].replace(/\*/g, '.*') + '$');
+    const pattern = new RegExp('^' + parts[lastIdx].replaceAll('*', '.*') + '$');
     const parentAbs = resolve(basePath, parentRel);
 
     let entries: string[];

@@ -295,9 +295,10 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
         <div className="space-y-4">
           {/* Provider selector */}
           <div>
-            <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Provider</label>
+            <label htmlFor="add-model-provider" className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Provider</label>
             <div className="flex items-center gap-3">
               <select
+                id="add-model-provider"
                 value={selectedProviderName}
                 onChange={e => setSelectedProviderName(e.target.value)}
                 className="flex-1 px-3 py-2 text-xs rounded-input-sm border outline-none transition-[border-color,box-shadow] duration-200 ease-emphasized focus:shadow-focus-ring"
@@ -521,15 +522,15 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
                         ) : null}
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Max Output Tokens</label>
-                            <input type="number" min={1} max={200000} value={addConfig.maxOutputTokens}
+                            <label htmlFor="add-model-max-output-tokens" className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Max Output Tokens</label>
+                            <input id="add-model-max-output-tokens" type="number" min={1} max={200000} value={addConfig.maxOutputTokens}
                               onChange={e => setAddConfig(c => ({ ...c, maxOutputTokens: Number(e.target.value) }))}
                               className="w-full px-2.5 py-1.5 text-xs rounded-lg border outline-none font-mono"
                               style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--text-primary)' }} />
                           </div>
                           <div>
-                            <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Rate Limit (req/hr, 0=none)</label>
-                            <input type="number" min={0} value={addConfig.rateLimitRequestsPerHour}
+                            <label htmlFor="add-model-rate-limit-req" className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Rate Limit (req/hr, 0=none)</label>
+                            <input id="add-model-rate-limit-req" type="number" min={0} value={addConfig.rateLimitRequestsPerHour}
                               onChange={e => setAddConfig(c => ({ ...c, rateLimitRequestsPerHour: Number(e.target.value) }))}
                               className="w-full px-2.5 py-1.5 text-xs rounded-lg border outline-none font-mono"
                               style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--text-primary)' }} />
@@ -555,7 +556,7 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
                         </div>
                         {/* Roles */}
                         <div className="mt-3">
-                          <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Roles</label>
+                          <span className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Roles</span>
                           <div className="flex flex-wrap gap-1.5">
                             {MODEL_ROLES.map(role => {
                               const active = addConfig.roles.includes(role);

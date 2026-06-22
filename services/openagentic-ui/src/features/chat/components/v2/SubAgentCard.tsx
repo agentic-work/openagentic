@@ -124,6 +124,7 @@ export function SubAgentCard({
         {isRunning && (
           <span className="cm-sa-running" data-testid="subagent-running">
             <span className="cm-dot" aria-hidden />
+            {' '}
             running…
           </span>
         )}

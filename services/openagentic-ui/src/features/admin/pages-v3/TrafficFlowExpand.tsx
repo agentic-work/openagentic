@@ -296,13 +296,11 @@ export const TrafficFlowExpand: React.FC<{
   return (
     <div
       className="aw-tf-modal-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Traffic flow — full-screen views"
+      role="presentation"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
       onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); onClose() } }}
     >
-      <div className="aw-tf-modal">
+      <div className="aw-tf-modal" role="dialog" aria-modal="true" aria-label="Traffic flow — full-screen views">
         <header className="aw-tf-modal__head">
           <div className="aw-tf-modal__title">
             <span className="aw-tf-modal__num">02</span>

@@ -80,8 +80,9 @@ export const EmbeddingProviderSection: React.FC<{
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Provider</label>
+          <label htmlFor="embedding-provider-select" className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Provider</label>
           <select
+            id="embedding-provider-select"
             value={selectedProvider}
             onChange={e => setSelectedProvider(e.target.value)}
             className={inputCls}
@@ -94,13 +95,13 @@ export const EmbeddingProviderSection: React.FC<{
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Model</label>
+          <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Model</span>
           <div className="px-3 py-2 rounded-lg border text-sm" style={{ backgroundColor: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--text-primary)' }}>
             {embeddingConfig?.embeddingModel || 'Not configured'}
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Dimensions</label>
+          <span className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Dimensions</span>
           <div className="px-3 py-2 rounded-lg border text-sm" style={{ backgroundColor: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--text-primary)' }}>
             {embeddingConfig?.dimensions || 'Auto-detect'}
           </div>

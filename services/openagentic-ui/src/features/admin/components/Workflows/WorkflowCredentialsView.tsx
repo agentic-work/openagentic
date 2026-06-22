@@ -402,8 +402,7 @@ const WorkflowCredentialsView: React.FC<WorkflowCredentialsViewProps> = () => {
           Reference secrets in any workflow node field using{' '}
           <code className="bg-surface-primary px-1.5 py-0.5 rounded font-mono text-xs text-primary-400">
             {'{{secret:secret_name}}'}
-          </code>
-          . Secrets are resolved at execution time and never stored in workflow definitions.
+          </code>. Secrets are resolved at execution time and never stored in workflow definitions.
         </p>
       </div>
 

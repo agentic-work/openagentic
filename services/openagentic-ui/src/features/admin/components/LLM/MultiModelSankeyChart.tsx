@@ -541,24 +541,33 @@ export const MultiModelSankeyChart: React.FC<MultiModelSankeyChartProps> = ({
         <h3
           className={`text-sm font-medium flex items-center gap-2 ${onOpenModal ? 'cursor-pointer hover:underline' : ''}`}
           style={{ color: colors.textSecondary }}
-          role={onOpenModal ? 'button' : undefined}
-          tabIndex={onOpenModal ? 0 : undefined}
-          onClick={onOpenModal}
-          onKeyDown={onOpenModal ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenModal(); } } : undefined}
-          title={onOpenModal ? "Click for detailed view" : undefined}
         >
-          <GitBranch size={16} style={{ color: colors.accent }} />
-          Multi-Model Orchestration Flow
-          {onOpenModal && (
-            <span
-              className="text-xs px-2 py-0.5 rounded-full"
-              style={{
-                background: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
-                color: colors.accent
-              }}
+          {onOpenModal ? (
+            <button
+              type="button"
+              className="text-sm font-medium flex items-center gap-2 cursor-pointer hover:underline bg-transparent border-0 p-0"
+              style={{ color: colors.textSecondary }}
+              onClick={onOpenModal}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenModal(); } }}
+              title="Click for detailed view"
             >
-              Click to explore
-            </span>
+              <GitBranch size={16} style={{ color: colors.accent }} />
+              Multi-Model Orchestration Flow
+              <span
+                className="text-xs px-2 py-0.5 rounded-full"
+                style={{
+                  background: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
+                  color: colors.accent
+                }}
+              >
+                Click to explore
+              </span>
+            </button>
+          ) : (
+            <>
+              <GitBranch size={16} style={{ color: colors.accent }} />
+              Multi-Model Orchestration Flow
+            </>
           )}
         </h3>
         <div className="flex items-center gap-4 text-xs" style={{ color: colors.textMuted }}>

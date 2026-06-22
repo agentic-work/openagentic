@@ -108,7 +108,7 @@ export const HealthPane: React.FC<HealthPaneProps> = ({ rows, isLoading, metrics
         <PanelHead
           title="API Requests · 24h"
           count="req/sec · http_requests_total"
-          right={<a>{fmtNum(metrics.data?.summary?.totalApiRequests)}</a>}
+          right={<span>{fmtNum(metrics.data?.summary?.totalApiRequests)}</span>}
         />
         {apiReq.isLoading ? (
           <EmptyInline pad>loading…</EmptyInline>

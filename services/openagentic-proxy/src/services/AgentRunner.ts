@@ -185,7 +185,7 @@ class ToolLoopDetector {
   private hash(str: string): string {
     let h = 0;
     for (let i = 0; i < str.length; i++) {
-      h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+      h = ((h << 5) - h + str.codePointAt(i)!) | 0;
     }
     return h.toString(36);
   }
@@ -222,6 +222,8 @@ export class AgentRunner {
    * API). Loaded lazily from the API at constructor time.
    */
   private hitlTimeoutMs: number = 300_000; // 5 min default — complex multi-tool requests need time for user review
+  /** Lazy-load guard: the canonical HITL timeout is pulled from the API on first run(), not in the constructor. */
+  private hitlTimeoutLoaded = false;
 
   constructor(
     mcpBridge: MCPBridge,
@@ -232,9 +234,17 @@ export class AgentRunner {
     this.costTracker = costTracker;
     this.mcpBridge = mcpBridge;
     this.apiUrl = apiUrl;
-    // Fire-and-forget: pull the canonical HITL timeout from the API. If it
-    // fails (API not yet up), we use the default and try again next request.
-    this.refreshHitlTimeoutFromApi().catch(() => {});
+  }
+
+  /**
+   * Lazily pull the canonical HITL timeout from the API exactly once per process.
+   * Called at the start of run() so we never fire an async op from the constructor.
+   * Best-effort: on failure we keep the default and retry on the next run().
+   */
+  private async ensureHitlTimeoutLoaded(): Promise<void> {
+    if (this.hitlTimeoutLoaded) return;
+    // Only latch on success so a failed pull (e.g. API not yet up) is retried next run().
+    this.hitlTimeoutLoaded = await this.refreshHitlTimeoutFromApi();
   }
 
   /**
@@ -242,7 +252,7 @@ export class AgentRunner {
    * so the sub-agent and the inline chat ReAct loop wait for the same duration.
    * Cached for the process lifetime; restart openagentic-proxy to refresh.
    */
-  private async refreshHitlTimeoutFromApi(): Promise<void> {
+  private async refreshHitlTimeoutFromApi(): Promise<boolean> {
     try {
       const internalSecret = process.env.INTERNAL_SERVICE_SECRET || '';
       const headers: Record<string, string> = { 'x-request-from': 'openagentic-proxy' };
@@ -254,9 +264,12 @@ export class AgentRunner {
       if (res.status === 200 && typeof res.data?.timeoutMs === 'number') {
         this.hitlTimeoutMs = res.data.timeoutMs;
         logger.info({ hitlTimeoutMs: this.hitlTimeoutMs }, '[AgentRunner] Loaded HITL timeout from API');
+        return true;
       }
+      return false;
     } catch (err: any) {
       logger.debug({ err: err?.message }, '[AgentRunner] Could not pull HITL policy from API — using default 120s');
+      return false;
     }
   }
 
@@ -266,6 +279,8 @@ export class AgentRunner {
     ctx: RunContext
   ): Promise<AgentResult> {
     const startTime = Date.now();
+    // Lazily load the canonical HITL timeout once (moved out of the constructor).
+    await this.ensureHitlTimeoutLoaded();
     let modelUsed = spec.model;
     let fallbackUsed = false;
 

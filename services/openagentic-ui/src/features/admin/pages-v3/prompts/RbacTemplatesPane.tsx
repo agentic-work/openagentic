@@ -156,8 +156,9 @@ const RoleEditor: React.FC<EditorProps> = ({ role, onClose, onSaved }) => {
         {err && <Banner level="err">{err}</Banner>}
         {info && <Banner level="ok">{info}</Banner>}
 
-        <label style={{ fontSize: 11, color: 'var(--fg-3)' }}>Body</label>
+        <label htmlFor="rbac-template-body" style={{ fontSize: 11, color: 'var(--fg-3)' }}>Body</label>
         <textarea
+          id="rbac-template-body"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           spellCheck={false}
@@ -179,8 +180,9 @@ const RoleEditor: React.FC<EditorProps> = ({ role, onClose, onSaved }) => {
           (rough)
         </div>
 
-        <label style={{ fontSize: 11, color: 'var(--fg-3)' }}>Reason (audit log)</label>
+        <label htmlFor="rbac-template-reason" style={{ fontSize: 11, color: 'var(--fg-3)' }}>Reason (audit log)</label>
         <input
+          id="rbac-template-reason"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="e.g. tightened tool-use directive"

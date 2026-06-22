@@ -190,11 +190,11 @@ export const TitleRegenerator: React.FC<TitleRegeneratorProps> = ({
 
       {/* Current Title */}
       <div className="mb-4">
-        <label 
+        <span
         className="text-xs mb-1 block"
         style={{ color: 'var(--color-textSecondary)' }}>
           Current Title
-        </label>
+        </span>
         <div 
         className="px-3 py-2 rounded-md text-sm"
         style={{ backgroundColor: 'var(--color-surface)' }}>
@@ -204,11 +204,11 @@ export const TitleRegenerator: React.FC<TitleRegeneratorProps> = ({
 
       {/* Style Selection */}
       <div className="mb-4">
-        <label 
+        <span
         className="text-xs mb-2 block"
         style={{ color: 'var(--color-textSecondary)' }}>
           Title Style
-        </label>
+        </span>
         <div className="space-y-2">
           {STYLE_OPTIONS.map((style) => (
             <button
@@ -274,11 +274,11 @@ export const TitleRegenerator: React.FC<TitleRegeneratorProps> = ({
       {/* Suggestions */}
       {suggestions.length > 0 && (
         <div className="mt-4">
-          <label 
+          <span
           className="text-xs mb-2 block"
           style={{ color: 'var(--color-textSecondary)' }}>
             Alternative Suggestions
-          </label>
+          </span>
           <div className="space-y-2">
             {suggestions.map((suggestion, index) => (
               <button

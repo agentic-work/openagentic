@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import classNames from 'classnames';
 
 /**
@@ -37,6 +38,15 @@ const GlassCard = ({
       </div>
     </Component>
   );
+};
+
+GlassCard.propTypes = {
+  children: PropTypes.node,
+  className: PropTypes.string,
+  hover: PropTypes.bool,
+  padding: PropTypes.string,
+  onClick: PropTypes.func,
+  as: PropTypes.any,
 };
 
 export default GlassCard;

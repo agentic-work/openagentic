@@ -208,6 +208,8 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
   return createPortal(
     <div
       ref={dropdownRef}
+      role="dialog"
+      aria-label="Model selector"
       className="model-selector-dropdown rounded-xl"
       style={{
         position: 'fixed',

@@ -185,6 +185,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({ data, onRefresh }
             onClick={() => setIsFullscreen(false)}
           >
             <div
+              role="presentation"
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
               style={{

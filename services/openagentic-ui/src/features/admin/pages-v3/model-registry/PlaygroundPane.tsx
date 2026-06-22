@@ -68,7 +68,7 @@ export const PlaygroundPane: React.FC<PlaygroundPaneProps> = ({
         count={
           dbModels.filter((m) => m.capabilities.chat).length + ' chat models'
         }
-        right={<a>POST /api/admin/llm-providers/:provider/test</a>}
+        right={<span>POST /api/admin/llm-providers/:provider/test</span>}
       />
       {isLoading ? (
         <EmptyInline pad>loading providers…</EmptyInline>

@@ -424,8 +424,8 @@ export const GenericMCPRenderer: React.FC<MCPRendererProps> = ({
           padding: '8px 12px',
           cursor: hasDetails ? 'pointer' : 'default',
         }}
-        onClick={() => hasDetails && setExpanded(!expanded)}
-        onKeyDown={onKeyActivate(() => hasDetails && setExpanded(!expanded))}
+        onClick={hasDetails ? () => setExpanded(!expanded) : undefined}
+        onKeyDown={hasDetails ? onKeyActivate(() => setExpanded(!expanded)) : undefined}
       >
         {/* Status icon */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>

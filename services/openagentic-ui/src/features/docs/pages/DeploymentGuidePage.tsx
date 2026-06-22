@@ -164,7 +164,7 @@ const DeploymentGuidePage: React.FC = () => {
         <p style={sectionHeadingStyle}>Build</p>
         <h2 style={sectionTitleStyle}>Build Process</h2>
         <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
-          All services are built using the centralized build script. Never use
+          All services are built using the centralized build script. Never use{' '}
           <code style={{ color: 'var(--color-primary)', padding: '0 4px' }}>docker build</code> directly.
         </p>
 

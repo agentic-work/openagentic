@@ -769,7 +769,7 @@ function buildDefaultRules(): PermissionRule[] {
 function globToRegex(glob: string): RegExp {
   // Escape regex special chars, then turn `*` back into `.*`
   const escaped = glob.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-  const pattern = '^' + escaped.replace(/\*/g, '.*') + '$';
+  const pattern = '^' + escaped.replaceAll(/\*/g, '.*') + '$';
   return new RegExp(pattern);
 }
 

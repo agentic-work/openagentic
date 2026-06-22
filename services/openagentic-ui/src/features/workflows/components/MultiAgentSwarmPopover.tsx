@@ -70,7 +70,7 @@ function avatarGradient(role: string): string {
     ['#f472b6', '#db2777'],
   ];
   let h = 0;
-  for (let i = 0; i < role.length; i++) h = (h * 31 + role.charCodeAt(i)) | 0;
+  for (let i = 0; i < role.length; i++) h = (h * 31 + (role.codePointAt(i) ?? 0)) | 0;
   const [a, b] = palettes[Math.abs(h) % palettes.length];
   return `linear-gradient(135deg, ${a}, ${b})`;
 }

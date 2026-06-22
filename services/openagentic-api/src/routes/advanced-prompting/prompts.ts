@@ -225,7 +225,7 @@ export const advancedPromptingRoutes: FastifyPluginAsync = async (fastify) => {
 
       if (goals.includes('structure')) {
         if (!prompt.includes('\n') && prompt.length > 100) {
-          optimizedPrompt = optimizedPrompt.replace(/\. /g, '.\n\n');
+          optimizedPrompt = optimizedPrompt.replaceAll(/\. /g, '.\n\n');
           optimizations.push('Added structural breaks');
         }
       }

@@ -538,6 +538,7 @@ export const UserContextView: React.FC<UserContextViewProps> = ({ theme }) => {
           onKeyDown={onKeyActivate(() => setPurgeConfirm(false))}
         >
           <div
+            role="presentation"
             className="rounded-xl w-[440px] shadow-2xl"
             style={{
               backgroundColor: 'var(--color-bg-surface, var(--color-surface))',

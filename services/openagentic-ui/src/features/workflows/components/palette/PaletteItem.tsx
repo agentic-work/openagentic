@@ -30,11 +30,12 @@ export const PaletteItem: React.FC<PaletteItemProps> = ({ config }) => {
   const iconBg = vendor?.bgColor || config.color;
 
   return (
-    <div
+    <button
+      type="button"
       draggable
       onDragStart={handleDragStart}
       title={`${config.label}: ${config.description}\n\nDrag onto the canvas to add this node.`}
-      className="wf-palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg border"
+      className="wf-palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg border w-full text-left"
       style={{
         background: 'var(--wf-node-bg)',
         borderColor: 'var(--wf-node-border)',
@@ -57,6 +58,6 @@ export const PaletteItem: React.FC<PaletteItemProps> = ({ config }) => {
           {config.description}
         </p>
       </div>
-    </div>
+    </button>
   );
 };

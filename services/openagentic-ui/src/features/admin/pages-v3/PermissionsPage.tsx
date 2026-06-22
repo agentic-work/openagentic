@@ -323,8 +323,7 @@ export const PermissionsPage: React.FC = () => {
         title="Tool Permissions"
         meta={
           <>
-            Claude-Code-style allow/deny/ask glob rules
-            <span style={{ margin: '0 8px', color: 'var(--fg-3)' }}>·</span>
+            Claude-Code-style allow/deny/ask glob rules<span style={{ margin: '0 8px', color: 'var(--fg-3)' }}>·</span>
             <span>{ruleCount} rule{ruleCount === 1 ? '' : 's'}</span>
             <span style={{ margin: '0 8px', color: 'var(--fg-3)' }}>·</span>
             <span>{pending.length} pending</span>

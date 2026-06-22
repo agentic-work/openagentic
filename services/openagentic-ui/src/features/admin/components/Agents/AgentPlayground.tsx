@@ -316,10 +316,11 @@ User request: ${userMessage}`;
     <div className="space-y-4 mt-2">
       {/* ─── Prompt ─── */}
       <div>
-        <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: accent }}>
+        <label htmlFor="agent-playground-user-message" className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: accent }}>
           User Message
         </label>
         <textarea
+          id="agent-playground-user-message"
           value={userMessage}
           onChange={e => setUserMessage(e.target.value)}
           placeholder="Enter a complex request that benefits from multiple agents working together...&#10;&#10;Example: &quot;Research the latest Kubernetes security best practices, check our cluster configuration against them, and generate a remediation plan with cost estimates.&quot;"
@@ -331,9 +332,9 @@ User request: ${userMessage}`;
       {/* ─── Orchestration + Aggregation ─── */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: accent }}>
+          <span className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: accent }}>
             Orchestration Pattern
-          </label>
+          </span>
           <div className="grid grid-cols-2 gap-1.5">
             {ORCHESTRATION_PATTERNS.map(p => (
               <button
@@ -354,9 +355,9 @@ User request: ${userMessage}`;
           </div>
         </div>
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: accent }}>
+          <span className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: accent }}>
             Result Aggregation
-          </label>
+          </span>
           <div className="grid grid-cols-2 gap-1.5">
             {AGGREGATION_STRATEGIES.map(s => (
               <button
@@ -549,9 +550,9 @@ User request: ${userMessage}`;
       {/* ─── Final Output ─── */}
       {finalOutput && (
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: accent }}>
+          <span className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: accent }}>
             Aggregated Result
-          </label>
+          </span>
           <pre
             className="rounded-lg p-3 text-xs overflow-auto max-h-96 whitespace-pre-wrap"
             style={{ backgroundColor: surface, border: `1px solid ${border}`, color: textPrimary }}

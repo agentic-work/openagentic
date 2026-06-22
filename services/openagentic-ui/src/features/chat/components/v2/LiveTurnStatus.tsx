@@ -115,7 +115,7 @@ export function LiveTurnStatus(props: Props) {
               animation: 'openagentic-tts-pulse 1.4s ease-in-out infinite',
             }}
           />
-          waiting for first token
+          <span>waiting for first token</span>
         </span>
       ) : (
         <>

@@ -743,8 +743,9 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
               <div className="space-y-3">
                 <h4 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent, var(--color-accent-primary))' }}>Identity</h4>
                 <div>
-                  <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Display Name</label>
+                  <label htmlFor="agent-display-name" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Display Name</label>
                   <input
+                    id="agent-display-name"
                     value={editingAgent.display_name}
                     onChange={e => setEditingAgent({ ...editingAgent, display_name: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg text-sm outline-none transition-colors"
@@ -757,8 +758,9 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Role / Type</label>
+                    <label htmlFor="agent-role-type" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Role / Type</label>
                     <select
+                      id="agent-role-type"
                       value={editingAgent.agent_type}
                       onChange={e => setEditingAgent({ ...editingAgent, agent_type: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none"
@@ -774,8 +776,9 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Description</label>
+                    <label htmlFor="agent-description" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Description</label>
                     <input
+                      id="agent-description"
                       value={editingAgent.description || ''}
                       onChange={e => setEditingAgent({ ...editingAgent, description: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none transition-colors"
@@ -795,10 +798,11 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                 <h4 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent, var(--color-accent-primary))' }}>Model Configuration</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
+                    <label htmlFor="agent-primary-model" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
                       Primary Model <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 'normal' }}>(blank = TFC auto-pick)</span>
                     </label>
                     <select
+                      id="agent-primary-model"
                       value={editingAgent.model_config?.primaryModel || ''}
                       onChange={e => setEditingAgent({ ...editingAgent, model_config: { ...editingAgent.model_config, primaryModel: e.target.value } })}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none"
@@ -815,8 +819,9 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Fallback Model</label>
+                    <label htmlFor="agent-fallback-model" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Fallback Model</label>
                     <select
+                      id="agent-fallback-model"
                       value={editingAgent.model_config?.fallbackModel || ''}
                       onChange={e => setEditingAgent({ ...editingAgent, model_config: { ...editingAgent.model_config, fallbackModel: e.target.value } })}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none"
@@ -835,8 +840,9 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Max Iterations</label>
+                    <label htmlFor="agent-max-iterations" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Max Iterations</label>
                     <input
+                      id="agent-max-iterations"
                       type="number"
                       value={editingAgent.model_config?.maxIterations || 5}
                       onChange={e => setEditingAgent({ ...editingAgent, model_config: { ...editingAgent.model_config, maxIterations: Number.parseInt(e.target.value) || 5 } })}
@@ -849,8 +855,9 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Temperature</label>
+                    <label htmlFor="agent-temperature" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Temperature</label>
                     <input
+                      id="agent-temperature"
                       type="number"
                       step="0.1"
                       value={editingAgent.model_config?.temperature ?? 0.7}
@@ -864,8 +871,9 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Max Tokens</label>
+                    <label htmlFor="agent-max-tokens" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Max Tokens</label>
                     <input
+                      id="agent-max-tokens"
                       type="number"
                       value={editingAgent.model_config?.maxTokens || 4000}
                       onChange={e => setEditingAgent({ ...editingAgent, model_config: { ...editingAgent.model_config, maxTokens: Number.parseInt(e.target.value) || 4000 } })}
@@ -930,8 +938,9 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                 <h4 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent, var(--color-accent-primary))' }}>Persona</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Role</label>
+                    <label htmlFor="agent-persona-role" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Role</label>
                     <input
+                      id="agent-persona-role"
                       value={(editingAgent as any).persona_role || ''}
                       onChange={e => setEditingAgent({ ...editingAgent, persona_role: e.target.value } as any)}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none transition-colors"
@@ -944,8 +953,9 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Tone</label>
+                    <label htmlFor="agent-persona-tone" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Tone</label>
                     <select
+                      id="agent-persona-tone"
                       value={(editingAgent as any).persona_tone || 'professional'}
                       onChange={e => setEditingAgent({ ...editingAgent, persona_tone: e.target.value } as any)}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none"
@@ -962,10 +972,11 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
+                  <label htmlFor="agent-persona-boundaries" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
                     Boundaries <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 'normal' }}>(what the agent should NOT do)</span>
                   </label>
                   <textarea
+                    id="agent-persona-boundaries"
                     value={(editingAgent as any).persona_boundaries || ''}
                     onChange={e => setEditingAgent({ ...editingAgent, persona_boundaries: e.target.value } as any)}
                     className="w-full px-3 py-2 rounded-lg text-sm h-16 resize-none outline-none transition-colors"
@@ -978,10 +989,11 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
+                  <label htmlFor="agent-persona-bootstrap" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
                     Bootstrap Instructions <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 'normal' }}>(initial context for the agent)</span>
                   </label>
                   <textarea
+                    id="agent-persona-bootstrap"
                     value={(editingAgent as any).persona_bootstrap || ''}
                     onChange={e => setEditingAgent({ ...editingAgent, persona_bootstrap: e.target.value } as any)}
                     className="w-full px-3 py-2 rounded-lg text-sm h-20 resize-none outline-none transition-colors font-mono text-xs"
@@ -1000,8 +1012,9 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                 <h4 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent, var(--color-accent-primary))' }}>Tool Policy</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Mode</label>
+                    <label htmlFor="agent-tool-policy-mode" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>Mode</label>
                     <select
+                      id="agent-tool-policy-mode"
                       value={(editingAgent as any).tool_policy_mode || 'allow_all'}
                       onChange={e => setEditingAgent({ ...editingAgent, tool_policy_mode: e.target.value } as any)}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none"
@@ -1024,16 +1037,17 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                         onChange={e => setEditingAgent({ ...editingAgent, tool_policy_auto_detect_high_risk: e.target.checked } as any)}
                         className="rounded"
                       />
-                      High-risk tool auto-detection
+                      {' '}High-risk tool auto-detection
                     </label>
                   </div>
                 </div>
                 {(editingAgent as any).tool_policy_mode && (editingAgent as any).tool_policy_mode !== 'allow_all' && (
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
+                    <label htmlFor="agent-tool-policy-list" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
                       Tool List <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 'normal' }}>(comma-separated)</span>
                     </label>
                     <input
+                      id="agent-tool-policy-list"
                       value={(editingAgent as any).tool_policy_list || ''}
                       onChange={e => setEditingAgent({ ...editingAgent, tool_policy_list: e.target.value } as any)}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none transition-colors"
@@ -1075,8 +1089,9 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                     ))}
                   </div>
                   <div className="flex items-center gap-1 ml-auto">
-                    <label className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Mode:</label>
+                    <label htmlFor="agent-prompt-mode" className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Mode:</label>
                     <select
+                      id="agent-prompt-mode"
                       value={editingAgent.prompt_mode || 'full'}
                       onChange={e => setEditingAgent({ ...editingAgent, prompt_mode: e.target.value })}
                       className="px-2 py-1 rounded text-xs outline-none"
@@ -1207,8 +1222,9 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                 {/* Custom system prompt */}
                 {(editingAgent.prompt_strategy || 'composite') === 'custom' && (
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>System Prompt</label>
+                    <label htmlFor="agent-system-prompt" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>System Prompt</label>
                     <textarea
+                      id="agent-system-prompt"
                       value={editingAgent.system_prompt || ''}
                       onChange={e => setEditingAgent({ ...editingAgent, system_prompt: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg text-sm h-32 resize-none outline-none transition-colors font-mono text-xs"
@@ -1223,10 +1239,11 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
 
                 {/* Tools Whitelist */}
                 <div>
-                  <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
+                  <label htmlFor="agent-tools-whitelist" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
                     Tools Whitelist <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 'normal' }}>(comma-separated, blank = all)</span>
                   </label>
                   <input
+                    id="agent-tools-whitelist"
                     value={(editingAgent.tools_whitelist || []).join(', ')}
                     onChange={e => setEditingAgent({ ...editingAgent, tools_whitelist: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
                     className="w-full px-3 py-2 rounded-lg text-sm outline-none transition-colors"
@@ -1245,10 +1262,11 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                 <h4 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent, var(--color-accent-primary))' }}>Spawn Limits</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
+                    <label htmlFor="agent-max-spawn-depth" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
                       Max Spawn Depth <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 'normal' }}>(1-5)</span>
                     </label>
                     <input
+                      id="agent-max-spawn-depth"
                       type="number"
                       min={1}
                       max={5}
@@ -1263,10 +1281,11 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
+                    <label htmlFor="agent-max-children" className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
                       Max Children <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 'normal' }}>(1-20)</span>
                     </label>
                     <input
+                      id="agent-max-children"
                       type="number"
                       min={1}
                       max={20}

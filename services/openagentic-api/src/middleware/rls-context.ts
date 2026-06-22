@@ -38,7 +38,7 @@ export async function rlsContextHook(request: FastifyRequest, _reply: FastifyRep
     // SET LOCAL is transaction-scoped: it auto-clears when the implicit transaction ends.
     // Using parameterized query to prevent SQL injection.
     await prisma.$executeRawUnsafe(
-      `SET LOCAL "app.current_user_id" = '${rlsUserId.replace(/'/g, "''")}'`
+      `SET LOCAL "app.current_user_id" = '${rlsUserId.replaceAll(/'/g, "''")}'`
     );
   } catch (error) {
     // Log but don't block the request - RLS policies will deny access if the variable

@@ -51,8 +51,7 @@ export const PipelinePane: React.FC = () => {
           is gone — it returns 404 — and its source files were deleted (see
           <span style={{ fontFamily: 'var(--font-mono)' }}>
             {' '}wave5-v1-pipeline-deletion.source-regression.test.ts
-          </span>
-          ).
+          </span>).
         </span>
       </Banner>
 

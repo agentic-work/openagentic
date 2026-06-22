@@ -136,7 +136,7 @@ export class UserMemoryService {
       // 2a. Milvus semantic search (if available)
       if (this.milvusService && this.embeddingService && query.length > 10) {
         try {
-          const collectionName = `umem_${userId.replace(/-/g, '_')}`;
+          const collectionName = `umem_${userId.replaceAll(/-/g, '_')}`;
           const hasCollection = await this.milvusService.hasCollection({ collection_name: collectionName }).catch(() => false);
 
           if (hasCollection) {
@@ -350,7 +350,7 @@ export class UserMemoryService {
       // 5. Embed + upsert into Milvus (if available)
       if (this.milvusService && this.embeddingService) {
         try {
-          const collectionName = `umem_${userId.replace(/-/g, '_')}`;
+          const collectionName = `umem_${userId.replaceAll(/-/g, '_')}`;
           await this.ensureMilvusCollection(collectionName);
           const embedding = await this.embeddingService.embed(truncated);
           if (embedding) {
@@ -546,7 +546,7 @@ export class UserMemoryService {
 
     // Delete Milvus collection
     if (this.milvusService) {
-      const collectionName = `umem_${userId.replace(/-/g, '_')}`;
+      const collectionName = `umem_${userId.replaceAll(/-/g, '_')}`;
       await this.milvusService.dropCollection({ collection_name: collectionName }).catch(() => {});
     }
 

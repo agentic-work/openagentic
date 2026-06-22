@@ -129,7 +129,7 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
           <div className="space-y-6">
             <SlideInPanelSection title="Chat Preferences">
               <div className="space-y-3">
-                <label className="flex items-center justify-between cursor-pointer p-3 rounded-lg transition-colors hover:bg-[var(--color-surfaceSecondary)]">
+                <div className="flex items-center justify-between cursor-pointer p-3 rounded-lg transition-colors hover:bg-[var(--color-surfaceSecondary)]">
                   <div className="flex items-center gap-3">
                     <Keyboard size={18} style={{ color: 'var(--color-textMuted)' }} />
                     <div>
@@ -143,6 +143,7 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
                   </div>
                   <div
                     role="switch"
+                    aria-label="Keyboard shortcuts"
                     tabIndex={0}
                     aria-checked={settings.general?.enableKeyboardShortcuts !== false}
                     onClick={() => onSettingsChange({
@@ -165,9 +166,9 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
                       )}
                     />
                   </div>
-                </label>
+                </div>
 
-                <label className="flex items-center justify-between cursor-pointer p-3 rounded-lg transition-colors hover:bg-[var(--color-surfaceSecondary)]">
+                <div className="flex items-center justify-between cursor-pointer p-3 rounded-lg transition-colors hover:bg-[var(--color-surfaceSecondary)]">
                   <div className="flex items-center gap-3">
                     <MessageCircle size={18} style={{ color: 'var(--color-textMuted)' }} />
                     <div>
@@ -181,6 +182,7 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
                   </div>
                   <div
                     role="switch"
+                    aria-label="Typing indicators"
                     tabIndex={0}
                     aria-checked={settings.general?.showTypingIndicators !== false}
                     onClick={() => onSettingsChange({
@@ -203,9 +205,9 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
                       )}
                     />
                   </div>
-                </label>
+                </div>
 
-                <label className="flex items-center justify-between cursor-pointer p-3 rounded-lg transition-colors hover:bg-[var(--color-surfaceSecondary)]">
+                <div className="flex items-center justify-between cursor-pointer p-3 rounded-lg transition-colors hover:bg-[var(--color-surfaceSecondary)]">
                   <div className="flex items-center gap-3">
                     <Save size={18} style={{ color: 'var(--color-textMuted)' }} />
                     <div>
@@ -219,6 +221,7 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
                   </div>
                   <div
                     role="switch"
+                    aria-label="Auto-save conversations"
                     tabIndex={0}
                     aria-checked={settings.general?.autoSaveConversations !== false}
                     onClick={() => onSettingsChange({
@@ -241,7 +244,7 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
                       )}
                     />
                   </div>
-                </label>
+                </div>
               </div>
             </SlideInPanelSection>
           </div>

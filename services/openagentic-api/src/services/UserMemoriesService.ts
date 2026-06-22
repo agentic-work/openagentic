@@ -299,10 +299,10 @@ export class UserMemoriesService {
 
     if (!Array.isArray(embedding) || embedding.length === 0) return [];
 
-    const safeUserId = String(userId).replace(/"/g, '');
+    const safeUserId = String(userId).replaceAll(/"/g, '');
     let filter = `user_id == "${safeUserId}"`;
     if (opts?.category) {
-      const safeCat = String(opts.category).replace(/"/g, '');
+      const safeCat = String(opts.category).replaceAll(/"/g, '');
       filter += ` AND category == "${safeCat}"`;
     }
 

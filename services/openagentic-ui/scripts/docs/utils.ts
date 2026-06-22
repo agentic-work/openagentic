@@ -188,7 +188,7 @@ export function parsePyRoutes(content: string): ParsedPyRoute[] {
       method: match[1].toUpperCase(),
       path: match[2],
       funcName: match[3],
-      docstring: match[4]?.trim().split('\n')[0] || match[3].replace(/_/g, ' '),
+      docstring: match[4]?.trim().split('\n')[0] || match[3].replaceAll('_', ' '),
       line: getLineNumber(content, match.index),
     });
   }
@@ -205,7 +205,7 @@ export function parsePyFunctions(content: string): ParsedPyFunction[] {
     if (match[2].startsWith('_')) continue;
     functions.push({
       name: match[2],
-      docstring: match[4]?.trim().split('\n')[0] || match[2].replace(/_/g, ' '),
+      docstring: match[4]?.trim().split('\n')[0] || match[2].replaceAll('_', ' '),
       params: match[3].trim(),
       isAsync: !!match[1],
       line: getLineNumber(content, match.index),

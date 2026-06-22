@@ -124,34 +124,29 @@ export const AdminCard: React.FC<AdminCardProps> = ({
   hoverable = false,
   onClick,
 }) => {
-  return (
-    <div
-      className={`admin-card ${className}`}
-      onClick={onClick}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? onKeyActivate(onClick) : undefined}
-      style={{
-        backgroundColor: 'var(--color-surface)',
-        borderRadius: '12px',
-        border: '1px solid var(--color-border)',
-        overflow: 'hidden',
-        cursor: onClick ? 'pointer' : 'default',
-        transition: hoverable ? 'border-color 0.15s, box-shadow 0.15s' : undefined,
-      }}
-      onMouseEnter={(e) => {
-        if (hoverable) {
-          e.currentTarget.style.borderColor = 'var(--color-borderHover)';
-          e.currentTarget.style.boxShadow = '0 4px 12px color-mix(in srgb, var(--color-shadow) 8%, transparent)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (hoverable) {
-          e.currentTarget.style.borderColor = 'var(--color-border)';
-          e.currentTarget.style.boxShadow = 'none';
-        }
-      }}
-    >
+  const cardStyle: React.CSSProperties = {
+    backgroundColor: 'var(--color-surface)',
+    borderRadius: '12px',
+    border: '1px solid var(--color-border)',
+    overflow: 'hidden',
+    cursor: onClick ? 'pointer' : 'default',
+    transition: hoverable ? 'border-color 0.15s, box-shadow 0.15s' : undefined,
+  };
+  const handleMouseEnter = (e: React.MouseEvent<HTMLElement>) => {
+    if (hoverable) {
+      e.currentTarget.style.borderColor = 'var(--color-borderHover)';
+      e.currentTarget.style.boxShadow = '0 4px 12px color-mix(in srgb, var(--color-shadow) 8%, transparent)';
+    }
+  };
+  const handleMouseLeave = (e: React.MouseEvent<HTMLElement>) => {
+    if (hoverable) {
+      e.currentTarget.style.borderColor = 'var(--color-border)';
+      e.currentTarget.style.boxShadow = 'none';
+    }
+  };
+
+  const cardBody = (
+    <>
       {(title || actions) && (
         <div
           style={{
@@ -193,6 +188,34 @@ export const AdminCard: React.FC<AdminCardProps> = ({
         </div>
       )}
       <div style={{ padding: paddingMap[padding] }}>{children}</div>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <div
+        className={`admin-card ${className}`}
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={onKeyActivate(onClick)}
+        style={cardStyle}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        {cardBody}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`admin-card ${className}`}
+      style={cardStyle}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {cardBody}
     </div>
   );
 };

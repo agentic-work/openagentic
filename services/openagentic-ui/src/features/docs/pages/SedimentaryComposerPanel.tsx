@@ -179,21 +179,26 @@ export const SedimentaryComposerPanel: React.FC = () => {
         </div>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
           {EXAMPLES.map((e, i) => (
-            <li
-              key={i}
-              role="button"
-              tabIndex={0}
-              onClick={() => { setPaused(true); setIdx(i); }}
-              onKeyDown={onKeyActivate(() => { setPaused(true); setIdx(i); })}
-              style={{
-                padding: '6px 8px',
-                borderRadius: 4,
-                cursor: 'pointer',
-                background: i === idx ? 'rgba(168, 138, 100, 0.15)' : 'transparent',
-                color: i === idx ? 'var(--color-text)' : 'var(--color-textMuted)',
-              }}
-            >
-              {e.label}
+            <li key={i}>
+              <button
+                type="button"
+                onClick={() => { setPaused(true); setIdx(i); }}
+                onKeyDown={onKeyActivate(() => { setPaused(true); setIdx(i); })}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  border: 0,
+                  font: 'inherit',
+                  padding: '6px 8px',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  background: i === idx ? 'rgba(168, 138, 100, 0.15)' : 'transparent',
+                  color: i === idx ? 'var(--color-text)' : 'var(--color-textMuted)',
+                }}
+              >
+                {e.label}
+              </button>
             </li>
           ))}
         </ul>

@@ -11,7 +11,6 @@
 
 import React, { useState } from 'react';
 import { Search, FileText, Check, Loader2, ChevronDown, ChevronRight, Code, XCircle } from '@/shared/icons';
-import { onKeyActivate } from '@/utils/a11y';
 import type { MCPRendererProps } from './types';
 
 interface SearchMatch {
@@ -135,20 +134,25 @@ export const SerenaSearchRenderer: React.FC<MCPRendererProps> = ({
       }}
     >
       {/* Header */}
-      <div
+      <button
+        type="button"
+        disabled={totalMatches === 0}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 8,
           padding: '8px 12px',
+          width: '100%',
+          textAlign: 'left',
+          background: 'transparent',
+          border: 'none',
+          font: 'inherit',
+          color: 'inherit',
           cursor: totalMatches > 0 ? 'pointer' : 'default',
           borderBottom: expanded && totalMatches > 0 ? '1px solid color-mix(in srgb, var(--color-border) 40%, transparent)' : 'none',
         }}
-        role={totalMatches > 0 ? 'button' : undefined}
-        tabIndex={totalMatches > 0 ? 0 : undefined}
         aria-expanded={totalMatches > 0 ? expanded : undefined}
         onClick={() => totalMatches > 0 && setExpanded(!expanded)}
-        onKeyDown={totalMatches > 0 ? onKeyActivate(() => setExpanded(!expanded)) : undefined}
       >
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
           {status === 'calling' ? (
@@ -210,7 +214,7 @@ export const SerenaSearchRenderer: React.FC<MCPRendererProps> = ({
             {totalMatches} in {fileCount} file{fileCount !== 1 ? 's' : ''}
           </span>
         )}
-      </div>
+      </button>
 
       {/* Results */}
       {expanded && totalMatches > 0 && (

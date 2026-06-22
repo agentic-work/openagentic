@@ -504,6 +504,7 @@ const SummaryRich: React.FC<{ summary: RichSummary }> = ({ summary }) => {
       })}
       {summary.items && summary.items.length > 0 && (
         <span
+          role="presentation"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -601,6 +602,7 @@ const SummaryLinks: React.FC<{ items: Array<{ title: string; url: string; favico
   const overflow = items.length - visible.length;
   return (
     <span
+      role="presentation"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -1441,7 +1443,7 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
           paddingBottom: depth > 0 ? 2 : 4,
           cursor: isExpandable ? 'pointer' : 'default',
         }}
-        onClick={() => isExpandable && setShowDetail(!showDetail)}
+        onClick={isExpandable ? () => setShowDetail(!showDetail) : undefined}
         onKeyDown={isExpandable ? onKeyActivate(() => setShowDetail(!showDetail)) : undefined}
         role={isExpandable ? 'button' : undefined}
         tabIndex={isExpandable ? 0 : undefined}
@@ -2364,12 +2366,13 @@ const ExpandableToolItem: React.FC<{
                 isRunning={childIsRunning}
                 hasError={childHasError}
                 isLastRunning={childIsRunning && childIsLast}
-                children={child.children}
                 allToolCalls={allToolCalls}
                 depth={depth + 1}
                 isHistorical={isHistorical}
                 theme={theme}
-              />
+              >
+                {child.children}
+              </ExpandableToolItem>
             );
           })}
         </div>
@@ -2934,12 +2937,13 @@ const ToolCallGroup: React.FC<ToolCallGroupProps> = memo(({ blocks, toolCalls, t
                 isRunning={isRunning}
                 hasError={hasError}
                 isLastRunning={isRunning && isLast}
-                children={node.children}
                 allToolCalls={toolCalls}
                 depth={0}
                 isHistorical={isHistorical}
                 theme={theme === 'light' || theme === 'dark' ? theme : 'dark'}
-              />
+              >
+                {node.children}
+              </ExpandableToolItem>
             );
 
             if (isCluster) {

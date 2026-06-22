@@ -101,7 +101,7 @@ export function HITLPopup({ visible, request, onApprove, onDeny }: HITLPopupProp
             backgroundColor: 'var(--cm-warning)',
             animation: 'pulse 1.5s ease-in-out infinite',
           }} />
-          Waiting for approval...
+          <span>Waiting for approval...</span>
         </div>
 
         {/* Buttons */}

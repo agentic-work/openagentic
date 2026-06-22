@@ -22,34 +22,50 @@ export interface RedisService {
 class UnifiedRedisServiceWrapper implements RedisService {
   private redisClient = getRedisClient();
   private logger: Logger;
+  private initPromise: Promise<unknown> | null = null;
 
   constructor(logger: Logger) {
     this.logger = logger.child({ service: 'UnifiedRedisWrapper' }) as Logger;
-    initializeRedis(this.logger);
+    // Connection init runs lazily on first use (see ensureInitialized) — no
+    // async work in the constructor.
+  }
+
+  /** Connect the underlying client once, lazily, on first operation. Idempotent. */
+  private async ensureInitialized(): Promise<void> {
+    if (!this.initPromise) {
+      this.initPromise = initializeRedis(this.logger);
+    }
+    await this.initPromise;
   }
 
   async get(key: string): Promise<string | null> {
+    await this.ensureInitialized();
     const result = await this.redisClient.get(key);
     return result ? JSON.stringify(result) : null;
   }
 
   async set(key: string, value: string, ttl?: number): Promise<void> {
+    await this.ensureInitialized();
     await this.redisClient.set(key, JSON.parse(value), ttl);
   }
 
   async del(key: string): Promise<void> {
+    await this.ensureInitialized();
     await this.redisClient.del(key);
   }
 
   async exists(key: string): Promise<boolean> {
+    await this.ensureInitialized();
     return this.redisClient.exists(key);
   }
 
   async keys(pattern: string): Promise<string[]> {
+    await this.ensureInitialized();
     return this.redisClient.keys(pattern);
   }
 
   async expire(key: string, seconds: number): Promise<void> {
+    await this.ensureInitialized();
     await this.redisClient.expire(key, seconds);
   }
 }

@@ -31,6 +31,7 @@ export class ChatCompletionService {
   private tokenUsageService: TokenUsageService;
   private taskAnalysisService: TaskAnalysisService;
   private intelligentRouter?: IntelligentModelRouter;
+  private intelligentRoutingInit?: Promise<void>;
   private hasAzureConfig: boolean;
   private azureEndpoint?: string;
   private azureApiVersion?: string;
@@ -45,10 +46,8 @@ export class ChatCompletionService {
     this.tokenUsageService = new TokenUsageService(this.logger);
     this.taskAnalysisService = new TaskAnalysisService(this.logger);
 
-    // Initialize intelligent routing services if possible
-    this.initializeIntelligentRouting().catch(error => {
-      this.logger.warn({ error }, 'Failed to initialize intelligent routing - will use fallback');
-    });
+    // Intelligent routing is initialized lazily on first use
+    // (ensureIntelligentRouting) — no async work in the constructor.
 
     this.logger.info({
       hasCacheService: !!this.cacheService
@@ -102,6 +101,22 @@ export class ChatCompletionService {
   /**
    * Initialize intelligent routing services
    */
+  /**
+   * Initialize intelligent routing at most once, lazily, on first use.
+   * Best-effort: a failure is logged and the caller falls back to default routing.
+   */
+  private async ensureIntelligentRouting(): Promise<void> {
+    if (this.intelligentRouter) return;
+    if (!this.intelligentRoutingInit) {
+      this.intelligentRoutingInit = this.initializeIntelligentRouting().catch(error => {
+        this.logger.warn({ error }, 'Failed to initialize intelligent routing - will use fallback');
+        // Allow a later retry by clearing the memoized (failed) attempt.
+        this.intelligentRoutingInit = undefined;
+      });
+    }
+    await this.intelligentRoutingInit;
+  }
+
   private async initializeIntelligentRouting(): Promise<void> {
     try {
       const capabilitiesService = new ExtendedCapabilitiesService({
@@ -681,6 +696,7 @@ export class ChatCompletionService {
 
       // Test connection by listing available models
       const models = await this.getAvailableModels();
+      await this.ensureIntelligentRouting();
       const hasIntelligentRouting = !!this.intelligentRouter;
 
       // Test task analysis service

@@ -783,7 +783,7 @@ export const adminAgentRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
 
         const escapeCell = (v: any): string => {
           if (v === null || v === undefined) return '';
-          const s = String(v).replace(/"/g, '""');
+          const s = String(v).replaceAll(/"/g, '""');
           return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
         };
 

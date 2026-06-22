@@ -179,10 +179,10 @@ const MEMORY_BLOCK_BUDGET_BYTES = 2048;
 
 function escapeHtml(s: string): string {
   return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replaceAll(/&/g, '&amp;')
+    .replaceAll(/</g, '&lt;')
+    .replaceAll(/>/g, '&gt;')
+    .replaceAll(/"/g, '&quot;');
 }
 
 function renderMemoriesBlock(hits: ReadonlyArray<MemoryHit>): string {

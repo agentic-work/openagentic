@@ -128,9 +128,8 @@ export const ToolsIndexedPill: React.FC = () => {
 
       {open && createPortal(
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="MCP tool index status"
+          role="button"
+          aria-label="Close tool index status"
           tabIndex={0}
           onClick={() => setOpen(false)}
           onKeyDown={onKeyActivate(() => setOpen(false))}
@@ -141,6 +140,9 @@ export const ToolsIndexedPill: React.FC = () => {
           }}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="MCP tool index status"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
             style={{

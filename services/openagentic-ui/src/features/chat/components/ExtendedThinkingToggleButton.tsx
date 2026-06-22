@@ -75,7 +75,6 @@ export const ExtendedThinkingToggleButton: React.FC<ExtendedThinkingToggleButton
       disabled={disabled}
       role="switch"
       aria-checked={enabled}
-      aria-pressed={enabled}
       aria-label={
         enabled
           ? 'Extended thinking on — model will show reasoning process'

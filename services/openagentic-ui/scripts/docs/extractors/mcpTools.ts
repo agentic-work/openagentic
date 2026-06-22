@@ -12,7 +12,7 @@ export function mcpTools(config: McpToolsConfig): Extractor {
     const globParts = config.rootGlob.split('/');
     const wildIdx = globParts.findIndex((p) => p.includes('*'));
     const parentDir = globParts.slice(0, wildIdx).join('/');
-    const awpPattern = new RegExp('^' + globParts[wildIdx].replace(/\*/g, '[^/]+') + '$');
+    const awpPattern = new RegExp('^' + globParts[wildIdx].replaceAll('*', '[^/]+') + '$');
 
     const searchDir = resolve(basePath, parentDir);
     // Find every server.py within an openagentic-* tree (handles both root server.py

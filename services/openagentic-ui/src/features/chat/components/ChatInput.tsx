@@ -318,12 +318,21 @@ const ChatInput: React.FC<ChatInputProps> = ({
           </div>
         </div>
       ) : (
-        <div 
+        <div
           className="max-w-3xl mx-auto relative"
+          role="button"
+          tabIndex={0}
+          aria-label="Message composer with file drop zone. Press Enter to choose files."
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
+          onKeyDown={(e) => {
+            if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+              e.preventDefault();
+              fileInputRef?.current?.click();
+            }
+          }}
         >
           {/* Drag overlay */}
           {isDragging && (
@@ -627,10 +636,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <label className="text-sm font-medium text-text-secondary">
+                          <span className="text-sm font-medium text-text-secondary">
                             Token Usage Display
-                          </label>
+                          </span>
                           <motion.button
+                            aria-label="Token Usage Display"
                             whileTap={{ scale: 0.95 }}
                             onClick={onToggleTokenUsage}
                             className={`relative w-11 h-6 rounded-full transition-colors ${
@@ -646,10 +656,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <label className="text-sm font-medium text-text-secondary">
+                          <span className="text-sm font-medium text-text-secondary">
                             Chain of Thought
-                          </label>
+                          </span>
                           <motion.button
+                            aria-label="Chain of Thought"
                             whileTap={{ scale: 0.95 }}
                             onClick={onToggleCoT}
                             className={`relative w-11 h-6 rounded-full transition-colors ${
@@ -667,10 +678,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         {/* MCP Tool Execution Indicators Toggle - Admin only */}
                         {user?.is_admin && (
                           <div className="flex items-center justify-between">
-                            <label className="text-sm font-medium text-text-secondary">
+                            <span className="text-sm font-medium text-text-secondary">
                               Tool Execution Indicators
-                            </label>
+                            </span>
                             <motion.button
+                              aria-label="Tool Execution Indicators"
                               whileTap={{ scale: 0.95 }}
                               onClick={onToggleMCPIndicators}
                               className={`relative w-11 h-6 rounded-full transition-colors ${

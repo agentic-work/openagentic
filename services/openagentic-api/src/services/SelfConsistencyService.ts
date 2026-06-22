@@ -126,7 +126,7 @@ REASONING: [your explanation]`;
       }
 
       const model = await this.resolveModel();
-      const samplingPromises = Array(samples).fill(null).map(async (_, index) => {
+      const samplingPromises = new Array(samples).fill(null).map(async (_, index) => {
         const response = await this.azureOpenAI!.chat.completions.create({
           model,
           messages: [{ role: 'user', content: enhancedPrompt }],
@@ -429,6 +429,6 @@ REASONING: [your explanation]`;
       { response: 'No, stay with VMs', confidence: 0.6, reasoning: 'Current setup is stable and team lacks K8s expertise' }
     ];
 
-    return Array(samples).fill(null).map((_, i) => options[i % options.length]);
+    return new Array(samples).fill(null).map((_, i) => options[i % options.length]);
   }
 }

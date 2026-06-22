@@ -289,6 +289,7 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
           return (
             <div
               key={skill.id}
+              role="presentation"
               className="rounded-lg p-3.5 transition-colors"
               style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--color-border) 70%, var(--color-primary))')}
@@ -424,8 +425,9 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
             </div>
             <div className="px-5 py-4 space-y-3">
               <div>
-                <label className="text-[11px] font-semibold block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Source URL (OpenClaw, GitHub, etc.)</label>
+                <label htmlFor="smv-import-url" className="text-[11px] font-semibold block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Source URL (OpenClaw, GitHub, etc.)</label>
                 <input
+                  id="smv-import-url"
                   value={importUrl}
                   onChange={e => setImportUrl(e.target.value)}
                   placeholder="https://github.com/..."
@@ -465,18 +467,18 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-[10px] font-semibold uppercase mb-1 block" style={{ color: 'var(--text-tertiary)' }}>Display Name</label>
-                <input value={editForm.display_name} onChange={e => setEditForm(f => ({ ...f, display_name: e.target.value }))}
+                <label htmlFor="smv-edit-display-name" className="text-[10px] font-semibold uppercase mb-1 block" style={{ color: 'var(--text-tertiary)' }}>Display Name</label>
+                <input id="smv-edit-display-name" value={editForm.display_name} onChange={e => setEditForm(f => ({ ...f, display_name: e.target.value }))}
                   className="w-full px-3 py-1.5 text-xs rounded-md border outline-none" style={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }} />
               </div>
               <div>
-                <label className="text-[10px] font-semibold uppercase mb-1 block" style={{ color: 'var(--text-tertiary)' }}>Description</label>
-                <textarea value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} rows={3}
+                <label htmlFor="smv-edit-description" className="text-[10px] font-semibold uppercase mb-1 block" style={{ color: 'var(--text-tertiary)' }}>Description</label>
+                <textarea id="smv-edit-description" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} rows={3}
                   className="w-full px-3 py-1.5 text-xs rounded-md border outline-none resize-none" style={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }} />
               </div>
               <div>
-                <label className="text-[10px] font-semibold uppercase mb-1 block" style={{ color: 'var(--text-tertiary)' }}>Type</label>
-                <select value={editForm.type} onChange={e => setEditForm(f => ({ ...f, type: e.target.value }))}
+                <label htmlFor="smv-edit-type" className="text-[10px] font-semibold uppercase mb-1 block" style={{ color: 'var(--text-tertiary)' }}>Type</label>
+                <select id="smv-edit-type" value={editForm.type} onChange={e => setEditForm(f => ({ ...f, type: e.target.value }))}
                   className="w-full px-3 py-1.5 text-xs rounded-md border outline-none" style={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}>
                   <option value="prompt_injection">prompt_injection</option>
                   <option value="tool_bundle">tool_bundle</option>
@@ -486,8 +488,8 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-semibold uppercase mb-1 block" style={{ color: 'var(--text-tertiary)' }}>Tags (comma-separated)</label>
-                <input value={editForm.tags} onChange={e => setEditForm(f => ({ ...f, tags: e.target.value }))}
+                <label htmlFor="smv-edit-tags" className="text-[10px] font-semibold uppercase mb-1 block" style={{ color: 'var(--text-tertiary)' }}>Tags (comma-separated)</label>
+                <input id="smv-edit-tags" value={editForm.tags} onChange={e => setEditForm(f => ({ ...f, tags: e.target.value }))}
                   className="w-full px-3 py-1.5 text-xs rounded-md border outline-none" style={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }} />
               </div>
             </div>

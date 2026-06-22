@@ -166,7 +166,7 @@ document.querySelectorAll('.mta-export').forEach(function (btn) {
 }
 
 function esc(s: string): string {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return String(s ?? '').replaceAll(/&/g, '&amp;').replaceAll(/</g, '&lt;').replaceAll(/>/g, '&gt;').replaceAll(/"/g, '&quot;').replaceAll(/'/g, '&#39;');
 }
 
 // No CDN libs — pure DOM. Declare an empty list so the test catalog reflects

@@ -628,6 +628,7 @@ const PipelineVisualization: React.FC<PipelineVisualizationProps> = ({ activeSta
                 {/* Stage Node */}
                 <div
                   className="relative"
+                  role="presentation"
                   onMouseEnter={() => setHoveredStage(stage.id)}
                   onMouseLeave={() => setHoveredStage(null)}
                 >
@@ -984,8 +985,9 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm text-text-secondary mb-1">Name (max 64 chars)</label>
+                  <label htmlFor="skill-name" className="block text-sm text-text-secondary mb-1">Name (max 64 chars)</label>
                   <input
+                    id="skill-name"
                     type="text"
                     value={newSkill.name || ''}
                     onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value.slice(0, 64) })}
@@ -995,8 +997,9 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-text-secondary mb-1">Emoji</label>
+                  <label htmlFor="skill-emoji" className="block text-sm text-text-secondary mb-1">Emoji</label>
                   <input
+                    id="skill-emoji"
                     type="text"
                     value={newSkill.emoji || ''}
                     onChange={(e) => setNewSkill({ ...newSkill, emoji: e.target.value })}
@@ -1005,8 +1008,9 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-text-secondary mb-1">Category</label>
+                  <label htmlFor="skill-category" className="block text-sm text-text-secondary mb-1">Category</label>
                   <select
+                    id="skill-category"
                     value={newSkill.category || 'custom'}
                     onChange={(e) => setNewSkill({ ...newSkill, category: e.target.value as SkillCategory })}
                     className="w-full px-3 py-2 rounded-lg bg-surface-secondary border border-border text-text-primary"
@@ -1022,8 +1026,9 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm text-text-secondary mb-1">Description (max 200 chars) - When should this skill be used?</label>
+                <label htmlFor="skill-description" className="block text-sm text-text-secondary mb-1">Description (max 200 chars) - When should this skill be used?</label>
                 <input
+                  id="skill-description"
                   type="text"
                   value={newSkill.description || ''}
                   onChange={(e) => setNewSkill({ ...newSkill, description: e.target.value.slice(0, 200) })}
@@ -1035,8 +1040,9 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm text-text-secondary mb-1">System Prompt (Skill Instructions)</label>
+                <label htmlFor="skill-system-prompt" className="block text-sm text-text-secondary mb-1">System Prompt (Skill Instructions)</label>
                 <textarea
+                  id="skill-system-prompt"
                   value={newSkill.systemPrompt || ''}
                   onChange={(e) => setNewSkill({ ...newSkill, systemPrompt: e.target.value })}
                   placeholder="# Skill Name&#10;&#10;Instructions for how Claude should behave when this skill is active...&#10;&#10;## Guidelines&#10;- Guideline 1&#10;- Guideline 2"

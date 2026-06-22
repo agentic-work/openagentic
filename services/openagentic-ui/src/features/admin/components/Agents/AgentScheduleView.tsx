@@ -428,6 +428,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
               backgroundColor: 'var(--color-bg-surface, var(--color-surface))',
               border: '1px solid var(--color-border, var(--color-border-default))',
             }}
+            role="presentation"
             onClick={e => e.stopPropagation()}
             onKeyDown={e => e.stopPropagation()}
           >
@@ -494,6 +495,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
                       onChange={e => setFormUseCustom(e.target.checked)}
                       className="rounded"
                     />
+                    {' '}
                     Custom cron expression
                   </label>
                   {formUseCustom && (
@@ -553,8 +555,9 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
               <div className="space-y-3">
                 <h4 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent, var(--color-accent-primary))' }}>Concurrency</h4>
                 <div className="flex items-center gap-3">
-                  <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Max concurrent runs:</label>
+                  <label htmlFor="asv-max-concurrent" className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Max concurrent runs:</label>
                   <input
+                    id="asv-max-concurrent"
                     type="number"
                     min={1}
                     max={10}
@@ -595,6 +598,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
               backgroundColor: 'var(--color-bg-surface, var(--color-surface))',
               border: '1px solid var(--color-border, var(--color-border-default))',
             }}
+            role="presentation"
             onClick={e => e.stopPropagation()}
             onKeyDown={e => e.stopPropagation()}
           >

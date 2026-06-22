@@ -398,6 +398,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   return (
     <div
+      role="presentation"
       className={clsx(
         'w-full',
         'px-3 pb-6',
@@ -563,7 +564,6 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                 aria-label="Chat message input"
                 aria-multiline="true"
                 aria-describedby="chat-input-hint"
-                role="textbox"
                 className={clsx(
                   'w-full resize-none bg-transparent',
                   'text-[16px] leading-relaxed',

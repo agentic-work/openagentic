@@ -17,7 +17,7 @@ export const Ribbon = ({ cells, right }: RibbonProps) => (
   <div className="aw-ribbon" role="status" aria-live="polite">
     <span className="aw-ribbon__mark">
       <span className="aw-ribbon__mark-led" />
-      live
+      {' '}live
     </span>
     {cells.map((c, i) => (
       <React.Fragment key={i}>

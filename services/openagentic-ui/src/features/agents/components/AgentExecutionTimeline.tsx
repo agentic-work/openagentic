@@ -225,15 +225,12 @@ export const AgentExecutionTimeline: React.FC<AgentExecutionTimelineProps> = ({ 
                     if (!match) return null;
                     return (
                       <div className="mt-1.5">
-                        <img
-                          src={match[0]}
-                          alt={step.toolName || 'Generated image'}
-                          role="button"
-                          tabIndex={0}
-                          className="rounded-md cursor-pointer hover:opacity-90 transition-opacity"
-                          style={{ maxWidth: 180, maxHeight: 120, objectFit: 'cover', border: '1px solid var(--color-border)' }}
+                        <button
+                          type="button"
+                          className="block p-0 border-0 bg-transparent cursor-pointer"
                           onClick={(e) => {
-                            const img = e.currentTarget;
+                            const img = e.currentTarget.querySelector('img');
+                            if (!img) return;
                             if (img.style.maxWidth === '180px' || img.style.maxWidth === '') {
                               img.style.maxWidth = '100%';
                               img.style.maxHeight = '400px';
@@ -242,20 +239,14 @@ export const AgentExecutionTimeline: React.FC<AgentExecutionTimelineProps> = ({ 
                               img.style.maxHeight = '120px';
                             }
                           }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              const img = e.currentTarget;
-                              if (img.style.maxWidth === '180px' || img.style.maxWidth === '') {
-                                img.style.maxWidth = '100%';
-                                img.style.maxHeight = '400px';
-                              } else {
-                                img.style.maxWidth = '180px';
-                                img.style.maxHeight = '120px';
-                              }
-                            }
-                          }}
+                        >
+                        <img
+                          src={match[0]}
+                          alt={step.toolName || 'Generated image'}
+                          className="rounded-md cursor-pointer hover:opacity-90 transition-opacity"
+                          style={{ maxWidth: 180, maxHeight: 120, objectFit: 'cover', border: '1px solid var(--color-border)' }}
                         />
+                        </button>
                       </div>
                     );
                   })()}

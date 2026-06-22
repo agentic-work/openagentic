@@ -25,6 +25,21 @@ export interface InitializationConfig {
   }
   }
 
+const DEFAULT_INITIALIZATION_CONFIG: InitializationConfig = {
+  skipIfDone: true,
+  forceReinit: false,
+  components: {
+    prompts: true,
+    adminUser: true,
+    mcpServers: true,
+    milvusCollections: true,
+    mcpToolIndexing: true,  // Enable MCP tool indexing by default
+    systemSettings: true,
+    databaseSchema: true,
+    modelDiscovery: true  // Enable by default
+  }
+};
+
 export interface InitializationStatus {
   isInitialized: boolean;
   completedComponents: string[];
@@ -216,20 +231,7 @@ export class InitializationService {
   /**
    * Initialize system with all components
    */
-  async initializeSystem(config: InitializationConfig = {
-    skipIfDone: true,
-    forceReinit: false,
-    components: {
-      prompts: true,
-      adminUser: true,
-      mcpServers: true,
-      milvusCollections: true,
-      mcpToolIndexing: true,  // Enable MCP tool indexing by default
-      systemSettings: true,
-      databaseSchema: true,
-      modelDiscovery: true  // Enable by default
-    }
-  }): Promise<InitializationStatus> {
+  async initializeSystem(config: InitializationConfig = DEFAULT_INITIALIZATION_CONFIG): Promise<InitializationStatus> {
 
     const status = await this.getInitializationStatus();
 

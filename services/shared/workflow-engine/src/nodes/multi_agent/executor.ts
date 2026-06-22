@@ -181,7 +181,7 @@ export async function execute(
     // node/run topic + the agent's role so the spawned agent is NEVER handed a
     // bare placeholder ("Complete the assigned task" → "No task provided").
     if (!resolvedTask) {
-      const role = (agent.role || 'researcher').replace(/_/g, ' ');
+      const role = (agent.role || 'researcher').replaceAll('_', ' ');
       resolvedTask = topicSignal
         ? `As the ${role}, investigate the following topic thoroughly and report substantive findings. Use available tools to ground your work in real data. Topic: ${topicSignal}`
         : `As the ${role}, complete your part of the team's task and report substantive findings.`;

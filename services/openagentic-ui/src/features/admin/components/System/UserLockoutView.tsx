@@ -557,7 +557,7 @@ const UserLockoutView: React.FC<UserLockoutViewProps> = () => {
                 className="rounded"
                 style={{ accentColor: 'var(--color-primary)' }}
               />
-              Select All
+              {' '}Select All
             </label>
           )}
         </div>

@@ -848,7 +848,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                           {col.status || 'loaded'}
                         </span>
                       </div>
-                      <div className="col-span-1 flex items-center gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <div className="col-span-1 flex items-center gap-1" role="presentation" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                         <button
                           title="Browse"
                           className="p-1.5 rounded hover:bg-surface-secondary transition-colors text-text-tertiary hover:text-text-primary"

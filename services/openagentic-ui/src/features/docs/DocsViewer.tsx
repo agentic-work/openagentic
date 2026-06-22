@@ -205,7 +205,20 @@ export const DocsViewer: React.FC<DocsViewerProps> = ({
             >
               {/* Drag handle */}
               <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize chat panel"
+                tabIndex={0}
                 onMouseDown={handleMouseDown}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    const step = e.key === 'ArrowLeft' ? 24 : -24;
+                    const newWidth = Math.min(Math.max(currentWidth.current + step, 320), 800);
+                    currentWidth.current = newWidth;
+                    setChatWidth(newWidth);
+                  }
+                }}
                 className="absolute left-0 top-0 bottom-0 w-1 z-10 cursor-col-resize group"
                 style={{ backgroundColor: 'transparent' }}
               >

@@ -76,9 +76,7 @@ export function ChartExpandModal({
   // nothing" bug). Mirrors WidgetRenderer's own modal, which already portals.
   return createPortal(
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
+      role="presentation"
       tabIndex={-1}
       data-aw-chart-expand
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -96,6 +94,9 @@ export function ChartExpandModal({
       }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         style={{
           width: 'min(1400px, 96vw)',
           height: 'min(900px, 90vh)',

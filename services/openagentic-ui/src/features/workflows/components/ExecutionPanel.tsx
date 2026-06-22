@@ -695,8 +695,10 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
             }}
           >
             {/* Resize Handle */}
-            <div
-              className={`h-1 cursor-ns-resize hover:bg-accent-primary/30 transition-colors ${isResizing ? 'bg-accent-primary/50' : ''}`}
+            <button
+              type="button"
+              aria-label="Resize panel"
+              className={`block w-full h-1 cursor-ns-resize hover:bg-accent-primary/30 transition-colors ${isResizing ? 'bg-accent-primary/50' : ''}`}
               onMouseDown={handleMouseDown}
             />
 
@@ -844,19 +846,27 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                     {validationResult.compilation.errors.length > 0 && (
                       <div>
                         <h4 className="text-[11px] font-semibold text-error mb-1.5 uppercase tracking-wide">Structure Errors</h4>
-                        {validationResult.compilation.errors.map((err: any, i: number) => (
-                          <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1"
-                            role={err.nodeId ? 'button' : undefined}
-                            tabIndex={err.nodeId ? 0 : undefined}
+                        {validationResult.compilation.errors.map((err: any, i: number) => err.nodeId ? (
+                          <button key={i} type="button"
+                            className="w-full text-left flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1"
                             style={{ background: 'color-mix(in srgb, var(--color-error) 6%, transparent)', color: 'var(--color-text-secondary)' }}
-                            onClick={() => err.nodeId && onNodeSelect?.(err.nodeId)}
-                            onKeyDown={err.nodeId ? onKeyActivate(() => onNodeSelect?.(err.nodeId)) : undefined}
+                            onClick={() => onNodeSelect?.(err.nodeId)}
                           >
                             <XCircle className="w-3 h-3 text-error flex-shrink-0 mt-0.5" />
                             <div>
                               <span className="text-error font-medium">[{err.code}]</span>{' '}
                               {err.message}
-                              {err.nodeId && <span className="text-text-muted ml-1">({err.nodeId})</span>}
+                              <span className="text-text-muted ml-1">({err.nodeId})</span>
+                            </div>
+                          </button>
+                        ) : (
+                          <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1"
+                            style={{ background: 'color-mix(in srgb, var(--color-error) 6%, transparent)', color: 'var(--color-text-secondary)' }}
+                          >
+                            <XCircle className="w-3 h-3 text-error flex-shrink-0 mt-0.5" />
+                            <div>
+                              <span className="text-error font-medium">[{err.code}]</span>{' '}
+                              {err.message}
                             </div>
                           </div>
                         ))}
@@ -895,19 +905,27 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                                 <h4 className={`text-[11px] font-semibold ${colorMap[group.color]} mb-1.5 uppercase tracking-wide`}>
                                   {group.icon} {group.label} ({groupIssues.length})
                                 </h4>
-                                {groupIssues.map((issue: any, i: number) => (
-                                  <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1 cursor-pointer hover:bg-surface-2"
-                                    role={issue.nodeId ? 'button' : undefined}
-                                    tabIndex={issue.nodeId ? 0 : undefined}
+                                {groupIssues.map((issue: any, i: number) => issue.nodeId ? (
+                                  <button key={i} type="button"
+                                    className="w-full text-left flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1 cursor-pointer hover:bg-surface-2"
                                     style={{ background: bgMap[group.color], color: 'var(--color-text-secondary)' }}
-                                    onClick={() => issue.nodeId && onNodeSelect?.(issue.nodeId)}
-                                    onKeyDown={issue.nodeId ? onKeyActivate(() => onNodeSelect?.(issue.nodeId)) : undefined}
+                                    onClick={() => onNodeSelect?.(issue.nodeId)}
                                   >
                                     <AlertCircle className={`w-3 h-3 ${colorMap[group.color]} flex-shrink-0 mt-0.5`} />
                                     <div>
                                       <span className={`${colorMap[group.color]} font-medium`}>[{issue.code}]</span>{' '}
                                       {issue.message}
-                                      {issue.nodeId && <span className="text-text-muted ml-1 cursor-pointer hover:text-text">(click to select)</span>}
+                                      <span className="text-text-muted ml-1 cursor-pointer hover:text-text">(click to select)</span>
+                                    </div>
+                                  </button>
+                                ) : (
+                                  <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1 hover:bg-surface-2"
+                                    style={{ background: bgMap[group.color], color: 'var(--color-text-secondary)' }}
+                                  >
+                                    <AlertCircle className={`w-3 h-3 ${colorMap[group.color]} flex-shrink-0 mt-0.5`} />
+                                    <div>
+                                      <span className={`${colorMap[group.color]} font-medium`}>[{issue.code}]</span>{' '}
+                                      {issue.message}
                                     </div>
                                   </div>
                                 ))}
@@ -918,13 +936,21 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                           {allIssues.filter((_: any, idx: number) => !categorized.has(idx)).length > 0 && (
                             <div>
                               <h4 className="text-[11px] font-semibold text-warning mb-1.5 uppercase tracking-wide">Other Issues</h4>
-                              {allIssues.filter((_: any, idx: number) => !categorized.has(idx)).map((issue: any, i: number) => (
-                                <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1 cursor-pointer hover:bg-surface-2"
-                                  role={issue.nodeId ? 'button' : undefined}
-                                  tabIndex={issue.nodeId ? 0 : undefined}
+                              {allIssues.filter((_: any, idx: number) => !categorized.has(idx)).map((issue: any, i: number) => issue.nodeId ? (
+                                <button key={i} type="button"
+                                  className="w-full text-left flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1 cursor-pointer hover:bg-surface-2"
                                   style={{ background: 'color-mix(in srgb, var(--color-warning) 6%, transparent)', color: 'var(--color-text-secondary)' }}
-                                  onClick={() => issue.nodeId && onNodeSelect?.(issue.nodeId)}
-                                  onKeyDown={issue.nodeId ? onKeyActivate(() => onNodeSelect?.(issue.nodeId)) : undefined}
+                                  onClick={() => onNodeSelect?.(issue.nodeId)}
+                                >
+                                  <AlertCircle className="w-3 h-3 text-warning flex-shrink-0 mt-0.5" />
+                                  <div>
+                                    <span className="text-warning font-medium">[{issue.code}]</span>{' '}
+                                    {issue.message}
+                                  </div>
+                                </button>
+                              ) : (
+                                <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1 hover:bg-surface-2"
+                                  style={{ background: 'color-mix(in srgb, var(--color-warning) 6%, transparent)', color: 'var(--color-text-secondary)' }}
                                 >
                                   <AlertCircle className="w-3 h-3 text-warning flex-shrink-0 mt-0.5" />
                                   <div>

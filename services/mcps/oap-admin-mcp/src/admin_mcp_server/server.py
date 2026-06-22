@@ -229,7 +229,15 @@ async def init_connections():
     await asyncio.to_thread(_init_connections_blocking)
 
 async def cleanup_connections():
-    """Cleanup all database connections"""
+    """Async wrapper around the blocking connection teardown.
+
+    Runs the blocking closes in a worker thread (mirroring init_connections)
+    so awaiting this coroutine never blocks the event loop.
+    """
+    await asyncio.to_thread(_cleanup_connections_blocking)
+
+def _cleanup_connections_blocking():
+    """Cleanup all database connections (blocking)."""
     global redis_client, prisma_client
 
     if redis_client:

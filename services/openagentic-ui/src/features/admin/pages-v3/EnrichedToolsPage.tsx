@@ -22,14 +22,14 @@ export const EnrichedToolsPage: React.FC = () => {
         The EnrichedTool registry holds per-T1-tool metadata
         (<code>outputTemplate</code>, <code>truncate_summary</code> template,
         input/output JSON Schemas, MCP server, category, tier). It drives the
-        V3 envelope splitter — the model channel gets a compact
-        <code> structuredContent.summary</code>, the UI channel gets
+        V3 envelope splitter — the model channel gets a compact{' '}
+        <code> structuredContent.summary</code>, the UI channel gets{' '}
         <code> _meta.outputTemplate</code> for FrameRendererRegistry lookup.
       </p>
       <p style={{ marginBottom: 12, color: 'var(--fg-2)', maxWidth: 720 }}>
-        Default rows are seeded at boot by <code>EnrichedToolSeeder</code>
+        Default rows are seeded at boot by <code>EnrichedToolSeeder</code>{' '}
         (~14 T1 tools across cloud-ops / k8s / data / meta categories).
-        Subsequent boots refresh structural fields but preserve admin-set
+        Subsequent boots refresh structural fields but preserve admin-set{' '}
         <code> enabled</code> flags.
       </p>
       <p style={{ marginBottom: 24, color: 'var(--fg-3)', fontSize: 13 }}>

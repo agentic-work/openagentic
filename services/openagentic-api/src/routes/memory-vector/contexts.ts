@@ -850,7 +850,7 @@ export const contextsRoutes: FastifyPluginAsync = async (fastify) => {
           const csvHeaders = ['Memory Key', 'Content', 'Category', 'Importance', 'Created At'];
           const csvRows = (context as any).memories?.map((memory: any) => [
             memory.memory_key,
-            memory.content.replace(/"/g, '""'), // Escape quotes
+            memory.content.replaceAll(/"/g, '""'), // Escape quotes
             memory.category || '',
             memory.importance?.toString() || '',
             memory.created_at.toISOString()

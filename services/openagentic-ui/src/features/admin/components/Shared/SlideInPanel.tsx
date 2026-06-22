@@ -97,14 +97,15 @@ export const SlideInPanel: React.FC<SlideInPanelProps> = ({
       style={{ backgroundColor: showBackdrop ? 'color-mix(in srgb, var(--color-shadow) 50%, transparent)' : 'transparent' }}
       onClick={handleBackdropClick}
       onKeyDown={handleBackdropKeyDown}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="slide-panel-title"
+      role="presentation"
     >
       {/* Panel — M3 Expressive (task #160): surface-2, soft-lg shadow, 24px
           radius on top-left + bottom-left for the exposed edge. */}
       <div
         ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="slide-panel-title"
         className={`
           h-full flex flex-col
           ${widthClasses[width]}

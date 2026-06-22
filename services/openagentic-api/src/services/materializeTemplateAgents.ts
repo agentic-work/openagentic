@@ -65,7 +65,7 @@ async function upsertTemplateAgent(
   const role = spec.role || spec.agent_type || 'agent';
   const name = deterministicName(templateName, role);
   const display_name = spec.display_name
-    || `${templateName} — ${role.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}`;
+    || `${templateName} — ${role.replaceAll(/_/g, ' ').replaceAll(/\b\w/g, (c: string) => c.toUpperCase())}`;
   // Merge any tools the template explicitly listed with the default set
   // every materialized agent gets. De-dupe.
   const explicitTools = Array.isArray(spec.tools) ? spec.tools : [];

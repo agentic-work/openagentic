@@ -778,7 +778,7 @@ const ServerCardGrid = ({
           tabIndex={0}
           onClick={() => onPick(s)}
           onKeyDown={onKeyActivate(() => onPick(s))}
-          aria-selected={isSelected}
+          aria-pressed={isSelected}
           style={{
             padding: '10px 12px',
             borderRadius: 'var(--radius-chip)',

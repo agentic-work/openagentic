@@ -447,7 +447,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
           attribute is the DOM contract the evidence-verifier checks for.
       */}
       {fileList.length >= 1 && (
-        <nav
+        <div
           data-testid="artifact-panel-tabs"
           role="tablist"
           style={{
@@ -515,7 +515,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
               </button>
             );
           })}
-        </nav>
+        </div>
       )}
 
       {/* ═══ Preview body ═══

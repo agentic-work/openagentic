@@ -164,7 +164,7 @@ const computeDiff = (original: string, modified: string): DiffHunk[] => {
 const computeLCS = (oldLines: string[], newLines: string[]): [number, number][] => {
   const m = oldLines.length;
   const n = newLines.length;
-  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+  const dp: number[][] = new Array(m + 1).fill(null).map(() => new Array(n + 1).fill(0));
 
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {

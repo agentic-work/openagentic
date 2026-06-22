@@ -32,7 +32,7 @@ const AGENT_PALETTE = [
 export function hashStringToInt(s: string): number {
   let h = 5381;
   for (let i = 0; i < s.length; i++) {
-    h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    h = ((h << 5) + h + (s.codePointAt(i) ?? 0)) | 0;
   }
   return Math.abs(h);
 }

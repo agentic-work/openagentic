@@ -414,6 +414,7 @@ export function WidgetRenderer({
 
   return (
     <div
+      role="presentation"
       className={['cm-v2', 'cm-widget', className || ''].filter(Boolean).join(' ')}
       data-widget-template={template}
       data-widget-kind={kind}
@@ -607,18 +608,27 @@ export function WidgetRenderer({
               flexDirection: 'column',
               padding: 24,
             }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) handleClose();
-            }}
-            onKeyDown={(e) => {
-              if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
-                e.preventDefault();
-                handleClose();
-              }
-            }}
           >
+            {/* Click-away backdrop — sits behind the dialog chrome so clicking
+                outside the content dismisses the modal (keyboard users use the
+                explicit Close button). */}
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={handleClose}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                cursor: 'default',
+              }}
+            />
             <div
               style={{
+                position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
@@ -642,6 +652,7 @@ export function WidgetRenderer({
               srcDoc={srcdoc}
               title={title || template}
               style={{
+                position: 'relative',
                 flex: 1,
                 width: '100%',
                 border: '1px solid var(--cm-border)',

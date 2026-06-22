@@ -479,8 +479,9 @@ export const PromptTemplateManager: React.FC = () => {
 
             <div className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">Template Name *</label>
+                <label htmlFor="prompt-template-name" className="block text-sm font-medium text-text-primary mb-1">Template Name *</label>
                 <input
+                  id="prompt-template-name"
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -490,8 +491,9 @@ export const PromptTemplateManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">Category</label>
+                <label htmlFor="prompt-template-category" className="block text-sm font-medium text-text-primary mb-1">Category</label>
                 <select
+                  id="prompt-template-category"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full px-3 py-2 bg-surface-base border border-border rounded-lg text-text-primary focus:outline-none focus:border-primary"
@@ -503,8 +505,9 @@ export const PromptTemplateManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">Description</label>
+                <label htmlFor="prompt-template-description" className="block text-sm font-medium text-text-primary mb-1">Description</label>
                 <textarea
+                  id="prompt-template-description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={2}
@@ -513,8 +516,9 @@ export const PromptTemplateManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">Template Content *</label>
+                <label htmlFor="prompt-template-content" className="block text-sm font-medium text-text-primary mb-1">Template Content *</label>
                 <textarea
+                  id="prompt-template-content"
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   rows={10}
@@ -605,8 +609,9 @@ export const PromptTemplateManager: React.FC = () => {
               <h3 className="text-lg font-semibold text-text-primary">Assign Template to User</h3>
             </div>
             <div className="p-4">
-              <label className="block text-sm font-medium text-text-primary mb-2">Select User</label>
+              <label htmlFor="prompt-template-assign-user" className="block text-sm font-medium text-text-primary mb-2">Select User</label>
               <select
+                id="prompt-template-assign-user"
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
                 className="w-full px-3 py-2 bg-surface-base border border-border rounded-lg text-text-primary focus:outline-none focus:border-primary"

@@ -665,7 +665,7 @@ export class ToolApprovalGate {
     // effect — so it is discarded explicitly rather than instantiated for no reason.
     try {
       // eslint-disable-next-line no-new
-      RegExp(pattern, 'i');
+      new RegExp(pattern, 'i');
     } catch (err) {
       throw new Error(
         `Invalid tool risk override pattern "${pattern}": ${

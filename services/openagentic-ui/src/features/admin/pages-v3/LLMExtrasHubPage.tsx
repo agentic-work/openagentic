@@ -128,8 +128,7 @@ export const LLMExtrasHubPage: React.FC<LLMExtrasHubPageProps> = ({
       )}
       {anyError && (
         <Banner level="warn" label="warn">
-          one or more upstream endpoints failed (
-          <span className="accent">/api/admin/ollama/hosts</span>) — values may be partial
+          one or more upstream endpoints failed (<span className="accent">/api/admin/ollama/hosts</span>) — values may be partial
         </Banner>
       )}
 

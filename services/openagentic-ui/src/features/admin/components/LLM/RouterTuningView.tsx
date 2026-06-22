@@ -102,7 +102,6 @@ const FieldHelp: React.FC<FieldHelpProps> = ({ fieldName }) => {
   return (
     <span
       style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
-      onKeyDown={handleKeyDown}
     >
       <button
         ref={btnRef}
@@ -110,6 +109,7 @@ const FieldHelp: React.FC<FieldHelpProps> = ({ fieldName }) => {
         aria-describedby={open ? popoverId : undefined}
         aria-expanded={open}
         data-testid={`field-help-${fieldName}`}
+        onKeyDown={handleKeyDown}
         onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
@@ -1497,6 +1497,7 @@ const RouterTuningView: React.FC = () => {
       <AdminCard padding="lg">
         <h1 style={{ fontSize: '26px', fontWeight: 600, margin: '0 0 6px', letterSpacing: '-0.01em', color: 'var(--color-text-primary)' }}>
           Smart Router — Scoring Formula
+          {' '}
           <span
             title="This page tunes only the Smart Router (requests with session model 'auto'). Tenant defaults for chat / code / embeddings / vision / image-gen live under Admin → LLM → Default Models. SmartRouter does not override an explicit model pin on a session or request."
             style={{

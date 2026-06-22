@@ -107,7 +107,7 @@ const PROHIBITED_TOPIC_KEYWORDS = [
 function buildKeywordRegex(keyword: string): RegExp {
   const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   // Replace spaces with \s+ to allow phrase matching across whitespace.
-  const pattern = escaped.replace(/ /g, '\\s+');
+  const pattern = escaped.replaceAll(/ /g, '\\s+');
   return new RegExp(`\\b${pattern}\\b`, 'i');
 }
 

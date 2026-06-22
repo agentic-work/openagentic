@@ -179,24 +179,34 @@ export class RouterTuningService {
   private cacheTimestamp = 0;
   private readonly IN_MEMORY_TTL_MS = 60_000; // 1 minute
 
+  /** Guards the one-time cross-pod invalidation subscription (lazy, see ensureSubscribed). */
+  private subscribed = false;
+
   constructor(prisma: PrismaClient, redis?: RedisLike | null) {
     this.logger = pino({ name: 'RouterTuningService' });
     this.prisma = prisma;
     this.redis = redis ?? null;
+    // The cross-pod pub/sub subscription is wired lazily on first read
+    // (ensureSubscribed) so no async work runs in the constructor.
+  }
 
-    // Wire up pub/sub subscriber so this pod invalidates its cache
-    // when another pod publishes a tuning change.
-    if (this.redis) {
-      this.redis
-        .subscribe(INVALIDATION_CHANNEL, () => {
-          this.cached = null;
-          this.cacheTimestamp = 0;
-          this.logger.info('Router tuning cache invalidated via pub/sub');
-        })
-        .catch((err: Error) => {
-          this.logger.warn({ err: err.message }, 'Failed to subscribe to router-tuning:invalidated — single-replica mode');
-        });
-    }
+  /**
+   * Wire up the pub/sub subscriber so this pod invalidates its cache when
+   * another pod publishes a tuning change. Runs at most once, lazily, on the
+   * first read. Best-effort: a subscribe failure degrades to single-replica mode.
+   */
+  private ensureSubscribed(): void {
+    if (this.subscribed || !this.redis) return;
+    this.subscribed = true;
+    this.redis
+      .subscribe(INVALIDATION_CHANNEL, () => {
+        this.cached = null;
+        this.cacheTimestamp = 0;
+        this.logger.info('Router tuning cache invalidated via pub/sub');
+      })
+      .catch((err: Error) => {
+        this.logger.warn({ err: err.message }, 'Failed to subscribe to router-tuning:invalidated — single-replica mode');
+      });
   }
 
   // --------------------------------------------------------------------------
@@ -208,6 +218,8 @@ export class RouterTuningService {
    * Read order: in-memory cache → Redis → DB → hardcoded defaults.
    */
   async getTuning(): Promise<RouterTuning> {
+    this.ensureSubscribed();
+
     // 1. In-memory cache
     if (this.cached && Date.now() - this.cacheTimestamp < this.IN_MEMORY_TTL_MS) {
       return this.cached;

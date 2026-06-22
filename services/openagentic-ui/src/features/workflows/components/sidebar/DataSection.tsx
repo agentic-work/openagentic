@@ -674,6 +674,8 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                             {(server.tools || []).map(tool => (
                               <div
                                 key={tool.name}
+                                role="button"
+                                tabIndex={0}
                                 draggable
                                 onDragStart={e => handleMcpToolDrag(e, tool, server.name)}
                                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', borderRadius: '8px', cursor: 'grab', transition: 'background 0.1s' }}
@@ -789,8 +791,8 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                             ) : objects.map(obj => (
                               <div
                                 key={obj.key}
-                                role={obj.isFolder ? 'button' : undefined}
-                                tabIndex={obj.isFolder ? 0 : undefined}
+                                role="button"
+                                tabIndex={0}
                                 onClick={obj.isFolder ? () => navigateFolder(bucket.name, obj.key) : undefined}
                                 onKeyDown={obj.isFolder ? onKeyActivate(() => navigateFolder(bucket.name, obj.key)) : undefined}
                                 draggable={!obj.isFolder}
@@ -884,6 +886,8 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                           {(store.collections || []).map(col => (
                             <div
                               key={col.name}
+                              role="button"
+                              tabIndex={0}
                               draggable
                               onDragStart={e => handleCollectionDragStart(e, col)}
                               style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', borderRadius: '8px', cursor: 'grab', transition: 'background 0.1s' }}

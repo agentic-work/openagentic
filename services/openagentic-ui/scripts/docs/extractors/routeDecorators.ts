@@ -48,7 +48,7 @@ export function routeDecorators(config: RouteDecoratorsConfig): Extractor {
     }
 
     const sections: DocSection[] = Object.entries(grouped).map(([group, items]) => ({
-      id: group.replace(/\//g, '_'),
+      id: group.replaceAll('/', '_'),
       title: group,
       description: `Routes registered in ${group}`,
       adminOnly: false,

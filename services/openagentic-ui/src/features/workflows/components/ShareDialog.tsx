@@ -386,7 +386,7 @@ const VisibilityTab: React.FC<{
     let cancelled = false;
     setLoadingGroups(true);
     fetch('/api/user/groups', { headers: getAuthHeaders() })
-      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(data => {
         if (!cancelled) setGroups(Array.isArray(data) ? data : data.groups ?? []);
       })
@@ -444,9 +444,9 @@ const VisibilityTab: React.FC<{
         {/* Team group picker */}
         {selected === 'team' && (
           <div className="mt-3 rounded-lg border p-3" style={{ borderColor: BORDER, background: BG_SECONDARY }}>
-            <label className="text-xs font-medium mb-2 block" style={{ color: TEXT }}>
+            <span className="text-xs font-medium mb-2 block" style={{ color: TEXT }}>
               Select groups to share with
-            </label>
+            </span>
             {loadingGroups ? (
               <div className="flex items-center gap-2 py-2">
                 <Spinner /> <span className="text-xs" style={{ color: TEXT_TERTIARY }}>Loading groups...</span>
@@ -554,7 +554,7 @@ const PeopleTab: React.FC<{
     let cancelled = false;
     setLoadingShares(true);
     fetch(`/api/workflows/${workflowId}/shares`, { headers: getAuthHeaders() })
-      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(data => { if (!cancelled) setShares(Array.isArray(data) ? data : data.shares ?? []); })
       .catch(() => { if (!cancelled) setShares([]); })
       .finally(() => { if (!cancelled) setLoadingShares(false); });
@@ -836,7 +836,7 @@ const ApiAccessTab: React.FC<{
   useEffect(() => {
     let cancelled = false;
     fetch('/api/user/api-keys', { headers: getAuthHeaders() })
-      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(data => { if (!cancelled) setApiKeys(Array.isArray(data) ? data : data.keys ?? []); })
       .catch(() => { if (!cancelled) setApiKeys([]); })
       .finally(() => { if (!cancelled) setLoadingKeys(false); });

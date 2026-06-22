@@ -247,7 +247,7 @@ const MaintenancePage: React.FC = () => {
           </motion.div>
 
           {/* Floating particles effect */}
-          {[...Array(6)].map((_, i) => (
+          {[...new Array(6)].map((_, i) => (
             <motion.div
               key={i}
               className="absolute w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
@@ -682,7 +682,7 @@ const MaintenancePage: React.FC = () => {
                               </motion.button>
                               {emoji.popping && (
                                 <>
-                                  {[...Array(6)].map((_, i) => (
+                                  {[...new Array(6)].map((_, i) => (
                                     <motion.div
                                       key={i}
                                       initial={{ scale: 0, x: 0, y: 0 }}

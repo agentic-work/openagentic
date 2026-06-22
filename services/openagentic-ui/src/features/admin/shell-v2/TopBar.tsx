@@ -25,7 +25,7 @@ export function TopBar({
     <header className="flex items-center px-5 h-[44px] bg-bg-0 border-b border-ln-2 text-xs gap-3 font-ui">
       <span className="flex items-center gap-2 text-[11px] font-mono" style={{ color: 'var(--ok)' }}>
         <span aria-hidden className="inline-block h-[6px] w-[6px] rounded-full" style={{ background: 'var(--ok)', boxShadow: '0 0 6px var(--ok)' }} />
-        LIVE
+        <span>LIVE</span>
       </span>
       {env && (
         <span className="text-fg-3 font-mono text-[11px]">

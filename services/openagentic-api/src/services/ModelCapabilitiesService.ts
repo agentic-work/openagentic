@@ -369,24 +369,27 @@ export class ExtendedCapabilitiesService extends EventEmitter {
     this.visionBenchmarks = new VisionBenchmarkSuite();
     this.imageGenBenchmarks = new ImageGenerationBenchmarkSuite();
     this.toolTester = new MCPToolTester();
-    this.initialize();
+
+    // Synchronous setup only — no async work in the constructor.
+    this.registerConfiguredProviders();
+
+    // Optional capability discovery is async; kick it off detached with its
+    // own error handling so the constructor never holds an unawaited promise.
+    if (this.config.autoDiscovery) {
+      this.discoverAllCapabilities().catch(error => {
+        this.emit('error', error);
+      });
+    }
   }
 
-  private async initialize(): Promise<void> {
-    // Register providers
+  /** Register providers passed via constructor config + composite strategies (sync). */
+  private registerConfiguredProviders(): void {
     if (this.config.providers) {
       this.config.providers.forEach(provider => {
         this.registerProvider(provider);
       });
     }
-
-    // Initialize composite strategies
     this.initializeCompositeStrategies();
-
-    // Start discovery
-    if (this.config.autoDiscovery) {
-      await this.discoverAllCapabilities();
-    }
   }
 
   /**

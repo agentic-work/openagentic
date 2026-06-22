@@ -3058,7 +3058,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           return reply.code(404).send({ error: 'Workflow not found or you are not the owner' });
         }
 
-        const webhookKey = `wh_${randomUUID().replace(/-/g, '')}`;
+        const webhookKey = `wh_${randomUUID().replaceAll(/-/g, '')}`;
         const webhook = await prisma.workflowWebhook.create({
           data: {
             workflow_id: id,

@@ -243,7 +243,8 @@ const AgentGroup: React.FC<{ label: string; agents: any[] }> = ({ label, agents 
     </div>
     <div className="space-y-1">
       {agents.map(agent => (
-        <div
+        <button
+          type="button"
           key={agent.id}
           draggable
           onDragStart={(e) => {
@@ -253,7 +254,7 @@ const AgentGroup: React.FC<{ label: string; agents: any[] }> = ({ label, agents 
             }));
             e.dataTransfer.effectAllowed = 'copy';
           }}
-          className="wf-palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg border cursor-grab active:cursor-grabbing"
+          className="wf-palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg border cursor-grab active:cursor-grabbing w-full text-left"
           style={{
             background: 'var(--wf-node-bg)',
             borderColor: 'var(--wf-node-border)',
@@ -276,7 +277,7 @@ const AgentGroup: React.FC<{ label: string; agents: any[] }> = ({ label, agents 
               )}
             </div>
           </div>
-        </div>
+        </button>
       ))}
     </div>
   </div>

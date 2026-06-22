@@ -127,9 +127,15 @@ export const WebFetchRenderer: React.FC<MCPRendererProps> = ({
     >
       {/* Header */}
       <div
-        role={hasContent ? 'button' : undefined}
-        tabIndex={hasContent ? 0 : undefined}
-        aria-expanded={hasContent ? expanded : undefined}
+        {...(hasContent
+          ? {
+              role: 'button',
+              tabIndex: 0,
+              'aria-expanded': expanded,
+              onClick: () => setExpanded(!expanded),
+              onKeyDown: onKeyActivate(() => setExpanded(!expanded)),
+            }
+          : {})}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -138,8 +144,6 @@ export const WebFetchRenderer: React.FC<MCPRendererProps> = ({
           cursor: hasContent ? 'pointer' : 'default',
           borderBottom: expanded && hasContent ? '1px solid color-mix(in srgb, var(--color-border) 40%, transparent)' : 'none',
         }}
-        onClick={() => hasContent && setExpanded(!expanded)}
-        onKeyDown={onKeyActivate(() => hasContent && setExpanded(!expanded))}
       >
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
           {status === 'calling' ? (

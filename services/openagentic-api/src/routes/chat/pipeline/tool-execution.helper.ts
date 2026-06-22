@@ -729,7 +729,7 @@ function resolveToolName(
 function normalizeName(name: string): string {
   return name
     .toLowerCase()
-    .replace(/-/g, '_')
+    .replaceAll(/-/g, '_')
     .replace(/[^a-z0-9_]/g, '');
 }
 

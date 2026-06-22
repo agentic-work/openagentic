@@ -104,7 +104,7 @@ export const CostPane: React.FC<CostPaneProps> = ({ rows, metrics }) => {
         <PanelHead
           title="Spend by Provider · 24h"
           count="$/sec · token-rate × price"
-          right={<a>{fmtUsd(summary?.totalCost)}</a>}
+          right={<span>{fmtUsd(summary?.totalCost)}</span>}
         />
         {q.isLoading ? (
           <EmptyInline pad>loading…</EmptyInline>

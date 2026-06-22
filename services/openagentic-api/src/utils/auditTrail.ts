@@ -115,23 +115,30 @@ export interface AuditEvent {
  */
 export class AuditTrail {
   private logger: any = logger;
-  
+  private tableProbe: Promise<void> | null = null;
+
   constructor() {
-    // Using Prisma instead of Pool
-    this.initializeTable();
+    // No async work in the constructor — the table-readiness probe runs lazily
+    // on the first log() call (see ensureTable below).
   }
 
   /**
-   * Initialize audit trail table if it doesn't exist
+   * Verify the audit trail table is reachable. Runs once, lazily, on first use.
+   * Best-effort: a probe failure is logged but never blocks an audit write.
    */
-  private async initializeTable(): Promise<void> {
-    try {
-      // Verify audit table exists using Prisma
-      await prisma.adminAuditLog.findMany({ take: 1 });
-      logger.info('Audit trail table initialized');
-    } catch (error) {
-      logger.error('Failed to initialize audit table:', error);
+  private async ensureTable(): Promise<void> {
+    if (!this.tableProbe) {
+      this.tableProbe = (async () => {
+        try {
+          // Verify audit table exists using Prisma
+          await prisma.adminAuditLog.findMany({ take: 1 });
+          logger.info('Audit trail table initialized');
+        } catch (error) {
+          logger.error('Failed to initialize audit table:', error);
+        }
+      })();
     }
+    await this.tableProbe;
   }
   
   /**
@@ -139,6 +146,7 @@ export class AuditTrail {
    */
   async log(event: AuditEvent): Promise<void> {
     try {
+      await this.ensureTable();
       const checksum = this.generateChecksum(event);
       
       await createChainedAdminAudit({

@@ -18,7 +18,7 @@ async function expandPathOrGlob(basePath: string, expr: string): Promise<string[
   const parts = expr.split('/');
   const lastIdx = parts.findIndex((p) => p.includes('*'));
   const parent = parts.slice(0, lastIdx).join('/');
-  const pat = new RegExp('^' + parts[lastIdx].replace(/\*/g, '.*') + '$');
+  const pat = new RegExp('^' + parts[lastIdx].replaceAll('*', '.*') + '$');
   const parentAbs = resolve(basePath, parent);
   try {
     const entries = await readdir(parentAbs);

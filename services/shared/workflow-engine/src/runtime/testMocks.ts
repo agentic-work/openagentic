@@ -51,7 +51,7 @@ export interface ResolvedMcpMock {
 
 function normalizeServer(name: string | undefined): string | undefined {
   if (!name) return undefined;
-  return String(name).replace(/-/g, '_').replace(/_mcp$/, '');
+  return String(name).replaceAll('-', '_').replace(/_mcp$/, '');
 }
 
 export function resolveMockMcpResponse(

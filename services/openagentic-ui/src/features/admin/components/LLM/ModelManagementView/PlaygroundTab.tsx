@@ -129,8 +129,9 @@ export const PlaygroundTab: React.FC<{
 
           {/* Provider */}
           <div>
-            <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Provider</label>
+            <label htmlFor="playground-provider" className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Provider</label>
             <select
+              id="playground-provider"
               value={selectedProvider}
               onChange={e => {
                 setSelectedProvider(e.target.value);
@@ -150,8 +151,9 @@ export const PlaygroundTab: React.FC<{
 
           {/* Model */}
           <div>
-            <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Model</label>
+            <label htmlFor="playground-model" className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Model</label>
             <select
+              id="playground-model"
               value={selectedModel}
               onChange={e => setSelectedModel(e.target.value)}
               className="w-full px-2.5 py-1.5 text-xs rounded-lg border outline-none font-mono"
@@ -165,8 +167,8 @@ export const PlaygroundTab: React.FC<{
 
           {/* Test type */}
           <div>
-            <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Test Type</label>
-            <div className="flex gap-1">
+            <span className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Test Type</span>
+            <div className="flex gap-1" role="group" aria-label="Test Type">
               {(['chat', 'streaming', 'tools'] as const).map(t => (
                 <button
                   key={t}

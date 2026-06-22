@@ -666,9 +666,9 @@ function toEnvFlag(name: string): string {
 function AddServerModal({ onClose }: { onClose: () => void }) {
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Add MCP server"
+      role="button"
+      aria-label="Close add MCP server dialog"
+      tabIndex={0}
       onClick={onClose}
       onKeyDown={onKeyActivate(onClose)}
       style={{
@@ -679,6 +679,9 @@ function AddServerModal({ onClose }: { onClose: () => void }) {
       }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Add MCP server"
         onClick={e => e.stopPropagation()}
         onKeyDown={e => e.stopPropagation()}
         style={{

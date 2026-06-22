@@ -89,7 +89,7 @@ const CSV_COLUMNS: (keyof AuditLogEntry)[] = [
 function csvCell(v: unknown): string {
   if (v === null || v === undefined) return '';
   const s = Array.isArray(v) ? v.join('|') : String(v);
-  const escaped = s.replace(/"/g, '""');
+  const escaped = s.replaceAll(/"/g, '""');
   return /[",\n\r]/.test(escaped) ? `"${escaped}"` : escaped;
 }
 

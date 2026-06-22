@@ -715,6 +715,7 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
     const noteBg = data.bgColor || 'color-mix(in srgb, var(--color-accent) 6%, transparent)';
     return (
       <div
+        role="presentation"
         className={`wf-node-appear wf-text-node`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -805,6 +806,7 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
 
   return (
     <div
+      role="presentation"
       className="wf-node-appear"
       onMouseEnter={() => {
         setIsHovered(true);

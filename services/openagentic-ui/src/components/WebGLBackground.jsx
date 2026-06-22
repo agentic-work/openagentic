@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
+import PropTypes from 'prop-types'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Float } from '@react-three/drei'
 import * as THREE from 'three'
@@ -69,6 +70,14 @@ function Metaball({ position, scale, speed = 1, color1, color2 }) {
       </mesh>
     </Float>
   )
+}
+
+Metaball.propTypes = {
+  position: PropTypes.arrayOf(PropTypes.number).isRequired,
+  scale: PropTypes.number,
+  speed: PropTypes.number,
+  color1: PropTypes.string,
+  color2: PropTypes.string,
 }
 
 function Scene() {

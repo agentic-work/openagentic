@@ -180,7 +180,7 @@ function rowKey(row: Record<string, StreamingTableCell>, ri: number): string {
     const s = `${k}=${cellScalarString(row[k])};`;
     for (let i = 0; i < s.length; i++) {
       // djb2-like
-      h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+      h = ((h << 5) + h + (s.codePointAt(i) ?? 0)) | 0;
     }
   }
   return `r${h >>> 0}_${ri.toString(36)}`;

@@ -407,12 +407,12 @@ export class AzureSDKKnowledgeIngester {
     content = content.replace(/<[^>]+>/g, '');
 
     // Decode HTML entities
-    content = content.replace(/&lt;/g, '<');
-    content = content.replace(/&gt;/g, '>');
-    content = content.replace(/&amp;/g, '&');
-    content = content.replace(/&quot;/g, '"');
-    content = content.replace(/&#39;/g, "'");
-    content = content.replace(/&nbsp;/g, ' ');
+    content = content.replaceAll(/&lt;/g, '<');
+    content = content.replaceAll(/&gt;/g, '>');
+    content = content.replaceAll(/&amp;/g, '&');
+    content = content.replaceAll(/&quot;/g, '"');
+    content = content.replaceAll(/&#39;/g, "'");
+    content = content.replaceAll(/&nbsp;/g, ' ');
 
     // Clean up whitespace
     content = content.replace(/\n{3,}/g, '\n\n');

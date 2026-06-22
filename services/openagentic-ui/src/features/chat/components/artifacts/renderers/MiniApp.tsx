@@ -207,8 +207,7 @@ export const MiniApp: React.FC<MiniAppProps> = ({
           <span style={{ fontSize: 9.5, letterSpacing: 0.16, textTransform: 'uppercase', fontWeight: 600 }}>ttl</span>{' '}
           <span data-testid="miniapp-ttl" style={{ color: expired ? COLORS.err : COLORS.ink, fontWeight: 600 }}>
             {remaining}
-          </span>
-          s
+          </span>s
         </div>
       </div>
     </div>

@@ -56,7 +56,7 @@ export async function execute(
 
   // Normalize server name: hyphens → underscores, strip trailing _mcp.
   const normalizedServer = toolServer
-    ? String(toolServer).replace(/-/g, '_').replace(/_mcp$/, '')
+    ? String(toolServer).replaceAll('-', '_').replace(/_mcp$/, '')
     : toolServer;
 
   // Interpolate string values in arguments. Object values pass through.

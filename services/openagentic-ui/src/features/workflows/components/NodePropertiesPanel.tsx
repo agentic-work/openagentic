@@ -420,10 +420,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   const renderTriggerConfig = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+        <label htmlFor="node-trigger-type" className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
           Trigger Type
         </label>
         <select
+          id="node-trigger-type"
           value={nodeData.triggerType || 'manual'}
           onChange={(e) => updateData('triggerType', selectValue(e, 'triggerType'))}
           className="glass-field px-3 py-2 focus:outline-none"
@@ -442,10 +443,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
       {nodeData.triggerType === 'schedule' && (
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+          <label htmlFor="node-trigger-cron" className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
             Cron Expression
           </label>
           <input
+            id="node-trigger-cron"
             type="text"
             value={nodeData.triggerConfig?.cron || ''}
             onChange={(e) => updateData('triggerConfig', { ...nodeData.triggerConfig, cron: e.target.value })}
@@ -460,10 +462,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
       {nodeData.triggerType === 'chat_message' && (
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+          <label htmlFor="node-trigger-message-pattern" className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
             Message Pattern (optional)
           </label>
           <input
+            id="node-trigger-message-pattern"
             type="text"
             value={nodeData.triggerConfig?.messagePattern || ''}
             onChange={(e) => updateData('triggerConfig', { ...nodeData.triggerConfig, messagePattern: e.target.value })}
@@ -481,11 +484,13 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   const renderMCPToolConfig = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+        <label htmlFor="node-mcp-tool" className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
           MCP Tool
+          {' '}
           <span style={{ color: 'var(--color-warning)', marginLeft: 4, fontWeight: 800 }}>*</span>
         </label>
         <select
+          id="node-mcp-tool"
           value={nodeData.toolName || ''}
           onChange={(e) => {
             const selectedTool = availableTools.find(t => t.name === e.target.value);
@@ -540,9 +545,9 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         if (hasSchema) {
           return (
             <div className="space-y-3">
-              <label className="block text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+              <span className="block text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
                 Arguments
-              </label>
+              </span>
               {Object.entries(properties).map(([key, prop]) => {
                 const isRequired = required.includes(key);
                 const value = (args as Record<string, unknown>)[key] ?? prop.default ?? '';
@@ -618,10 +623,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         // Fallback: raw JSON editor when no schema available
         return (
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+            <label htmlFor="node-arguments-json" className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
               Arguments (JSON)
             </label>
             <textarea
+              id="node-arguments-json"
               value={typeof nodeData.arguments === 'string' ? nodeData.arguments : JSON.stringify(nodeData.arguments || {}, null, 2)}
               onChange={(e) => {
                 try {
@@ -647,10 +653,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   const renderLLMConfig = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+        <label htmlFor="node-llm-model" className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
           Model
         </label>
         <select
+          id="node-llm-model"
           value={nodeData.model || ''}
           onChange={(e) => updateData('model', e.target.value)}
           className="glass-field px-3 py-2 focus:outline-none"
@@ -710,10 +717,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+        <label htmlFor="node-llm-max-tokens" className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
           Max Tokens
         </label>
         <input
+          id="node-llm-max-tokens"
           type="number"
           value={nodeData.maxTokens || 1000}
           onChange={(e) => updateData('maxTokens', Number.parseInt(e.target.value))}
@@ -731,10 +739,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   const renderCodeConfig = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+        <label htmlFor="node-code-language" className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
           Language
         </label>
         <select
+          id="node-code-language"
           value={nodeData.language || 'javascript'}
           onChange={(e) => updateData('language', selectValue(e, 'language'))}
           className="glass-field px-3 py-2 focus:outline-none"
@@ -775,10 +784,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       />
 
       <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+        <label htmlFor="node-condition-operator" className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
           Operator
         </label>
         <select
+          id="node-condition-operator"
           value={nodeData.operator || 'equals'}
           onChange={(e) => updateData('operator', selectValue(e, 'operator'))}
           className="glass-field px-3 py-2 focus:outline-none"
@@ -799,10 +809,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   const renderTransformConfig = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+        <label htmlFor="node-transform-type" className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
           Transform Type
         </label>
         <select
+          id="node-transform-type"
           value={nodeData.transformType || 'map'}
           onChange={(e) => updateData('transformType', selectValue(e, 'transformType'))}
           className="glass-field px-3 py-2 focus:outline-none"
@@ -2524,9 +2535,9 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           helpText="Expression to evaluate. Each case matches against this value."
           required error={!fieldStr('expression').trim()} />
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+          <span className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
             Cases
-          </label>
+          </span>
           <div className="space-y-2">
             {cases.map((c, i) => (
               <div key={i} className="flex items-center gap-2">
@@ -3007,10 +3018,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
         {/* Node Label */}
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+          <label htmlFor="node-label" className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
             Label
           </label>
           <input
+            id="node-label"
             type="text"
             value={nodeData.label || ''}
             onChange={(e) => updateData('label', e.target.value)}
@@ -3023,10 +3035,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
         {/* Node Description */}
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+          <label htmlFor="node-description" className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
             Description (optional)
           </label>
           <textarea
+            id="node-description"
             value={nodeData.description || ''}
             onChange={(e) => updateData('description', e.target.value)}
             rows={2}

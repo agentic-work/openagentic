@@ -822,7 +822,7 @@ export const ModelGardenTab: React.FC<{
                 <div className="p-4 space-y-4 max-h-[580px] overflow-y-auto">
                   {/* Model ID (read-only) */}
                   <div>
-                    <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Model ID</label>
+                    <span className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Model ID</span>
                     <div className="px-2.5 py-1.5 text-xs font-mono rounded-lg border" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--text-primary)', opacity: 0.8 }}>
                       {addConfig.modelId}
                     </div>
@@ -830,8 +830,9 @@ export const ModelGardenTab: React.FC<{
 
                   {/* Display Name */}
                   <div>
-                    <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Display Name</label>
+                    <label htmlFor="garden-add-display-name" className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Display Name</label>
                     <input
+                      id="garden-add-display-name"
                       type="text"
                       value={addConfig.displayName}
                       onChange={e => setAddConfig(c => ({ ...c, displayName: e.target.value }))}
@@ -891,8 +892,9 @@ export const ModelGardenTab: React.FC<{
                   {/* Rate Limits */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Req/hr (0=none)</label>
+                      <label htmlFor="garden-add-req-per-hr" className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Req/hr (0=none)</label>
                       <input
+                        id="garden-add-req-per-hr"
                         type="number" min={0}
                         value={addConfig.config.rateLimitRequestsPerHour ?? 0}
                         onChange={e => setAddConfig(c => ({ ...c, config: { ...c.config, rateLimitRequestsPerHour: Number(e.target.value) } }))}
@@ -901,8 +903,9 @@ export const ModelGardenTab: React.FC<{
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Tok/hr (0=none)</label>
+                      <label htmlFor="garden-add-tok-per-hr" className="text-xs font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Tok/hr (0=none)</label>
                       <input
+                        id="garden-add-tok-per-hr"
                         type="number" min={0}
                         value={addConfig.config.rateLimitTokensPerHour ?? 0}
                         onChange={e => setAddConfig(c => ({ ...c, config: { ...c.config, rateLimitTokensPerHour: Number(e.target.value) } }))}
@@ -948,8 +951,10 @@ export const ModelGardenTab: React.FC<{
 
                   {/* Enabled toggle */}
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Enabled</label>
+                    <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Enabled</span>
                     <button
+                      type="button"
+                      aria-label="Enabled"
                       onClick={() => setAddConfig(c => ({ ...c, config: { ...c.config, enabled: !c.config.enabled } }))}
                       className={`relative w-10 h-5 rounded-full transition-colors ${addConfig.config.enabled ? 'bg-[var(--color-ok)]' : 'bg-[var(--color-fg-subtle)]'}`}
                     >
@@ -959,7 +964,7 @@ export const ModelGardenTab: React.FC<{
 
                   {/* Capabilities */}
                   <div>
-                    <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Capabilities</label>
+                    <span className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Capabilities</span>
                     <div className="flex flex-wrap gap-1.5">
                       {CAPABILITY_BADGES.map(({ key, label, icon: Icon, color }) => {
                         const active = addConfig.capabilities[key];
@@ -987,7 +992,7 @@ export const ModelGardenTab: React.FC<{
 
                   {/* Roles */}
                   <div>
-                    <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Roles</label>
+                    <span className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Roles</span>
                     <div className="flex flex-wrap gap-1.5">
                       {MODEL_ROLES.map(role => {
                         const active = addConfig.config.roles?.includes(role);

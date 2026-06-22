@@ -355,9 +355,9 @@ async function getVertexToken(): Promise<string> {
   const b64url = (obj: any) =>
     Buffer.from(JSON.stringify(obj))
       .toString('base64')
-      .replace(/=/g, '')
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_');
+      .replaceAll('=', '')
+      .replaceAll('+', '-')
+      .replaceAll('/', '_');
   const unsigned = `${b64url(header)}.${b64url(claims)}`;
   const { createSign } = await import('node:crypto');
   const signer = createSign('RSA-SHA256');
@@ -366,9 +366,9 @@ async function getVertexToken(): Promise<string> {
   const sig = signer
     .sign(sa.private_key)
     .toString('base64')
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
+    .replaceAll('=', '')
+    .replaceAll('+', '-')
+    .replaceAll('/', '_');
   const jwt = `${unsigned}.${sig}`;
   const res = await fetch(sa.token_uri, {
     method: 'POST',

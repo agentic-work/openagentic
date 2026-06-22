@@ -79,7 +79,7 @@ interface Metrics {
 }
 
 function toSeries(points: TSPoint[] | undefined, bucketCount = 24): number[] {
-  if (!points || !points.length) return Array(bucketCount).fill(0)
+  if (!points || !points.length) return new Array(bucketCount).fill(0)
   if (points.length <= bucketCount) return points.map(p => p.value)
   const stride = Math.ceil(points.length / bucketCount)
   const out: number[] = []

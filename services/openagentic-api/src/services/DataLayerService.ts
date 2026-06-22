@@ -201,18 +201,30 @@ export class DataLayerService {
   private readonly MAX_ANOMALIES_IN_SUMMARY = 10;
   private readonly REDIS_KEY_PREFIX = 'datalayer:';
 
+  private redisInit: Promise<void> | null = null;
+
   constructor() {
     this.log = logger.child({ service: 'DataLayerService' });
-    this.initRedis();
   }
 
-  private async initRedis(): Promise<void> {
-    try {
-      this.redis = await getRedisClient();
-      this.log.info('DataLayerService initialized with Redis backing');
-    } catch (error) {
-      this.log.error({ error }, 'Redis not available — DataLayerService requires Redis for multi-pod safety');
+  /**
+   * Lazily connect to Redis on first use (idempotent). Moved out of the
+   * constructor so no unawaited async work runs at construction time; the
+   * connection is established (once) on the first store/query call.
+   */
+  private async ensureRedis(): Promise<void> {
+    if (this.redis) return;
+    if (!this.redisInit) {
+      this.redisInit = (async () => {
+        try {
+          this.redis = await getRedisClient();
+          this.log.info('DataLayerService initialized with Redis backing');
+        } catch (error) {
+          this.log.error({ error }, 'Redis not available — DataLayerService requires Redis for multi-pod safety');
+        }
+      })();
     }
+    await this.redisInit;
   }
 
   // ===========================================================================
@@ -790,6 +802,7 @@ export class DataLayerService {
 
   private async persistDataset(dataset: StoredDataset): Promise<void> {
     const key = `${this.REDIS_KEY_PREFIX}${dataset.id}`;
+    await this.ensureRedis();
 
     if (this.redis) {
       try {
@@ -806,6 +819,7 @@ export class DataLayerService {
 
   private async getDataset(datasetId: string): Promise<StoredDataset | null> {
     const key = `${this.REDIS_KEY_PREFIX}${datasetId}`;
+    await this.ensureRedis();
 
     // Primary: Redis fast-path (per-user fetch cache).
     if (this.redis) {

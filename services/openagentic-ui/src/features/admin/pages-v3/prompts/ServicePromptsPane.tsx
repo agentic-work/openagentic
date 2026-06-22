@@ -150,8 +150,9 @@ const ServicePromptEditor: React.FC<EditorProps> = ({ promptKey, onClose, onSave
           Key: <code style={{ fontFamily: 'var(--font-mono)' }}>{promptKey}</code>
         </div>
 
-        <label style={{ fontSize: 11, color: 'var(--fg-3)' }}>Body</label>
+        <label htmlFor="service-prompt-body" style={{ fontSize: 11, color: 'var(--fg-3)' }}>Body</label>
         <textarea
+          id="service-prompt-body"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           spellCheck={false}
@@ -172,8 +173,9 @@ const ServicePromptEditor: React.FC<EditorProps> = ({ promptKey, onClose, onSave
           {body.length.toLocaleString()} chars · ~{Math.ceil(body.length / 4).toLocaleString()} tokens (rough)
         </div>
 
-        <label style={{ fontSize: 11, color: 'var(--fg-3)' }}>Reason (audit log)</label>
+        <label htmlFor="service-prompt-reason" style={{ fontSize: 11, color: 'var(--fg-3)' }}>Reason (audit log)</label>
         <input
+          id="service-prompt-reason"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="e.g. tightened Slack tone"

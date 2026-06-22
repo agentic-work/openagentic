@@ -103,7 +103,7 @@ function convertToYAML(obj: any, indent = 0): string {
       if (obj.includes('\n') || obj.includes(':') || obj.includes('#')) {
         return `|\n${spaces}  ${obj.split('\n').join(`\n${spaces}  `)}`;
       }
-      return `"${obj.replace(/"/g, '\\"')}"`;
+      return `"${obj.replaceAll('"', '\\"')}"`;
     }
     return String(obj);
   }

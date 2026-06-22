@@ -294,13 +294,13 @@ const ReadOnlyModeSection: React.FC = () => {
             </span>
           </div>
           <p style={{ fontSize: 'var(--v3-t-meta)', color: 'var(--fg-3)', margin: 0, lineHeight: 1.5 }}>
-            When ENFORCED: every tool not on the read-only allow-list is denied by
-            <span className="accent"> PermissionService</span> before dispatch — regardless of
+            When ENFORCED: every tool not on the read-only allow-list is denied by{' '}
+            <span className="accent">PermissionService</span> before dispatch — regardless of
             whether the calling user has Owner / Contributor / Administrator on the underlying
             Azure / AWS / GCP / k8s / DB resource. Models are told via the system prompt that
             mutating calls will fail, so they stop trying. Auto-approve / HITL gates are
-            irrelevant in this mode. Setting persists in
-            <span className="accent"> system_configuration[tool_read_only_mode]</span> and
+            irrelevant in this mode. Setting persists in{' '}
+            <span className="accent">system_configuration[tool_read_only_mode]</span> and
             survives pod restarts.
           </p>
         </div>

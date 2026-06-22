@@ -206,7 +206,7 @@ heatRoot.innerHTML = html;
 }
 
 function esc(s: string): string {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return String(s ?? '').replaceAll(/&/g, '&amp;').replaceAll(/</g, '&lt;').replaceAll(/>/g, '&gt;').replaceAll(/"/g, '&quot;').replaceAll(/'/g, '&#39;');
 }
 
 export const MULTI_REGION_EKS_DASHBOARD_TEMPLATE: ComposeAppTemplate = {

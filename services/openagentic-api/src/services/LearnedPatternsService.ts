@@ -443,7 +443,7 @@ export class LearnedPatternsService {
   }
 
   private buildRecallFilter(opts: LearnedPatternRecallOptions): string {
-    const safeUid = String(opts.userId ?? '').replace(/"/g, '');
+    const safeUid = String(opts.userId ?? '').replaceAll(/"/g, '');
     const parts: string[] = [
       `(user_id == "${safeUid}" OR shared == true)`,
     ];
@@ -453,7 +453,7 @@ export class LearnedPatternsService {
       // the `like` operator (Milvus 2.3+). Older SDKs accept the same
       // expression and ignore unknown ops without crashing.
       const tagClauses = opts.businessGoalTags
-        .map((t) => String(t).replace(/"/g, ''))
+        .map((t) => String(t).replaceAll(/"/g, ''))
         .map((t) => `business_goal_tags like "%${t}%"`);
       if (tagClauses.length > 0) {
         parts.push(`(${tagClauses.join(' OR ')})`);

@@ -375,7 +375,9 @@ const TieredFCConfigView: React.FC = () => {
       {/* Caption (replaced SoTBanner + ExplainerCard pair — see exposition audit 2026-05-05) */}
       <p className="text-sm" style={{ color: 'var(--ap-text-secondary)', margin: '0 0 16px' }}>
         Tier composition is the single largest cost lever — putting a premium model in
+        {' '}
         <b> economy</b> makes every &quot;what time?&quot; query pay premium prices.
+        {' '}
         <span
           title="Tier composition reads from the model registry — assigning a non-routable model to a tier silently drops it from the candidate pool. The Smart Router only considers models within the request's tier when picking a winner."
           style={{
@@ -704,8 +706,9 @@ const TieredFCConfigView: React.FC = () => {
                   {showTestPanel && (
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm text-text-secondary mb-1">Test Message</label>
+                        <label htmlFor="tieredfc-test-message" className="block text-sm text-text-secondary mb-1">Test Message</label>
                         <textarea
+                          id="tieredfc-test-message"
                           value={testMessage}
                           onChange={(e) => setTestMessage(e.target.value)}
                           placeholder="Enter a message to test function calling decision..."
@@ -714,8 +717,9 @@ const TieredFCConfigView: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm text-text-secondary mb-1">Tool Count</label>
+                        <label htmlFor="tieredfc-test-tool-count" className="block text-sm text-text-secondary mb-1">Tool Count</label>
                         <input
+                          id="tieredfc-test-tool-count"
                           type="number"
                           min="0"
                           value={testToolCount}
@@ -835,6 +839,7 @@ const TieredFCConfigView: React.FC = () => {
             <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-surface-secondary/20">
               <input
                 type="checkbox"
+                aria-label="Enable Tool Stripping"
                 checked={editForm.toolStrippingEnabled ?? true}
                 onChange={(e) => setEditForm({ ...editForm, toolStrippingEnabled: e.target.checked })}
                 className="w-4 h-4"
@@ -850,6 +855,7 @@ const TieredFCConfigView: React.FC = () => {
             <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-surface-secondary/20">
               <input
                 type="checkbox"
+                aria-label="Enable Decision Caching"
                 checked={editForm.decisionCacheEnabled ?? true}
                 onChange={(e) => setEditForm({ ...editForm, decisionCacheEnabled: e.target.checked })}
                 className="w-4 h-4"

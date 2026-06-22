@@ -44,7 +44,7 @@ export function helmChart(config: HelmChartConfig): Extractor {
       if (!s.isFile()) continue;
       items.push({
         id: e,
-        name: basename(e, '.yaml').replace(/-/g, ' '),
+        name: basename(e, '.yaml').replaceAll('-', ' '),
         description: `Template ${e}`,
         type: 'helm-template',
         sourceFile: relative(basePath, abs),

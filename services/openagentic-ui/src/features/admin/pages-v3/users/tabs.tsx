@@ -301,8 +301,8 @@ export const PermissionsTab: React.FC<{ user: ApiUser }> = ({ user }) => {
 
       <SectionBar title="prompt template" />
       <div style={{ padding: '8px 14px', color: 'var(--fg-3)', fontFamily: 'var(--font-mono)', fontSize: 'var(--v3-t-meta)' }}>
-        TODO — render assigned templates from
-        <span className="accent"> /api/admin/prompts/users/{user.id}/templates</span>
+        TODO — render assigned templates from{' '}
+        <span className="accent">/api/admin/prompts/users/{user.id}/templates</span>
       </div>
     </>
   )

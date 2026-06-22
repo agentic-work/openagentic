@@ -117,7 +117,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, o
 
   if (!open) return null
 
-  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const onKey = (e: React.KeyboardEvent<HTMLElement>) => {
     if (e.key === 'Escape') {
       e.preventDefault()
       onClose()
@@ -146,9 +146,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, o
 
   return (
     <div
-      role="dialog"
-      aria-label="Command palette"
-      onKeyDown={onKey}
+      role="button"
+      aria-label="Close command palette"
+      tabIndex={0}
       style={{
         position: 'fixed',
         inset: 0,
@@ -160,8 +160,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, o
         paddingTop: '15vh',
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); onClose() } }}
     >
       <div
+        role="dialog"
+        aria-label="Command palette"
         className="glass"
         style={{
           position: 'relative',
@@ -203,6 +206,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, o
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={onKey}
             placeholder="Search resources, pages, agents…"
             style={{
               flex: 1,

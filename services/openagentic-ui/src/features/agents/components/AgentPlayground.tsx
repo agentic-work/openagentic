@@ -64,11 +64,12 @@ export const AgentPlayground: React.FC = () => {
         className="flex items-center gap-3 px-4 py-3 border-b flex-shrink-0"
         style={{ borderColor: 'var(--color-border)' }}
       >
-        <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-tertiary)' }}>
+        <label htmlFor="agent-playground-agent-select" className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-tertiary)' }}>
           Agent
         </label>
         <div className="relative flex-1 max-w-xs">
           <select
+            id="agent-playground-agent-select"
             value={selectedAgentId || ''}
             onChange={e => { setSelectedAgentId(e.target.value); reset(); }}
             className="w-full appearance-none px-3 py-1.5 pr-8 text-sm rounded-lg border focus:outline-none focus:ring-2 transition-colors cursor-pointer"

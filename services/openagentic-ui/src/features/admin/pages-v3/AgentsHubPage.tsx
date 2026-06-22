@@ -280,8 +280,7 @@ export const AgentsHubPage: React.FC<AgentsHubPageProps> = ({ initialTab = 'regi
                 {list.find((a) => a.id === confirmDeleteId)?.display_name ??
                   list.find((a) => a.id === confirmDeleteId)?.name ??
                   confirmDeleteId.slice(0, 8)}
-              </span>
-              ? sets enabled=false; runtime resolvers stop returning it.
+              </span>? sets enabled=false; runtime resolvers stop returning it.
             </>
           }
           onConfirm={() => deleteM.mutate({ id: confirmDeleteId })}

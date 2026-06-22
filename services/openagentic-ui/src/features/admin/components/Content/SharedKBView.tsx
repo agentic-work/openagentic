@@ -565,8 +565,9 @@ function AddSourceDialog({
           ) : (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs text-text-secondary mb-1">Name</label>
+                <label htmlFor="skb-name" className="block text-xs text-text-secondary mb-1">Name</label>
                 <input
+                  id="skb-name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -575,8 +576,9 @@ function AddSourceDialog({
                 />
               </div>
               <div>
-                <label className="block text-xs text-text-secondary mb-1">Description (optional)</label>
+                <label htmlFor="skb-description" className="block text-xs text-text-secondary mb-1">Description (optional)</label>
                 <input
+                  id="skb-description"
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -585,8 +587,9 @@ function AddSourceDialog({
                 />
               </div>
               <div>
-                <label className="block text-xs text-text-secondary mb-1">URL</label>
+                <label htmlFor="skb-url" className="block text-xs text-text-secondary mb-1">URL</label>
                 <input
+                  id="skb-url"
                   type="url"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}

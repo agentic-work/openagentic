@@ -275,8 +275,7 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({
               delete workflow{' '}
               <span className="accent">
                 {list.find((w) => w.id === confirmDeleteId)?.name ?? confirmDeleteId.slice(0, 8)}
-              </span>
-              ? this is a soft-delete; runs are preserved.
+              </span>? this is a soft-delete; runs are preserved.
             </>
           }
           onConfirm={() => deleteM.mutate({ id: confirmDeleteId })}

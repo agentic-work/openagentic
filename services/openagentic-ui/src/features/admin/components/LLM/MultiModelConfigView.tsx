@@ -432,10 +432,11 @@ export const MultiModelConfigView: React.FC = () => {
 
             {/* Primary Model */}
             <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">
+              <label htmlFor={`mmc-${roleKey}-primary-model`} className="block text-xs font-medium text-text-secondary mb-1">
                 Primary Model
               </label>
               <select
+                id={`mmc-${roleKey}-primary-model`}
                 value={roleConfig.primaryModel}
                 onChange={(e) => handleRoleChange(roleKey, 'primaryModel', e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] text-sm"
@@ -454,10 +455,11 @@ export const MultiModelConfigView: React.FC = () => {
 
             {/* Fallback Model */}
             <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1">
+              <label htmlFor={`mmc-${roleKey}-fallback-model`} className="block text-xs font-medium text-text-secondary mb-1">
                 Fallback Model
               </label>
               <select
+                id={`mmc-${roleKey}-fallback-model`}
                 value={roleConfig.fallbackModel || ''}
                 onChange={(e) => handleRoleChange(roleKey, 'fallbackModel', e.target.value || undefined)}
                 className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] text-sm"

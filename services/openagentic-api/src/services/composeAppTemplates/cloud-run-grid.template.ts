@@ -121,7 +121,7 @@ function renderHtml(raw: unknown): string {
           <span class="cm-tag ${tag}">${esc(s.status)}</span>
         </div>
         <div class="crg-region">${esc(s.region)}${s.revision ? ` · ${esc(s.revision)}` : ''}</div>
-        <svg class="crg-spark" data-spark='${JSON.stringify(s.rpsSpark || []).replace(/'/g, '&apos;')}'></svg>
+        <svg class="crg-spark" data-spark='${JSON.stringify(s.rpsSpark || []).replaceAll(/'/g, '&apos;')}'></svg>
         <div class="crg-row"><span class="crg-label">rps</span><span class="crg-val">${s.rps ?? '—'}</span></div>
         <div class="crg-row"><span class="crg-label">p99</span><span class="crg-val">${s.latencyP99Ms != null ? s.latencyP99Ms + 'ms' : '—'}</span></div>
         <div class="crg-row"><span class="crg-label">err</span><span class="crg-val">${s.errorRatePct != null ? s.errorRatePct.toFixed(2) + '%' : '—'}</span></div>
@@ -179,7 +179,7 @@ document.querySelectorAll('.crg-spark').forEach(function (svgEl) {
 }
 
 function esc(s: string): string {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return String(s ?? '').replaceAll(/&/g, '&amp;').replaceAll(/</g, '&lt;').replaceAll(/>/g, '&gt;').replaceAll(/"/g, '&quot;').replaceAll(/'/g, '&#39;');
 }
 
 void CDN_LIB;

@@ -54,6 +54,13 @@ interface ScoreGapConfig {
   defaultMax: number;     // Default max when no clear gap found (flat distribution)
 }
 
+const DEFAULT_SCORE_GAP_CONFIG: ScoreGapConfig = {
+  gapMultiplier: 2.0,
+  minTools: 3,
+  maxTools: 15,
+  defaultMax: 12,
+};
+
 export class ToolPgvectorSearchService {
   private prisma: PrismaClient;
   private vectorClient: PrismaVectorClient;
@@ -323,7 +330,7 @@ export class ToolPgvectorSearchService {
    */
   applyScoreGapCutoff(
     results: PgvectorToolResult[],
-    config: ScoreGapConfig = { gapMultiplier: 2.0, minTools: 3, maxTools: 15, defaultMax: 12 }
+    config: ScoreGapConfig = DEFAULT_SCORE_GAP_CONFIG
   ): PgvectorToolResult[] {
     if (results.length <= config.minTools) return results;
 
@@ -408,7 +415,7 @@ export class ToolPgvectorSearchService {
       // Build WHERE clause with optional server filtering
       let whereClause = 'is_enabled = true';
       if (options?.serverIds && options.serverIds.length > 0) {
-        const serverList = options.serverIds.map(s => `'${s.replace(/'/g, "''")}'`).join(', ');
+        const serverList = options.serverIds.map(s => `'${s.replaceAll(/'/g, "''")}'`).join(', ');
         whereClause += ` AND server_id IN (${serverList})`;
       }
 

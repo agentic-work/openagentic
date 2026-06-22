@@ -97,7 +97,7 @@ export default function TestHarnessView() {
         fontSize: 12, color: 'var(--color-warning)',
       }}>
         <span style={{ fontSize: 16 }}>&#9888;</span>
-        Running tests will incur token usage costs for LLM model testing (completions sent to each provider). Chat and agent tests also consume tokens.
+        <span>Running tests will incur token usage costs for LLM model testing (completions sent to each provider). Chat and agent tests also consume tokens.</span>
       </div>
 
       {/* Category Panels */}

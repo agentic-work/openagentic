@@ -934,6 +934,7 @@ const UserPermissionsView: React.FC = () => {
                           <label key={mcp.id} className="flex items-center gap-2 cursor-pointer p-1.5 rounded transition-colors hover:bg-[var(--color-surfaceSecondary)]">
                             <input
                               type="checkbox"
+                              aria-label={mcp.name}
                               checked={editingPermissions.denied_mcps?.includes(mcp.id) || false}
                               onChange={() => setEditingPermissions({
                                 ...editingPermissions,
@@ -1183,6 +1184,7 @@ const UserPermissionsView: React.FC = () => {
                     <label className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors" style={{ border: '1px solid var(--color-border)' }}>
                       <input
                         type="checkbox"
+                        aria-label="Hard limit"
                         checked={editingBudget?.hardLimit ?? false}
                         onChange={(e) => setEditingBudget({ ...editingBudget!, hardLimit: e.target.checked })}
                       />

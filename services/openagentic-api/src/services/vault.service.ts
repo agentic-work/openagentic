@@ -38,6 +38,7 @@ export class VaultService {
   private tokenExpiry: Date | null = null;
   private config: VaultConfig;
   private encryptionKey: Buffer;
+  private initPromise: Promise<void> | null = null;
 
   constructor(config?: VaultConfig) {
     this.config = config || {
@@ -60,7 +61,19 @@ export class VaultService {
     const key = process.env.LOCAL_ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
     this.encryptionKey = Buffer.from(key, 'hex');
 
-    this.initialize();
+    // Auth init runs lazily on first use (see ensureInitialized) — no async
+    // work in the constructor.
+  }
+
+  /**
+   * Authenticate against Vault exactly once, lazily, on first use. Idempotent:
+   * concurrent callers share the same in-flight init promise.
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (!this.initPromise) {
+      this.initPromise = this.initialize();
+    }
+    await this.initPromise;
   }
 
   private async initialize(): Promise<void> {
@@ -134,6 +147,7 @@ export class VaultService {
    */
   async storeUserToken(userId: string, tokenData: TokenData): Promise<void> {
     try {
+      await this.ensureInitialized();
       // Encrypt sensitive data locally first
       const encryptedToken = this.encryptLocal(tokenData.access_token);
       const encryptedRefresh = tokenData.refresh_token ? 
@@ -173,6 +187,7 @@ export class VaultService {
    */
   async getUserToken(userId: string): Promise<TokenData | null> {
     try {
+      await this.ensureInitialized();
       let data: any;
 
       if (this.token) {
@@ -215,6 +230,7 @@ export class VaultService {
    */
   async deleteUserToken(userId: string): Promise<void> {
     try {
+      await this.ensureInitialized();
       if (this.token) {
         await this.client.delete(`/v1/secret/metadata/tokens/users/${userId}`);
       } else {
@@ -231,6 +247,7 @@ export class VaultService {
    */
   async storeSecret(path: string, data: SecretData): Promise<void> {
     try {
+      await this.ensureInitialized();
       // Encrypt sensitive fields
       const encryptedData: SecretData = {};
       for (const [key, value] of Object.entries(data)) {
@@ -260,6 +277,7 @@ export class VaultService {
    */
   async getSecret(path: string): Promise<SecretData | null> {
     try {
+      await this.ensureInitialized();
       let data: any;
 
       if (this.token) {
@@ -298,6 +316,7 @@ export class VaultService {
    */
   async getDatabaseCredentials(role: string = 'readwrite'): Promise<any> {
     try {
+      await this.ensureInitialized();
       if (!this.token) {
         // Return static credentials if Vault is not available
         return {
@@ -327,6 +346,7 @@ export class VaultService {
    */
   async encryptTransit(plaintext: string): Promise<string> {
     try {
+      await this.ensureInitialized();
       if (!this.token) {
         return this.encryptLocal(plaintext);
       }
@@ -348,6 +368,7 @@ export class VaultService {
    */
   async decryptTransit(ciphertext: string): Promise<string> {
     try {
+      await this.ensureInitialized();
       if (!this.token || !ciphertext.startsWith('vault:v')) {
         return this.decryptLocal(ciphertext);
       }
@@ -369,6 +390,7 @@ export class VaultService {
    */
   async getAzureSecret(vaultName: string, secretName: string): Promise<string | null> {
     try {
+      await this.ensureInitialized();
       if (!this.token) {
         return null;
       }
@@ -495,6 +517,7 @@ export class VaultService {
    */
   async healthCheck(): Promise<boolean> {
     try {
+      await this.ensureInitialized();
       if (!this.token) {
         return false;
       }

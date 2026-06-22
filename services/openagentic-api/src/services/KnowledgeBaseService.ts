@@ -476,7 +476,7 @@ export class KnowledgeBaseService {
    * For production hardening, parameterised queries should replace this.
    */
   private escapeSQL(value: string): string {
-    return value.replace(/'/g, "''");
+    return value.replaceAll(/'/g, "''");
   }
 }
 

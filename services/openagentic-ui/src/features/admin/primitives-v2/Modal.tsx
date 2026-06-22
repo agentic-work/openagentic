@@ -168,7 +168,6 @@ export function Modal({
         data-testid={testId}
         data-variant={variant}
         className="glass"
-        onClick={(e) => e.stopPropagation()}
         style={{
           minWidth: 420,
           maxWidth: 560,

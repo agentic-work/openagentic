@@ -1696,9 +1696,12 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
         {(showExecutionPanel || showAIBuilder) && (
           <>
             {/* Resize handle */}
-            <div
+            <button
+              type="button"
+              aria-label="Resize panel"
               className={`wf-exec-panel-resize-handle ${isDragging.current ? 'dragging' : ''}`}
               onMouseDown={handleResizeStart}
+              style={{ padding: 0, border: 0, borderRadius: 0, appearance: 'none', WebkitAppearance: 'none', alignSelf: 'stretch', font: 'inherit', color: 'inherit' }}
             />
             <ExecutionResultsPanel
               executionData={executionData}

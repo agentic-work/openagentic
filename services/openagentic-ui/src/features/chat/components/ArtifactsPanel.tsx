@@ -382,6 +382,8 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
               {artifacts.map((a) => (
                 <div
                   key={a.id}
+                  role="group"
+                  aria-label={a.filename}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -504,6 +506,9 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
           }}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Artifact preview"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
             style={{

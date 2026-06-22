@@ -73,7 +73,7 @@ const SectionHeader: React.FC<{
         </span>
       )}
     </div>
-    {action && <div onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>{action}</div>}
+    {action && <div role="presentation" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>{action}</div>}
   </button>
 );
 

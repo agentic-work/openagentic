@@ -733,30 +733,30 @@ export const FileManager: React.FC<FileManagerProps> = ({
             {/* File Info */}
             <div className="space-y-3">
               <div>
-                <label 
+                <span
                 className="text-xs"
-                style={{ color: 'var(--color-textMuted)' }}>Filename</label>
+                style={{ color: 'var(--color-textMuted)' }}>Filename</span>
                 <p className="text-sm">{selectedFile.filename}</p>
               </div>
               
               <div>
-                <label 
+                <span
                 className="text-xs"
-                style={{ color: 'var(--color-textMuted)' }}>Type</label>
+                style={{ color: 'var(--color-textMuted)' }}>Type</span>
                 <p className="text-sm">{selectedFile.mimeType}</p>
               </div>
               
               <div>
-                <label 
+                <span
                 className="text-xs"
-                style={{ color: 'var(--color-textMuted)' }}>Size</label>
+                style={{ color: 'var(--color-textMuted)' }}>Size</span>
                 <p className="text-sm">{formatFileSize(selectedFile.size)}</p>
               </div>
               
               <div>
-                <label 
+                <span
                 className="text-xs"
-                style={{ color: 'var(--color-textMuted)' }}>Uploaded</label>
+                style={{ color: 'var(--color-textMuted)' }}>Uploaded</span>
                 <p className="text-sm">
                   {format(new Date(selectedFile.createdAt), 'PPpp')}
                 </p>
@@ -764,18 +764,18 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
               {selectedFile.metadata?.hash && (
                 <div>
-                  <label 
+                  <span
                   className="text-xs"
-                  style={{ color: 'var(--color-textMuted)' }}>MD5 Hash</label>
+                  style={{ color: 'var(--color-textMuted)' }}>MD5 Hash</span>
                   <p className="text-xs font-mono break-all">{selectedFile.metadata.hash}</p>
                 </div>
               )}
 
               {selectedFile.metadata?.sha256 && (
                 <div>
-                  <label 
+                  <span
                   className="text-xs"
-                  style={{ color: 'var(--color-textMuted)' }}>SHA256 Hash</label>
+                  style={{ color: 'var(--color-textMuted)' }}>SHA256 Hash</span>
                   <p className="text-xs font-mono break-all">{selectedFile.metadata.sha256}</p>
                 </div>
               )}
@@ -783,9 +783,9 @@ export const FileManager: React.FC<FileManagerProps> = ({
               {/* Extracted Content */}
               {selectedFile.extractedText && (
                 <div>
-                  <label 
+                  <span
                   className="text-xs"
-                  style={{ color: 'var(--color-textMuted)' }}>Extracted Content</label>
+                  style={{ color: 'var(--color-textMuted)' }}>Extracted Content</span>
                   <div 
                   className="mt-1 p-2 rounded text-xs max-h-48 overflow-auto"
                   style={{ backgroundColor: 'var(--color-background)' }}>
@@ -861,10 +861,18 @@ export const FileManager: React.FC<FileManagerProps> = ({
             
             <div className="p-6">
               <div
+                role="button"
+                tabIndex={0}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
                 className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
                   dragActive ? 'border-accent bg-[var(--color-accent-soft)]' : 'border-border'
                 }`}

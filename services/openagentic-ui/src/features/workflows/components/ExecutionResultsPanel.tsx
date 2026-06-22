@@ -705,7 +705,7 @@ const OutputTab: React.FC<{
                 width: 5, height: 5, borderRadius: '50%', background: 'var(--color-info)',
                 animation: 'wf-agent-pulse 1.4s ease-in-out infinite',
                 display: 'inline-block',
-              }} />
+              }} />{' '}
               Streaming…
             </span>
           ) : (
