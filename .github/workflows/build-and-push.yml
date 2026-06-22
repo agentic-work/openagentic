@@ -171,7 +171,7 @@ jobs:
       # layers — the amd64 leg is not rebuilt from scratch. A failing Trivy gate
       # here stops the job before any image is published.
       - name: Build amd64 image for scan
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@v7.2.0
         with:
           context: .
           file: ${{ matrix.dockerfile }}
@@ -224,7 +224,7 @@ jobs:
 
       # ── Multi-arch build & push ──────────────────────────────────────────────
       - name: Build and push ${{ matrix.service }}
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@v7.2.0
         with:
           context: .
           file: ${{ matrix.dockerfile }}
