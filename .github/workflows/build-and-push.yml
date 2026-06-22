@@ -179,6 +179,10 @@ jobs:
       # tab + logs a table; vulnerabilities are remediated by Dependabot auto-PRs
       # (+ the auto-merge bot), not by failing CI. Both passes use exit-code 0.
       - name: Trivy scan → SARIF (report-only)
+        # report-only: a Trivy infra failure (e.g. GHCR rate-limit on its vuln-DB
+        # pull) must NOT block the build. exit-code:0 covers CVE findings;
+        # continue-on-error covers Trivy tool/network errors.
+        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: localscan/${{ matrix.service }}:scan
@@ -189,6 +193,7 @@ jobs:
           exit-code: '0'
 
       - name: Trivy scan → table (log, non-blocking)
+        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: localscan/${{ matrix.service }}:scan
