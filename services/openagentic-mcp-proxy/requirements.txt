@@ -17,4 +17,4 @@ structlog>=24.1.0,<26.0.0
 # Embeds via Ollama HTTP (httpx already pinned), writes to both stores so the
 # api can READ from either. See src/tool_indexer.py.
 pymilvus>=2.4.0,<3.0.0
-asyncpg>=0.29.0,<1.0.0
+asyncpg>=0.31.0,<1.0.0
