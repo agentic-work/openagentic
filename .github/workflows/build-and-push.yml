@@ -275,7 +275,11 @@ jobs:
         run: |
           V="${GITHUB_REF_NAME}"
           mkdir -p /tmp/oa-bundle
-          cp docker-compose.yml /tmp/oa-bundle/
+          # Pull-only compose: strip every `build:` block so the end-user's
+          # `docker compose up` PULLS the published ghcr.io/agentic-work/openagentic-*:latest
+          # images instead of building from source. (The repo's docker-compose.yml keeps
+          # build: for local-checkout devs; only the shipped bundle is pull-only.)
+          python3 -c "import yaml; d=yaml.safe_load(open('docker-compose.yml')); [s.pop('build', None) for s in d.get('services', {}).values()]; yaml.safe_dump(d, open('/tmp/oa-bundle/docker-compose.yml', 'w'), sort_keys=False, default_flow_style=False)"
           [[ -f docker-compose.gpu-nvidia.yml ]] && cp docker-compose.gpu-nvidia.yml /tmp/oa-bundle/
           [[ -f docker-compose.gpu-wsl.yml    ]] && cp docker-compose.gpu-wsl.yml    /tmp/oa-bundle/
           [[ -f .env.example                  ]] && cp .env.example                  /tmp/oa-bundle/

@@ -36,11 +36,21 @@ cd ~/.openagentic
 ./install.sh
 ```
 
-Once public:
+Once public, linux / macOS:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/install.sh | bash
+curl -sSL https://install.openagentics.io | bash
 ```
+
+### Windows
+
+Once public, in **Windows Terminal / PowerShell** (Docker Desktop + Node 20+ required):
+
+```powershell
+irm https://install.openagentics.io/install.ps1 | iex
+```
+
+Same flow as the bash installer: it clones the repo to `%USERPROFILE%\.openagentic`, runs the Ink TUI wizard, then brings the Compose stack up.
 
 **Kubernetes (Helm)** — run the same installer with `--helm`. It runs `helm upgrade --install openagentic ./helm/openagentic` into the `openagentic` namespace:
 

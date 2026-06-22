@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 # openagentic installer — https://agenticwork.io
 #
-# Usage:
+# Usage (linux / macOS):
+#   curl -sSL https://install.openagentics.io | bash
+#   # …or pin to the repo's raw install.sh:
 #   curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/install.sh | bash
 #   # …or, from a local checkout:
 #   ./install.sh
+#
+# Windows: run the PowerShell installer instead —
+#   irm https://install.openagentics.io/install.ps1 | iex
 #
 # Modes:
 #   (default)      Launch the interactive Ink TUI wizard. Lets you pick Docker
@@ -172,7 +177,35 @@ while [[ $# -gt 0 ]]; do
     --ollama)  OLLAMA_HOST_OVERRIDE="${2:-}"; shift 2 ;;
     --milvus)  USE_MILVUS=1;    shift ;;
     -h|--help)
-      sed -n '2,42p' "$0" | sed 's/^# \{0,1\}//;s/^#//'
+      # Self-contained so it works under `curl … | bash -s -- --help`, where the
+      # script has no on-disk path ($0 / BASH_SOURCE are unusable through a pipe).
+      cat <<'EOH'
+openagentic installer — https://agenticwork.io
+
+Usage:
+  curl -sSL https://install.openagentics.io | bash
+  # …or, from a local checkout:
+  ./install.sh
+
+Modes:
+  (default)      Launch the interactive Ink TUI wizard (Docker or Helm).
+  --quick        Five-minute zero-config Docker path (probes/pulls Ollama models).
+  --wizard       Explicitly launch the wizard (same as the default).
+  --helm         One-line Kubernetes install (needs helm + kubectl + a cluster).
+  --env PATH     Skip ALL prompts; copy PATH to ./.env and bring the stack up.
+  --update       Update an existing install in place (Docker rebuild or helm upgrade).
+  --doctor       Diagnose only — checks Docker/Compose, Node, helm/kubectl, disk, ports.
+  --no-open      Don't auto-open the browser at the end.
+  --ollama URL   Override the Ollama endpoint (default: localhost:11434).
+  --milvus       Opt in to the Milvus vector store (default is pgvector-only).
+  -h, --help     Show this help.
+
+Windows users: run the PowerShell installer instead —
+  irm https://install.openagentics.io/install.ps1 | iex
+
+Get help:  https://openagentics.io/docs/troubleshooting
+           https://github.com/agentic-work/openagentic/issues
+EOH
       EXIT_OK=1; exit 0 ;;
     *) warn "Unknown option: $1 (ignoring). Run with --help to see valid flags."; shift ;;
   esac
@@ -260,8 +293,10 @@ fi
 
 if [[ "$MODE" == "wizard" ]]; then
   command -v node >/dev/null 2>&1 || fatal 'Node.js 20+ is required for the wizard.' 'Install Node 20+: https://nodejs.org   ·   Or skip the wizard with --quick (Ollama) or --env PATH.'
-  NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]')
-  [[ "$NODE_MAJOR" -ge 20 ]] || fatal "Node.js 20+ required (found $(node --version))." 'Upgrade Node (https://nodejs.org), or use --quick / --env to skip the TUI wizard.'
+  # Tolerate a broken node binary: fall back to 0 (→ a clear "20+ required"
+  # message) instead of letting `set -e` kill the script with no explanation.
+  NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)
+  [[ "$NODE_MAJOR" -ge 20 ]] || fatal "Node.js 20+ required (found $(node --version 2>/dev/null || echo 'unknown'))." 'Upgrade Node (https://nodejs.org), or use --quick / --env to skip the TUI wizard.'
   ok "Node $(node --version) (wizard mode)"
 fi
 
