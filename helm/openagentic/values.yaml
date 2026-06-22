@@ -188,7 +188,7 @@ securityContext:
     workflows:
       runAsNonRoot: false            # image has no USER directive (root)
     mcpProxy:
-      runAsNonRoot: false            # USER directive commented out (root)
+      readOnlyRootFilesystem: true   # uid-1000 mcpuser (Dockerfile USER); writes only to emptyDir tmp + $HOME (see mcp-proxy.yaml volumes)
     ollama:
       runAsNonRoot: false            # ollama/ollama:latest no USER directive (root)
     # --- infra group ---
@@ -212,7 +212,7 @@ podSecurityContext:
     ui:         { runAsNonRoot: false }                              # nginx runs as root (writes /run, /var/cache/nginx)
     proxy:      { runAsUser: 65532, runAsGroup: 65532 }               # distroless nonroot
     workflows:  { runAsNonRoot: false }                              # must agree w/ container-level
-    mcpProxy:   { runAsNonRoot: false }
+    mcpProxy:   { runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000 } # mcpuser uid 1000 + fsGroup so the emptyDir $HOME/tmp are writable under readOnlyRootFilesystem
     ollama:     { runAsNonRoot: false }
     # --- infra group ---
     postgres:   { runAsUser: 999, runAsGroup: 999, fsGroup: 999 }     # postgres uid 999 + PVC

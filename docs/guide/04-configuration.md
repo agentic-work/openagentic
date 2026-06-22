@@ -322,11 +322,11 @@ The mcp-proxy prefers your **existing host CLI configs**, mounted read-only — 
 auth you already use on your machine:
 
 ```yaml
-# docker-compose.yml — mcp-proxy volumes
-- ${HOME}/.azure:/root/.azure:ro          # az
-- ${HOME}/.aws:/root/.aws:ro              # boto3
-- ${HOME}/.config/gcloud:/root/.config/gcloud:ro   # google-auth
-- ${HOME}/.kube:/root/.kube:ro            # kubernetes
+# docker-compose.yml — mcp-proxy volumes (mounted into the non-root HOME, uid 1000)
+- ${HOME}/.azure:/home/mcpuser/.azure:ro          # az
+- ${HOME}/.aws:/home/mcpuser/.aws:ro              # boto3
+- ${HOME}/.config/gcloud:/home/mcpuser/.config/gcloud:ro   # google-auth
+- ${HOME}/.kube:/home/mcpuser/.kube:ro            # kubernetes
 ```
 
 It also loads three per-cloud env files (`install.sh` creates empty stubs so the mounts

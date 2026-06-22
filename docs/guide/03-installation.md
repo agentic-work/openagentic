@@ -443,13 +443,17 @@ The Compose stack mounts your host CLI configs **read-only** into the MCP proxy
 so the cloud MCPs use the same credentials you already have:
 
 ```yaml
-# docker-compose.yml (mcp-proxy service)
+# docker-compose.yml (mcp-proxy service) — mounted into the non-root HOME (uid 1000)
 volumes:
-  - ${HOME}/.azure:/root/.azure:ro
-  - ${HOME}/.aws:/root/.aws:ro
-  - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
-  - ${HOME}/.kube:/root/.kube:ro
+  - ${HOME}/.azure:/home/mcpuser/.azure:ro
+  - ${HOME}/.aws:/home/mcpuser/.aws:ro
+  - ${HOME}/.config/gcloud:/home/mcpuser/.config/gcloud:ro
+  - ${HOME}/.kube:/home/mcpuser/.kube:ro
 ```
+
+The mcp-proxy runs unprivileged (uid 1000). On Linux the host cred files must be
+readable by uid 1000 (the default first-user UID, so usually they already are);
+macOS Docker Desktop maps file-share ownership transparently.
 
 If a host config directory is absent, the proxy falls back to
 `~/.openagentic/cloud-secrets/{aws,azure,gcp}.env` (the installer creates empty

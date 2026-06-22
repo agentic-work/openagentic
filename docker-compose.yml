@@ -409,22 +409,47 @@ services:
       dockerfile: services/openagentic-mcp-proxy/Dockerfile
       args:
         SRC_PATH: services/openagentic-mcp-proxy
+    # ── Blast-radius hardening ───────────────────────────────────────────
+    # This container shells out to the cloud CLIs and spawns the bundled MCP
+    # servers, so it runs UNPRIVILEGED (uid 1000 / mcpuser — see the Dockerfile
+    # USER directive) with no capabilities, no privilege escalation, and a
+    # read-only root filesystem. tmpfs covers the only paths the process +
+    # the spawned CLIs must write to (uv/npm/az/aws/kubectl caches live under
+    # $HOME=/home/mcpuser; the cloud-cred bind mounts below layer on top of it).
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
+    read_only: true
+    tmpfs:
+      # mode=1777 so the non-root mcpuser (uid 1000) can actually write $HOME +
+      # /tmp on the read-only rootfs (a default tmpfs is root-owned/unwritable —
+      # verified: without this the cloud-CLI $HOME caches fail).
+      - "/tmp:mode=1777"
+      - "/home/mcpuser:mode=1777"
     # ── Cloud creds: prefer the user's existing host CLI configs ─────────
-    # ~/.azure, ~/.aws, ~/.config/gcloud are mounted read-only. The cloud
-    # MCPs (az / boto3 / google-auth) pick them up via their default
+    # ~/.azure, ~/.aws, ~/.config/gcloud are mounted read-only into the
+    # non-root HOME (/home/mcpuser, matching the container's uid-1000 user).
+    # The cloud MCPs (az / boto3 / google-auth) pick them up via their default
     # credential chains — same auth the user already has on their box.
     # Falls back to ~/.openagentic/cloud-secrets/*.env if the host dir is
     # absent (install.sh creates empty stubs so the env_file mounts never
     # fail). This is what makes "show me my Azure subs" work in 5 min.
+    #
+    # The container runs as UID 1000. On LINUX the host cloud-cred files must be
+    # readable by UID 1000 (the default first-user UID, so they usually are);
+    # if your user is not uid 1000, `chmod -R o+rX` the dirs or the cloud MCPs
+    # will hit permission errors. On macOS the Docker Desktop file-share maps
+    # ownership transparently, so no action is needed there.
     env_file:
       - ${HOME}/.openagentic/cloud-secrets/aws.env
       - ${HOME}/.openagentic/cloud-secrets/azure.env
       - ${HOME}/.openagentic/cloud-secrets/gcp.env
     volumes:
-      - ${HOME}/.azure:/root/.azure:ro
-      - ${HOME}/.aws:/root/.aws:ro
-      - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
-      - ${HOME}/.kube:/root/.kube:ro
+      - ${HOME}/.azure:/home/mcpuser/.azure:ro
+      - ${HOME}/.aws:/home/mcpuser/.aws:ro
+      - ${HOME}/.config/gcloud:/home/mcpuser/.config/gcloud:ro
+      - ${HOME}/.kube:/home/mcpuser/.kube:ro
     environment:
       API_HOST: api
       API_PORT: "8000"

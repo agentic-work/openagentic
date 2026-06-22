@@ -144,14 +144,23 @@ ENV GIT_SHORT_COMMIT=${GIT_SHORT_COMMIT}
 ENV GIT_BRANCH=${GIT_BRANCH}
 ENV BUILD_TIME=${BUILD_TIME}
 
-# Create non-root user and change ownership AFTER building
-# RUN useradd -m -u 1000 mcpuser && chown -R mcpuser:mcpuser /app
-# USER mcpuser
-
 EXPOSE 8080
 
-# Pre-compile Python source to bytecode (keep .py files for MCP server stdio launch)
+# Pre-compile Python source to bytecode (keep .py files for MCP server stdio launch).
+# Done as root, BEFORE the USER switch, so the .pyc files are written to /app.
 RUN python -m compileall -b /app/src/ /app/mcp-servers/ 2>/dev/null || true
+
+# ── Drop to a non-root user (blast-radius reduction) ─────────────────────────
+# The proxy shells out to the cloud CLIs (az/aws/gcloud/kubectl/helm) and spawns
+# the bundled MCP servers; running it as root means any RCE in a bundled MCP gets
+# root + full host-cred access (the cloud cred stores are bind-mounted in). Run as
+# an unprivileged uid 1000 instead. This MUST come AFTER every build/compile step
+# (apt, pip, npm, uvx, compileall all need root) and BEFORE CMD so the process
+# starts unprivileged. Subprocess caches (uv/npm/az/aws/kubectl) live under $HOME.
+RUN useradd -m -u 1000 mcpuser
+ENV HOME=/home/mcpuser
+RUN chown -R mcpuser:mcpuser /app /home/mcpuser
+USER mcpuser
 
 LABEL org.opencontainers.image.title="openagentic-mcp-proxy"
 LABEL org.opencontainers.image.description="OpenAgentic MCP Proxy — 10 bundled MCP servers, 371 tools across web, k8s, AWS, Azure, GCP, GitHub, Prometheus, Loki. Apache 2.0."

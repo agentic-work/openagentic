@@ -102,5 +102,18 @@ spec:
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 10
+          # readOnlyRootFilesystem is on (values securityContext.overrides.mcpProxy);
+          # the proxy + the cloud CLIs it spawns (uv/npm/az/aws/kubectl caches under
+          # $HOME=/home/mcpuser) and /tmp are the only writable paths they need.
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: home
+              mountPath: /home/mcpuser
           resources:
             {{- toYaml .Values.resources.mcpProxy | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: home
+          emptyDir: {}
