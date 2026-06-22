@@ -10,7 +10,7 @@
 # silently shipped images with no native binary because prebuild-install
 # exits 0 when no prebuild matches and pnpm rebuild was a no-op (#375).
 # Node 22 is the LTS that actually has a published isolated-vm prebuild.
-FROM node:22-slim AS api-builder
+FROM node:26-slim AS api-builder
 
 WORKDIR /app
 
@@ -126,7 +126,7 @@ RUN pnpm tsc && pnpm run postbuild:assets
 # Production image
 # node:22-slim — must match builder major. isolated-vm prebuilds are
 # ABI-pinned and the builder/runtime ABI must match (#375).
-FROM node:22-slim
+FROM node:26-slim
 
 # Version build args
 ARG PLATFORM_VERSION=1.0.0
