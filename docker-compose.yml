@@ -463,9 +463,14 @@ services:
     # will hit permission errors. On macOS the Docker Desktop file-share maps
     # ownership transparently, so no action is needed there.
     env_file:
-      - ${HOME}/.openagentic/cloud-secrets/aws.env
-      - ${HOME}/.openagentic/cloud-secrets/azure.env
-      - ${HOME}/.openagentic/cloud-secrets/gcp.env
+      # Optional (Compose v2.24+): a missing stub is a no-op so a bare
+      # `docker compose up` (without install.sh creating the stubs) doesn't fail.
+      - path: ${HOME}/.openagentic/cloud-secrets/aws.env
+        required: false
+      - path: ${HOME}/.openagentic/cloud-secrets/azure.env
+        required: false
+      - path: ${HOME}/.openagentic/cloud-secrets/gcp.env
+        required: false
     volumes:
       - ${HOME}/.azure:/home/mcpuser/.azure:ro
       - ${HOME}/.aws:/home/mcpuser/.aws:ro
@@ -538,7 +543,7 @@ services:
     environment:
       SEARXNG_BASE_URL: http://localhost:8080/
     volumes:
-      - ./scripts/searxng:/etc/searxng:rw
+      - ./scripts/searxng:/etc/searxng:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ || exit 1"]
       interval: 15s

@@ -406,5 +406,8 @@ services/openagentic-mcp-proxy/vendor/helm-amd64
 services/openagentic-mcp-proxy/vendor/helm-arm64
 *.new
 
+# searxng container-generated config artifact (settings.yml.new) — never commit/ship
+scripts/searxng/*.new
+
 # Local internal status tooling — never ship
 live-dashboard/

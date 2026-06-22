@@ -302,6 +302,9 @@ if [[ "$MODE" == "wizard" ]]; then
   # message) instead of letting `set -e` kill the script with no explanation.
   NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)
   [[ "$NODE_MAJOR" -ge 20 ]] || fatal "Node.js 20+ required (found $(node --version 2>/dev/null || echo 'unknown'))." 'Upgrade Node (https://nodejs.org), or use --quick / --env to skip the TUI wizard.'
+  # npx ships with npm and is how the end-user path fetches the wizard package.
+  # Some Node installs (split distro / hardened images) ship node without npm.
+  command -v npx >/dev/null 2>&1 || fatal 'npx (ships with npm) is required for the wizard.' 'Install npm with Node from https://nodejs.org, or use --quick / --env.'
   ok "Node $(node --version) (wizard mode)"
 fi
 
@@ -351,7 +354,7 @@ else
   # chain into the existing on_exit handler rather than clobber it, so the help
   # block still prints if a fatal trips before we extract.
   trap 'rm -f "$TMP_BUNDLE"; on_exit' EXIT
-  curl -fsSL --max-time 60 "$BUNDLE_URL" -o "$TMP_BUNDLE" \
+  curl -fsSL --connect-timeout 15 --retry 3 --retry-connrefused --retry-delay 2 --max-time 120 "$BUNDLE_URL" -o "$TMP_BUNDLE" \
     || fatal "Could not download the compose bundle from ${DIST_BASE}." \
              "Check your network and try again." \
              "You can mirror the bundle and set OPENAGENTIC_DIST_BASE to its host."
@@ -359,9 +362,9 @@ else
   # 2. Fetch the EXPECTED digest from the independent GitHub trust anchor. If the
   #    repo is still private (pre-launch 404), fall back to the dist host's
   #    published checksum so a known-good bundle can still be verified.
-  EXPECTED_SHA="$(curl -fsSL --max-time 30 "$BUNDLE_SHA_URL" 2>/dev/null | awk 'NR==1{print $1}' || true)"
+  EXPECTED_SHA="$(curl -fsSL --connect-timeout 10 --retry 2 --retry-connrefused --max-time 30 "$BUNDLE_SHA_URL" 2>/dev/null | awk 'NR==1{print $1}' || true)"
   if [[ -z "$EXPECTED_SHA" ]]; then
-    EXPECTED_SHA="$(curl -fsSL --max-time 30 "$BUNDLE_SHA_FALLBACK_URL" 2>/dev/null | awk 'NR==1{print $1}' || true)"
+    EXPECTED_SHA="$(curl -fsSL --connect-timeout 10 --retry 2 --retry-connrefused --max-time 30 "$BUNDLE_SHA_FALLBACK_URL" 2>/dev/null | awk 'NR==1{print $1}' || true)"
     [[ -n "$EXPECTED_SHA" ]] && info "Source-repo checksum anchor unreachable (repo private pre-launch); using the dist host's published digest."
   fi
   [[ -n "$EXPECTED_SHA" ]] \
@@ -374,6 +377,13 @@ else
     || fatal 'No sha256 tool found (need sha256sum or shasum) — cannot verify the bundle, refusing to extract.' \
              'Install coreutils (sha256sum) or perl/openssl (shasum) and re-run.'
 
+  # Normalize BOTH digests before comparing — a CRLF-served checksum (Windows
+  # mirror) carries a trailing \r, and certutil/some tooling emits uppercase.
+  # Strip whitespace + lowercase both sides so a perfectly good bundle isn't
+  # rejected with the alarming "host may be compromised" message.
+  EXPECTED_SHA="$(printf '%s' "$EXPECTED_SHA" | tr -d '[:space:]' | tr 'A-Z' 'a-z')"
+  ACTUAL_SHA="$(printf '%s' "$ACTUAL_SHA" | tr -d '[:space:]' | tr 'A-Z' 'a-z')"
+
   # 4. FAIL CLOSED on mismatch — do NOT extract a tampered/corrupt bundle.
   if [[ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]]; then
     fatal 'Bundle checksum MISMATCH — refusing to extract an unverified bundle; the download host may be compromised.' \
@@ -384,21 +394,34 @@ else
   ok "Bundle verified (sha256 matches the source-repo anchor)"
 
   # 5. Verified — extract from the temp file, then drop it.
-  tar -xzf "$TMP_BUNDLE" -C "$INSTALL_DIR" \
-    || fatal "Could not extract the verified compose bundle into ${INSTALL_DIR}."
+  # A prior searxng run can leave scripts/searxng owned by a foreign container
+  # UID (977) that the non-root host user cannot truncate/unlink — plain tar
+  # then EACCES-fails on re-install. If docker is available, clean those stale
+  # foreign-owned paths via a throwaway root container first (helm mode reaches
+  # here WITHOUT a docker preflight, so gate on docker availability). Then
+  # extract with --overwrite --no-same-owner.
+  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    docker run --rm -v "$INSTALL_DIR":/work alpine:3 sh -c 'rm -rf /work/scripts/searxng' 2>/dev/null || true
+  fi
+  tar -xzf "$TMP_BUNDLE" --overwrite --no-same-owner -C "$INSTALL_DIR" \
+    || fatal "Could not extract the compose bundle into ${INSTALL_DIR}." \
+             "A previous run may have left container-owned files. Remove them and retry: sudo rm -rf \"$INSTALL_DIR/scripts\""
   rm -f "$TMP_BUNDLE"
   # Restore the plain on_exit handler now the temp file is gone.
   trap on_exit EXIT
   ok "Bundle downloaded"
 
   # Record version + pin the public registry so compose pulls pre-built images.
+  # Compose auto-loads ONLY .env (never a separate .env.registry), so append the
+  # pins INTO .env idempotently — only the keys that are missing, on every run —
+  # so a re-install/upgrade onto a pinned VERSION doesn't silently track `latest`.
   echo "$VERSION" > "$INSTALL_DIR/VERSION"
-  if [[ ! -f "$INSTALL_DIR/.env" ]]; then
-    {
-      echo "OPENAGENTIC_REGISTRY=${GHCR_ORG}"
-      echo "OPENAGENTIC_TAG=${VERSION}"
-    } > "$INSTALL_DIR/.env.registry"
-  fi
+  for kv in "OPENAGENTIC_REGISTRY=${GHCR_ORG}" "OPENAGENTIC_TAG=${VERSION}"; do
+    k="${kv%%=*}"
+    if [[ ! -f "$INSTALL_DIR/.env" ]] || ! grep -q "^${k}=" "$INSTALL_DIR/.env"; then
+      echo "$kv" >> "$INSTALL_DIR/.env"
+    fi
+  done
 fi
 cd "$INSTALL_DIR"
 
@@ -590,6 +613,13 @@ if [[ "$MODE" == "wizard" ]]; then
   info 'Launching the setup wizard…'
   printf '\n'
 
+  # The interactive Ink TUI needs a controlling terminal. With neither /dev/tty
+  # nor a tty on stdin (CI, some docker exec / nested-shell contexts) it can't be
+  # driven — steer to the non-interactive path with a clear message.
+  if [[ ! -e /dev/tty ]] && [[ ! -t 0 ]]; then
+    fatal 'The interactive wizard needs a terminal.' 'Use: curl -sSL https://install.openagentics.io | bash -s -- --quick'
+  fi
+
   # Two launch strategies:
   #   1. Developer checkout (tools/setup/ present): run tsx from source — fastest
   #      for dev iteration, picks up local changes immediately.
@@ -633,16 +663,21 @@ if [[ "$MODE" == "wizard" ]]; then
       exec ./node_modules/.bin/tsx src/index.tsx
     fi
   else
-    # End-user path: run from the published npm package — no source on disk
+    # End-user path: run from the published npm package — no source on disk.
+    # Don't `exec`: that would replace the shell and kill the EXIT-trap help
+    # block, so a raw `npm ERR! 404`/ENOTFOUND would surface with no remediation.
+    # Run npx in-process; on failure fall back to @latest, then a clear fatal.
     WIZARD_PKG="@agenticwork/openagentic"
     WIZARD_VERSION="${VERSION#v}"
     [[ "$WIZARD_VERSION" == "latest" || -z "$WIZARD_VERSION" ]] && WIZARD_VERSION=""
-    PKG_REF="${WIZARD_PKG}${WIZARD_VERSION:+@${WIZARD_VERSION}}"
+    PKG_REF="${WIZARD_PKG}@${WIZARD_VERSION:-latest}"
     info "Running wizard from ${C_BOLD}${PKG_REF}${C_RESET} (cached in ~/.npm/_npx)"
     if [[ -e /dev/tty ]]; then
-      exec npx --yes "$PKG_REF" < /dev/tty
+      npx --yes "$PKG_REF" < /dev/tty || npx --yes "${WIZARD_PKG}@latest" < /dev/tty \
+        || fatal 'Could not launch the setup wizard from npm.' 'Zero-config path: curl -sSL https://install.openagentics.io | bash -s -- --quick' 'Check npm: npm view @agenticwork/openagentic version'
     else
-      exec npx --yes "$PKG_REF"
+      npx --yes "$PKG_REF" || npx --yes "${WIZARD_PKG}@latest" \
+        || fatal 'Could not launch the setup wizard from npm.' 'Zero-config path: bash -s -- --quick' 'Check npm: npm view @agenticwork/openagentic version'
     fi
   fi
 fi
@@ -664,7 +699,7 @@ else
   # Default-route gateway — how a WSL2 distro (and Linux containers) reach an
   # Ollama bound on the Windows/host network when it is NOT on this box's
   # localhost. Reachable from both the host shell and the containers.
-  OLLAMA_GW="$(ip route show default 2>/dev/null | awk '/default/{print $3; exit}')"
+  OLLAMA_GW="$(ip route show default 2>/dev/null | awk '/default/{print $3; exit}' || true)"
   if curl -fsS --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1; then
     OLLAMA_HOST="http://host.docker.internal:11434"; HAVE_OLLAMA=1
     ok 'Found Ollama on localhost:11434 — containers will reach it via host.docker.internal'
@@ -864,13 +899,17 @@ printf '  %sTry this first in the chat:%s\n' "$C_PURPLE" "$C_RESET"
 printf '    · %sWhich pods are crashlooping and why?%s\n' "$C_BOLD" "$C_RESET"
 # Cloud-specific prompts are only useful when that cloud MCP is actually
 # credentialed, so show them as secondary suggestions only when detected.
-for tag in "${detected[@]}"; do
-  case "$tag" in
-    Azure*) printf '    · %sShow me my Azure subscriptions%s\n'           "$C_BOLD" "$C_RESET" ;;
-    AWS*)   printf '    · %sShow me my AWS account and EC2 instances%s\n' "$C_BOLD" "$C_RESET" ;;
-    GCP*)   printf '    · %sList my GCP projects%s\n'                     "$C_BOLD" "$C_RESET" ;;
-  esac
-done
+# Guard the empty-array case: on bash 3.2 (macOS default) + `set -u`, expanding
+# an empty array via "${detected[@]}" raises "unbound variable" and aborts.
+if (( ${#detected[@]} > 0 )); then
+  for tag in "${detected[@]}"; do
+    case "$tag" in
+      Azure*) printf '    · %sShow me my Azure subscriptions%s\n'           "$C_BOLD" "$C_RESET" ;;
+      AWS*)   printf '    · %sShow me my AWS account and EC2 instances%s\n' "$C_BOLD" "$C_RESET" ;;
+      GCP*)   printf '    · %sList my GCP projects%s\n'                     "$C_BOLD" "$C_RESET" ;;
+    esac
+  done
+fi
 printf '\n'
 
 if [[ "$OPEN_BROWSER" == "1" ]]; then
