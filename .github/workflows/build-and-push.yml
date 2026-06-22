@@ -116,6 +116,13 @@ jobs:
           driver: docker-container
           driver-opts: |
             env.BUILDKIT_STEP_LOG_MAX_SIZE=10485760
+          # Pull docker.io base images through Google's Docker Hub mirror so the
+          # cumulative multi-arch base-image pulls across the 5-image matrix don't
+          # hit Docker Hub's anonymous pull rate limit (which failed mcp-proxy with
+          # 'toomanyrequests'). No Docker Hub credentials required.
+          config-inline: |
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
 
       # ── Tags ──────────────────────────────────────────────────────────────────
       # GHCR keeps ONLY :latest. The semver / sha-* / tag_override tags were
