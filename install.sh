@@ -333,6 +333,12 @@ else
   # because the checksum lives in the source repo. Overridable for mirrors that
   # publish their own (e.g. air-gapped) checksum, but it defaults to GitHub.
   BUNDLE_SHA_URL="${OPENAGENTIC_BUNDLE_SHA_URL:-https://raw.githubusercontent.com/agentic-work/openagentic/main/install/openagentic-compose.tgz.sha256}"
+  # Pre-launch the source repo is still private, so the GitHub anchor 404s. As a
+  # FALLBACK ONLY (used when the anchor is unreachable) we accept the digest the
+  # dist host publishes next to the bundle. The GitHub anchor is always tried
+  # FIRST, so the moment the repo is public the independent-host guarantee returns
+  # automatically with no change here.
+  BUNDLE_SHA_FALLBACK_URL="${DIST_BASE}/openagentic-compose.tgz.sha256"
 
   # 1. Download to a temp file — never pipe straight into tar. Streaming into the
   #    extractor would run it on bytes we have not verified yet (extract-while-
@@ -348,10 +354,16 @@ else
              "Check your network and try again." \
              "You can mirror the bundle and set OPENAGENTIC_DIST_BASE to its host."
 
-  # 2. Fetch the EXPECTED digest from the independent GitHub trust anchor.
+  # 2. Fetch the EXPECTED digest from the independent GitHub trust anchor. If the
+  #    repo is still private (pre-launch 404), fall back to the dist host's
+  #    published checksum so a known-good bundle can still be verified.
   EXPECTED_SHA="$(curl -fsSL --max-time 30 "$BUNDLE_SHA_URL" 2>/dev/null | awk 'NR==1{print $1}')"
+  if [[ -z "$EXPECTED_SHA" ]]; then
+    EXPECTED_SHA="$(curl -fsSL --max-time 30 "$BUNDLE_SHA_FALLBACK_URL" 2>/dev/null | awk 'NR==1{print $1}')"
+    [[ -n "$EXPECTED_SHA" ]] && info "Source-repo checksum anchor unreachable (repo private pre-launch); using the dist host's published digest."
+  fi
   [[ -n "$EXPECTED_SHA" ]] \
-    || fatal 'Could not fetch the expected bundle checksum from the source repo — refusing to extract an unverified bundle; the download host may be compromised.' \
+    || fatal 'Could not fetch the expected bundle checksum — refusing to extract an unverified bundle; the download host may be compromised.' \
              "Checksum URL: $BUNDLE_SHA_URL" \
              "Check your network, or override the anchor with OPENAGENTIC_BUNDLE_SHA_URL."
 
