@@ -206,6 +206,13 @@ jobs:
           cache: pnpm
       - name: Install workspace
         run: pnpm install --frozen-lockfile --ignore-scripts --config.public-hoist-pattern='${{ env.PNPM_PUBLIC_HOIST }}'
+      # The UI imports @agentic-work/llm-sdk via its built dist; on a fresh runner
+      # that isn't built, so tsc 404s on it and cascades spurious lib/@types/node
+      # errors. Building the shared packages first (as the api gate does) clears them.
+      - name: Build shared dependencies
+        run: |
+          pnpm --filter @agentic-work/llm-sdk run build
+          pnpm --filter @openagentic/workflow-engine run build
       - name: Type-check ui (non-blocking)
         run: pnpm --filter ./services/openagentic-ui exec tsc --noEmit
 
