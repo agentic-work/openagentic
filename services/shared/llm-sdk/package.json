@@ -70,7 +70,7 @@
     "@aws-sdk/credential-provider-node": "^3.0.0",
     "@aws-sdk/credential-providers": "^3.1024.0",
     "@smithy/fetch-http-handler": "^5.3.15",
-    "@smithy/protocol-http": "^4.0.0",
+    "@smithy/protocol-http": "^5.5.2",
     "@smithy/signature-v4": "^4.0.0",
     "@smithy/types": "^3.0.0",
     "@types/node": "^20.19.39",
