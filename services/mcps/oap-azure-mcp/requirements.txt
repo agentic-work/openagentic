@@ -18,7 +18,7 @@ azure-mgmt-managementgroups>=1.0.0  # Management group hierarchy
 
 # Compute
 azure-mgmt-compute>=37.0.0          # VMs, VMSS, disks, images, galleries
-azure-mgmt-containerservice>=40.0.0 # AKS clusters, node pools, upgrades
+azure-mgmt-containerservice>=41.3.0 # AKS clusters, node pools, upgrades
 azure-mgmt-containerregistry>=14.0.0 # ACR registries, repos, tasks
 azure-mgmt-appcontainers>=4.0.0     # Container Apps, environments
 
