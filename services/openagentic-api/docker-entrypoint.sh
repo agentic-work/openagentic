@@ -137,19 +137,22 @@ esac
 echo "========================================="
 echo "Syncing database schema"
 echo "========================================="
-# `prisma db push` is idempotent: creates missing tables on first boot,
-# no-ops when the schema is already in sync. The in-process
-# AutoMigrationService also calls this, but it only runs AFTER secrets
-# + vault init, and InitializationService.verifyDatabase counts tables
-# that may not exist yet on a brand-new DB — so pushing up front here
-# guarantees the tables are there before any code tries to read them.
-# `--accept-data-loss` is the standard signal to Prisma that we're OK
-# with column-type coercion on first boot; it's harmless on an empty DB.
+# Schema sync uses `prisma db push` (idempotent: creates missing tables on
+# first boot, no-ops when in sync). KNOWN HARDENING GAP (tracked): db push is
+# schema-only, so the raw-SQL security objects in prisma/migrations/ —
+# row-level-security policies + the audit-immutability triggers — are NOT
+# created by this path. Switching to `prisma migrate deploy` requires first
+# regenerating a clean, replayable from-empty migration baseline (the current
+# 13 migrations are out-of-order drift on a db-push base and fail from empty:
+# "schema admin does not exist"). That regen + a boot-regression test that
+# asserts the RLS/triggers exist belongs in the in-cluster CI runner where a
+# real DB boot can be gated. Until then this stays db push so fresh installs
+# boot reliably.
 if ! ./node_modules/.bin/prisma db push --accept-data-loss --skip-generate; then
-  echo "🚨 prisma db push failed. Aborting start."
+  echo "prisma db push failed. Aborting start."
   exit 1
 fi
-echo "✅ Schema in sync"
+echo "Schema in sync"
 
 echo "========================================="
 echo "✅ ALL dependencies ready - starting API server"

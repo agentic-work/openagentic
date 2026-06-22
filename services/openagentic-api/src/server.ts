@@ -1038,9 +1038,12 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register version routes');
   }
 
-  // Register agenticode desktop provider shim + downloads (Code Mode). It was
-  // originally wired in misc.plugin.ts, but that plugin is never registered —
-  // register it here in registerAllRoutes where it actually loads.
+  // Register the agenticode desktop-provider bridge + downloads: a thin
+  // LLM-provider shim (config / health / v1-messages / downloads) the optional
+  // desktop app uses to talk to the platform as a provider. It has NO PTY,
+  // sessions, exec, or approval gate — it is NOT the removed Code Mode runtime.
+  // Originally wired in misc.plugin.ts (which is never registered), so it loads
+  // here in registerAllRoutes.
   try {
     const { agenticodeRoutes } = await import('./routes/agenticode.js');
     await server.register(agenticodeRoutes, { prefix: '/api/agenticode' });
