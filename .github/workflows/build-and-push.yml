@@ -123,7 +123,7 @@ jobs:
       # step prunes anything that isn't :latest.
       - name: Compute image tags
         id: meta
-        uses: docker/metadata-action@v5.7.0
+        uses: docker/metadata-action@v6.1.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}
           # This workflow only fires on release tags + manual dispatch, so :latest
