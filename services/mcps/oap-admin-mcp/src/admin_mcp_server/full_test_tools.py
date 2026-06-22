@@ -21,7 +21,7 @@ import logging
 import time
 import asyncio
 from typing import Any, Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 
@@ -720,7 +720,7 @@ async def admin_full_system_test(
     timer.start()
 
     report = {
-        "test_started": datetime.utcnow().isoformat(),
+        "test_started": datetime.now(timezone.utc).isoformat(),
         "platform": "OpenAgentic",
         "version": "3.0",
         "test_configuration": {
@@ -831,7 +831,7 @@ async def admin_full_system_test(
     else:
         report["results"]["overall_status"] = "UNKNOWN"
 
-    report["test_completed"] = datetime.utcnow().isoformat()
+    report["test_completed"] = datetime.now(timezone.utc).isoformat()
     report["duration_ms"] = round(timer.get_total_ms(), 2)
     report["duration_seconds"] = round(timer.get_total_ms() / 1000, 2)
 

@@ -15,7 +15,7 @@ import logging
 import asyncio
 import httpx
 from typing import Any, Dict, List, Optional, Union
-from datetime import datetime
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 
 import dotenv
@@ -1019,9 +1019,9 @@ async def admin_system_network_connectivity_check() -> Dict[str, Any]:
     results = []
     for host, port, label in targets:
         try:
-            start = datetime.utcnow()
+            start = datetime.now(timezone.utc)
             s = socket.create_connection((host, port), timeout=3)
-            elapsed_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            elapsed_ms = (datetime.now(timezone.utc) - start).total_seconds() * 1000
             s.close()
             results.append({
                 "service": label,
@@ -1093,7 +1093,7 @@ async def admin_system_infrastructure_health_check() -> Dict[str, Any]:
     """Check overall OpenAgentic platform infrastructure health — PostgreSQL, Redis, Milvus, LLM providers, all services"""
 
     health = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "components": {}
     }
 

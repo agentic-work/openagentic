@@ -23,7 +23,7 @@ import sys
 import json
 import logging
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Configure structured logging via shared observability module
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
@@ -96,7 +96,7 @@ def get_credentials():
 
     # Check if cached credentials are still valid
     if _credentials and _credentials_expiry:
-        if datetime.utcnow() < _credentials_expiry:
+        if datetime.now(timezone.utc) < _credentials_expiry:
             return _credentials
 
     scopes = [
@@ -980,7 +980,7 @@ async def vertex_ai_usage_metrics(
 
     # Calculate time window
     from datetime import timedelta
-    end_time = datetime.utcnow()
+    end_time = datetime.now(timezone.utc)
     start_time = end_time - timedelta(hours=hours_ago)
 
     # Cloud Monitoring API for Vertex AI metrics
@@ -1394,7 +1394,7 @@ async def gcp_monitoring_query(
     project = project_id or GCP_PROJECT_ID
 
     from datetime import timedelta
-    end_time = datetime.utcnow()
+    end_time = datetime.now(timezone.utc)
     start_time = end_time - timedelta(hours=hours_ago)
 
     url = (

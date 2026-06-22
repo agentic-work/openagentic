@@ -25,7 +25,7 @@ import os
 import json
 import logging
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, List, Callable, TypeVar
 
 _T = TypeVar("_T")
@@ -4016,7 +4016,7 @@ async def azure_cost_query(
 
         client = CostManagementClient(credential)
 
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
 
         # Build query definition
@@ -4115,7 +4115,7 @@ async def azure_cost_by_service(
 
         client = CostManagementClient(credential)
 
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
 
         query_def = {
@@ -4205,7 +4205,7 @@ async def azure_cost_forecast(
 
         client = CostManagementClient(credential)
 
-        start_date = datetime.utcnow()
+        start_date = datetime.now(timezone.utc)
         end_date = start_date + timedelta(days=forecast_days)
 
         query_def = {

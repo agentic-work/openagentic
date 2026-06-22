@@ -14,7 +14,7 @@ import sys
 import json
 import logging
 from typing import Any, Dict, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 
 import httpx
@@ -63,7 +63,7 @@ class LokiClient:
             value, unit = int(match.group(1)), match.group(2)
             multipliers = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400, 'w': 604800}
             seconds_ago = value * multipliers[unit]
-            timestamp = datetime.utcnow() - timedelta(seconds=seconds_ago)
+            timestamp = datetime.now(timezone.utc) - timedelta(seconds=seconds_ago)
             return str(int(timestamp.timestamp() * 1e9))
 
         # Try parsing as ISO format

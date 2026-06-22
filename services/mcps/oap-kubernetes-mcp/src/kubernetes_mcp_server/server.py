@@ -19,7 +19,7 @@ import json
 import logging
 import asyncio
 from typing import Any, Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 import dotenv
 from mcp.server.fastmcp import FastMCP
@@ -629,7 +629,7 @@ async def k8s_restart_deployment(namespace: str, deployment_name: str) -> Dict[s
         _, _, apps_api = get_k8s_client()
 
         # Patch with a new annotation to trigger rollout
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         body = {
             "spec": {
                 "template": {
@@ -1306,7 +1306,7 @@ async def k8s_cluster_health() -> Dict[str, Any]:
 
         health = {
             "success": True,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "protected_namespace": PROTECTED_NAMESPACE,
             "nodes": node_status,
             "namespaces": len(namespaces.items),
@@ -1586,7 +1586,7 @@ async def k8s_rollout_undo(
             message = f"Rolled back to revision {revision}"
         else:
             # Rollback to previous revision by using rollout restart equivalent
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(timezone.utc).isoformat()
             patch = {
                 "spec": {
                     "template": {

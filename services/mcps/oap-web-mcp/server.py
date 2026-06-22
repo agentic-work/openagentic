@@ -33,7 +33,7 @@ import hashlib
 import re
 import random
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urljoin, urlparse, quote_plus
 
 # Configure structured logging via shared observability module
@@ -146,7 +146,7 @@ def is_cache_valid(cache_entry: Dict[str, Any]) -> bool:
     """Check if a cache entry is still valid."""
     if "timestamp" not in cache_entry:
         return False
-    age = (datetime.utcnow() - cache_entry["timestamp"]).total_seconds()
+    age = (datetime.now(timezone.utc) - cache_entry["timestamp"]).total_seconds()
     return age < CACHE_TTL_SECONDS
 
 def clean_text(text: str) -> str:
@@ -660,7 +660,7 @@ async def _do_web_fetch(
 
         # Cache the result
         _page_cache[cache_key] = {
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
             "data": result_data
         }
 
@@ -933,7 +933,7 @@ async def web_store_knowledge(
             "tags": tags or [],
             "importance": importance,
             "type": "web_research",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
         logger.info(f"Storing knowledge: {title}")
