@@ -1,0 +1,70 @@
+{
+  "type": "extract_key",
+  "category": "data",
+  "label": "Extract Key",
+  "description": "Pull a single value at a dot/bracket path from an object, with optional default. Replaces the transform-extract case for the common 'give me steps.X.data.id' pattern.",
+  "icon": "key",
+  "primary": "value",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "value": "any",
+          "found": "boolean"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "input",
+      "label": "Input (template or upstream)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "{{steps.http_request.body}}",
+      "description": "Path-template to the source object. Omit to use the upstream connection's input directly."
+    },
+    {
+      "name": "path",
+      "label": "Path",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": false,
+      "placeholder": "data.items[0].name",
+      "description": "Dot/bracket path to the value (e.g. 'response.data.id', 'items[0].name'). Returns found=false when the path is missing."
+    },
+    {
+      "name": "default",
+      "label": "Default (when path missing)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "unknown",
+      "description": "Optional fallback returned as `value` when the path doesn't resolve. `found` is still false to let downstream branches detect the miss."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Extract a value at a dot/bracket path with optional default.",
+    "whenToUse": "When you need exactly one nested field from an upstream object (e.g. the id of the first item) and want a clean miss signal.",
+    "examplePrompt": "extract data.items[0].name from the http response, default to 'unknown'",
+    "promptHints": "Output: {{steps.X.value}} and {{steps.X.found}} (boolean). Branch on found via a condition node when the path is optional."
+  },
+  "outputAssertions": [
+    {
+      "name": "shape_complete",
+      "expression": "result && typeof result.found === 'boolean'",
+      "errorMessage": "extract_key output is missing required keys (value, found)."
+    }
+  ]
+}

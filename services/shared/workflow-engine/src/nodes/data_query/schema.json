@@ -1,0 +1,88 @@
+{
+  "type": "data_query",
+  "category": "data",
+  "label": "Data Query",
+  "description": "Run a vector / collection query against a configured datasource. Returns the matching results so downstream nodes can summarise, rank, or feed an LLM.",
+  "icon": "database",
+  "primary": "results",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "collection": "string",
+          "results": "array",
+          "resultCount": "number"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "collection",
+      "label": "Collection",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "my_collection",
+      "description": "Name of the collection / index to query. Falls back to 'default' when blank."
+    },
+    {
+      "name": "collectionName",
+      "label": "Collection (alt field)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Alternate field name accepted for backwards compatibility — same meaning as 'collection'."
+    },
+    {
+      "name": "query",
+      "label": "Query",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "find {{topic}}",
+      "description": "Semantic / text query. When blank, falls back to input.query, input.message, or the raw input."
+    },
+    {
+      "name": "filters",
+      "label": "Filters",
+      "type": "json",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Optional metadata filters. Either an object or a JSON-stringified template."
+    },
+    {
+      "name": "limit",
+      "label": "Top K",
+      "type": "number",
+      "required": false,
+      "default": 10,
+      "min": 1,
+      "max": 1000,
+      "description": "Maximum number of results to return."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Vector / collection search against the platform's datastore.",
+    "whenToUse": "When you need to retrieve documents or rows tied to a query so a later node can use them.",
+    "examplePrompt": "search the 'docs' collection for the user's topic and pass the top 5 results to the LLM",
+    "promptHints": "Reference the hits via {{steps.<id>.results}}. Use limit=5 for a tight LLM context."
+  },
+  "outputAssertions": [
+    {
+      "name": "non_empty_content",
+      "expression": "result && Array.isArray(result.results) && typeof result.resultCount === 'number' && result.resultCount > 0",
+      "errorMessage": "Data Query returned zero results — likely the collection is empty, the query is too narrow, or filters excluded everything. Investigate the source rather than treating this as a successful retrieval."
+    }
+  ]
+}

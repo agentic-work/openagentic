@@ -1,0 +1,42 @@
+{
+  "domain": "feature-flags",
+  "title": "Feature Availability",
+  "description": "Build-time feature flags that determine what ships in the UI.",
+  "icon": "shield",
+  "category": "core",
+  "generatedAt": "2026-06-21T18:49:53.962Z",
+  "sourceFiles": [
+    "services/openagentic-ui/src/config/featureFlags.ts"
+  ],
+  "sections": [
+    {
+      "id": "main",
+      "title": "Feature Availability",
+      "description": "Build-time feature flags that determine what ships in the UI.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "ollama",
+          "name": "ollama",
+          "description": "Ollama LLM provider - set to false to remove Ollama management",
+          "type": "feature-flag",
+          "sourceFile": "services/openagentic-ui/src/config/featureFlags.ts"
+        },
+        {
+          "id": "multiModel",
+          "name": "multiModel",
+          "description": "Multi-Model orchestration",
+          "type": "feature-flag",
+          "sourceFile": "services/openagentic-ui/src/config/featureFlags.ts"
+        },
+        {
+          "id": "mcp",
+          "name": "mcp",
+          "description": "MCP (Model Context Protocol)",
+          "type": "feature-flag",
+          "sourceFile": "services/openagentic-ui/src/config/featureFlags.ts"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "type": "mcp_tool",
+  "category": "integration",
+  "label": "MCP Tool",
+  "description": "Invoke an MCP (Model Context Protocol) tool through the platform's mcp-proxy. Auth runs as the user (OBO federation for AWS/Azure).",
+  "icon": "plug",
+  "primary": "content",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "content": "string",
+          "isError": "boolean"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "toolName",
+      "label": "Tool name",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": false,
+      "placeholder": "list_kvs"
+    },
+    {
+      "name": "toolServer",
+      "label": "MCP server",
+      "type": "string",
+      "required": false,
+      "description": "Server identifier (e.g. openagentic_azure, openagentic_aws). Hyphens are normalized to underscores; trailing _mcp is stripped. web_search/web_news_search auto-route to openagentic_web."
+    },
+    {
+      "name": "serverName",
+      "label": "Server name (legacy alias)",
+      "type": "string",
+      "required": false,
+      "description": "Deprecated — falls back to this when toolServer is unset."
+    },
+    {
+      "name": "arguments",
+      "label": "Tool arguments",
+      "type": "json",
+      "required": false,
+      "default": {},
+      "description": "Object passed verbatim as the tool's arguments. String values are template-interpolated."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Invoke an MCP tool via mcp-proxy.",
+    "whenToUse": "When you need to call out to an MCP-exposed tool (Azure / AWS / k8s / web_search / loki / etc.) on behalf of the user.",
+    "examplePrompt": "list AWS S3 buckets via the openagentic_aws MCP server",
+    "promptHints": "Reference the result with {{steps.<id>.content}} (string-joined text blocks)."
+  }
+}

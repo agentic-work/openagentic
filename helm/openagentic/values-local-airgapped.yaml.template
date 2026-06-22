@@ -1,0 +1,353 @@
+# Air-gapped / Offline Kubernetes Deployment Values TEMPLATE
+# For environments without internet access
+# Copy this file to values-local-airgapped.yaml and fill in your values
+# DO NOT commit values-local-airgapped.yaml to git - it contains secrets!
+#
+# Prerequisites for air-gapped deployment:
+# 1. All images must be pre-loaded into local registry or Docker daemon
+# 2. No external dependencies (AWS, GCP, Azure MCPs disabled)
+# 3. Ollama models must be pre-downloaded
+#
+# Usage:
+#   cp values-local-airgapped.yaml.template values-local-airgapped.yaml
+#   # Edit values-local-airgapped.yaml with your actual values
+#   helm install openagentic . -f values-local-airgapped.yaml -n openagentic
+
+global:
+  environment: production
+  imagePullPolicy: Never  # All images must be pre-loaded
+
+# ===========================================
+# LOCAL REGISTRY (if using)
+# ===========================================
+# If using a local registry, uncomment and configure:
+# imageRegistry: "your-registry.local:5000"
+
+# ===========================================
+# API SERVICE
+# ===========================================
+api:
+  enabled: true
+  replicaCount: 2  # HA for production
+  image:
+    repository: agentic-openagentic-api
+    tag: latest
+    pullPolicy: Never
+  service:
+    type: ClusterIP
+    port: 3001
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+    limits:
+      cpu: 4000m
+      memory: 4Gi
+
+# ===========================================
+# UI SERVICE
+# ===========================================
+ui:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: agentic-openagentic-ui
+    tag: latest
+    pullPolicy: Never
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+
+# ===========================================
+# MCP PROXY (Limited - Air-gapped mode)
+# ===========================================
+mcpProxy:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: agentic-mcp-proxy
+    tag: latest
+    pullPolicy: Never
+  service:
+    type: ClusterIP
+    port: 8080
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  env:
+    ENABLE_AUTH: "false"
+    AZURE_TENANT_ID: ""
+    AZURE_CLIENT_ID: ""
+    LOG_LEVEL: "info"
+    API_BASE_URL: "http://openagentic-api:8000"
+    MILVUS_HOST: "openagentic-milvus"
+    # DISABLE ALL CLOUD MCPs for air-gapped
+    OpenAgentic_GCP_MCP_DISABLED: "true"
+    AWS_MCP_DISABLED: "true"
+    AWS_KNOWLEDGE_MCP_DISABLED: "true"
+    AZURE_COST_MCP_DISABLED: "true"
+    # Local MCPs only
+    PROMETHEUS_MCP_DISABLED: "false"
+    PROMETHEUS_URL: "http://openagentic-prometheus:9090"
+    VMWARE_MCP_DISABLED: "true"
+    ADMIN_MCP_DISABLED: "false"
+    MEMORY_MCP_DISABLED: "false"
+    FETCH_MCP_DISABLED: "true"  # Requires internet
+    RESULT_STORAGE_MCP_DISABLED: "false"
+    SEQUENTIAL_THINKING_MCP_DISABLED: "false"
+    BACKGROUND_PROCESSOR_MCP_DISABLED: "false"
+
+# ===========================================
+# OLLAMA (Local LLM - Primary for air-gapped)
+# ===========================================
+ollama:
+  enabled: true
+  image:
+    repository: ollama/ollama
+    tag: latest
+    pullPolicy: Never  # Must be pre-loaded
+  service:
+    type: ClusterIP
+    port: 11434
+  persistence:
+    enabled: true
+    size: 100Gi  # Larger for multiple models
+  resources:
+    requests:
+      cpu: 2000m
+      memory: 8Gi
+    limits:
+      cpu: 8000m
+      memory: 32Gi
+  # Note: Models must be pre-downloaded before deployment
+  # Required models: gpt-oss, embeddinggemma, qwen3-vl
+
+# ===========================================
+# POSTGRESQL (Bitnami chart)
+# ===========================================
+postgresql:
+  enabled: true
+  auth:
+    username: openagentic
+    password: "<YOUR_POSTGRES_PASSWORD>"
+    database: openagentic
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+  image:
+    pullPolicy: Never
+
+# ===========================================
+# REDIS (Bitnami chart)
+# ===========================================
+redis:
+  enabled: true
+  architecture: replication
+  auth:
+    enabled: true
+    password: "<YOUR_REDIS_PASSWORD>"
+  master:
+    persistence:
+      enabled: true
+      size: 16Gi
+  image:
+    pullPolicy: Never
+
+# ===========================================
+# MILVUS (Vector DB) - Standalone mode with rocksmq
+# ===========================================
+milvus:
+  enabled: true
+  auth:
+    username: "root"
+  cluster:
+    enabled: false
+  standalone:
+    replicas: 1
+    messageQueue: rocksmq
+    persistence:
+      enabled: true
+      persistentVolumeClaim:
+        size: 50Gi
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 4Gi
+      limits:
+        cpu: 4000m
+        memory: 16Gi
+  image:
+    all:
+      repository: milvusdb/milvus
+      tag: v2.5.0
+      pullPolicy: Never
+  pulsar:
+    enabled: false
+  kafka:
+    enabled: false
+  etcd:
+    enabled: true
+    replicaCount: 1
+    persistence:
+      enabled: true
+      size: 5Gi
+    image:
+      pullPolicy: Never
+  minio:
+    enabled: true
+    mode: standalone
+    persistence:
+      enabled: true
+      size: 50Gi
+
+milvusCustom:
+  enabled: false
+
+# ===========================================
+# INGRESS (Using standard Ingress for air-gapped)
+# ===========================================
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: openagentic.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# ===========================================
+# GATEWAY API (Disabled for air-gapped - use Ingress)
+# ===========================================
+gateway:
+  enabled: false
+
+# ===========================================
+# SECURITY
+# ===========================================
+security:
+  frontendSecret: "<YOUR_FRONTEND_SECRET>"
+
+# ===========================================
+# LLM PROVIDER CONFIGURATION (Ollama only)
+# ===========================================
+env:
+  # Use Ollama as primary (only option in air-gapped)
+  DEFAULT_LLM_PROVIDER: "ollama"
+  DEFAULT_MODEL: "gpt-oss"
+  LLM_ENABLE_FAILOVER: "false"  # No failover in air-gapped
+  LLM_FAILOVER_TIMEOUT: "30000"
+  LLM_ENABLE_LOAD_BALANCING: "false"
+  LLM_LOAD_BALANCING_STRATEGY: "priority"
+  OLLAMA_ENABLED: "true"
+  OLLAMA_BASE_URL: "http://openagentic-ollama:11434"
+  OLLAMA_MODEL: "gpt-oss"
+  OLLAMA_VISION_MODEL: "qwen3-vl"
+  OLLAMA_EMBEDDING_MODEL: "embeddinggemma"
+  # Disable cloud providers
+  VERTEX_AI_ENABLED: "false"
+  AWS_BEDROCK_ENABLED: "false"
+  AZURE_SUBSCRIPTION_ID: ""
+  AWS_MCP_DISABLED: "true"
+  AWS_KNOWLEDGE_MCP_DISABLED: "true"
+  OpenAgentic_GCP_MCP_DISABLED: "true"
+  GCP_PROJECT_ID: ""
+  GCP_REGION: ""
+
+# Vertex AI Configuration (Disabled)
+ai:
+  google:
+    vertex:
+      enabled: false
+      priority: 99
+      projectId: ""
+      location: ""
+      model: ""
+
+# ===========================================
+# EMBEDDING CONFIGURATION (Ollama only)
+# ===========================================
+embedding:
+  enabled: true
+  provider: "ollama"
+  model: "embeddinggemma"
+  dimensions: 768
+  ollama:
+    model: "embeddinggemma"
+
+# ===========================================
+# AUTHENTICATION (local username/password only — no federated identity / SSO)
+# ===========================================
+auth:
+  admin:
+    requirePasswordReset: "false"
+  testMode:
+    enabled: "false"  # Disable test mode in production
+    apiKey: ""
+
+# ===========================================
+# SECRETS (FILL IN YOUR VALUES)
+# ===========================================
+secrets:
+  jwtSecret: "<YOUR_JWT_SECRET_MIN_32_CHARS>"
+  apiKey: "<YOUR_API_KEY>"
+  apiSecretKey: "<YOUR_API_SECRET_KEY>"
+  signingSecret: "<YOUR_SIGNING_SECRET_MIN_32_CHARS>"
+  internalMcpApiKey: "<YOUR_INTERNAL_MCP_KEY>"
+  litellmMasterKey: "<YOUR_LITELLM_KEY>"
+  adminUserPassword: "<YOUR_ADMIN_PASSWORD>"
+  vaultToken: "<YOUR_VAULT_TOKEN>"
+  milvusPassword: "<YOUR_MILVUS_PASSWORD>"
+  minioAccessKey: "minioadmin"
+  minioRootPassword: "<YOUR_MINIO_PASSWORD>"
+  # Azure secrets not needed in air-gapped
+  azureClientSecret: ""
+  azureOpenaiApiKey: ""
+  viteApiKey: "<YOUR_VITE_API_KEY>"
+  viteFrontendSecret: "<YOUR_VITE_FRONTEND_SECRET>"
+  frontendSecret: "<YOUR_FRONTEND_SECRET>"
+  gcpServiceAccountJson: ""
+  awsAccessKeyId: ""
+  awsSecretAccessKey: ""
+
+# ===========================================
+# OPTIONAL SERVICES (Production settings)
+# ===========================================
+pgadmin:
+  enabled: false  # Disable admin tools in production
+
+redisCommander:
+  enabled: false
+
+attu:
+  enabled: false
+
+prometheus:
+  enabled: true
+  image:
+    repository: prom/prometheus
+    tag: latest
+    pullPolicy: Never
+  service:
+    port: 9090
+  persistence:
+    enabled: true
+    size: 20Gi
+
+minio:
+  enabled: false
+
+aws:
+  defaultRegion: ""

@@ -1,0 +1,58 @@
+{
+  "type": "embedding",
+  "category": "data",
+  "label": "Embedding",
+  "description": "Generate vector embeddings for one or more texts via the platform's /api/v1/embeddings endpoint. Falls back to /api/v1/vector/embed on primary failure.",
+  "icon": "vector",
+  "primary": "vectors",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": true
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "vectors": "array",
+          "model": "string",
+          "count": "number",
+          "dimensions": "number",
+          "texts": "array"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "model",
+      "label": "Model",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Embedding model name. Leave blank to use the platform's configured default."
+    },
+    {
+      "name": "batchSize",
+      "label": "Batch size",
+      "type": "number",
+      "required": false,
+      "default": 100,
+      "min": 1,
+      "max": 2048,
+      "description": "Maximum number of texts sent in a single request."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Generate vector embeddings for texts.",
+    "whenToUse": "Before vector_store / vector search — convert chunks (or a single text) into embeddings.",
+    "examplePrompt": "embed the chunked document text in batches of 50",
+    "promptHints": "Accepts a single string, an array of strings, or { chunks: [...] }. Reference vectors via {{steps.<id>.result.vectors}}."
+  },
+  "outputAssertions": []
+}

@@ -1,0 +1,101 @@
+{
+  "type": "rate_limiter",
+  "category": "control",
+  "label": "Rate Limiter",
+  "description": "Fixed-window throttle for fan-out to rate-limited APIs. Per-(tenant, key) counter; choose block (sleep until reset), drop (return without invoking), or error (throw) on overflow.",
+  "icon": "gauge",
+  "primary": "allowed",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "allowed": "boolean",
+          "limited": "boolean",
+          "key": "string",
+          "calls": "number",
+          "maxCalls": "number",
+          "windowSeconds": "number",
+          "waitedMs": "number"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "key",
+      "label": "Bucket key",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "api:openai",
+      "description": "Namespaced counter key. Buckets are isolated by (tenant, key) so two tenants can use the same key without sharing a window."
+    },
+    {
+      "name": "maxCalls",
+      "label": "Max calls per window",
+      "type": "number",
+      "required": false,
+      "default": 10,
+      "min": 1,
+      "max": 100000,
+      "description": "Upper bound on calls within a single window. Counter resets at window boundary."
+    },
+    {
+      "name": "windowSeconds",
+      "label": "Window (seconds)",
+      "type": "number",
+      "required": false,
+      "default": 60,
+      "min": 1,
+      "max": 86400,
+      "description": "Length of the fixed window. Defaults to 60s; 1s windows behave like a per-second limit."
+    },
+    {
+      "name": "onLimit",
+      "label": "On limit",
+      "type": "enum",
+      "values": [
+        "block",
+        "drop",
+        "error"
+      ],
+      "default": "block",
+      "required": false,
+      "description": "block = wait until next window opens (counts as allowed afterwards); drop = return without invoking downstream (allowed=false); error = throw a runtime error."
+    },
+    {
+      "name": "scope",
+      "label": "Scope",
+      "type": "enum",
+      "values": [
+        "local"
+      ],
+      "default": "local",
+      "required": false,
+      "description": "Where the counter lives. V1 supports `local` (in-memory per-process, accurate on a single replica). V1.1 will add `redis` for multi-replica deployments."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Throttle fan-out to rate-limited APIs with a fixed-window counter.",
+    "whenToUse": "Place upstream of an http_request/agent_single/mcp_tool node that calls a third-party API with a published rate limit. Same bucket key across a loop body shares the window.",
+    "examplePrompt": "limit to 5 calls per second on the bucket 'api:openai', block if exceeded",
+    "promptHints": "Output: {{steps.X.allowed}} (true = downstream should proceed; false on drop). For multi-tenant flows, keep the key generic — the executor adds the tenant scope automatically."
+  },
+  "outputAssertions": [
+    {
+      "name": "has_envelope",
+      "expression": "result && typeof result.allowed === 'boolean' && typeof result.key === 'string'",
+      "errorMessage": "rate_limiter output is missing the {allowed, key} envelope."
+    }
+  ]
+}

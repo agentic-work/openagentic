@@ -1,0 +1,154 @@
+{
+  "generatedAt": "2026-06-21T18:49:53.971Z",
+  "version": "1.0.0",
+  "codename": "Open Field",
+  "categories": [
+    {
+      "id": "core",
+      "title": "Core Platform",
+      "icon": "brain"
+    },
+    {
+      "id": "agents",
+      "title": "Agents",
+      "icon": "agent"
+    },
+    {
+      "id": "tools",
+      "title": "MCP & Tools",
+      "icon": "tool"
+    },
+    {
+      "id": "workflows",
+      "title": "Workflows",
+      "icon": "flow"
+    },
+    {
+      "id": "security",
+      "title": "Security",
+      "icon": "shield"
+    },
+    {
+      "id": "infrastructure",
+      "title": "Infrastructure",
+      "icon": "infra"
+    },
+    {
+      "id": "ui",
+      "title": "UI & Modes",
+      "icon": "code"
+    }
+  ],
+  "manifests": [
+    {
+      "domain": "mcp-servers",
+      "title": "MCP Servers",
+      "description": "Model Context Protocol servers and their tools",
+      "category": "tools",
+      "file": "mcp-servers.json",
+      "sectionCount": 9,
+      "itemCount": 185,
+      "adminOnly": false
+    },
+    {
+      "domain": "agent-types",
+      "title": "Agent Types",
+      "description": "Built-in sub-agent personas the supervisor can delegate to, source-derived from the API built-in agent directory.",
+      "category": "agents",
+      "file": "agent-types.json",
+      "sectionCount": 1,
+      "itemCount": 8,
+      "adminOnly": false
+    },
+    {
+      "domain": "flow-templates",
+      "title": "Flow Templates",
+      "description": "Pre-built Flow templates seeded into the workflow engine, source-derived from the seed directory.",
+      "category": "workflows",
+      "file": "flow-templates.json",
+      "sectionCount": 1,
+      "itemCount": 5,
+      "adminOnly": false
+    },
+    {
+      "domain": "node-types",
+      "title": "Workflow Node Types",
+      "description": "Registered Flow canvas node types, source-derived from the workflow-engine node registry.",
+      "category": "workflows",
+      "file": "node-types.json",
+      "sectionCount": 7,
+      "itemCount": 71,
+      "adminOnly": false
+    },
+    {
+      "domain": "deployed-services",
+      "title": "Deployed Services",
+      "description": "Services deployed by the compose stack, source-derived from docker-compose.yml.",
+      "category": "infrastructure",
+      "file": "deployed-services.json",
+      "sectionCount": 4,
+      "itemCount": 16,
+      "adminOnly": false
+    },
+    {
+      "domain": "helm-templates",
+      "title": "Helm Templates",
+      "description": "Kubernetes templates in the platform Helm chart",
+      "category": "infrastructure",
+      "file": "helm-templates.json",
+      "sectionCount": 1,
+      "itemCount": 15,
+      "adminOnly": false
+    },
+    {
+      "domain": "api-routes",
+      "title": "API Routes",
+      "description": "HTTP routes registered across the API",
+      "category": "core",
+      "file": "api-routes.json",
+      "sectionCount": 13,
+      "itemCount": 540,
+      "adminOnly": false
+    },
+    {
+      "domain": "t1-tools",
+      "title": "T1 Primitives",
+      "description": "Canonical agentic primitives — the Layer-2 chatmode catalog. Every chat turn ships these 16 meta-tools.",
+      "category": "core",
+      "file": "t1-tools.json",
+      "sectionCount": 7,
+      "itemCount": 24,
+      "adminOnly": false
+    },
+    {
+      "domain": "feature-flags",
+      "title": "Feature Availability",
+      "description": "Build-time feature flags that determine what ships in the UI.",
+      "category": "core",
+      "file": "feature-flags.json",
+      "sectionCount": 1,
+      "itemCount": 3,
+      "adminOnly": false
+    },
+    {
+      "domain": "changelog",
+      "title": "Changelog",
+      "description": "Release history, source-derived from version.json — the single source of truth for platform versions.",
+      "category": "core",
+      "file": "changelog.json",
+      "sectionCount": 9,
+      "itemCount": 141,
+      "adminOnly": false
+    },
+    {
+      "domain": "platform-summary",
+      "title": "Platform Summary",
+      "description": "Canonical headline counts and version, source-derived from the repo on every build.",
+      "category": "core",
+      "file": "platform-summary.json",
+      "sectionCount": 1,
+      "itemCount": 5,
+      "adminOnly": false
+    }
+  ]
+}

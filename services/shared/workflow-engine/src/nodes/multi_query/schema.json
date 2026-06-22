@@ -1,0 +1,72 @@
+{
+  "type": "multi_query",
+  "category": "ai",
+  "label": "Multi-Query Expand",
+  "description": "Expand one question into N retrieval query variants to widen RAG recall (the 'multi-query retriever' pattern). The default path is a DETERMINISTIC rule-based expander — it derives reformulations (keyword-only, question→statement, synonym/paraphrase prefixes, and the original) without a model round-trip, so it is reproducible and harness-friendly. Wire it at the TOP of a RAG flow so each variant can be embedded + searched and the union of hits reranked. A single phrasing often misses chunks that a paraphrase would catch; expanding the query before retrieval raises recall.",
+  "icon": "list-plus",
+  "primary": "queries",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "original": "string",
+          "queries": "array",
+          "count": "number",
+          "method": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "question",
+      "label": "Question",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "{{trigger.question}}",
+      "description": "The user's question to expand into multiple retrieval queries."
+    },
+    {
+      "name": "numQueries",
+      "label": "Number of queries",
+      "type": "number",
+      "required": false,
+      "default": 4,
+      "min": 1,
+      "max": 10,
+      "description": "How many query variants to produce (including the original). The deterministic expander caps at the number of distinct reformulations it can derive."
+    },
+    {
+      "name": "includeOriginal",
+      "label": "Include original query",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "When true (default), the original question is always the first variant so retrieval never loses the user's exact phrasing."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Expand one question into N retrieval query variants (deterministic, no model call by default) to widen RAG recall.",
+    "whenToUse": "At the top of a RAG flow, before embedding / knowledge_search. Each variant is embedded + searched and the union reranked, so a single phrasing doesn't miss relevant chunks.",
+    "examplePrompt": "expand the user's question into 4 retrieval queries",
+    "promptHints": "Set `question` to the user's question (templated). Reference the variants via {{steps.<id>.result.queries}} (a string[]); fan each into a knowledge_search or join them for a single retrieval call."
+  },
+  "outputAssertions": [
+    {
+      "name": "multi_query_result_shape",
+      "expression": "result && typeof result.original === 'string' && Array.isArray(result.queries) && result.queries.length > 0 && typeof result.count === 'number'",
+      "errorMessage": "multi_query result must be { original, queries[] (non-empty), count, method }."
+    }
+  ]
+}

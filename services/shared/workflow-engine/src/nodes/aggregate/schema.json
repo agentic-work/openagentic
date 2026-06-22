@@ -1,0 +1,108 @@
+{
+  "type": "aggregate",
+  "category": "ai",
+  "label": "Aggregate (LLM)",
+  "description": "LLM-driven reduce over an array. Two modes: `reduce` (single LLM call with the entire array serialized into the prompt → one summary string + one usage entry) and `map` (N LLM calls, one per item → array of N results). Uses the SAME /v1/chat/completions endpoint as llm_completion / llm_router. Smart Router via model:'auto' resolves to the platform's DB-backed registry (SoT). Closes the flowbuilder-gap-analysis P1.16 'LLM-driven reduce' gap.",
+  "icon": "list-tree",
+  "primary": "output",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "mode": "string",
+          "output": "any",
+          "items_in": "number",
+          "model": "string",
+          "usage": "object"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "items",
+      "label": "Items",
+      "type": "json",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "{{steps.previous.output.findings}}",
+      "description": "The array to aggregate. Strings are JSON.parsed first; non-array results fail-CLOSED."
+    },
+    {
+      "name": "mode",
+      "label": "Mode",
+      "type": "enum",
+      "required": false,
+      "values": [
+        "reduce",
+        "map"
+      ],
+      "default": "reduce",
+      "description": "`reduce` = one LLM call over the whole array → one summary. `map` = N LLM calls, one per item → array of N results. Use `reduce` when the model can hold the whole list in its context window; use `map` when items need independent analysis or the array is large."
+    },
+    {
+      "name": "prompt",
+      "label": "Prompt",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "Summarize these incident findings into one P0 / P1 / P2 narrative paragraph: {{items}}",
+      "description": "Template for the user prompt. In `reduce` mode, `{{items}}` is replaced with the JSON-serialized array. In `map` mode, `{{item}}` is replaced with each item in turn (and `{{itemIndex}}` for 0-based position)."
+    },
+    {
+      "name": "systemPrompt",
+      "label": "System prompt",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Override the default aggregation system prompt."
+    },
+    {
+      "name": "model",
+      "label": "Model",
+      "type": "string",
+      "required": false,
+      "default": "auto"
+    },
+    {
+      "name": "temperature",
+      "label": "Temperature",
+      "type": "number",
+      "required": false,
+      "default": 0.2,
+      "min": 0,
+      "max": 2
+    },
+    {
+      "name": "maxTokens",
+      "label": "Max tokens per call",
+      "type": "number",
+      "required": false,
+      "default": 1024,
+      "min": 1
+    }
+  ],
+  "ai": {
+    "shortDescription": "LLM reduces a list (or maps over items) to a higher-level summary or per-item transformation.",
+    "whenToUse": "When you have a list of items (findings, alerts, log lines, search results) and want either (a) a single LLM-written narrative summarizing them all (`reduce`), or (b) a per-item LLM transformation like classification / extraction (`map`).",
+    "examplePrompt": "Use aggregate with mode:reduce to turn the 9 Prometheus findings into one #devops Slack paragraph.",
+    "promptHints": "Use `{{items}}` in reduce mode and `{{item}}` in map mode. The output type changes per mode: reduce → string; map → array<string>."
+  },
+  "outputAssertions": [
+    {
+      "name": "output_present",
+      "expression": "result && (typeof result.output === 'string' || Array.isArray(result.output))",
+      "errorMessage": "aggregate did not produce a reduced output or mapped array."
+    }
+  ]
+}

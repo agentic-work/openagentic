@@ -1,0 +1,91 @@
+{
+  "type": "agent_pool",
+  "category": "ai",
+  "label": "Agent Pool",
+  "description": "Run a fixed list of agents in parallel through openagentic-proxy. Aggregates their results with the configured strategy (merge/first/vote).",
+  "icon": "robot",
+  "primary": "content",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "content": "string",
+          "agents": "array"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "agents",
+      "label": "Agents",
+      "type": "json",
+      "required": true,
+      "default": [],
+      "description": "Array of { agentId?, role, task, model?, tools?, maxTurns?, costBudget?, timeout? } specs."
+    },
+    {
+      "name": "concurrency",
+      "label": "Max concurrency",
+      "type": "number",
+      "required": false,
+      "default": 5,
+      "min": 1,
+      "max": 50
+    },
+    {
+      "name": "aggregation",
+      "label": "Aggregation",
+      "type": "string",
+      "required": false,
+      "default": "merge"
+    },
+    {
+      "name": "totalBudget",
+      "label": "Total budget (cents)",
+      "type": "number",
+      "required": false,
+      "default": 200
+    },
+    {
+      "name": "timeout",
+      "label": "Timeout (ms)",
+      "type": "number",
+      "required": false,
+      "default": 120000
+    }
+  ],
+  "ai": {
+    "shortDescription": "Run several agents in parallel via openagentic-proxy.",
+    "whenToUse": "When you want N agents working on the same input concurrently and aggregated.",
+    "examplePrompt": "run a research agent and a fact-checker agent in parallel on the trigger payload",
+    "promptHints": "Reference the merged result with {{steps.<id>.content}} and the per-agent results with {{steps.<id>.agents}}."
+  },
+  "outputAssertions": [
+    {
+      "name": "multi_agent_count",
+      "expression": "result && Array.isArray(result.agents) && result.agents.length > 0",
+      "errorMessage": "No agents executed in the pool run."
+    },
+    {
+      "name": "multi_agent_majority_succeeded",
+      "expression": "result && Array.isArray(result.agents) && result.agents.filter(a => a && (a.status === 'completed' || a.status === 'success')).length >= Math.ceil(result.agents.length / 2)",
+      "errorMessage": "Less than half of the pool agents completed successfully."
+    },
+    {
+      "name": "multi_agent_substantive_output",
+      "expression": "!result || !result.content || (result.content.length > 0 && !result.content.match(/^\\s*(I (could not|couldn't|cannot|can't|do not have|don't have|am unable|wasn't able|was not able)|Sorry,? (I|but)|I'?m sorry,?|I apologize,?|Unfortunately,? (I|no)|No (information|data|results|content) (available|found))/i))",
+      "errorMessage": "Pool produced no substantive output (likely all agents returned 'no info' / refusal responses)."
+    }
+  ]
+}

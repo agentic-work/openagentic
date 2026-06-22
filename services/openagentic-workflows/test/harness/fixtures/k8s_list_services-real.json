@@ -1,0 +1,86 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_kubernetes.k8s_list_services captured 2026-05-13 via kubectl get services -n openagentic -o json + cross-checked against the python tool source (services/mcps/oap-kubernetes-mcp/src/kubernetes_mcp_server/server.py k8s_list_services lines 603-646). The tool returns the native python dict (no FastMCP content[].text wrapping) so the mcp-proxy 3-layer unwrap (proxy.result.result) surfaces the dict verbatim and the mcp_tool node executor returns it as { success, namespace, is_protected, services[], count }. Three real services from the openagentic capture: openagentic-api (ClusterIP, single http port), openagentic-ui (ClusterIP, single http port), openagentic-mcp-proxy (ClusterIP, multi-port). Exercises the analyze transform for type classification + port aggregation.",
+  "result": {
+    "result": {
+      "success": true,
+      "namespace": "openagentic",
+      "is_protected": false,
+      "services": [
+        {
+          "name": "openagentic-api",
+          "namespace": "openagentic",
+          "type": "ClusterIP",
+          "cluster_ip": "10.43.115.42",
+          "external_ips": [],
+          "ports": [
+            {
+              "name": "http",
+              "port": 3001,
+              "target_port": "3001",
+              "protocol": "TCP",
+              "node_port": null
+            }
+          ],
+          "selector": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "openagentic",
+            "app.kubernetes.io/name": "openagentic"
+          },
+          "created": "2026-05-11T16:41:17Z"
+        },
+        {
+          "name": "openagentic-ui",
+          "namespace": "openagentic",
+          "type": "ClusterIP",
+          "cluster_ip": "10.43.91.18",
+          "external_ips": [],
+          "ports": [
+            {
+              "name": "http",
+              "port": 80,
+              "target_port": "3000",
+              "protocol": "TCP",
+              "node_port": null
+            }
+          ],
+          "selector": {
+            "app.kubernetes.io/component": "ui",
+            "app.kubernetes.io/instance": "openagentic",
+            "app.kubernetes.io/name": "openagentic"
+          },
+          "created": "2026-05-11T16:41:17Z"
+        },
+        {
+          "name": "openagentic-mcp-proxy",
+          "namespace": "openagentic",
+          "type": "ClusterIP",
+          "cluster_ip": "10.43.132.186",
+          "external_ips": [],
+          "ports": [
+            {
+              "name": "http",
+              "port": 8080,
+              "target_port": "8080",
+              "protocol": "TCP",
+              "node_port": null
+            },
+            {
+              "name": "mcpp",
+              "port": 6277,
+              "target_port": "6277",
+              "protocol": "TCP",
+              "node_port": null
+            }
+          ],
+          "selector": {
+            "app.kubernetes.io/component": "mcp-proxy",
+            "app.kubernetes.io/instance": "openagentic",
+            "app.kubernetes.io/name": "openagentic"
+          },
+          "created": "2026-05-11T16:41:17Z"
+        }
+      ],
+      "count": 3
+    }
+  }
+}

@@ -1,0 +1,110 @@
+import React from 'react';
+import { Box, Text } from 'ink';
+import SelectInput from 'ink-select-input';
+import { Screen, Hint, COLORS } from '../ui/Theme.tsx';
+import type { WizardConfig, LlmStrategy } from '../lib/types.ts';
+import { mcpsThatNeedAuth } from '../lib/mcps.ts';
+
+const describeStrategy = (s: LlmStrategy): string => {
+  switch (s) {
+    case 'ollama': return 'local Ollama only';
+    case 'cloud':  return 'AWS Bedrock (Claude via IAM)';
+    case 'vertex': return 'Google Vertex AI (Gemini via service account)';
+    case 'both':   return 'Ollama embeddings + AWS Bedrock (Claude) chat';
+    case 'skip':   return 'skipped — configure in admin panel';
+  }
+};
+
+/** Human summary of the chosen AWS Bedrock auth path for the review screen. */
+const describeBedrock = (b: WizardConfig['providers']['awsBedrock']): string => {
+  if (!b) return 'none — chat will fail until set';
+  if (b.useHostCreds) return `host ~/.aws creds, region ${b.region}`;
+  if (b.profile)      return `profile ${b.profile}, region ${b.region}`;
+  if (b.accessKeyId)  return `inline IAM key, region ${b.region}`;
+  return `region ${b.region}`;
+};
+
+/** Human summary of the chosen Vertex AI config for the review screen. */
+const describeVertex = (v: WizardConfig['providers']['vertex']): string => {
+  if (!v || !v.project) return 'none — chat will fail until set';
+  const auth = v.saKeyPath ? `SA key ${v.saKeyPath}` : 'host gcloud ADC';
+  return `${v.project} (${v.region}), ${auth}`;
+};
+
+interface Props {
+  config: WizardConfig;
+  step: number;
+  total: number;
+  onLaunch: () => void;
+  onCancel: () => void;
+}
+
+export const ReviewStep: React.FC<Props> = ({ config, step, total, onLaunch, onCancel }) => {
+  // Summarize MCPs: enabled count + which ones still need creds filled in.
+  const needAuth = mcpsThatNeedAuth(config.mcps);
+  const missingCreds = needAuth.filter((m) => {
+    // field-type MCPs are "missing" if the user didn't supply any of the envVars
+    if (m.authType === 'fields' && m.envVars) {
+      return !m.envVars.some((f) => config.mcpAuth[f.env]);
+    }
+    // env-file MCPs rely on files on disk, which we can't inspect from here;
+    // treat as "not blocked" and let the proxy log if the file is missing.
+    return false;
+  });
+  const mcpSummary =
+    config.mcps.length === 0
+      ? 'none selected'
+      : `${config.mcps.length} enabled (${config.mcps.slice(0, 4).join(', ')}${config.mcps.length > 4 ? '…' : ''})`;
+
+  const row = (label: string, value: string, color?: string) => (
+    <Box key={label}>
+      <Box width={18}>
+        <Text color={COLORS.muted}>{label}</Text>
+      </Box>
+      <Text color={color}>{value}</Text>
+    </Box>
+  );
+
+  return (
+    <Screen step={step} total={total} title="Review & launch">
+      <Box flexDirection="column">
+        {row('deploy target', config.target)}
+        {config.target === 'helm' && config.kubeconfigPath && row('kubeconfig', config.kubeconfigPath)}
+        {row('admin email', config.admin.email)}
+        {row('LLM strategy', describeStrategy(config.llmStrategy))}
+        {(config.llmStrategy === 'ollama' || config.llmStrategy === 'both') &&
+          row('ollama host', config.ollama.host)}
+        {(config.llmStrategy === 'ollama' || config.llmStrategy === 'both') &&
+          row('embedding model', config.ollama.embedModel)}
+        {(config.llmStrategy === 'cloud' || config.llmStrategy === 'both') &&
+          row('AWS Bedrock', describeBedrock(config.providers.awsBedrock))}
+        {(config.llmStrategy === 'cloud' || config.llmStrategy === 'both') &&
+          row('chat model', 'claude-sonnet-4-6 (default)')}
+        {config.llmStrategy === 'vertex' &&
+          row('Vertex AI', describeVertex(config.providers.vertex), config.providers.vertex?.project ? undefined : COLORS.err)}
+        {config.llmStrategy === 'vertex' &&
+          row('chat / embed', `${config.providers.vertex?.chatModel || 'gemini-2.5-pro'} · ${config.providers.vertex?.embedModel || 'text-embedding-005'}`)}
+        {row('MCPs', mcpSummary)}
+        {row('UI port', String(config.uiPort))}
+        {missingCreds.length > 0 && (
+          <Box marginTop={1}>
+            <Text color={COLORS.err}>⚠ missing creds: {missingCreds.map((m) => m.label).join(', ')}</Text>
+          </Box>
+        )}
+      </Box>
+      <Box marginTop={1}>
+        <SelectInput
+          items={[
+            { label: `Launch ${config.target}`, value: 'go' as const },
+            { label: 'Cancel', value: 'no' as const },
+          ]}
+          onSelect={(i) => (i.value === 'go' ? onLaunch() : onCancel())}
+          indicatorComponent={({ isSelected }) => <Text color={COLORS.accent}>{isSelected ? '❯ ' : '  '}</Text>}
+        />
+      </Box>
+      <Box marginTop={1}>
+        <Hint>Nothing has been written to disk yet. Launch will write .env and bring the stack up.</Hint>
+      </Box>
+    </Screen>
+  );
+};

@@ -1,0 +1,93 @@
+{
+  "type": "human_approval",
+  "category": "control",
+  "label": "Human Approval",
+  "description": "Pause the workflow until a configured approver accepts or rejects. The engine returns control downstream once an approval decision is recorded, or applies the configured timeout action if the timeout elapses first.",
+  "icon": "user-check",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "status": "string",
+          "approvalId": "string",
+          "message": "string",
+          "approvers": "array",
+          "expiresAt": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "approvers",
+      "label": "Approvers",
+      "type": "json",
+      "required": false,
+      "supportsTemplating": false,
+      "description": "Array of user ids or group names allowed to approve. Combine with notificationChannels for richer routing."
+    },
+    {
+      "name": "requiredCount",
+      "label": "Required approvals",
+      "type": "number",
+      "required": false,
+      "default": 1,
+      "min": 1,
+      "max": 100,
+      "description": "Number of approvers that must approve before the workflow resumes."
+    },
+    {
+      "name": "timeout",
+      "label": "Timeout (seconds)",
+      "type": "number",
+      "required": false,
+      "default": 86400,
+      "min": 1,
+      "max": 2592000,
+      "description": "How long to wait for a decision before applying the timeoutAction (default 24h)."
+    },
+    {
+      "name": "timeoutAction",
+      "label": "Timeout action",
+      "type": "enum",
+      "required": false,
+      "values": ["approve", "reject", "escalate"],
+      "default": "reject",
+      "description": "What to do when the timeout elapses without a decision."
+    },
+    {
+      "name": "message",
+      "label": "Approval prompt",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "Please review the drafted content and approve or reject with feedback.",
+      "description": "Prompt the reviewer sees in the UI / notification. Templating is supported."
+    },
+    {
+      "name": "notificationChannels",
+      "label": "Notification channels",
+      "type": "json",
+      "required": false,
+      "default": ["in_app"],
+      "description": "Channels to notify approvers on. Any combination of email / slack / teams / in_app."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Pause for a human-in-the-loop approval before continuing.",
+    "whenToUse": "When a workflow step has irreversible side-effects (production writes, customer messages, money movement) and a human must approve first.",
+    "examplePrompt": "before sending the email, require an admin approval",
+    "promptHints": "Reference the decision via {{steps.<id>.status}}. Use timeout for SLAs and timeoutAction='reject' for fail-closed defaults."
+  },
+  "outputAssertions": [
+    {
+      "name": "non_empty_message",
+      "expression": "result && typeof result.message === 'string' && result.message.length > 0",
+      "errorMessage": "Approval node returned an empty message — the reviewer would see a blank prompt. Configure a message or rely on the auto-generated default."
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_azure.azure_security_secure_score. Mirrors oap-azure-mcp src/server.py azure_security_secure_score (lines ~5037-5067) which iterates client.secure_scores.list() from the Azure SDK SecurityCenter client. The 'ascScore' entry is the overall subscription-wide Defender for Cloud secure score. Wrapped in the same 3-layer mcp-proxy envelope as every other openagentic_azure tool.",
+  "result": {
+    "result": {
+      "success": true,
+      "subscription_id": "11111111-2222-3333-4444-555555555555",
+      "count": 1,
+      "secure_scores": [
+        {
+          "name": "ascScore",
+          "id": "/subscriptions/11111111-2222-3333-4444-555555555555/providers/Microsoft.Security/secureScores/ascScore",
+          "display_name": "ASC score",
+          "current": 31.0,
+          "max": 50.0,
+          "percentage": 0.62,
+          "weight": null
+        }
+      ],
+      "executed_as": { "user": "mcp-tester@example.com" }
+    }
+  }
+}

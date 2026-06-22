@@ -1,0 +1,116 @@
+{{- if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    scrape_configs:
+      # openagentic-api emits prom-client metrics (gen_ai_*, http_requests_total,
+      # token_cost_total, mcp_calls_total, …) at /metrics — the dashboard reads
+      # these back via the /api/admin/prom proxy + the Prom-first endpoints.
+      - job_name: openagentic-api
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['api:8000']
+      - job_name: openagentic-mcp-proxy
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['mcp-proxy:8080']
+      {{- if .Values.proxy.enabled }}
+      - job_name: openagentic-proxy
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['proxy:3300']
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      enableServiceLinks: false
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "prometheus") | nindent 6 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.54.1
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "prometheus") | nindent 10 }}
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time={{ .Values.prometheus.retention | default "7d" }}
+            - --web.enable-lifecycle
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: data
+              mountPath: /prometheus
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml (.Values.resources.prometheus | default dict) | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        - name: data
+          {{- if .Values.prometheus.persistence }}
+          persistentVolumeClaim:
+            claimName: prometheus-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- if .Values.prometheus.persistence }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: {{ .Values.prometheus.storageSize | default "8Gi" }}
+{{- end }}
+{{- end }}

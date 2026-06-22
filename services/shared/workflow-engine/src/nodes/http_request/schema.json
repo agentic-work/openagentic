@@ -1,0 +1,116 @@
+{
+  "type": "http_request",
+  "category": "action",
+  "label": "HTTP Request",
+  "description": "Make an HTTP/HTTPS request to any external API. Supports GET/POST/PUT/DELETE/PATCH, custom headers, JSON or string bodies, templating, and per-request timeout.",
+  "icon": "globe",
+  "primary": "data",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "status": "number",
+          "statusText": "string",
+          "data": "any",
+          "headers": "object"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "url",
+      "label": "URL",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "https://api.example.com/v1/{{trigger.id}}",
+      "validation": {
+        "pattern": "^https?://",
+        "errorMessage": "URL must start with http:// or https://"
+      }
+    },
+    {
+      "name": "method",
+      "label": "Method",
+      "type": "enum",
+      "values": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "PATCH",
+        "HEAD"
+      ],
+      "default": "GET",
+      "required": false
+    },
+    {
+      "name": "headers",
+      "label": "Headers",
+      "type": "object",
+      "default": {},
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "body",
+      "label": "Body",
+      "type": "json",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Request body — JSON object or templated string. Ignored for GET/HEAD."
+    },
+    {
+      "name": "timeout",
+      "label": "Timeout (ms)",
+      "type": "number",
+      "default": 30000,
+      "min": 100,
+      "max": 600000,
+      "required": false
+    },
+    {
+      "name": "responseType",
+      "label": "Response type",
+      "type": "enum",
+      "values": [
+        "json",
+        "text"
+      ],
+      "default": "json",
+      "required": false
+    },
+    {
+      "name": "acceptAllStatuses",
+      "label": "Accept non-2xx as success",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "description": "When true, the node returns 4xx/5xx responses as data instead of throwing — useful for APIs that use status codes intentionally."
+    }
+  ],
+  "ai": {
+    "shortDescription": "HTTP/HTTPS request to an external API.",
+    "whenToUse": "When you need to call a REST API and use the response in subsequent nodes.",
+    "examplePrompt": "fetch user data from the customer API: GET https://api.example.com/users/{{trigger.userId}}",
+    "promptHints": "Use {{steps.<id>.result.data.field}} to reference response in later nodes. Set acceptAllStatuses=true if the API uses 4xx codes intentionally."
+  },
+  "outputAssertions": [
+    {
+      "name": "status_2xx",
+      "expression": "result && (result.acceptedAllStatuses === true || (result.status >= 200 && result.status < 400))",
+      "errorMessage": "HTTP request returned non-2xx/3xx status — set acceptAllStatuses=true to allow this."
+    }
+  ]
+}

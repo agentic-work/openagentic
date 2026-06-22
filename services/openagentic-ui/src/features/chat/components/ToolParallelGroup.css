@@ -1,0 +1,39 @@
+/*
+ * Wire-in D (#82) — .cw-tool-parallel container styles.
+ *
+ * Copied verbatim from the 01-cloud-ops mock:
+ *   docs/release-plans/v0.6.7-ux-mockups/01-cloud-ops.html
+ *
+ * All selectors are prefixed with `cw-` (chat-wire) and are intentionally
+ * isolated to the chat feature via this prefix. The prefix exists so these
+ * rules cannot collide with any unprefixed `.tool-parallel` classes that
+ * might be added elsewhere in the codebase in the future — Vite injects
+ * every imported CSS file globally, so feature scoping must be achieved
+ * at the selector level.
+ */
+
+.cw-tool-parallel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .cw-tool-parallel {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cw-tool-parallel-header {
+  font-size: 11px;
+  color: var(--fg-3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 4px;
+  grid-column: 1 / -1;
+}
+
+.cw-tool-parallel-children {
+  display: contents;
+}

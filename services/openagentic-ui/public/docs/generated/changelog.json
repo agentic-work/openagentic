@@ -1,0 +1,1636 @@
+{
+  "domain": "changelog",
+  "title": "Changelog",
+  "description": "Release history, source-derived from version.json — the single source of truth for platform versions.",
+  "icon": "brain",
+  "category": "core",
+  "generatedAt": "2026-06-21T18:49:53.964Z",
+  "sourceFiles": [
+    "version.json"
+  ],
+  "sections": [
+    {
+      "id": "v1-0-0",
+      "title": "v1.0.0 — Open Field",
+      "description": "“Open Field” 2026-06-04 (current)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v1-0-0--highlight-0",
+          "name": "First public open-source release of the OpenAgentic platform",
+          "description": "First public open-source release of the OpenAgentic platform",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "1.0.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v1-0-0--highlight-1",
+          "name": "One-command install (install.sh)",
+          "description": "One-command install (install.sh) — Docker Compose stack with the Ink setup wizard",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "1.0.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v1-0-0--highlight-2",
+          "name": "Chat with streaming, smart model routing, and zero hardcoded model IDs",
+          "description": "Chat with streaming, smart model routing, and zero hardcoded model IDs",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "1.0.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v1-0-0--highlight-3",
+          "name": "9 built-in MCP servers (aws, azure, gcp, kubernetes, prometheus, loki, github, a",
+          "description": "9 built-in MCP servers (aws, azure, gcp, kubernetes, prometheus, loki, github, admin, web)",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "1.0.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v1-0-0--highlight-4",
+          "name": "Flows workflow engine with ops Flow templates and human-in-the-loop gates",
+          "description": "Flows workflow engine with ops Flow templates and human-in-the-loop gates",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "1.0.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v1-0-0--highlight-5",
+          "name": "Immutable audit trail + server-side approval gate on mutating tool calls",
+          "description": "Immutable audit trail + server-side approval gate on mutating tool calls",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "1.0.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v1-0-0--highlight-6",
+          "name": "Per-user cross-mode memory shared by chat and flows",
+          "description": "Per-user cross-mode memory shared by chat and flows",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "1.0.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v1-0-0--highlight-7",
+          "name": "Admin console: providers, MCP fleet, audit log, dashboards",
+          "description": "Admin console: providers, MCP fleet, audit log, dashboards",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "1.0.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v1-0-0--highlight-8",
+          "name": "Zero telemetry",
+          "description": "Zero telemetry — no phone-home, ever",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "1.0.0"
+          },
+          "sourceFile": "version.json"
+        }
+      ]
+    },
+    {
+      "id": "v0-6-3",
+      "title": "v0.6.3 — Light It Up",
+      "description": "“Light It Up” 2026-04-10",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0-6-3--highlight-0",
+          "name": "Admin Test Harness (Bolt 7)",
+          "description": "Admin Test Harness (Bolt 7) — SSE-streaming system test suite for K8s, MCP, agents, chat",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.3"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-3--highlight-1",
+          "name": "Artifact / diagram agent upgrade",
+          "description": "Artifact / diagram agent upgrade — production-quality HTML+CSS+JS, Mermaid removed",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.3"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-3--highlight-2",
+          "name": "Agent synthesis enforcement",
+          "description": "Agent synthesis enforcement — raw JSON blocked from reaching users; Ollama format extraction",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.3"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-3--highlight-3",
+          "name": "Azure MCP creation tools",
+          "description": "Azure MCP creation tools — VNet, subnet, NSG, Application Gateway, Front Door verified end-to-end",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.3"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-3--highlight-4",
+          "name": "Smart router sentinel fixes across the chat pipeline",
+          "description": "Smart router sentinel fixes across the chat pipeline",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.3"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-3--highlight-5",
+          "name": "Model Registry rebuilt from live SDK discovery; staleness banner removed",
+          "description": "Model Registry rebuilt from live SDK discovery; staleness banner removed",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.3"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-3--highlight-6",
+          "name": "TTFT optimization",
+          "description": "TTFT optimization — Ollama warm-up + parallel MCP/Memory initialization",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.3"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-3--highlight-7",
+          "name": "Bob UC1–UC5 all pass against live Azure; Bolt 4 full 24/24 workflow regression w",
+          "description": "Bob UC1–UC5 all pass against live Azure; Bolt 4 full 24/24 workflow regression with 0 failures",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.3"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-3--highlight-8",
+          "name": "Security: hardcoded JWT secret removed from test harness; token-cost warning in ",
+          "description": "Security: hardcoded JWT secret removed from test harness; token-cost warning in UI",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.3"
+          },
+          "sourceFile": "version.json"
+        }
+      ]
+    },
+    {
+      "id": "v0-6-2",
+      "title": "v0.6.2 — Lockstep",
+      "description": "“Lockstep” 2026-04-08",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0-6-2--highlight-0",
+          "name": "Lockstep platform tagging",
+          "description": "Lockstep platform tagging — agentic, openagentic, oat, openagentic-sdk all at v0.6.2",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.2"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-2--highlight-1",
+          "name": "Dual-mode build pipeline",
+          "description": "Dual-mode build pipeline — vendored or git-clone-via-PAT companion sources",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.2"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-2--highlight-2",
+          "name": "AIF Claude as a first-class provider with Anthropic-native SSE streaming",
+          "description": "AIF Claude as a first-class provider with Anthropic-native SSE streaming",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.2"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-2--highlight-3",
+          "name": "Live-SDK Model Registry",
+          "description": "Live-SDK Model Registry — Admin LLM Registry rebuilt from provider SDK discovery on every load",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.2"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-2--highlight-4",
+          "name": "Smart router sentinel fix in the chat validation stage",
+          "description": "Smart router sentinel fix in the chat validation stage",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.2"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-2--highlight-5",
+          "name": "Self-correction pipeline + ReAct loop with final-synthesis fallback",
+          "description": "Self-correction pipeline + ReAct loop with final-synthesis fallback",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.2"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-2--highlight-6",
+          "name": "Cloud_operations agent type with Azure OBO token propagation",
+          "description": "Cloud_operations agent type with Azure OBO token propagation",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.2"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-2--highlight-7",
+          "name": "Prisma singleton sweep",
+          "description": "Prisma singleton sweep — fewer pg connections under load",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.2"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-2--highlight-8",
+          "name": "Memory prompt-injection sanitization (SEV0) + provider-disable-cascades-to-model",
+          "description": "Memory prompt-injection sanitization (SEV0) + provider-disable-cascades-to-models (SEV0)",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.2"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-2--breaking-0",
+          "name": "Openagentic-manager image no longer pulls from GAR at runtime",
+          "description": "Openagentic-manager image no longer pulls from GAR at runtime — bundled at build time",
+          "type": "changelog-breaking",
+          "properties": {
+            "kind": "breaking",
+            "version": "0.6.2"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-2--breaking-1",
+          "name": "Model Registry no longer persisted as a curated list; discovered from each provi",
+          "description": "Model Registry no longer persisted as a curated list; discovered from each provider SDK on load",
+          "type": "changelog-breaking",
+          "properties": {
+            "kind": "breaking",
+            "version": "0.6.2"
+          },
+          "sourceFile": "version.json"
+        }
+      ]
+    },
+    {
+      "id": "v0-6-0",
+      "title": "v0.6.0 — Overhaul",
+      "description": "“Overhaul” 2026-03-10",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0-6-0--highlight-0",
+          "name": "Flows Enterprise Overhaul",
+          "description": "Flows Enterprise Overhaul — Per-node/workflow/admin config hierarchy with 3-level governance",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--highlight-1",
+          "name": "Unified Cross-Mode Memory",
+          "description": "Unified Cross-Mode Memory — Chat and flows share a single per-user context layer",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--highlight-2",
+          "name": "Error Handling Framework",
+          "description": "Error Handling Framework — Error edges, handler nodes, and error routing in workflow engine",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--highlight-3",
+          "name": "Workflow Versioning",
+          "description": "Workflow Versioning — Auto-snapshot on save, visual diff, version restore",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--highlight-4",
+          "name": "Agent Platform",
+          "description": "Agent Platform — Persona system, tool policy, visual cron scheduling",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--highlight-5",
+          "name": "Admin Dashboard Overhaul",
+          "description": "Admin Dashboard Overhaul — Recharts charts + AdminMetricCard/AdminFilterBar across all 10 admin views",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--highlight-6",
+          "name": "LLM Provider Setup Wizard",
+          "description": "LLM Provider Setup Wizard — 4-step first-time configuration wizard for fresh deployments",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--highlight-7",
+          "name": "Slack & Teams Integration",
+          "description": "Slack & Teams Integration — Inbound webhook → workflow execution → Block Kit/Adaptive Card responses",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-0",
+          "name": "SetupWizard component for zero-config first-time deployment",
+          "description": "SetupWizard component for zero-config first-time deployment",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-1",
+          "name": "DeploymentStateService with cached state detection and setup completion",
+          "description": "DeploymentStateService with cached state detection and setup completion",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-2",
+          "name": "9 new admin API endpoints (deployment-state, pause/resume, model disable/enable,",
+          "description": "9 new admin API endpoints (deployment-state, pause/resume, model disable/enable, capability-matrix, credential rotation)",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-3",
+          "name": "SlackIntegrationService with signature verification and Block Kit formatting",
+          "description": "SlackIntegrationService with signature verification and Block Kit formatting",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-4",
+          "name": "TeamsIntegrationService with Bot Framework token verification and Adaptive Cards",
+          "description": "TeamsIntegrationService with Bot Framework token verification and Adaptive Cards",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-5",
+          "name": "IntegrationMessageFormatter for workflow output to platform-specific rich messag",
+          "description": "IntegrationMessageFormatter for workflow output to platform-specific rich messages",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-6",
+          "name": "Integration CRUD routes with webhook receivers and connection testing",
+          "description": "Integration CRUD routes with webhook receivers and connection testing",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-7",
+          "name": "IntegrationsView admin UI with cards, logs, add/edit dialog",
+          "description": "IntegrationsView admin UI with cards, logs, add/edit dialog",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-8",
+          "name": "LLMProviderManagement rewrite with provider cards, detail panels, capability mat",
+          "description": "LLMProviderManagement rewrite with provider cards, detail panels, capability matrix view",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-9",
+          "name": "Recharts AreaChart/BarChart/PieChart added to PerformanceMetrics, EmbeddingMetri",
+          "description": "Recharts AreaChart/BarChart/PieChart added to PerformanceMetrics, EmbeddingMetrics, MonitoringView, ContextWindowMetrics, UserActivityDashboard, OATUsageStatsView, PromptMetrics, DashboardOverview",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-10",
+          "name": "AdminMetricCard with sparklines and trends across all admin views",
+          "description": "AdminMetricCard with sparklines and trends across all admin views",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-11",
+          "name": "AdminFilterBar replacing manual select/filter UI in all views",
+          "description": "AdminFilterBar replacing manual select/filter UI in all views",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-12",
+          "name": "Legacy auth migration (useAuth/getAuthHeaders → apiRequest) in PerformanceMetric",
+          "description": "Legacy auth migration (useAuth/getAuthHeaders → apiRequest) in PerformanceMetrics, MonitoringView",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-13",
+          "name": "Prisma schema: LLMProvider status/paused_until/disabled_models/capability flags,",
+          "description": "Prisma schema: LLMProvider status/paused_until/disabled_models/capability flags, Integration + IntegrationLog models",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-14",
+          "name": "Per-node advanced config: disabled, timeout, retry, error routing, pinned output",
+          "description": "Per-node advanced config: disabled, timeout, retry, error routing, pinned output, notes",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-15",
+          "name": "Per-workflow settings: model defaults, cost budgets, env vars, tags, visibility",
+          "description": "Per-workflow settings: model defaults, cost budgets, env vars, tags, visibility",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-16",
+          "name": "Admin workflow governance: 5-tab panel with execution limits, cost caps, model r",
+          "description": "Admin workflow governance: 5-tab panel with execution limits, cost caps, model restrictions, node type controls, memory settings",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-17",
+          "name": "Enhanced agent node config: persona, tool policy, budgets, approval, memory scop",
+          "description": "Enhanced agent node config: persona, tool policy, budgets, approval, memory scope",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-18",
+          "name": "Error handler node type with log/retry/notify/transform actions",
+          "description": "Error handler node type with log/retry/notify/transform actions",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-19",
+          "name": "User context node type for cross-mode memory access in workflows",
+          "description": "User context node type for cross-mode memory access in workflows",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-20",
+          "name": "Error edge type with red dashed styling and error output handles",
+          "description": "Error edge type with red dashed styling and error output handles",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-21",
+          "name": "Workflow versioning: auto-snapshot on save, version history sidebar, visual diff",
+          "description": "Workflow versioning: auto-snapshot on save, version history sidebar, visual diff, restore",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-22",
+          "name": "UserContextService: unified cross-mode memory assembly from chat, workflows, mem",
+          "description": "UserContextService: unified cross-mode memory assembly from chat, workflows, memories",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-23",
+          "name": "7 new API endpoints for user context CRUD, admin stats, workflow governance",
+          "description": "7 new API endpoints for user context CRUD, admin stats, workflow governance",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-24",
+          "name": "Auto-indexing: chat messages and workflow results indexed into unified context",
+          "description": "Auto-indexing: chat messages and workflow results indexed into unified context",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-25",
+          "name": "Per-user memory settings: source toggles, retention, context-in-chat/code toggle",
+          "description": "Per-user memory settings: source toggles, retention, context-in-chat/code toggles",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-26",
+          "name": "Admin memory dashboard: user context stats, search, purge, retention config",
+          "description": "Admin memory dashboard: user context stats, search, purge, retention config",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-27",
+          "name": "Agent persona system: role, tone, boundaries, bootstrap instructions",
+          "description": "Agent persona system: role, tone, boundaries, bootstrap instructions",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-28",
+          "name": "Agent tool policy: allow/deny modes with high-risk auto-detection",
+          "description": "Agent tool policy: allow/deny modes with high-risk auto-detection",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-29",
+          "name": "Agent scheduling: visual cron builder, target workflow, input templates",
+          "description": "Agent scheduling: visual cron builder, target workflow, input templates",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--feature-30",
+          "name": "3-level config hierarchy: admin caps > workflow defaults > node overrides",
+          "description": "3-level config hierarchy: admin caps > workflow defaults > node overrides",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-0",
+          "name": "Fixed #22c55e (apple puke green) replaced with #00D26A terminal green across 25+",
+          "description": "Fixed #22c55e (apple puke green) replaced with #00D26A terminal green across 25+ files",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-1",
+          "name": "Fixed --color-success CSS variable from #30D158 to #00D26A",
+          "description": "Fixed --color-success CSS variable from #30D158 to #00D26A",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-2",
+          "name": "Fixed legacy auth patterns in PerformanceMetrics and MonitoringView using deprec",
+          "description": "Fixed legacy auth patterns in PerformanceMetrics and MonitoringView using deprecated useAuth hook",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-3",
+          "name": "Fixed broken memory.stage.ts",
+          "description": "Fixed broken memory.stage.ts — prisma.memory model doesn't exist, replaced with UserMemoryService",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-4",
+          "name": "Fixed memory stage async fire-and-forget",
+          "description": "Fixed memory stage async fire-and-forget — now synchronous (awaited) before completion stage",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-5",
+          "name": "Fixed SSE event streaming",
+          "description": "Fixed SSE event streaming — nodes show RUNNING state in real-time (socket.setNoDelay + flush)",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-6",
+          "name": "Fixed MCP error detection",
+          "description": "Fixed MCP error detection — properly unwrap proxy response layers (proxy → JSONRPC → MCP result)",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-7",
+          "name": "Fixed openagentic-proxy CrashLoopBackOff",
+          "description": "Fixed openagentic-proxy CrashLoopBackOff — duplicate /metrics route registration",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-8",
+          "name": "Fixed chat.openagentic.local 404",
+          "description": "Fixed chat.openagentic.local 404 — TLS proxy routing to wrong backend",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-9",
+          "name": "Fixed Prisma schema",
+          "description": "Fixed Prisma schema — missing Integration, IntegrationLog models and LLMProvider extended fields",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-10",
+          "name": "Added UserMemoryService",
+          "description": "Added UserMemoryService — unified memory read (Redis→Milvus→PG→merge), write (PG+Milvus+Redis)",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-11",
+          "name": "Added UserProfileService",
+          "description": "Added UserProfileService — user personality learning with style_dna via LLM",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-12",
+          "name": "Added FeedbackLearningService",
+          "description": "Added FeedbackLearningService — feedback→preferences→system prompt injection",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-13",
+          "name": "Added LLM-powered memory compaction (topic clustering, summarization, profile re",
+          "description": "Added LLM-powered memory compaction (topic clustering, summarization, profile recompute)",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-14",
+          "name": "Added per-user model preferences in SmartModelRouter",
+          "description": "Added per-user model preferences in SmartModelRouter",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-15",
+          "name": "Added /api/user-memory/* API routes (entries, context, profile, ingest, purge)",
+          "description": "Added /api/user-memory/* API routes (entries, context, profile, ingest, purge)",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-16",
+          "name": "Added auto-ingestion hooks (chat, tool, workflow, feedback)",
+          "description": "Added auto-ingestion hooks (chat, tool, workflow, feedback)",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-17",
+          "name": "Added ExecutionResultsPanel resize handle (280-800px) and close button",
+          "description": "Added ExecutionResultsPanel resize handle (280-800px) and close button",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-18",
+          "name": "Added MCP tool node retry with graceful degradation",
+          "description": "Added MCP tool node retry with graceful degradation",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-6-0--fix-19",
+          "name": "Added pre-upgrade backup and post-upgrade verification scripts",
+          "description": "Added pre-upgrade backup and post-upgrade verification scripts",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.6.0"
+          },
+          "sourceFile": "version.json"
+        }
+      ]
+    },
+    {
+      "id": "v0-5-0",
+      "title": "v0.5.0 — Hardened",
+      "description": "“Hardened” 2026-02-22",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0-5-0--highlight-0",
+          "name": "DLP Scanner",
+          "description": "DLP Scanner — 50+ detection rules for credentials, PII, infrastructure secrets",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--highlight-1",
+          "name": "Immutable Audit Trail",
+          "description": "Immutable Audit Trail — Cryptographic hash chaining, tamper-evident logs",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--highlight-2",
+          "name": "Mandatory HITL Enforcement",
+          "description": "Mandatory HITL Enforcement — Server-side tool approval gate for high-risk operations",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--highlight-3",
+          "name": "Per-Tool Credential Scoping",
+          "description": "Per-Tool Credential Scoping — Tools only receive credentials they need",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--highlight-4",
+          "name": "Structured Error Classification",
+          "description": "Structured Error Classification — Typed failover reasons for LLM providers",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--highlight-5",
+          "name": "Pipeline Hook System",
+          "description": "Pipeline Hook System — 16 extensible hook points for security and observability",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--highlight-6",
+          "name": "Agent Proxy",
+          "description": "Agent Proxy — Multi-agent orchestration with parallel, sequential, and supervisor patterns",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--highlight-7",
+          "name": "Apple-inspired color palette",
+          "description": "Apple-inspired color palette — Real greens, blues, purples across the UI",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--feature-0",
+          "name": "DLPScannerService with scan/redact/block actions",
+          "description": "DLPScannerService with scan/redact/block actions",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--feature-1",
+          "name": "ToolApprovalGate for server-side human-in-the-loop enforcement",
+          "description": "ToolApprovalGate for server-side human-in-the-loop enforcement",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--feature-2",
+          "name": "CredentialScopeService for per-tool credential isolation",
+          "description": "CredentialScopeService for per-tool credential isolation",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--feature-3",
+          "name": "FailoverError typed error classification for LLM providers",
+          "description": "FailoverError typed error classification for LLM providers",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--feature-4",
+          "name": "Shared retry framework with configurable backoff policies",
+          "description": "Shared retry framework with configurable backoff policies",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--feature-5",
+          "name": "Request deduplication cache",
+          "description": "Request deduplication cache",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--feature-6",
+          "name": "SSE event sequencing with gap detection",
+          "description": "SSE event sequencing with gap detection",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--feature-7",
+          "name": "Service lifecycle management with ordered startup/shutdown",
+          "description": "Service lifecycle management with ordered startup/shutdown",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--feature-8",
+          "name": "Pipeline hooks system with modifying, void, and sync hooks",
+          "description": "Pipeline hooks system with modifying, void, and sync hooks",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--feature-9",
+          "name": "Agent Proxy service for multi-agent orchestration",
+          "description": "Agent Proxy service for multi-agent orchestration",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--feature-10",
+          "name": "Session loading bug fix",
+          "description": "Session loading bug fix — all message fields preserved on reload",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--feature-11",
+          "name": "Version bump across all services to 0.5.0",
+          "description": "Version bump across all services to 0.5.0",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--fix-0",
+          "name": "Fixed session loading dropping toolCalls, toolResults, thinkingSteps",
+          "description": "Fixed session loading dropping toolCalls, toolResults, thinkingSteps",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--fix-1",
+          "name": "Fixed Anthropic content block arrays rendering as raw JSON",
+          "description": "Fixed Anthropic content block arrays rendering as raw JSON",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--fix-2",
+          "name": "Fixed neon colors (#00FF00, #FF0000) replaced with Apple palette",
+          "description": "Fixed neon colors (#00FF00, #FF0000) replaced with Apple palette",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-5-0--fix-3",
+          "name": "Fixed version endpoint showing stale version info",
+          "description": "Fixed version endpoint showing stale version info",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.5.0"
+          },
+          "sourceFile": "version.json"
+        }
+      ]
+    },
+    {
+      "id": "v0-4-0",
+      "title": "v0.4.0 — Titan",
+      "description": "“Titan” 2026-02-13",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0-4-0--highlight-0",
+          "name": "Platform Hardening & Security - 75 CVE patches, auth bypass removal",
+          "description": "Platform Hardening & Security - 75 CVE patches, auth bypass removal",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.4.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-4-0--highlight-1",
+          "name": "Unique colorful Admin Console icons with gradient animations",
+          "description": "Unique colorful Admin Console icons with gradient animations",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.4.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-4-0--highlight-2",
+          "name": "Tool result grounding workflow with LangGraph integration",
+          "description": "Tool result grounding workflow with LangGraph integration",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.4.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-4-0--highlight-3",
+          "name": "Improved streaming code block handling",
+          "description": "Improved streaming code block handling",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.4.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-4-0--highlight-4",
+          "name": "K8s service discovery audit and port fixes",
+          "description": "K8s service discovery audit and port fixes",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.4.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-4-0--feature-0",
+          "name": "11 new unique colorful SVG icons for Admin Console sidebar",
+          "description": "11 new unique colorful SVG icons for Admin Console sidebar",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.4.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-4-0--feature-1",
+          "name": "Incomplete code fence handling during streaming",
+          "description": "Incomplete code fence handling during streaming",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.4.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-4-0--feature-2",
+          "name": "Tool result grounding service with async processing",
+          "description": "Tool result grounding service with async processing",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.4.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-4-0--feature-3",
+          "name": "Comprehensive K8s service discovery validation",
+          "description": "Comprehensive K8s service discovery validation",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.4.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-4-0--fix-0",
+          "name": "Fixed Admin Console sidebar showing folder icons for all sections",
+          "description": "Fixed Admin Console sidebar showing folder icons for all sections",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.4.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-4-0--fix-1",
+          "name": "Fixed code blocks breaking live streaming rendering",
+          "description": "Fixed code blocks breaking live streaming rendering",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.4.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-4-0--fix-2",
+          "name": "Fixed LangGraph URL port mismatch (8002 -> 3100)",
+          "description": "Fixed LangGraph URL port mismatch (8002 -> 3100)",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.4.0"
+          },
+          "sourceFile": "version.json"
+        }
+      ]
+    },
+    {
+      "id": "v0-3-0",
+      "title": "v0.3.0 — Cartographer",
+      "description": "“Cartographer” 2026-01-18",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0-3-0--highlight-0",
+          "name": "Live artifact streaming - artifacts render as they stream, not after completion",
+          "description": "Live artifact streaming - artifacts render as they stream, not after completion",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.3.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-3-0--highlight-1",
+          "name": "Flowise Google auth fix - workspace lookup via WorkspaceUser entity",
+          "description": "Flowise Google auth fix - workspace lookup via WorkspaceUser entity",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.3.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-3-0--highlight-2",
+          "name": "Unified version system across all components",
+          "description": "Unified version system across all components",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.3.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-3-0--feature-0",
+          "name": "StreamingArtifactRenderer component for live artifact preview",
+          "description": "StreamingArtifactRenderer component for live artifact preview",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.3.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-3-0--feature-1",
+          "name": "Detailed JWT logging in Flowise middleware",
+          "description": "Detailed JWT logging in Flowise middleware",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.3.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-3-0--fix-0",
+          "name": "Fixed TypeORM EntityPropertyNotFoundError for Flowise workspace lookup",
+          "description": "Fixed TypeORM EntityPropertyNotFoundError for Flowise workspace lookup",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.3.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-3-0--fix-1",
+          "name": "Fixed Admin Console Flowise opening user account instead of system@internal",
+          "description": "Fixed Admin Console Flowise opening user account instead of system@internal",
+          "type": "changelog-fix",
+          "properties": {
+            "kind": "fix",
+            "version": "0.3.0"
+          },
+          "sourceFile": "version.json"
+        }
+      ]
+    },
+    {
+      "id": "v0-2-0",
+      "title": "v0.2.0 — Pioneer",
+      "description": "“Pioneer” 2026-01-10",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0-2-0--highlight-0",
+          "name": "Smart model routing for automatic model selection",
+          "description": "Smart model routing for automatic model selection",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.2.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-2-0--highlight-1",
+          "name": "MCP Tools integration",
+          "description": "MCP Tools integration",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.2.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-2-0--feature-0",
+          "name": "Real-time workspace sync with MinIO/S3",
+          "description": "Real-time workspace sync with MinIO/S3",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.2.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-2-0--feature-1",
+          "name": "Multi-provider LLM support (Anthropic, OpenAI, Google, Azure, Ollama)",
+          "description": "Multi-provider LLM support (Anthropic, OpenAI, Google, Azure, Ollama)",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.2.0"
+          },
+          "sourceFile": "version.json"
+        }
+      ]
+    },
+    {
+      "id": "v0-1-0",
+      "title": "v0.1.0 — Genesis",
+      "description": "“Genesis” 2025-12-01",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0-1-0--highlight-0",
+          "name": "Initial release",
+          "description": "Initial release",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.1.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-1-0--highlight-1",
+          "name": "Chat mode with streaming",
+          "description": "Chat mode with streaming",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.1.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-1-0--highlight-2",
+          "name": "Basic MCP proxy",
+          "description": "Basic MCP proxy",
+          "type": "changelog-highlight",
+          "properties": {
+            "kind": "highlight",
+            "version": "0.1.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-1-0--feature-0",
+          "name": "SSE streaming chat",
+          "description": "SSE streaming chat",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.1.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-1-0--feature-1",
+          "name": "Azure AD and Google OAuth",
+          "description": "Azure AD and Google OAuth",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.1.0"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "v0-1-0--feature-2",
+          "name": "Flowise workflow integration",
+          "description": "Flowise workflow integration",
+          "type": "changelog-feature",
+          "properties": {
+            "kind": "feature",
+            "version": "0.1.0"
+          },
+          "sourceFile": "version.json"
+        }
+      ]
+    }
+  ]
+}

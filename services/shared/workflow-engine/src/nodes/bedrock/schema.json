@@ -1,0 +1,84 @@
+{
+  "type": "bedrock",
+  "category": "ai",
+  "label": "AWS Bedrock",
+  "description": "Send a prompt through AWS Bedrock via the platform's OpenAI-compatible chat-completion endpoint (provider:'bedrock').",
+  "icon": "aws",
+  "primary": "content",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "content": "string",
+          "model": "string",
+          "usage": "object",
+          "provider": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "prompt",
+      "label": "Prompt",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true
+    },
+    {
+      "name": "systemPrompt",
+      "label": "System prompt",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "model",
+      "label": "Model / deployment",
+      "type": "string",
+      "required": false,
+      "description": "Leave blank to use the AWS_BEDROCK_CHAT_MODEL env default. No literal model strings — env or platform decides."
+    },
+    {
+      "name": "temperature",
+      "label": "Temperature",
+      "type": "number",
+      "required": false,
+      "default": 0.7,
+      "min": 0,
+      "max": 2
+    },
+    {
+      "name": "maxTokens",
+      "label": "Max tokens",
+      "type": "number",
+      "required": false,
+      "default": 4096,
+      "min": 1,
+      "max": 200000
+    }
+  ],
+  "ai": {
+    "shortDescription": "Chat-completion via AWS Bedrock (provider routing).",
+    "whenToUse": "When the user explicitly wants Bedrock-routed inference (Claude/Llama/Titan via AWS).",
+    "examplePrompt": "summarize via Bedrock and return JSON",
+    "promptHints": "Reference the response with {{steps.<id>.content}}. Leave model blank so the platform picks the configured deployment."
+  },
+  "outputAssertions": [
+    {
+      "name": "non_empty_content",
+      "expression": "result && typeof result.content === 'string' && result.content.trim().length > 0",
+      "errorMessage": "Bedrock returned an empty completion — usually a provider/model issue or content-filter rejection."
+    }
+  ]
+}

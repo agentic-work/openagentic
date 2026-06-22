@@ -1,0 +1,237 @@
+# =============================================================================
+# Barebones OpenAgentic stack — default values
+# =============================================================================
+#
+# A self-contained single-replica deployment: postgres (pgvector), redis,
+# ollama, and the app services (api, ui, workflows, mcp-proxy, proxy)
+# plus searxng for web search. Vector search uses pgvector; Milvus is omitted.
+#
+#   helm install openagentic ./helm/openagentic -n openagentic --create-namespace
+#
+# Override image.registry/tag, ingress.host, and secrets.* in your own values
+# file for a real deployment. The defaults below run a working demo stack.
+# =============================================================================
+
+# Container image coordinates. All app images share one registry + tag.
+image:
+  registry: ghcr.io/agentic-work
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Pull secret name for a private registry (e.g. Harbor). Empty = public.
+imagePullSecrets: []
+#  - name: harbor-creds
+
+# Shared secrets. These MUST be set for ANY install — NO weak defaults ship
+# here. The chart templates `required`-guard each one, so an unset value fails
+# `helm install` fast (mirroring docker-compose's ${VAR:?...} fail-fast). Either:
+#   • run  ./install.sh --helm   — generates strong random secrets, persists
+#     them to ~/.openagentic/helm-secrets.yaml, and reuses them on upgrade; or
+#   • supply your own overlay:   helm install ... -f my-secrets.yaml
+#     (generate each value with:  openssl rand -hex 32).
+secrets:
+  postgresPassword: ""
+  jwtSecret: ""
+  signingSecret: ""
+  internalApiKey: ""
+  frontendSecret: ""
+  # First-boot admin seed (created once). Email may stay; password MUST be set.
+  adminEmail: admin@openagentic.local
+  adminPassword: ""
+  # Optional AWS creds for a Bedrock provider (Claude on Bedrock). Leave empty
+  # to skip; set in your overlay to enable Sonnet/Opus via Bedrock.
+  awsAccessKeyId: ""
+  awsSecretAccessKey: ""
+  awsRegion: us-east-1
+
+# Ollama. The in-cluster Ollama ALWAYS serves embeddings (nomic-embed-text is
+# light — runs fine CPU-only, GPU not required). The CHAT model is served by
+# `chatHost` — supporting BOTH local and remote Ollama:
+#   chatHost: ""                    chat uses the in-cluster Ollama (all-local,
+#                                   zero-config; chatModel is pulled in-cluster).
+#   chatHost: "http://HOST:11434"   chat uses a REMOTE Ollama (e.g. a GPU box)
+#                                   for big models; the in-cluster Ollama then
+#                                   pulls ONLY the embed model (no GPU needed).
+# Example remote GPU host: http://gpu-host.example.internal:11434  (model e.g. gpt-oss:20b)
+ollama:
+  embedModel: nomic-embed-text
+  chatModel: llama3.2:3b
+  chatHost: ""          # remote chat Ollama endpoint; empty = use in-cluster
+  # GPU off by default (portable). Embeddings never need a GPU; set true only
+  # if you run a big chat model on the IN-CLUSTER Ollama (chatHost empty).
+  gpu: false
+
+# Bootstrap LLM provider seeded on first boot (one provider row; the admin UI
+# owns it thereafter). Mirrors the compose/wizard BOOTSTRAP_PROVIDER_* path.
+# When `enabled: true`, the api seeds THIS provider (and its chat model) instead
+# of the default in-cluster Ollama chat provider — set `type: aws-bedrock` +
+# `chatModel: anthropic.claude-sonnet-4-6` to make Claude Sonnet 4.6 the default
+# chat AND flows model (flow agents use model:'auto' → getDefaultChatModel).
+# Requires secrets.awsAccessKeyId/awsSecretAccessKey (or pod IAM role) to be set.
+# Embeddings stay on the in-cluster Ollama (nomic-embed-text, 768). When
+# `enabled: false`, the api falls back to the local Ollama bootstrap provider.
+bootstrapProvider:
+  enabled: false
+  name: aws-bedrock
+  displayName: AWS Bedrock
+  type: aws-bedrock
+  chatModel: anthropic.claude-sonnet-4-6
+  # Bump on a Bedrock install so the role='chat' assignment row is (re)written.
+  seederVersion: 6
+
+# Postgres datastore (pgvector). storage sizes are modest for a demo.
+postgres:
+  image: pgvector/pgvector:pg16
+  storage: 8Gi
+
+redis:
+  image: redis:7-alpine
+
+searxng:
+  image: searxng/searxng:latest
+
+# Vector DB for the tool semantic cache. The api requires a vector backend;
+# milvus (with bundled etcd + minio) is the in-cluster default. Set enabled
+# false ONLY if you wire the api to pgvector-only mode (MILVUS_ENABLED=false).
+milvus:
+  enabled: true
+  image: milvusdb/milvus:v2.4.15
+
+# Which MCP servers the proxy spawns. web/knowledge/admin need no creds.
+# `enabled` is the legacy comma-string (kept for back-compat / UI display).
+# The real on/off switch is the per-MCP `OpenAgentic_<NAME>_MCP_DISABLED` env
+# flag in templates/mcp-proxy.yaml, which is templated off the structured
+# per-MCP toggles below.
+mcps:
+  enabled: "web,knowledge,admin,kubernetes,prometheus,loki"
+  # In-cluster ops MCPs — ON by default for the ops ICP (no external creds).
+  # kubernetes: uses the mcp-proxy pod ServiceAccount token + read-only RBAC
+  #   (templates/mcp-proxy-rbac.yaml). Set enabled:false to ship no RBAC.
+  kubernetes:
+    enabled: true
+  # prometheus: queries the in-cluster prometheus service. No creds, no RBAC.
+  prometheus:
+    enabled: true
+    url: "http://prometheus:9090"
+  # loki: queries the in-cluster loki service (deployed by the `loki` section
+  # below). No creds. Promtail ships pod logs in so queries return real data.
+  loki:
+    enabled: true
+    url: "http://loki:3100"
+
+# Per-service resource requests/limits. Tuned small; raise for production load.
+resources:
+  api:        { requests: { cpu: "250m", memory: "768Mi" }, limits: { memory: "2Gi" } }
+  ui:         { requests: { cpu: "50m",  memory: "64Mi" },  limits: { memory: "256Mi" } }
+  workflows:  { requests: { cpu: "100m", memory: "384Mi" }, limits: { memory: "1Gi" } }
+  mcpProxy:   { requests: { cpu: "100m", memory: "256Mi" }, limits: { memory: "1Gi" } }
+  proxy:      { requests: { cpu: "50m",  memory: "128Mi" }, limits: { memory: "512Mi" } }
+  ollama:     { requests: { cpu: "500m", memory: "2Gi" },   limits: { memory: "6Gi" } }
+  postgres:   { requests: { cpu: "100m", memory: "256Mi" }, limits: { memory: "1Gi" } }
+  redis:      { requests: { cpu: "50m",  memory: "64Mi" },  limits: { memory: "256Mi" } }
+  searxng:    { requests: { cpu: "50m",  memory: "128Mi" }, limits: { memory: "512Mi" } }
+  prometheus: { requests: { cpu: "100m", memory: "256Mi" }, limits: { memory: "1Gi" } }
+  loki:       { requests: { cpu: "100m", memory: "256Mi" }, limits: { memory: "1Gi" } }
+
+# Optional components. proxy is an egress shim for tool calls. Off by default
+# for a minimal install — the core (chat, flows, MCPs) runs without it. Enable
+# in your overlay if you need it.
+proxy:
+  enabled: false
+
+# Prometheus — scrapes api/mcp-proxy/proxy /metrics and backs the admin dashboard
+# metrics (request rate, latency, LLM TTFT/TPOT, token cost, MCP calls). When
+# enabled the api is auto-pointed at it via PROMETHEUS_HOST/PORT.
+prometheus:
+  enabled: true
+  retention: 7d
+  persistence: false   # set true (+ storageSize) for a durable TSDB PVC
+  storageSize: 8Gi
+
+# Loki — log aggregation backing the built-in loki MCP. Promtail (a DaemonSet)
+# discovers every pod's logs and ships them in, so LogQL queries work on a fresh
+# install. Mirrors the compose loki + promtail. On by default (ops ICP).
+loki:
+  enabled: true
+  image: grafana/loki:3.4.2
+  promtailImage: grafana/promtail:3.4.2
+  shipLogs: true       # deploy the promtail DaemonSet (reads /var/log/pods)
+  retention: 168h      # 7d
+  persistence: false   # set true (+ storageSize) for a durable chunk store PVC
+  storageSize: 8Gi
+
+# Container-level securityContext (CM-7 / AC-3 hardening baseline). Default =
+# maximally hardened; safe for ALL workloads because every override that must
+# run as root flips ONLY runAsNonRoot (the drop-ALL / noPrivEsc / seccomp trio
+# is always kept). Set securityContext: null (and podSecurityContext: null) to
+# fully disable — the templates then emit zero securityContext keys.
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false   # opt a workload INTO true via its override
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+  # Per-workload deltas (deep-merged OVER the defaults above).
+  overrides:
+    # --- app-node group ---
+    proxy:
+      readOnlyRootFilesystem: true   # distroless chainguard/node 65532, stateless
+    ui:
+      runAsNonRoot: false            # nginx image runs as root (writes /run/nginx.pid, /var/cache/nginx)
+      capabilities:
+        # nginx master (root) chowns its cache dirs, drops workers to the nginx
+        # user, and binds :80 — needs these back on top of the drop-ALL baseline.
+        add: [CHOWN, SETGID, SETUID, NET_BIND_SERVICE]
+    workflows:
+      runAsNonRoot: false            # image has no USER directive (root)
+    mcpProxy:
+      readOnlyRootFilesystem: true   # uid-1000 mcpuser (Dockerfile USER); writes only to emptyDir tmp + $HOME (see mcp-proxy.yaml volumes)
+    ollama:
+      runAsNonRoot: false            # ollama/ollama:latest no USER directive (root)
+    # --- infra group ---
+    redis:
+      readOnlyRootFilesystem: true   # redis:7-alpine stateless here, no rootfs writes
+    etcd:
+      runAsNonRoot: false            # statically-linked, no USER directive (root)
+    milvus:
+      runAsNonRoot: false            # milvusdb/milvus runs as root; /milvus/{bin,lib} not exec/readable by other uids
+
+# Pod-level securityContext. Default carries seccomp + runAsNonRoot so the pod
+# admits under restricted PSA; overrides pin each image's real uid/gid and set
+# fsGroup so PVC-mounted data dirs are writable by that uid.
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+  overrides:
+    # --- app-node group ---
+    api:        { runAsUser: 1000, runAsGroup: 1000 }                 # node uid 1000 (chowned dirs)
+    ui:         { runAsNonRoot: false }                              # nginx runs as root (writes /run, /var/cache/nginx)
+    proxy:      { runAsUser: 65532, runAsGroup: 65532 }               # distroless nonroot
+    workflows:  { runAsNonRoot: false }                              # must agree w/ container-level
+    mcpProxy:   { runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000 } # mcpuser uid 1000 + fsGroup so the emptyDir $HOME/tmp are writable under readOnlyRootFilesystem
+    ollama:     { runAsNonRoot: false }
+    # --- infra group ---
+    postgres:   { runAsUser: 999, runAsGroup: 999, fsGroup: 999 }     # postgres uid 999 + PVC
+    redis:      { runAsUser: 999, runAsGroup: 999 }                   # redis uid 999, no PVC
+    searxng:    { runAsUser: 977, runAsGroup: 977, fsGroup: 977 }     # searxng image uid 977
+    etcd:       { runAsNonRoot: false }                              # root by default; relax pod-level too
+    minio:      { runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000 }  # minio uid 1000 + PVC
+    milvus:     { runAsNonRoot: false, fsGroup: 1000 }                # milvusdb/milvus runs as root; fsGroup for the data dir
+    prometheus: { runAsUser: 65534, runAsGroup: 65534, fsGroup: 65534 } # nobody uid 65534 + TSDB PVC
+    loki:       { runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001 } # grafana/loki uid 10001 + chunk dir
+
+# Node placement. Empty = schedule anywhere. Set kubernetes.io/arch when
+# your images are single-arch and the cluster is mixed amd64/arm64.
+nodeSelector: {}
+
+# Ingress (nginx). Set host + tlsSecret to expose the UI over HTTPS.
+ingress:
+  enabled: false
+  className: nginx
+  host: openagentic.local
+  # Name of a pre-existing kubernetes.io/tls secret in the release namespace.
+  tlsSecret: ""

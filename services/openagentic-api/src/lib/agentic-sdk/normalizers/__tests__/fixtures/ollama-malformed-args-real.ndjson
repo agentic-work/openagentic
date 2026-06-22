@@ -1,0 +1,78 @@
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.643038709Z","message":{"role":"assistant","content":"","thinking":"We"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.649938151Z","message":{"role":"assistant","content":"","thinking":" need"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.656964548Z","message":{"role":"assistant","content":"","thinking":" to"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.663934699Z","message":{"role":"assistant","content":"","thinking":" call"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.670905499Z","message":{"role":"assistant","content":"","thinking":" get"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.677807218Z","message":{"role":"assistant","content":"","thinking":"_weather"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.684832445Z","message":{"role":"assistant","content":"","thinking":" for"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.69174988Z","message":{"role":"assistant","content":"","thinking":" Boston"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.698772753Z","message":{"role":"assistant","content":"","thinking":" and"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.705645348Z","message":{"role":"assistant","content":"","thinking":" Tokyo"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.71250565Z","message":{"role":"assistant","content":"","thinking":"."},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.719276649Z","message":{"role":"assistant","content":"","thinking":" The"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.726134921Z","message":{"role":"assistant","content":"","thinking":" instruction"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.732955021Z","message":{"role":"assistant","content":"","thinking":":"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.739759942Z","message":{"role":"assistant","content":"","thinking":" \""},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.746566163Z","message":{"role":"assistant","content":"","thinking":"When"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.75332188Z","message":{"role":"assistant","content":"","thinking":" asked"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.760111633Z","message":{"role":"assistant","content":"","thinking":" about"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.766887445Z","message":{"role":"assistant","content":"","thinking":" weather"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.773925669Z","message":{"role":"assistant","content":"","thinking":","},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.780835038Z","message":{"role":"assistant","content":"","thinking":" call"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.789032068Z","message":{"role":"assistant","content":"","thinking":" get"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.795455852Z","message":{"role":"assistant","content":"","thinking":"_weather"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.802252118Z","message":{"role":"assistant","content":"","thinking":" for"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.80898165Z","message":{"role":"assistant","content":"","thinking":" each"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.815708815Z","message":{"role":"assistant","content":"","thinking":" location"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.822438433Z","message":{"role":"assistant","content":"","thinking":".\""},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.829372482Z","message":{"role":"assistant","content":"","thinking":" So"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.836500216Z","message":{"role":"assistant","content":"","thinking":" we"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.843515498Z","message":{"role":"assistant","content":"","thinking":" must"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.850651578Z","message":{"role":"assistant","content":"","thinking":" call"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.857690308Z","message":{"role":"assistant","content":"","thinking":" the"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.864826183Z","message":{"role":"assistant","content":"","thinking":" function"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.871897722Z","message":{"role":"assistant","content":"","thinking":" twice"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.878966165Z","message":{"role":"assistant","content":"","thinking":"."},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.88600401Z","message":{"role":"assistant","content":"","thinking":" Provide"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.89345727Z","message":{"role":"assistant","content":"","thinking":" results"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.903031504Z","message":{"role":"assistant","content":"","thinking":"?"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.908255407Z","message":{"role":"assistant","content":"","thinking":" In"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.915321167Z","message":{"role":"assistant","content":"","thinking":" such"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.92227035Z","message":{"role":"assistant","content":"","thinking":" tasks"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.929216254Z","message":{"role":"assistant","content":"","thinking":","},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.936097951Z","message":{"role":"assistant","content":"","thinking":" we"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.943037161Z","message":{"role":"assistant","content":"","thinking":" need"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.94992057Z","message":{"role":"assistant","content":"","thinking":" to"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.956858364Z","message":{"role":"assistant","content":"","thinking":" call"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.96374868Z","message":{"role":"assistant","content":"","thinking":" function"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.970658584Z","message":{"role":"assistant","content":"","thinking":"."},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.977638694Z","message":{"role":"assistant","content":"","thinking":" The"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.984538844Z","message":{"role":"assistant","content":"","thinking":" response"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.991478373Z","message":{"role":"assistant","content":"","thinking":" likely"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:33.998461176Z","message":{"role":"assistant","content":"","thinking":" should"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.005410288Z","message":{"role":"assistant","content":"","thinking":" be"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.012360737Z","message":{"role":"assistant","content":"","thinking":" something"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.019821716Z","message":{"role":"assistant","content":"","thinking":" like"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.027221053Z","message":{"role":"assistant","content":"","thinking":":"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.034656733Z","message":{"role":"assistant","content":"","thinking":" \""},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.042061754Z","message":{"role":"assistant","content":"","thinking":"Here"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.04896959Z","message":{"role":"assistant","content":"","thinking":" is"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.05575687Z","message":{"role":"assistant","content":"","thinking":" the"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.062620784Z","message":{"role":"assistant","content":"","thinking":" weather"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.069583825Z","message":{"role":"assistant","content":"","thinking":" in"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.076398058Z","message":{"role":"assistant","content":"","thinking":" Boston"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.083167275Z","message":{"role":"assistant","content":"","thinking":":"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.090012147Z","message":{"role":"assistant","content":"","thinking":" ...\""},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.096762826Z","message":{"role":"assistant","content":"","thinking":" etc"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.103524268Z","message":{"role":"assistant","content":"","thinking":"."},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.11030777Z","message":{"role":"assistant","content":"","thinking":" But"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.117090249Z","message":{"role":"assistant","content":"","thinking":" we"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.123891417Z","message":{"role":"assistant","content":"","thinking":" must"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.130701323Z","message":{"role":"assistant","content":"","thinking":" call"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.137533763Z","message":{"role":"assistant","content":"","thinking":" function"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.14433684Z","message":{"role":"assistant","content":"","thinking":"."},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.151119251Z","message":{"role":"assistant","content":"","thinking":" We'll"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.157896598Z","message":{"role":"assistant","content":"","thinking":" call"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.164721177Z","message":{"role":"assistant","content":"","thinking":" function"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.171519896Z","message":{"role":"assistant","content":"","thinking":"."},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-05-10T13:05:34.316494269Z","message":{"role":"assistant","content":"","tool_calls":[{"id":"call_hmr0wlzh","function":{"index":0,"name":"get_weather","arguments":"{\"location\":\"Boston"}}]},"done":true,"done_reason":"stop","total_duration":6836201704,"load_duration":5967510094,"prompt_eval_count":166,"prompt_eval_duration":83452291,"eval_count":101,"eval_duration":658434692}

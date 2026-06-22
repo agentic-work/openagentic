@@ -1,0 +1,197 @@
+{
+  "slug": "incident-triage",
+  "name": "Incident Triage",
+  "description": "Hero AIOps flow. Given an alert/symptom + namespace + time window, fans the trigger out to THREE parallel built-in MCP calls — openagentic_prometheus.prometheus_query (metrics), openagentic_loki.loki_search_errors (logs), openagentic_kubernetes.k8s_list_pods (cluster state) — converges them in a labeled merge keyed by source-node label (metrics/logs/kube), pre-computes per-source evidence excerpts + HTML rows in a single correlate transform, asks the platform LLM (Smart Router, model:auto) to produce a root-cause narrative that CITES the concrete evidence (which metric / which log line / which pod fact) behind each conclusion, strips any chain-of-thought preamble, and renders an HTML incident-triage report as an openable artifact. No hardcoded model id or provider anywhere.",
+  "category": "aiops",
+  "template": true,
+  "meta": {
+    "purpose": "Triage an alert/symptom by correlating metrics, logs, and Kubernetes state pulled IN PARALLEL, then produce an evidence-cited root-cause narrative.",
+    "how_it_works": [
+      "1. Fans the trigger out to three parallel MCP calls: openagentic_prometheus.prometheus_query (instant PromQL on the symptom expression), openagentic_loki.loki_search_errors (recent errors in the affected namespace/window), openagentic_kubernetes.k8s_list_pods (current pod state).",
+      "2. A labeled merge converges the three branches keyed by snake-cased source-node label (metrics / logs / kube).",
+      "3. A single correlate transform normalizes each branch into text excerpts + pre-computes the evidence table HTML rows.",
+      "4. The platform LLM (model:auto) writes a root-cause narrative that cites the concrete metric value, log signal, and pod fact behind each conclusion.",
+      "5. A CoT-stripper transform removes any LLM preamble.",
+      "6. webhook_response renders the HTML triage report and persists it as an openable artifact. Quiet-cluster short-circuit: when all three sources are clean, the report says so instead of inventing a cause."
+    ],
+    "expected_output": "Interactive HTML artifact: alert header, a root-cause narrative with inline [metric]/[log]/[k8s] evidence citations, and an evidence table (metric result, top error log lines, pod state) the operator can verify against.",
+    "useful_when": "Oncall pages on an alert/symptom and you need a fast, evidence-backed first hypothesis before deep-diving — the headline demo of parallel-MCP correlation.",
+    "tools_used": [
+      "openagentic_prometheus.prometheus_query",
+      "openagentic_loki.loki_search_errors",
+      "openagentic_kubernetes.k8s_list_pods",
+      "merge",
+      "transform",
+      "llm_completion",
+      "webhook_response"
+    ],
+    "version": "1.0",
+    "tags": ["aiops", "incident", "triage", "rca", "demo", "parallel"]
+  },
+  "defaultInputs": {
+    "alert": "High error rate on the api service",
+    "symptom_query": "up == 0",
+    "namespace": "default",
+    "time_range": "1h"
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "Incident Triage",
+          "input_schema": {
+            "alert": "string",
+            "symptom_query": "string",
+            "namespace": "string",
+            "time_range": "string"
+          }
+        }
+      },
+      {
+        "id": "metrics",
+        "type": "mcp_tool",
+        "data": {
+          "label": "metrics",
+          "toolServer": "openagentic_prometheus",
+          "toolName": "prometheus_query",
+          "arguments": {
+            "query": "{{trigger.symptom_query}}"
+          }
+        }
+      },
+      {
+        "id": "logs",
+        "type": "mcp_tool",
+        "data": {
+          "label": "logs",
+          "toolServer": "openagentic_loki",
+          "toolName": "loki_search_errors",
+          "arguments": {
+            "namespace": "{{trigger.namespace}}",
+            "time_range": "{{trigger.time_range}}",
+            "limit": 200
+          }
+        }
+      },
+      {
+        "id": "kube",
+        "type": "mcp_tool",
+        "data": {
+          "label": "kube",
+          "toolServer": "openagentic_kubernetes",
+          "toolName": "k8s_list_pods",
+          "arguments": {
+            "namespace": "{{trigger.namespace}}"
+          }
+        }
+      },
+      {
+        "id": "merge_evidence",
+        "type": "merge",
+        "data": {
+          "label": "Merge Metrics + Logs + Kube",
+          "mergeStrategy": "object"
+        }
+      },
+      {
+        "id": "correlate",
+        "type": "transform",
+        "data": {
+          "label": "Correlate Evidence",
+          "operations": [
+            {
+              "op": "set",
+              "target": "metrics_text",
+              "value": "{{ String((input.metrics && input.metrics.content) || '').slice(0, 2000) }}"
+            },
+            {
+              "op": "set",
+              "target": "logs_text",
+              "value": "{{ (() => { const t = String((input.logs && input.logs.content) || ''); const lines = t.split(/\\r?\\n/).filter(l => l && l.trim()); return lines.slice(0, 20).join('\\n').slice(0, 2000); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "kube_array",
+              "value": "{{ (() => { const b = input && input.kube; if (!b || typeof b !== 'object') return []; if (Array.isArray(b.pods)) return b.pods; if (typeof b.content === 'string') { try { const p = JSON.parse(b.content).pods; return Array.isArray(p) ? p : []; } catch (e) { return []; } } return []; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "unhealthy_pods",
+              "value": "{{ (() => { const a = Array.isArray(input.kube_array) ? input.kube_array : []; return a.filter(p => p && (String(p.status || '') !== 'Running' || (typeof p.restarts === 'number' && p.restarts > 5))).slice(0, 10).map(p => ({ name: String(p.name || ''), status: String(p.status || ''), restarts: (typeof p.restarts === 'number' ? p.restarts : 0) })); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "pod_total",
+              "value": "{{ (() => { const a = Array.isArray(input.kube_array) ? input.kube_array : []; return a.length; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "evidence_rows_html",
+              "value": "{{ (() => { const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); const rows = []; rows.push(`<tr><td>metric</td><td><pre>${esc(String(input.metrics_text || 'no metric result').slice(0, 500))}</pre></td></tr>`); rows.push(`<tr><td>logs</td><td><pre>${esc(String(input.logs_text || 'no error logs in window').slice(0, 500))}</pre></td></tr>`); const up = Array.isArray(input.unhealthy_pods) ? input.unhealthy_pods : []; const kubeCell = up.length === 0 ? `all ${(typeof input.pod_total === 'number' ? input.pod_total : 0)} pods Running` : up.map(p => `${p.name} (${p.status}, restarts=${p.restarts})`).join('\\n'); rows.push(`<tr><td>k8s</td><td><pre>${esc(kubeCell)}</pre></td></tr>`); return rows.join(''); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "quiet_banner",
+              "value": "{{ (() => { const m = String(input.metrics_text || '').trim(); const noMetric = !m || /Results:\\s*0/i.test(m); const noLogs = !String(input.logs_text || '').trim(); const noUnhealthy = (Array.isArray(input.unhealthy_pods) ? input.unhealthy_pods.length : 0) === 0; if (noMetric && noLogs && noUnhealthy) return '<p class=\"quiet\"><strong>All clear</strong> — metrics, logs, and pod state are clean for this window. No root cause to assign; recommend confirming the alert is not stale.</p>'; return ''; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "rca",
+        "type": "llm_completion",
+        "data": {
+          "label": "Root-Cause Narrative",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 700,
+          "system": "You are an SRE doing incident triage. You correlate three evidence sources — Prometheus metrics, Loki error logs, and Kubernetes pod state — into a single root-cause hypothesis. You NEVER invent evidence. Every claim must cite which source supports it using inline markers [metric], [log], or [k8s]. If the evidence does not support a cause, you say the signal is inconclusive rather than guessing.",
+          "prompt": "Alert / symptom: {{trigger.alert}}\nNamespace: {{trigger.namespace}}  Window: {{trigger.time_range}}\n\n=== Prometheus metric result ([metric]) ===\n{{steps.correlate.metrics_text}}\n\n=== Loki recent error logs ([log]) ===\n{{steps.correlate.logs_text}}\n\n=== Kubernetes pod state ([k8s]) — {{steps.correlate.pod_total}} pods total, unhealthy subset ===\n{{steps.correlate.unhealthy_pods}}\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — NO preamble, NO \"Here is\", NO thinking out loud.\n2. First bullet: the single most likely root cause, each factual claim tagged with [metric], [log], or [k8s].\n3. Second bullet: the supporting evidence chain (which metric value + which log signal + which pod fact line up).\n4. Third bullet: a concrete operator next-action.\n5. If all three sources are clean, emit one bullet stating the signals are clean and the alert may be stale, and one bullet recommending a re-check window."
+        }
+      },
+      {
+        "id": "clean_rca",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const inlineMatch = raw.match(/([\\.\\!\\?\\:]|\\n)\\s*(-\\s+\\S)/); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx !== -1) { const fromLineIdx = lines.slice(firstBulletIdx).join('\\n').trim(); if (inlineMatch && inlineMatch.index !== undefined) { const fromInline = raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); if (fromInline.length < fromLineIdx.length || lines[firstBulletIdx].trim().length > 8 === false) { return fromInline; } } return fromLineIdx; } if (inlineMatch && inlineMatch.index !== undefined) { return raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); } return raw.trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML Incident Triage Report",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"incident-triage\"><h2>Incident Triage — {{trigger.alert}}</h2><p><strong>Namespace:</strong> {{trigger.namespace}} &middot; <strong>Window:</strong> {{trigger.time_range}} &middot; <strong>Pods scanned:</strong> {{steps.correlate.pod_total}}</p>{{steps.correlate.quiet_banner}}<h3>Root-Cause Narrative (evidence-cited)</h3><pre class=\"rca\">{{steps.clean_rca.clean_content}}</pre><h3>Evidence</h3><table class=\"evidence-table\"><thead><tr><th>Source</th><th>Signal</th></tr></thead><tbody>{{steps.correlate.evidence_rows_html}}</tbody></table></div>",
+          "persistAsArtifact": true,
+          "artifactTitle": "Incident Triage: {{trigger.alert}}",
+          "artifactMimeType": "text/html",
+          "artifactTags": ["aiops", "incident", "triage"]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "metrics" },
+      { "id": "e2", "source": "trigger", "target": "logs" },
+      { "id": "e3", "source": "trigger", "target": "kube" },
+      { "id": "e4", "source": "metrics", "target": "merge_evidence" },
+      { "id": "e5", "source": "logs", "target": "merge_evidence" },
+      { "id": "e6", "source": "kube", "target": "merge_evidence" },
+      { "id": "e7", "source": "merge_evidence", "target": "correlate" },
+      { "id": "e8", "source": "correlate", "target": "rca" },
+      { "id": "e9", "source": "rca", "target": "clean_rca" },
+      { "id": "e10", "source": "clean_rca", "target": "report" }
+    ]
+  }
+}

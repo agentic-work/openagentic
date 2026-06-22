@@ -1,0 +1,76 @@
+{
+  "type": "slack_message",
+  "category": "integration",
+  "label": "Slack Message",
+  "description": "Send a message to a Slack channel via incoming webhook. Supports templated text, channel override, and Block Kit blocks.",
+  "icon": "slack",
+  "primary": "sent",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "status": "number",
+          "sent": "boolean",
+          "channel": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "webhookUrl",
+      "label": "Webhook URL",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "https://hooks.slack.com/services/...",
+      "description": "Slack incoming webhook URL. Falls back to SLACK_WEBHOOK_URL env when unset."
+    },
+    {
+      "name": "channel",
+      "label": "Channel",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "#alerts"
+    },
+    {
+      "name": "message",
+      "label": "Message",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "Alert: {{trigger.subject}}"
+    },
+    {
+      "name": "blocks",
+      "label": "Block Kit blocks",
+      "type": "json",
+      "required": false,
+      "description": "Optional Slack Block Kit array — passed through to the webhook payload as-is."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Post a message to Slack via incoming webhook.",
+    "whenToUse": "When you need to notify a Slack channel about a workflow event, alert, or status update.",
+    "examplePrompt": "send a Slack alert to the #incidents channel when severity is high",
+    "promptHints": "Reference output via {{steps.<id>.result.sent}} (boolean). Falls back to SLACK_WEBHOOK_URL env when webhookUrl unset."
+  },
+  "outputAssertions": [
+    {
+      "name": "sent_ok",
+      "expression": "result && result.sent === true",
+      "errorMessage": "Slack webhook responded with non-200 status."
+    }
+  ]
+}

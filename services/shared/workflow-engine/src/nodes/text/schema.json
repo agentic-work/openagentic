@@ -1,0 +1,28 @@
+{
+  "type": "text",
+  "category": "annotation",
+  "label": "Text Annotation",
+  "description": "Visual annotation node — passes input through untouched. Useful for documentation/comments embedded in the canvas.",
+  "icon": "type",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [{ "name": "output", "type": "any", "required": false }]
+  },
+  "settings": [
+    {
+      "name": "text",
+      "label": "Annotation",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": false,
+      "placeholder": "Free-form text to display on the canvas"
+    }
+  ],
+  "ai": {
+    "shortDescription": "Canvas annotation / sticky-note (no-op execution).",
+    "whenToUse": "When you want to label, comment, or visually group nodes — never as part of the data flow.",
+    "examplePrompt": "add an annotation that says 'Step 1: ingest customer data'",
+    "promptHints": "Text nodes never transform data; downstream nodes see the same input the text node received."
+  },
+  "outputAssertions": []
+}

@@ -1,0 +1,126 @@
+{
+  "type": "a2a",
+  "category": "ai",
+  "label": "A2A (Agent-to-Agent)",
+  "description": "Agent-to-Agent protocol — alias of agent_spawn that takes a 'prompt' (instead of 'task') and routes through openagentic-proxy.",
+  "icon": "robot",
+  "primary": "content",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "content": "string",
+          "status": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "prompt",
+      "label": "Prompt",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "Ask the peer agent to {{intent}}"
+    },
+    {
+      "name": "task",
+      "label": "Task (alias)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Legacy alias for prompt — used when prompt is unset."
+    },
+    {
+      "name": "agentType",
+      "label": "Agent type",
+      "type": "string",
+      "required": false,
+      "default": "general"
+    },
+    {
+      "name": "agentId",
+      "label": "Agent ID",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "model",
+      "label": "Model",
+      "type": "string",
+      "required": false,
+      "default": "auto"
+    },
+    {
+      "name": "tools",
+      "label": "Tools",
+      "type": "json",
+      "required": false,
+      "default": []
+    },
+    {
+      "name": "systemPrompt",
+      "label": "System prompt",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "maxTurns",
+      "label": "Max turns",
+      "type": "number",
+      "required": false,
+      "default": 10,
+      "min": 1,
+      "max": 50
+    },
+    {
+      "name": "timeout",
+      "label": "Timeout (ms)",
+      "type": "number",
+      "required": false,
+      "default": 120000
+    },
+    {
+      "name": "costBudget",
+      "label": "Cost budget (cents)",
+      "type": "number",
+      "required": false,
+      "default": 200
+    }
+  ],
+  "ai": {
+    "shortDescription": "Call a peer agent via the A2A protocol.",
+    "whenToUse": "When one agent needs to delegate to another agent (peer-to-peer), e.g. a planner asking a researcher.",
+    "examplePrompt": "ask the researcher agent to summarize the latest news on the topic from the trigger",
+    "promptHints": "Reference the result with {{steps.<id>.content}}."
+  },
+  "outputAssertions": [
+    {
+      "name": "agent_returned_content",
+      "expression": "result && typeof result.content === 'string' && result.content.length > 0",
+      "errorMessage": "A2A peer did not return any content."
+    },
+    {
+      "name": "agent_completed_status",
+      "expression": "result && (result.status === 'completed' || result.status === 'success')",
+      "errorMessage": "A2A peer did not complete successfully."
+    },
+    {
+      "name": "agent_substantive_output",
+      "expression": "!result || !result.content || !result.content.match(/^\\s*(I (could not|couldn't|cannot|can't|do not have|don't have|am unable|wasn't able|was not able)|Sorry,? (I|but)|I'?m sorry,?|I apologize,?|Unfortunately,? (I|no)|No (information|data|results|content) (available|found))/i)",
+      "errorMessage": "A2A peer returned a refusal or 'no info' response."
+    }
+  ]
+}

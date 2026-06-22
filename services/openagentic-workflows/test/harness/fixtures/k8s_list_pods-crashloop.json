@@ -1,0 +1,68 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_kubernetes.k8s_list_pods crafted for the k8s-crashloop-triage template. Shape matches the python tool's native dict (server.py k8s_list_pods lines 252-302) without FastMCP content[] wrapping — mcp-proxy 3-layer unwrap surfaces the dict verbatim. The pods array mixes 2 healthy (Running, restarts=0) with 3 unhealthy: one CrashLoopBackOff with high restart count, one Pending image-pull-back-off, one Running but with restart_count > threshold. Exercises the transform filter's combined status=CrashLoopBackOff OR restart_count>threshold predicate.",
+  "result": {
+    "result": {
+      "success": true,
+      "namespace": "openagentic",
+      "is_protected": false,
+      "pods": [
+        {
+          "name": "openagentic-api-6b8d4f7c9d-x2k4n",
+          "namespace": "openagentic",
+          "status": "Running",
+          "ready": "1/1",
+          "restarts": 0,
+          "node": "hal",
+          "ip": "10.42.6.41",
+          "created": "2026-05-13T08:14:22+00:00",
+          "labels": { "app": "openagentic-api" }
+        },
+        {
+          "name": "openagentic-ui-7d9f8b6c4d-m5j2p",
+          "namespace": "openagentic",
+          "status": "Running",
+          "ready": "1/1",
+          "restarts": 0,
+          "node": "k8d",
+          "ip": "10.42.7.103",
+          "created": "2026-05-13T08:14:25+00:00",
+          "labels": { "app": "openagentic-ui" }
+        },
+        {
+          "name": "openagentic-workflows-5c4e8a9b3f-q7n6w",
+          "namespace": "openagentic",
+          "status": "CrashLoopBackOff",
+          "ready": "0/1",
+          "restarts": 27,
+          "node": "hal",
+          "ip": "10.42.6.99",
+          "created": "2026-05-13T09:11:02+00:00",
+          "labels": { "app": "openagentic-workflows" }
+        },
+        {
+          "name": "openagentic-mcp-proxy-7e9c4d5a8b-r3k9p",
+          "namespace": "openagentic",
+          "status": "Running",
+          "ready": "1/1",
+          "restarts": 12,
+          "node": "hal",
+          "ip": "10.42.6.42",
+          "created": "2026-05-12T22:18:03+00:00",
+          "labels": { "app": "openagentic-mcp-proxy" }
+        },
+        {
+          "name": "oap-openagentic-azure-mcp-697579dff7-s4s6c",
+          "namespace": "openagentic",
+          "status": "ImagePullBackOff",
+          "ready": "0/1",
+          "restarts": 9,
+          "node": "hal",
+          "ip": null,
+          "created": "2026-05-13T11:02:45+00:00",
+          "labels": { "app": "oap-openagentic-azure-mcp" }
+        }
+      ],
+      "count": 5
+    }
+  }
+}

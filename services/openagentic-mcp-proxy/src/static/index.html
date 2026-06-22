@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Proxy Inspector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .status-running { background: #e8f5e8; color: #2d7d32; }
+        .status-external { background: #e3f2fd; color: #1976d2; }
+        .status-failed { background: #ffebee; color: #c62828; }
+        .status-stopped { background: #f5f5f5; color: #757575; }
+
+        .server-info {
+            margin-top: 12px;
+        }
+
+        .server-info div {
+            margin: 4px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .tools-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .tool-item {
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: #fafafa;
+        }
+
+        .tool-name {
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 4px;
+        }
+
+        .tool-server {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #007aff;
+            color: white;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+
+        .tool-description {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .refresh-btn {
+            background: #007aff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .refresh-btn:hover {
+            background: #0056cc;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .logs-section {
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 24px;
+            color: #fff;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            white-space: pre-wrap;
+        }
+
+        .test-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .test-form {
+            display: grid;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .form-group select,
+        .form-group input,
+        .form-group textarea {
+            padding: 12px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .test-btn {
+            background: #34c759;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .test-btn:hover {
+            background: #2fb344;
+        }
+
+        .test-result {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 MCP Proxy Inspector</h1>
+            <p>Monitor and test MCP servers with comprehensive logging</p>
+        </div>
+
+        <!-- Authentication Section -->
+        <div id="auth-section" class="test-section" style="margin-bottom: 24px;">
+            <!-- Not Logged In View -->
+            <div id="not-logged-in" style="display:none;">
+                <h2 style="margin-bottom: 16px;">🔐 Authentication Required</h2>
+                <p style="margin-bottom: 16px; color: #666;">Login to test per-user Azure MCP tools with your Azure AD credentials.</p>
+                <button class="test-btn" onclick="window.location.href='/auth/login'" style="background: #0078d4;">
+                    Login with Azure AD
+                </button>
+                <details style="margin-top: 24px;">
+                    <summary style="cursor: pointer; font-weight: 600; margin-bottom: 12px;">
+                        🔧 Manual Token Testing (Advanced)
+                    </summary>
+                    <div class="test-form" style="margin-top: 12px;">
+                        <p style="color: #666; margin-bottom: 12px; font-size: 14px;">
+                            For testing with tokens from other sources or debugging.
+                        </p>
+                        <div class="form-group">
+                            <label for="manual-user-id">User ID:</label>
+                            <input type="text" id="manual-user-id" placeholder="test-user-1">
+                        </div>
+                        <div class="form-group">
+                            <label for="manual-email">Email:</label>
+                            <input type="email" id="manual-email" placeholder="user@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="manual-token">Access Token:</label>
+                            <textarea id="manual-token" rows="4" placeholder="Paste Azure AD access token here..."></textarea>
+                        </div>
+                        <button class="test-btn" onclick="createManualSession()" style="background: #ff9500;">
+                            Create Manual Session
+                        </button>
+                        <div id="manual-result"></div>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Logged In View -->
+            <div id="logged-in" style="display:none;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2 style="margin-bottom: 8px;">👤 <span id="user-name"></span></h2>
+                        <p style="color: #666; font-size: 14px;" id="user-email"></p>
+                    </div>
+                    <button class="test-btn" onclick="logout()" style="background: #ff3b30;">
+                        Logout
+                    </button>
+                </div>
+                <div style="margin-top: 16px; padding: 12px; background: #e8f5e8; border-radius: 6px;">
+                    <strong style="color: #2d7d32;">✅ Azure MCP Session Active</strong>
+                    <p style="font-size: 14px; color: #666; margin-top: 4px;">
+                        Your per-user Azure MCP tools are loaded and ready to test.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <button class="refresh-btn" onclick="refreshStatus()">🔄 Refresh Status</button>
+
+        <div id="error-container"></div>
+
+        <div class="status-grid" id="servers-grid">
+            <div class="loading">Loading server status...</div>
+        </div>
+
+        <div class="tools-section">
+            <h2 style="margin-bottom: 20px;">Available Tools</h2>
+            <div id="tools-container">
+                <div class="loading">Loading tools...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2 style="margin-bottom: 20px;">🧪 Test Tool Execution</h2>
+            <div class="test-form">
+                <div class="form-group">
+                    <label for="test-server">Server:</label>
+                    <select id="test-server">
+                        <option value="">Loading servers...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="test-tool">Tool Name:</label>
+                    <input type="text" id="test-tool" placeholder="e.g., azure_mcp-azmcp_subscription_list">
+                </div>
+                <div class="form-group">
+                    <label for="test-args">Arguments (JSON):</label>
+                    <textarea id="test-args" rows="4" placeholder='{"param": "value"}'>{}</textarea>
+                </div>
+                <button class="test-btn" onclick="testTool()">🚀 Execute Tool</button>
+                <div id="test-result"></div>
+            </div>
+        </div>
+
+        <div class="logs-section">
+            <h2 style="margin-bottom: 16px; color: #fff;">📊 Live Logs</h2>
+            <div id="logs-container">
+                <div style="color: #888;">Logs will appear here when tools are executed...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let servers = {};
+        let currentUser = null;
+
+        // === AUTHENTICATION FUNCTIONS ===
+
+        async function checkAuth() {
+            try {
+                const response = await fetch('/auth/me', { credentials: 'include' });
+
+                if (response.ok) {
+                    currentUser = await response.json();
+                    document.getElementById('not-logged-in').style.display = 'none';
+                    document.getElementById('logged-in').style.display = 'block';
+                    document.getElementById('user-name').textContent = currentUser.name || currentUser.email;
+                    document.getElementById('user-email').textContent = currentUser.email;
+                    return true;
+                } else {
+                    document.getElementById('not-logged-in').style.display = 'block';
+                    document.getElementById('logged-in').style.display = 'none';
+                    return false;
+                }
+            } catch (error) {
+                console.log('Not authenticated');
+                document.getElementById('not-logged-in').style.display = 'block';
+                document.getElementById('logged-in').style.display = 'none';
+                return false;
+            }
+        }
+
+        async function logout() {
+            try {
+                await fetch('/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                currentUser = null;
+                document.getElementById('not-logged-in').style.display = 'block';
+                document.getElementById('logged-in').style.display = 'none';
+                addLog('🔓 Logged out successfully');
+            } catch (error) {
+                showError('Failed to logout: ' + error.message);
+            }
+        }
+
+        async function createManualSession() {
+            const userId = document.getElementById('manual-user-id').value;
+            const email = document.getElementById('manual-email').value;
+            const token = document.getElementById('manual-token').value;
+
+            if (!userId || !email || !token) {
+                showError('Please fill in all fields');
+                return;
+            }
+
+            try {
+                const response = await fetch('/auth/manual-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        email: email,
+                        access_token: token
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    document.getElementById('manual-result').innerHTML = `
+                        <div style="margin-top: 16px; padding: 12px; background: #e8f5e8; border-radius: 6px; color: #2d7d32;">
+                            <strong>✅ Manual session created successfully!</strong>
+                            <p style="margin-top: 4px; font-size: 14px;">
+                                Tools available: ${result.tools ? result.tools.length : 0}
+                            </p>
+                        </div>
+                    `;
+                    addLog(`✅ Manual session created for ${email}`);
+
+                    // Show simple success message (no auto-login to keep auth state clean)
+                    setTimeout(() => {
+                        document.getElementById('manual-result').innerHTML = '';
+                    }, 5000);
+                } else {
+                    const error = await response.text();
+                    showError('Failed to create session: ' + error);
+                }
+            } catch (error) {
+                showError('Failed to create manual session: ' + error.message);
+            }
+        }
+
+        // Check for OAuth errors in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('error')) {
+            showError('Authentication failed: ' + urlParams.get('error'));
+        }
+
+        // === EXISTING FUNCTIONS ===
+
+        async function refreshStatus() {
+            try {
+                const response = await fetch('/servers');
+                servers = await response.json();
+
+                const grid = document.getElementById('servers-grid');
+                grid.innerHTML = '';
+
+                for (const [name, server] of Object.entries(servers)) {
+                    const card = document.createElement('div');
+                    card.className = 'status-card';
+
+                    let statusClass = 'status-stopped';
+                    if (server.status === 'running') statusClass = 'status-running';
+                    else if (server.status === 'external') statusClass = 'status-external';
+                    else if (server.status === 'failed') statusClass = 'status-failed';
+
+                    card.innerHTML = `
+                        <div class="status-badge ${statusClass}">${server.status}</div>
+                        <h3>${name}</h3>
+                        <div class="server-info">
+                            <div><strong>Transport:</strong> ${server.transport || 'stdio'}</div>
+                            ${server.pid ? `<div><strong>PID:</strong> ${server.pid}</div>` : ''}
+                            ${server.url ? `<div><strong>URL:</strong> ${server.url}</div>` : ''}
+                            ${server.last_error ? `<div style="color: #c62828;"><strong>Error:</strong> ${server.last_error}</div>` : ''}
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                }
+
+                // Update server dropdown
+                const serverSelect = document.getElementById('test-server');
+                serverSelect.innerHTML = '';
+                for (const name of Object.keys(servers)) {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    serverSelect.appendChild(option);
+                }
+
+                await refreshTools();
+
+            } catch (error) {
+                showError('Failed to refresh status: ' + error.message);
+            }
+        }
+
+        async function refreshTools() {
+            try {
+                // Fetch all available tools
+                const response = await fetch('/tools');
+                const data = await response.json();
+
+                const container = document.getElementById('tools-container');
+                container.innerHTML = '';
+
+                // Update server dropdown with actual available servers
+                updateServerDropdown(data.toolsByServer || {});
+
+                // Display tools
+                if (data.tools && data.tools.length > 0) {
+                    data.tools.forEach(tool => {
+                        const toolItem = document.createElement('div');
+                        toolItem.className = 'tool-item';
+                        toolItem.innerHTML = `
+                            <div class="tool-name">${tool.name || 'Unnamed Tool'}</div>
+                            <span class="tool-server">${tool.server || 'unknown'}</span>
+                            <div class="tool-description">${tool.description || 'No description'}</div>
+                        `;
+                        container.appendChild(toolItem);
+                    });
+
+                    addLog(`✅ Loaded ${data.tools.length} tools from ${Object.keys(data.toolsByServer || {}).length} servers`);
+                } else {
+                    container.innerHTML = '<div style="color: #666;">No tools available. Login to see per-user Azure MCP tools.</div>';
+                }
+
+            } catch (error) {
+                document.getElementById('tools-container').innerHTML = '<div style="color: #c62828;">Failed to load tools: ' + error.message + '</div>';
+                addLog(`❌ Failed to load tools: ${error.message}`);
+            }
+        }
+
+        function updateServerDropdown(toolsByServer) {
+            const serverSelect = document.getElementById('test-server');
+            serverSelect.innerHTML = '<option value="">Select a server...</option>';
+
+            // Add all available servers from status
+            Object.keys(servers).forEach(serverName => {
+                const option = document.createElement('option');
+                option.value = serverName;
+                option.textContent = serverName;
+                serverSelect.appendChild(option);
+            });
+
+            // Add Azure MCP if user is logged in and has tools
+            if (currentUser && toolsByServer['azure_mcp']) {
+                const option = document.createElement('option');
+                option.value = 'azure_mcp';
+                option.textContent = 'azure_mcp (Your Session)';
+                serverSelect.appendChild(option);
+            }
+        }
+
+        async function testTool() {
+            const server = document.getElementById('test-server').value;
+            const tool = document.getElementById('test-tool').value;
+            const argsText = document.getElementById('test-args').value;
+
+            if (!server || !tool) {
+                showError('Please select a server and enter a tool name');
+                return;
+            }
+
+            let args = {};
+            try {
+                args = JSON.parse(argsText);
+            } catch (error) {
+                showError('Invalid JSON in arguments: ' + error.message);
+                return;
+            }
+
+            const resultDiv = document.getElementById('test-result');
+            resultDiv.textContent = 'Executing...';
+            resultDiv.className = 'test-result';
+
+            try {
+                const response = await fetch('/mcp/tool', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        server: server,
+                        tool: tool,
+                        arguments: args,
+                        id: Date.now().toString()
+                    })
+                });
+
+                const result = await response.json();
+                resultDiv.textContent = JSON.stringify(result, null, 2);
+
+                // Add to logs
+                addLog(`Tool executed: ${server}/${tool}`);
+                addLog(`Result: ${JSON.stringify(result, null, 2)}`);
+
+            } catch (error) {
+                resultDiv.textContent = 'Error: ' + error.message;
+                addLog(`Tool execution failed: ${error.message}`);
+            }
+        }
+
+        function showError(message) {
+            const container = document.getElementById('error-container');
+            container.innerHTML = `<div class="error">${message}</div>`;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        function addLog(message) {
+            const container = document.getElementById('logs-container');
+            const timestamp = new Date().toISOString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            container.appendChild(logEntry);
+
+            // Keep only last 50 entries
+            while (container.children.length > 50) {
+                container.removeChild(container.firstChild);
+            }
+
+            // Scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Initialize
+        checkAuth();  // Check authentication status
+        refreshStatus();
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshStatus, 30000);
+    </script>
+</body>
+</html>

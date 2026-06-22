@@ -1,0 +1,368 @@
+name: Build & Push to GHCR
+
+# Triggers (runs on the in-cluster self-hosted runner — build uses a DinD sidecar):
+#   - version tag (v*.*.*) → multi-arch :latest + release-artifacts (compose
+#                     tarball + OCI helm + npm wizard). GHCR keeps ONLY :latest.
+#   - manual        → wizard publish from the Actions tab
+# Per-push main builds were dropped: 5 multi-arch images per commit is too heavy
+# for fast/clean CI, so :latest now tracks the latest release tag.
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag_override:
+        description: 'Extra image tag (optional)'
+        required: false
+        default: ''
+      wizard_version:
+        description: 'Publish the wizard at this npm version without a git tag (e.g. 1.0.0-rc.0). Empty = skip.'
+        required: false
+        default: ''
+      wizard_dry_run:
+        description: 'Validate the wizard publish without actually publishing'
+        type: boolean
+        required: false
+        default: true
+
+env:
+  REGISTRY: ghcr.io
+  ORG: agentic-work
+
+jobs:
+  build:
+    name: Build & push (${{ matrix.service }})
+    runs-on: openagentic-runners
+
+    permissions:
+      contents: read
+      packages: write          # build/push + GHCR cleanup (delete) of owner's packages
+      security-events: write   # upload Trivy SARIF to the GitHub Security tab
+
+    # DinD sidecar shares /var/run/docker.sock via an emptyDir volume.
+    # Runner connects via the standard Unix socket — no TLS needed (in-pod only).
+    env:
+      DOCKER_HOST: unix:///var/run/docker.sock
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # All services build multi-arch (linux/amd64 + linux/arm64) so the
+          # arm64 Raspberry-Pi k3s cluster is a first-class deploy target. The
+          # setup-qemu-action + buildx multi-platform push produce a fat manifest.
+          # (tsc builds cleanly under arm64 QEMU — the old "tsc segfaults under
+          #  QEMU arm64" caveat is stale and has been removed.)
+          - service: openagentic-api
+            dockerfile: services/openagentic-api/Dockerfile
+            build_arg: SRC_PATH=services/openagentic-api
+            platforms: linux/amd64,linux/arm64
+          - service: openagentic-ui
+            dockerfile: services/openagentic-ui/Dockerfile
+            build_arg: SRC_PATH=services/openagentic-ui
+            platforms: linux/amd64,linux/arm64
+          - service: openagentic-workflows
+            dockerfile: services/openagentic-workflows/Dockerfile
+            build_arg: ''
+            platforms: linux/amd64,linux/arm64
+          - service: openagentic-mcp-proxy
+            dockerfile: services/openagentic-mcp-proxy/Dockerfile
+            build_arg: SRC_PATH=services/openagentic-mcp-proxy
+            # helm is vendored per-arch (see "Pre-fetch helm" step); aws/azure
+            # CLIs install per-arch inside the Dockerfile via TARGETARCH.
+            platforms: linux/amd64,linux/arm64
+            no_cache: "true"
+          - service: openagentic-proxy
+            dockerfile: services/openagentic-proxy/Dockerfile
+            build_arg: ''
+            platforms: linux/amd64,linux/arm64
+
+    steps:
+      # ── Wait for DinD daemon ──────────────────────────────────────────────────
+      - name: Wait for DinD
+        run: |
+          echo "Waiting for Docker daemon…"
+          for i in $(seq 1 60); do
+            if docker info >/dev/null 2>&1; then
+              echo "Docker ready after ${i}s"
+              docker version --format 'Server: {{.Server.Version}}'
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Docker still not ready after 120s — showing socket state:"
+          ls -la /var/run/docker.sock 2>/dev/null || echo "no docker.sock"
+          docker info || true
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Auth ──────────────────────────────────────────────────────────────────
+      - name: Log in to GHCR
+        uses: docker/login-action@v3.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── QEMU + buildx ─────────────────────────────────────────────────────────
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3.6.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.10.0
+        with:
+          driver: docker-container
+          driver-opts: |
+            env.BUILDKIT_STEP_LOG_MAX_SIZE=10485760
+
+      # ── Tags ──────────────────────────────────────────────────────────────────
+      # GHCR keeps ONLY :latest. The semver / sha-* / tag_override tags were
+      # removed so no extra versions are ever published; the post-push cleanup
+      # step prunes anything that isn't :latest.
+      - name: Compute image tags
+        id: meta
+        uses: docker/metadata-action@v5.7.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}
+          # This workflow only fires on release tags + manual dispatch, so :latest
+          # ALWAYS applies. (Was enable={{is_default_branch}} — which silently
+          # stopped publishing :latest once the per-push-to-main trigger was dropped,
+          # since a tag ref is not the default branch.)
+          tags: |
+            type=raw,value=latest
+
+      # ── Pre-fetch vendored binaries (runner network is reliable; DinD's isn't) ──
+      # mcp-proxy needs helm; get.helm.sh resets connections inside the DinD build,
+      # so fetch it here on the runner and let the Dockerfile COPY it in.
+      # Vendor BOTH arch helm binaries (helm-amd64 / helm-arm64) so the
+      # multi-arch Dockerfile can COPY them and install the one matching the
+      # build leg's $TARGETARCH. Fetching on the runner avoids the get.helm.sh
+      # TLS resets seen inside the DinD build network.
+      - name: Pre-fetch helm for mcp-proxy (both arches)
+        if: matrix.service == 'openagentic-mcp-proxy'
+        run: |
+          mkdir -p services/openagentic-mcp-proxy/vendor
+          for ARCH in amd64 arm64; do
+            curl -fsSL "https://get.helm.sh/helm-v3.17.3-linux-${ARCH}.tar.gz" \
+              | tar -xz -C services/openagentic-mcp-proxy/vendor --strip-components=1 "linux-${ARCH}/helm"
+            mv services/openagentic-mcp-proxy/vendor/helm "services/openagentic-mcp-proxy/vendor/helm-${ARCH}"
+            chmod +x "services/openagentic-mcp-proxy/vendor/helm-${ARCH}"
+          done
+          ls -la services/openagentic-mcp-proxy/vendor/
+
+      # ── Build amd64 locally for the Trivy gate ────────────────────────────────
+      # Scan BEFORE pushing: build a single-arch amd64 image (the runner is amd64,
+      # so Trivy can scan it natively) and --load it into the daemon. Sharing the
+      # registry layer cache means the subsequent multi-arch push reuses these
+      # layers — the amd64 leg is not rebuilt from scratch. A failing Trivy gate
+      # here stops the job before any image is published.
+      - name: Build amd64 image for scan
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: localscan/${{ matrix.service }}:scan
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build_arg }}
+          network: host
+          cache-from: ${{ matrix.no_cache == 'true' && '' || format('type=registry,ref={0}/{1}/{2}:buildcache', env.REGISTRY, env.ORG, matrix.service) }}
+          cache-to:   type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache,mode=max
+          provenance: false
+
+      # ── Trivy scan (REPORT-ONLY — never blocks the build) ────────────────────
+      # Policy: do NOT kill the build on a CVE. Trivy writes SARIF to the Security
+      # tab + logs a table; vulnerabilities are remediated by Dependabot auto-PRs
+      # (+ the auto-merge bot), not by failing CI. Both passes use exit-code 0.
+      - name: Trivy scan → SARIF (report-only)
+        # report-only: a Trivy infra failure (e.g. GHCR rate-limit on its vuln-DB
+        # pull) must NOT block the build. exit-code:0 covers CVE findings;
+        # continue-on-error covers Trivy tool/network errors.
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: localscan/${{ matrix.service }}:scan
+          format: sarif
+          output: trivy-${{ matrix.service }}.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Trivy scan → table (log, non-blocking)
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: localscan/${{ matrix.service }}:scan
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Upload Trivy SARIF to GitHub Security
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.service }}.sarif
+          category: trivy-${{ matrix.service }}
+
+      # ── Multi-arch build & push ──────────────────────────────────────────────
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build_arg }}
+          # network=host lets RUN curl/pip/npm reach the internet during build layers.
+          # Required in DinD environments where the build container is otherwise isolated.
+          network: host
+          # Skip corrupt cache on mcp-proxy first build; all others use GHCR layer cache.
+          cache-from: ${{ matrix.no_cache == 'true' && '' || format('type=registry,ref={0}/{1}/{2}:buildcache', env.REGISTRY, env.ORG, matrix.service) }}
+          cache-to:   type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}:buildcache,mode=max
+          provenance: false
+
+      # ── GHCR cleanup: keep ONLY :latest ───────────────────────────────────────
+      # After the multi-arch push, delete every other version of this package so
+      # GHCR never accumulates old/untagged versions. owner=agentic-work is a USER
+      # account (not an org). The default GITHUB_TOKEN has packages:write/delete
+      # for the owner's packages. Only runs on the default branch (where :latest
+      # is actually published).
+      - name: Prune GHCR — keep only :latest
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        uses: dataaxiom/ghcr-cleanup-action@v1
+        with:
+          owner: ${{ env.ORG }}
+          packages: ${{ matrix.service }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # exclude-tags takes priority over every other rule, so :latest (and the
+          # :buildcache image we push for layer caching) are always preserved.
+          # keep-n-tagged: 0 + delete-untagged: true deletes EVERY other tagged
+          # and untagged version, leaving only the excluded tags. continue-on-error
+          # above means an empty package (nothing to delete) never fails the build.
+          exclude-tags: latest,buildcache
+          keep-n-tagged: 0
+          delete-untagged: true
+          delete-ghost-images: true
+          delete-partial-images: true
+
+  # ── On version tags: compose tarball + OCI helm chart + npm wizard ──────────
+  release-artifacts:
+    name: Package release artifacts
+    needs: build
+    runs-on: openagentic-runners
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Compose-only tarball — no source code ────────────────────────────────
+      - name: Package compose bundle
+        run: |
+          V="${GITHUB_REF_NAME}"
+          mkdir -p /tmp/oa-bundle
+          # Pull-only compose: strip every `build:` block so the end-user's
+          # `docker compose up` PULLS the published ghcr.io/agentic-work/openagentic-*:latest
+          # images instead of building from source. (The repo's docker-compose.yml keeps
+          # build: for local-checkout devs; only the shipped bundle is pull-only.)
+          python3 -c "import yaml; d=yaml.safe_load(open('docker-compose.yml')); [s.pop('build', None) for s in d.get('services', {}).values()]; yaml.safe_dump(d, open('/tmp/oa-bundle/docker-compose.yml', 'w'), sort_keys=False, default_flow_style=False)"
+          [[ -f docker-compose.gpu-nvidia.yml ]] && cp docker-compose.gpu-nvidia.yml /tmp/oa-bundle/
+          [[ -f docker-compose.gpu-wsl.yml    ]] && cp docker-compose.gpu-wsl.yml    /tmp/oa-bundle/
+          [[ -f .env.example                  ]] && cp .env.example                  /tmp/oa-bundle/
+          echo "$V" > /tmp/oa-bundle/VERSION
+          tar -czf "openagentic-compose-${V}.tar.gz" -C /tmp/oa-bundle .
+          echo "BUNDLE=openagentic-compose-${V}.tar.gz" >> "$GITHUB_ENV"
+
+      - name: Upload compose bundle to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.BUNDLE }}
+          fail_on_unmatched_files: true
+
+      # ── Helm OCI chart ────────────────────────────────────────────────────────
+      - name: Install Helm
+        run: |
+          command -v helm || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Push Helm chart to GHCR
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          helm package helm/openagentic --version "$V" --app-version "$V"
+          helm push "openagentic-${V}.tgz" oci://ghcr.io/${{ env.ORG }}/charts
+
+      # ── npm wizard ────────────────────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      # Publish with an npm automation token (repo secret NPM_TOKEN). The
+      # setup-node step above wrote ~/.npmrc to authenticate registry.npmjs.org
+      # with ${NODE_AUTH_TOKEN}. The @openagentic scope must exist on npmjs and
+      # the token must hold publish rights to it. (Trusted Publishing / OIDC is
+      # the token-less alternative, but it needs a per-package Trusted Publisher
+      # configured on npmjs.com for @agenticwork/openagentic; the token path works
+      # without that per-package setup.)
+      - name: Build and publish @agenticwork/openagentic (npm token)
+        working-directory: tools/setup
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          npm ci --silent
+          npm version "$V" --no-git-tag-version --allow-same-version
+          npm run build
+          npm publish --access public
+
+  # ── Manual wizard publish (no git tag needed) ───────────────────────────────
+  # Test or hand-publish @agenticwork/openagentic from the Actions tab WITHOUT
+  # cutting a release tag. Run the workflow (Run workflow ▸) with wizard_version
+  # set (e.g. 1.0.0-rc.0). wizard_dry_run=true (the default) VALIDATES the publish
+  # without pushing — use it to prove the token + scope + build before a real cut.
+  # Set wizard_dry_run=false to actually publish that version.
+  manual-wizard-publish:
+    name: Manual wizard publish (@agenticwork/openagentic)
+    runs-on: openagentic-runners
+    if: github.event_name == 'workflow_dispatch' && inputs.wizard_version != ''
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Build + (dry-run) publish
+        working-directory: tools/setup
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm ci --silent
+          npm version "${{ inputs.wizard_version }}" --no-git-tag-version --allow-same-version
+          npm run build
+          if [ "${{ inputs.wizard_dry_run }}" = "true" ]; then
+            echo "DRY RUN — validating publish of @agenticwork/openagentic@${{ inputs.wizard_version }} (not pushing)"
+            npm publish --access public --dry-run
+          else
+            npm publish --access public
+          fi

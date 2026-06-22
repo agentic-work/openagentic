@@ -1,0 +1,4 @@
+# Every change requires review by the maintainer.
+# Branch protection on main requires code-owner review, so this file
+# is what enforces "only PRs approved by @agentic-work can merge."
+*       @agentic-work

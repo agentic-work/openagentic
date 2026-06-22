@@ -1,0 +1,5 @@
+0000000000000000000000000000000000000000000000000000000000000000
+# ^ PLACEHOLDER — filled at release time. Replace line 1 above with the bare
+# sha256 hex digest of the published openagentic-compose.tgz (see README.md).
+# install.sh reads only the first field of line 1, so until this is the real
+# digest a fresh install fails closed with a checksum mismatch (by design).

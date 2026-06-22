@@ -1,0 +1,164 @@
+{
+  "domain": "flow-templates",
+  "title": "Flow Templates",
+  "description": "Pre-built Flow templates seeded into the workflow engine, source-derived from the seed directory.",
+  "icon": "flow",
+  "category": "workflows",
+  "generatedAt": "2026-06-21T18:49:53.903Z",
+  "sourceFiles": [
+    "services/openagentic-workflows/seed/templates/cost-anomaly.json",
+    "services/openagentic-workflows/seed/templates/failed-deploy-rca.json",
+    "services/openagentic-workflows/seed/templates/incident-triage.json",
+    "services/openagentic-workflows/seed/templates/rag-knowledge-qa.json",
+    "services/openagentic-workflows/seed/templates/research-and-publish.json"
+  ],
+  "sections": [
+    {
+      "id": "templates",
+      "title": "Seeded Templates",
+      "description": "5 Flow templates shipped with the release",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "cost-anomaly",
+          "name": "Cost Anomaly",
+          "description": "Given a lookback window + service, queries AWS Cost Explorer (openagentic_aws.aws_cost_by_service for the per-service cost driver + openagentic_aws.aws_cost_summary for the total) IN PARALLEL with Prometheus usage over the same window (openagentic_prometheus.prometheus_query_range), converges them in a labeled merge keyed by source-node label (cost/usage), pre-computes the per-service cost table +",
+          "type": "flow-template",
+          "properties": {
+            "category": "finops",
+            "nodeTypesUsed": [
+              "llm_completion",
+              "mcp_tool",
+              "merge",
+              "transform",
+              "trigger",
+              "webhook_response"
+            ],
+            "toolsUsed": [
+              "llm_completion",
+              "merge",
+              "openagentic_aws.aws_cost_by_service",
+              "openagentic_aws.aws_cost_summary",
+              "openagentic_prometheus.prometheus_query_range",
+              "transform",
+              "webhook_response"
+            ]
+          },
+          "sourceFile": "services/openagentic-workflows/seed/templates/cost-anomaly.json"
+        },
+        {
+          "id": "failed-deploy-rca",
+          "name": "Failed Deploy RCA",
+          "description": "Given a deployment + namespace, pulls Kubernetes rollout state IN PARALLEL — openagentic_kubernetes.k8s_rollout_status (is it progressing/stuck?), openagentic_kubernetes.k8s_list_events (recent namespace events) — alongside openagentic_loki.loki_search_errors (pod logs / errors for the namespace), converges them in a labeled merge keyed by source-node label (rollout/events/logs), pre-computes a ro",
+          "type": "flow-template",
+          "properties": {
+            "category": "aiops",
+            "nodeTypesUsed": [
+              "llm_completion",
+              "mcp_tool",
+              "merge",
+              "transform",
+              "trigger",
+              "webhook_response"
+            ],
+            "toolsUsed": [
+              "llm_completion",
+              "merge",
+              "openagentic_kubernetes.k8s_list_events",
+              "openagentic_kubernetes.k8s_rollout_status",
+              "openagentic_loki.loki_search_errors",
+              "transform",
+              "webhook_response"
+            ]
+          },
+          "sourceFile": "services/openagentic-workflows/seed/templates/failed-deploy-rca.json"
+        },
+        {
+          "id": "incident-triage",
+          "name": "Incident Triage",
+          "description": "Hero AIOps flow. Given an alert/symptom + namespace + time window, fans the trigger out to THREE parallel built-in MCP calls — openagentic_prometheus.prometheus_query (metrics), openagentic_loki.loki_search_errors (logs), openagentic_kubernetes.k8s_list_pods (cluster state) — converges them in a labeled merge keyed by source-node label (metrics/logs/kube), pre-computes per-source evidence excerpts",
+          "type": "flow-template",
+          "properties": {
+            "category": "aiops",
+            "nodeTypesUsed": [
+              "llm_completion",
+              "mcp_tool",
+              "merge",
+              "transform",
+              "trigger",
+              "webhook_response"
+            ],
+            "toolsUsed": [
+              "llm_completion",
+              "merge",
+              "openagentic_kubernetes.k8s_list_pods",
+              "openagentic_loki.loki_search_errors",
+              "openagentic_prometheus.prometheus_query",
+              "transform",
+              "webhook_response"
+            ]
+          },
+          "sourceFile": "services/openagentic-workflows/seed/templates/incident-triage.json"
+        },
+        {
+          "id": "rag-knowledge-qa",
+          "name": "RAG Knowledge-Base Q&A",
+          "description": "Grounded, cited question answering over the platform knowledge base. Expands the user's question into multiple retrieval queries (multi_query), embeds it, semantically searches the shared_knowledge collection (knowledge_search), re-ranks the retrieved chunks for relevance (rerank), fact-checks the drafted answer against the retrieved evidence (grounding_check), synthesizes a cited HTML answer (llm",
+          "type": "flow-template",
+          "properties": {
+            "category": "rag",
+            "nodeTypesUsed": [
+              "embedding",
+              "grounding_check",
+              "guardrails",
+              "knowledge_search",
+              "llm_completion",
+              "multi_query",
+              "rerank",
+              "trigger",
+              "webhook_response"
+            ],
+            "toolsUsed": [
+              "embedding",
+              "grounding_check",
+              "guardrails",
+              "knowledge_search",
+              "llm_completion",
+              "multi_query",
+              "rerank",
+              "webhook_response"
+            ]
+          },
+          "sourceFile": "services/openagentic-workflows/seed/templates/rag-knowledge-qa.json"
+        },
+        {
+          "id": "research-and-publish",
+          "name": "Research and Publish",
+          "description": "End-to-end data-layer proof: pulls real content from the web for a topic, ingests it into the platform knowledge base (Milvus shared_knowledge), RAGs it back against the user's question, and renders an interactive HTML report as an openable artifact in the artifact rail. Default topic is configurable. No mocks anywhere in the pipeline.",
+          "type": "flow-template",
+          "properties": {
+            "category": "research",
+            "nodeTypesUsed": [
+              "knowledge_ingest",
+              "knowledge_search",
+              "llm_completion",
+              "mcp_tool",
+              "transform",
+              "trigger",
+              "webhook_response"
+            ],
+            "toolsUsed": [
+              "knowledge_ingest",
+              "knowledge_search",
+              "llm_completion",
+              "openagentic_web.web_search_and_read",
+              "transform",
+              "webhook_response"
+            ]
+          },
+          "sourceFile": "services/openagentic-workflows/seed/templates/research-and-publish.json"
+        }
+      ]
+    }
+  ]
+}

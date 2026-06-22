@@ -1,0 +1,12 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_kubernetes.k8s_list_services against an empty namespace.",
+  "result": {
+    "result": {
+      "success": true,
+      "namespace": "empty-namespace",
+      "is_protected": false,
+      "services": [],
+      "count": 0
+    }
+  }
+}

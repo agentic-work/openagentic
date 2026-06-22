@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "oap-web-mcp"
+version = "0.6.0"
+description = "OpenAgentic Web MCP Server - Intelligent web browsing and research capabilities"
+requires-python = ">=3.10"
+dependencies = [
+    "fastmcp>=0.4.1",
+    "httpx>=0.25.0",
+    "beautifulsoup4>=4.12.0",
+    "markdownify>=0.11.0",
+    "duckduckgo-search>=6.0.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "structlog>=24.1.0",
+]
+
+[project.scripts]
+oap-web-mcp = "server:mcp.run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

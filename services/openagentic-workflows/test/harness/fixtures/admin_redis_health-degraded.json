@@ -1,0 +1,14 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_admin.admin_system_redis_health_check, DEGRADED case. Mirrors the exception path in services/mcps/oap-admin-mcp/src/admin_mcp_server/server.py lines 588-593 where redis.ping() raises (connection refused, timeout, auth failure, etc.). Used by the degraded-case test to verify the analyze transform classifies the service as 'unhealthy' and the LLM narrative + report explicitly flag Redis as down. Note: success=false; healthy=false; message carries the exception text.",
+  "result": {
+    "result": {
+      "isError": false,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"success\": false, \"healthy\": false, \"message\": \"Redis connection failed: Error 111 connecting to redis-master.openagentic.svc.cluster.local:6379. Connection refused.\"}"
+        }
+      ]
+    }
+  }
+}
