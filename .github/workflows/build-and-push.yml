@@ -288,7 +288,7 @@ jobs:
           echo "BUNDLE=openagentic-compose-${V}.tar.gz" >> "$GITHUB_ENV"
 
       - name: Upload compose bundle to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ${{ env.BUNDLE }}
           fail_on_unmatched_files: true
