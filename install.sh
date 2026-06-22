@@ -139,7 +139,9 @@ trap 'CURRENT_STEP="line $LINENO"' ERR
 
 # ─── Resource preflight helpers ──────────────────────────────────────────────
 # Free disk (GB) on the install volume. Best-effort; 0 if it can't be read.
-free_disk_gb() { df -Pg "$1" 2>/dev/null | awk 'NR==2{print $4+0}' || echo 0; }
+# `df -g` is macOS/BSD-only; GNU df (Linux) rejects it, so the old `-Pg` always
+# fell through to `0`. `-Pk` (POSIX 1K blocks) works on BOTH; convert KB→GB.
+free_disk_gb() { df -Pk "$1" 2>/dev/null | awk 'NR==2{print int($4/1048576)}' || echo 0; }
 # Is a TCP port already bound on the host? (used to catch UI port clashes early)
 port_in_use() {
   local p="$1"
@@ -702,11 +704,14 @@ if [[ "$HAVE_OLLAMA" == "1" ]]; then
   # Chat model: detect the best tool-capable model the user already has, in
   # rough order of quality. Only auto-pull when nothing usable is present —
   # avoids a 5GB+ surprise on a box that already has e.g. llama3.1:8b loaded.
+  # `|| true`: under `set -euo pipefail`, a grep/curl that finds nothing exits
+  # non-zero and would kill the whole install. A no-match here just means "no
+  # models yet" — handle it, don't die.
   all_models=$(curl -fsS --max-time 5 "$LOCAL_OLLAMA/api/tags" 2>/dev/null | \
     grep -oE "\"(name|model)\"[[:space:]]*:[[:space:]]*\"[^\"]+\"" | \
-    sed -E 's/.*"([^"]+)"$/\1/' | sort -u)
+    sed -E 's/.*"([^"]+)"$/\1/' | sort -u || true)
   for pat in 'qwen2\.5' 'qwen3' 'gpt-oss' 'llama3\.3' 'llama3\.1' 'llama-?3' 'mistral' 'gemma'; do
-    match=$(echo "$all_models" | grep -E "^$pat(:|$)" | head -1)
+    match=$(echo "$all_models" | grep -E "^$pat(:|$)" | head -1 || true)
     if [[ -n "$match" ]]; then CHAT_MODEL="$match"; break; fi
   done
   if [[ -n "$CHAT_MODEL" ]]; then
