@@ -5,7 +5,7 @@ ARG SRC_PATH=services/openagentic-ui
 # Stage 1: Generate documentation manifests by scanning the full codebase
 # Runs in an isolated stage so the repo-wide COPY doesn't bloat the UI build
 # =============================================================================
-FROM node:20-slim AS docs-generator
+FROM node:26-slim AS docs-generator
 
 ARG SRC_PATH
 WORKDIR /repo
@@ -26,7 +26,7 @@ RUN npx tsx scripts/generate-docs.ts || echo "WARN: docs generation failed, usin
 # =============================================================================
 # Stage 2: Build the UI
 # =============================================================================
-FROM node:20-slim AS ui-builder
+FROM node:26-slim AS ui-builder
 
 # Install pnpm + build tools (some native deps require python/make/g++).
 RUN apt-get update && apt-get install -y --no-install-recommends \
