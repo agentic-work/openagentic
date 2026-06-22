@@ -138,21 +138,39 @@ echo "========================================="
 echo "Syncing database schema"
 echo "========================================="
 # Schema sync uses `prisma db push` (idempotent: creates missing tables on
-# first boot, no-ops when in sync). KNOWN HARDENING GAP (tracked): db push is
-# schema-only, so the raw-SQL security objects in prisma/migrations/ —
-# row-level-security policies + the audit-immutability triggers — are NOT
-# created by this path. Switching to `prisma migrate deploy` requires first
-# regenerating a clean, replayable from-empty migration baseline (the current
-# 13 migrations are out-of-order drift on a db-push base and fail from empty:
-# "schema admin does not exist"). That regen + a boot-regression test that
-# asserts the RLS/triggers exist belongs in the in-cluster CI runner where a
-# real DB boot can be gated. Until then this stays db push so fresh installs
-# boot reliably.
+# first boot, no-ops when in sync). db push is schema-only, so the raw-SQL
+# security objects in prisma/migrations/ — row-level-security policies + the
+# audit-immutability triggers — are NOT created by this path. Switching to
+# `prisma migrate deploy` would require first regenerating a clean, replayable
+# from-empty migration baseline (the current migrations are out-of-order drift
+# on a db-push base and fail from empty: "schema admin does not exist").
+#
+# HARDENING GAP — NOW CLOSED: instead of replaying the unreplayable migration
+# history, the security objects are consolidated into one idempotent,
+# existence-guarded file (prisma/security/hardening.sql) that is applied right
+# after `db push` below, on every boot. It ships the NIST AC-4 row-level
+# security policies + AU-9 audit-immutability triggers on a stock install.
 if ! ./node_modules/.bin/prisma db push --accept-data-loss --skip-generate; then
   echo "prisma db push failed. Aborting start."
   exit 1
 fi
 echo "Schema in sync"
+
+echo "========================================="
+echo "[security] applying RLS + audit-immutability hardening"
+echo "========================================="
+# Apply the consolidated security hardening (NIST AC-4 RLS + AU-9 audit
+# immutability). The file is idempotent and existence-guarded, so this is a
+# safe no-op once applied and skips tables absent in this install.
+# Warn-and-continue: a hardening failure must NOT brick the install — it is
+# logged loudly so it is visible in boot logs, but the server still starts.
+if ! ./node_modules/.bin/prisma db execute --file prisma/security/hardening.sql --schema prisma/schema.prisma; then
+  echo "🚨 [security] WARNING: RLS + audit-immutability hardening FAILED to apply."
+  echo "🚨 [security] The server will still start, but data-isolation/immutability"
+  echo "🚨 [security] guarantees may be DEGRADED. Investigate prisma/security/hardening.sql."
+else
+  echo "✅ [security] RLS + audit-immutability hardening applied"
+fi
 
 echo "========================================="
 echo "✅ ALL dependencies ready - starting API server"
