@@ -1,0 +1,45 @@
+# Enterprise cloud setup
+
+Hooks openagentic's cloud MCPs (`oap-aws-mcp`, `oap-azure-mcp`, `oap-gcp-mcp`, plus kubernetes / logging / monitoring variants) into real Azure, AWS, and GCP accounts so the agent can introspect and operate against them.
+
+Everything provisioned here is **read-only** by default. Grant write scopes deliberately, per-use-case.
+
+## What gets provisioned
+
+Each cloud needs one read-only identity for its MCP. The steps below create them as templates — nothing is tenant-specific beyond the IDs you supply.
+
+| Cloud | What to create | Identity for the MCP |
+|---|---|---|
+| Azure | App Registration + Service Principal + Reader role | Service Principal (client credentials flow) |
+| AWS   | IAM user with `ReadOnlyAccess` | Access key pair |
+| GCP   | Service Account with viewer roles | JSON service-account key |
+
+These are **MCP service credentials only** — openagentic auth is local username/password (there is no cloud / federated user sign-in). The Azure Service Principal also backs the SP-based Azure cost dashboard.
+
+Deep-dive in each cloud's page:
+
+- [azure.md](./azure.md) — Entra ID App Reg, Service Principal, Reader on sub
+- [aws.md](./aws.md) — Read-only IAM user + access key pair
+- [gcp.md](./gcp.md) — Service Account with least-privilege viewer roles
+- [secrets.md](./secrets.md) — Where credentials live, how the MCPs consume them
+
+## Secrets storage
+
+All credentials from these steps are written to `~/.openagentic/cloud-secrets/`, chmod `0700`, never committed to git. The compose stack mounts this directory read-only into the MCP containers that need it. See [secrets.md](./secrets.md).
+
+## Prerequisites
+
+- `az` CLI (≥ 2.60) with an account that can create App Registrations + assign subscription roles.
+- `aws` CLI (v2) with a principal that has `iam:*` on the target account.
+- `gcloud` CLI with permission to create Service Accounts + set IAM policy on the target project.
+- A tenant / account / project you're willing to use for the openagentic instance — do **not** run this against a production cloud tenant.
+
+## One-shot setup
+
+All of the below runs from this repo root assuming the three CLIs are authenticated to the right place:
+
+```bash
+bash docs/enterprise-setup/setup.sh
+```
+
+That script is a thin wrapper over the commands documented in `azure.md`, `aws.md`, and `gcp.md`. Prefer running those step-by-step the first time so you understand what lands where.

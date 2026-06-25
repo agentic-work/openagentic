@@ -1,0 +1,14 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_admin.admin_system_postgres_health_check, healthy case. Captured 2026-05-13 from oap-admin-mcp source (services/mcps/oap-admin-mcp/src/admin_mcp_server/server.py lines 353-387). The python tool returns a Dict[str, Any] which FastMCP wraps as content[{type:'text', text: <json-string>}]. The mcp-proxy passes through 2 layers of result unwrap (proxy.result -> jsonrpc.result) and surfaces { content: [...], isError: false }. The workflow engine's mcp_tool node content-block joiner (WorkflowExecutionEngine.ts lines 2108-2116) collapses content[].text into a single `content` string. Cluster as of 2026-05-13: postgresql-0 is healthy (Running, age 2d4h).",
+  "result": {
+    "result": {
+      "isError": false,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"success\": true, \"healthy\": true, \"message\": \"Database connection is healthy\", \"version\": \"PostgreSQL 18.3 on aarch64-unknown-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit\", \"table_count\": 64, \"database_size_mb\": 187.3}"
+        }
+      ]
+    }
+  }
+}

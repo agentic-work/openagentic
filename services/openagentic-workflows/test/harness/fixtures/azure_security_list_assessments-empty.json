@@ -1,0 +1,12 @@
+{
+  "_comment": "Empty-case fixture: no unhealthy assessments — either fully clean posture, or Defender plan never activated. assessments[] empty. Same 3-layer mcp-proxy envelope.",
+  "result": {
+    "result": {
+      "success": true,
+      "subscription_id": "99999999-8888-7777-6666-555555555555",
+      "count": 0,
+      "assessments": [],
+      "executed_as": { "user": "mcp-tester@example.com" }
+    }
+  }
+}

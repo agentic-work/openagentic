@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "typeRoots": ["./node_modules/@types", "../../node_modules/@types", "./src/types"],
+    "strict": false,
+    "noImplicitAny": false,
+    "esModuleInterop": true,
+    "downlevelIteration": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "incremental": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["src/**/*", "src/**/*.d.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.test.ts",
+    "src/__tests__/**",
+    "src/tests/**",
+    "src/repositories/BaseRepository.ts",
+    "src/repositories/ChatSessionRepository.ts",
+    "src/repositories/MCPToolRepository.ts",
+    "src/repositories/UserRepository.ts",
+    "src/repositories/RepositoryContainer.ts"
+  ],
+  "ts-node": {
+    "esm": true
+  }
+}

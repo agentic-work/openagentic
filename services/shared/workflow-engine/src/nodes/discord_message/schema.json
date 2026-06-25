@@ -1,0 +1,73 @@
+{
+  "type": "discord_message",
+  "category": "integration",
+  "label": "Discord Message",
+  "description": "Send a message to a Discord channel via webhook. Supports plain content, custom username, and embeds.",
+  "icon": "discord",
+  "primary": "sent",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "status": "number",
+          "sent": "boolean"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "webhookUrl",
+      "label": "Webhook URL",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "https://discord.com/api/webhooks/..."
+    },
+    {
+      "name": "content",
+      "label": "Content",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "Build {{trigger.id}} succeeded"
+    },
+    {
+      "name": "username",
+      "label": "Username override",
+      "type": "string",
+      "required": false,
+      "default": "OpenAgentic"
+    },
+    {
+      "name": "embeds",
+      "label": "Embeds",
+      "type": "json",
+      "required": false,
+      "description": "Optional Discord embed objects array — passed through to the webhook payload as-is."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Post a message to Discord via webhook.",
+    "whenToUse": "When you need to notify a Discord channel about a workflow event or status update.",
+    "examplePrompt": "post to the Discord build channel when a deploy finishes",
+    "promptHints": "Reference output via {{steps.<id>.result.sent}} (boolean). Discord returns 204 No Content on success."
+  },
+  "outputAssertions": [
+    {
+      "name": "sent_ok",
+      "expression": "result && result.sent === true",
+      "errorMessage": "Discord webhook responded with non-success status."
+    }
+  ]
+}

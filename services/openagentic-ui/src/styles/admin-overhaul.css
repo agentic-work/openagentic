@@ -1,0 +1,273 @@
+/* ==========================================================================
+   ADMIN CONSOLE VISUAL OVERHAUL
+   Applies the approved mockup design language across all admin sections.
+   Typography: Plus Jakarta Sans (UI) + JetBrains Mono (data/code)
+   All colors via CSS variables — respects theme system.
+   ========================================================================== */
+
+/* ── Google Fonts: Plus Jakarta Sans ───────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* ── Admin-scoped typography ──────────────────────────────────────────── */
+.admin-portal {
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.admin-portal h1,
+.admin-portal h2,
+.admin-portal h3,
+.admin-portal h4 {
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+  letter-spacing: -0.02em;
+}
+
+/* Monospace data: badges, metrics, code values */
+.admin-portal .font-mono,
+.admin-portal pre,
+.admin-portal code,
+.admin-portal [data-mono] {
+  font-family: 'JetBrains Mono', var(--font-mono);
+}
+
+/* ── Sidebar overhaul ─────────────────────────────────────────────────── */
+.admin-sidebar {
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+}
+
+/* Section labels in sidebar */
+.admin-sidebar .text-\[10px\].uppercase,
+.admin-sidebar [class*="tracking-wider"][class*="uppercase"] {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1.2px !important;
+  text-transform: uppercase !important;
+  opacity: 0.5;
+}
+
+/* Nav items */
+.admin-sidebar button,
+.admin-sidebar a {
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.12s ease;
+}
+
+/* Active nav indicator - accent left border */
+.admin-sidebar [data-active="true"],
+.admin-sidebar .bg-\[var\(--ap-bg-tertiary\)\] {
+  border-left: 2px solid var(--color-accent, var(--color-primary));
+}
+
+/* ── Page headers ─────────────────────────────────────────────────────── */
+.admin-portal h1 {
+  font-size: 20px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.3px !important;
+}
+
+.admin-portal h2 {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+}
+
+/* ── Metric cards (AdminMetricCard) ───────────────────────────────────── */
+/* Add colored top-border gradient accent like the mockup */
+.admin-portal [class*="AdminMetricCard"],
+.admin-portal .rounded-lg.p-4[style*="--color-surface"] {
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Badges / pills ───────────────────────────────────────────────────── */
+.admin-portal .rounded-full[class*="text-\[10px\]"],
+.admin-portal .rounded-full[class*="text-xs"] {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  font-size: 10px;
+}
+
+/* ── Tables ───────────────────────────────────────────────────────────── */
+.admin-portal table th {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.8px !important;
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+}
+
+.admin-portal table td {
+  font-size: 12px;
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+}
+
+/* Monospace table data */
+.admin-portal table td .font-mono,
+.admin-portal table td[class*="mono"] {
+  font-family: 'JetBrains Mono', var(--font-mono);
+  font-size: 11px;
+}
+
+/* ── Form inputs ──────────────────────────────────────────────────────── */
+.admin-portal input,
+.admin-portal select,
+.admin-portal textarea {
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+  font-size: 13px;
+  border-radius: 6px;
+  transition: border-color 0.12s ease;
+}
+
+.admin-portal input:focus,
+.admin-portal select:focus,
+.admin-portal textarea:focus {
+  border-color: var(--color-accent, var(--color-primary)) !important;
+  outline: none;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.admin-portal button {
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+  transition: all 0.12s ease;
+}
+
+/* Primary accent buttons */
+.admin-portal button[style*="--color-accent"] {
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.admin-portal button[style*="--color-accent"]:hover {
+  filter: brightness(1.12);
+}
+
+/* Ghost/outline buttons */
+.admin-portal button[style*="border"] {
+  border-radius: 6px;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────── */
+.admin-portal .rounded-lg.p-0\.5,
+.admin-portal .inline-flex.rounded-lg {
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.admin-portal .rounded-lg.p-0\.5 button,
+.admin-portal .inline-flex.rounded-lg button {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+}
+
+/* ── Section labels ───────────────────────────────────────────────────── */
+.admin-portal .text-\[10px\].font-bold.uppercase {
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+
+/* ── Card hover effects ───────────────────────────────────────────────── */
+.admin-portal .rounded-lg[style*="border"][style*="surface"]:hover {
+  border-color: color-mix(in srgb, var(--color-border) 70%, var(--color-accent, var(--color-primary))) !important;
+}
+
+/* ── Recharts chart tooltips — match design system ────────────────────── */
+.admin-portal .recharts-tooltip-wrapper .recharts-default-tooltip {
+  font-family: 'Plus Jakarta Sans', var(--font-sans) !important;
+  font-size: 11px !important;
+  border-radius: 6px !important;
+  border: 1px solid var(--color-border) !important;
+  background: var(--color-surface) !important;
+}
+
+/* ── Scrollbar styling ────────────────────────────────────────────────── */
+.admin-portal ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.admin-portal ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-portal ::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.admin-portal ::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary, var(--color-textMuted));
+}
+
+/* ── Modals / Slide-in panels ─────────────────────────────────────────── */
+.admin-portal .fixed.inset-0[class*="backdrop-blur"] {
+  backdrop-filter: blur(8px);
+}
+
+.admin-portal .rounded-xl.shadow-2xl {
+  border-radius: 12px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+}
+
+/* Modal section titles */
+.admin-portal .text-xs.font-semibold.uppercase.tracking-wider[style*="accent"] {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+}
+
+/* ── Filter bars ──────────────────────────────────────────────────────── */
+.admin-portal [class*="AdminFilterBar"] input,
+.admin-portal [class*="filter"] input {
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+/* ── Loading states ───────────────────────────────────────────────────── */
+.admin-portal .animate-pulse {
+  animation-duration: 1.5s;
+}
+
+/* ── Slide-in panel ───────────────────────────────────────────────────── */
+.admin-portal .slide-in-panel {
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+}
+
+/* ── Metric card gradient accents (mockup-style colored top border) ──── */
+.admin-portal .grid [class*="rounded-lg"][class*="p-4"]:nth-child(4n+1) {
+  border-top: 2px solid var(--color-accent, var(--color-primary));
+}
+
+.admin-portal .grid [class*="rounded-lg"][class*="p-4"]:nth-child(4n+2) {
+  border-top: 2px solid var(--color-success);
+}
+
+.admin-portal .grid [class*="rounded-lg"][class*="p-4"]:nth-child(4n+3) {
+  border-top: 2px solid var(--color-primary);
+}
+
+.admin-portal .grid [class*="rounded-lg"][class*="p-4"]:nth-child(4n+4) {
+  border-top: 2px solid var(--color-warning);
+}
+
+/* ── Value emphasis ───────────────────────────────────────────────────── */
+.admin-portal .text-2xl {
+  font-weight: 800 !important;
+  letter-spacing: -1px;
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+}
+
+.admin-portal .text-3xl {
+  font-weight: 800 !important;
+  letter-spacing: -1px;
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+}

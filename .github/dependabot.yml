@@ -1,0 +1,259 @@
+# Dependabot configuration for openagentic.
+#
+# Conventions:
+#   - Weekly cadence (Monday) to batch updates and keep PR noise low.
+#   - Patch + minor updates are GROUPED into a single PR per ecosystem/dir so
+#     routine bumps land as one reviewable PR; MAJOR updates stay individual.
+#   - open-pull-requests-limit is kept modest per ecosystem for the same reason.
+#
+# Ecosystems covered:
+#   - npm            : every shipping Node package (root, api, ui, workflows,
+#                      proxy, the two shared/* packages, the setup wizard)
+#   - pip            : the mcp-proxy + all 9 built-in MCP servers (requirements.txt)
+#   - docker         : every Dockerfile dir (base-image bumps)
+#   - github-actions : the workflows in /.github/workflows
+#
+# Test-only package.json dirs (tests/*, services/openagentic-ui/tests/e2e,
+# the eslint-plugin-admin-tokens helper) are intentionally omitted — they are
+# not shipped and would only add PR noise.
+version: 2
+
+updates:
+  # ───────────────────────── npm (Node services) ─────────────────────────────
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/services/openagentic-api"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/services/openagentic-ui"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/services/openagentic-workflows"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/services/openagentic-proxy"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/services/shared/llm-sdk"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/services/shared/workflow-engine"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/tools/setup"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  # ───────────────────────── pip (Python MCP servers) ────────────────────────
+  - package-ecosystem: pip
+    directory: "/services/openagentic-mcp-proxy"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: "/services/mcps/oap-admin-mcp"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: "/services/mcps/oap-aws-mcp"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: "/services/mcps/oap-azure-mcp"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: "/services/mcps/oap-gcp-mcp"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: "/services/mcps/oap-github-mcp"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: "/services/mcps/oap-kubernetes-mcp"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: "/services/mcps/oap-loki-mcp"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: "/services/mcps/oap-prometheus-mcp"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: "/services/mcps/oap-web-mcp"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  # ───────────────────────── docker (Dockerfile base images) ─────────────────
+  - package-ecosystem: docker
+    directories:
+      - "/services/openagentic-api"
+      - "/services/openagentic-ui"
+      - "/services/openagentic-workflows"
+      - "/services/openagentic-mcp-proxy"
+      - "/services/openagentic-proxy"
+      - "/services/openagentic-ollama"
+      - "/services/mcps/oap-admin-mcp"
+      - "/services/mcps/oap-aws-mcp"
+      - "/services/mcps/oap-azure-mcp"
+      - "/services/mcps/oap-gcp-mcp"
+      - "/services/mcps/oap-github-mcp"
+      - "/services/mcps/oap-kubernetes-mcp"
+      - "/services/mcps/oap-loki-mcp"
+      - "/services/mcps/oap-prometheus-mcp"
+      - "/services/mcps/oap-web-mcp"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      docker-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  # ───────────────────────── github-actions (CI workflows) ───────────────────
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      actions-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]

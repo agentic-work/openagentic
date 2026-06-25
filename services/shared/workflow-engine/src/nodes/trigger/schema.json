@@ -1,0 +1,42 @@
+{
+  "type": "trigger",
+  "category": "trigger",
+  "label": "Trigger",
+  "description": "Workflow entry point. Emits the input as the first event so downstream nodes can reference it via {{trigger.body.*}} and {{trigger.<key>}}.",
+  "icon": "play",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [{ "name": "output", "type": "any", "required": false }]
+  },
+  "settings": [
+    {
+      "name": "triggerType",
+      "label": "Trigger type",
+      "type": "enum",
+      "values": ["manual", "webhook", "schedule", "event", "workflow_finished"],
+      "default": "manual",
+      "required": false,
+      "description": "Source of the triggering event. 'manual' is the default for ad-hoc runs. 'workflow_finished' (P1.19) fires this flow when another flow completes — configure via triggerConfig: { sourceWorkflowId | sourceWorkflowSlug, matchStatus?: 'completed'|'failed'|'any' }. Inputs available downstream: {{trigger.sourceExecutionId}}, {{trigger.sourceWorkflowId}}, {{trigger.sourceStatus}}, {{trigger.sourceOutput}}."
+    },
+    {
+      "name": "triggerConfig",
+      "label": "Trigger configuration",
+      "type": "object",
+      "required": false,
+      "description": "Type-specific config (e.g. webhook path, cron expression, event topic)."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Workflow entry-point — emits its input as the first event.",
+    "whenToUse": "Always at the start of a flow. Place exactly one trigger node so {{trigger.body.*}} resolves downstream.",
+    "examplePrompt": "add a manual trigger that accepts { message, userId }",
+    "promptHints": "Reference the payload as {{trigger.body.<field>}} (canonical) or {{trigger.<field>}} (flat alias for object inputs)."
+  },
+  "outputAssertions": [
+    {
+      "name": "non_empty_content",
+      "expression": "result !== null && result !== undefined",
+      "errorMessage": "Trigger node received no input — workflow has nothing to template against."
+    }
+  ]
+}

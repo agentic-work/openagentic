@@ -1,0 +1,81 @@
+{
+  "type": "wait_for",
+  "category": "control",
+  "label": "Wait For Condition",
+  "description": "Poll an expression until it becomes truthy (or a timeout elapses). Differs from `wait`, which sleeps a fixed duration. Useful for: 'wait until job_status == done', 'wait until pod ready', 'wait until queue depth < N'. Reference: n8n's Wait node 'until condition' variant + the n8n/Flowise/Langflow gap analysis (P1 #3).",
+  "icon": "loader",
+  "primary": "satisfied",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "satisfied": "boolean",
+          "polls": "number",
+          "durationMs": "number",
+          "lastValue": "any",
+          "timedOut": "boolean"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "condition",
+      "label": "Condition (JS expression)",
+      "type": "code",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "input.status === 'done'",
+      "description": "Expression evaluated against `input` on each poll. Returns truthy → continue; falsy → wait and re-poll. Same sandbox semantics as the `condition` node."
+    },
+    {
+      "name": "pollIntervalSeconds",
+      "label": "Poll interval (seconds)",
+      "type": "number",
+      "required": false,
+      "default": 5,
+      "min": 1,
+      "description": "Seconds between condition evaluations. Use longer intervals for expensive checks (e.g. mcp_tool calls upstream) — the engine re-evaluates the SAME `input` so the inputs need to be expected to change by your upstream flow design."
+    },
+    {
+      "name": "timeoutSeconds",
+      "label": "Timeout (seconds)",
+      "type": "number",
+      "required": false,
+      "default": 300,
+      "min": 1,
+      "description": "Maximum total wait. If the condition is still falsy when this elapses, the node emits { satisfied: false, timedOut: true } and the workflow continues — downstream `condition` nodes can branch on `{{steps.<id>.timedOut}}`."
+    },
+    {
+      "name": "failOnTimeout",
+      "label": "Fail on timeout",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "When true, a timeout raises node_error instead of returning `timedOut: true`. Default false so workflows can model the timeout path explicitly."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Poll an expression until it becomes truthy, with a timeout.",
+    "whenToUse": "Async waits where the condition depends on external state changes (job completion, resource readiness, rate-limit reset). Use the simpler `wait` node for fixed sleeps.",
+    "examplePrompt": "wait until the deployment is ready, polling every 10 seconds for up to 5 minutes",
+    "promptHints": "Output: {{steps.X.satisfied}} (boolean), {{steps.X.polls}} (count), {{steps.X.timedOut}} (boolean), {{steps.X.lastValue}} (final evaluated value)."
+  },
+  "outputAssertions": [
+    {
+      "name": "shape_complete",
+      "expression": "result && typeof result.satisfied === 'boolean' && typeof result.polls === 'number'",
+      "errorMessage": "wait_for did not emit the required output shape (satisfied/polls/durationMs/timedOut)."
+    }
+  ]
+}

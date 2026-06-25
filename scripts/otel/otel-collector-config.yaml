@@ -1,0 +1,46 @@
+# OpenTelemetry Collector config for the OpenAgentic docker-compose stack.
+#
+# Receives the api's gen_ai OTLP telemetry (gRPC :4317 / HTTP :4318), batches
+# it, then:
+#   - re-exports metrics on :8889 in the Prometheus exposition format, which the
+#     in-stack `prometheus` service scrapes (job: otel-collector in
+#     scripts/prometheus/prometheus.yml) → the admin-console gen_ai dashboard.
+#   - ships logs to Loki (push API) so the loki MCP can query them.
+#
+# Minimal + valid for the otel/opentelemetry-collector-contrib image. The api
+# only emits to this collector when OTEL_EXPORTER_OTLP_ENDPOINT is set (the
+# setup wizard points it at http://otel-collector:4317 for the monitoring MCPs).
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+
+exporters:
+  # Prometheus exposition endpoint scraped by the in-stack prometheus service.
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    # Keep the gen_ai_* metric names intact (no namespace prefix) so the
+    # admin-console dashboard queries resolve as emitted by the api.
+    send_timestamps: true
+    resource_to_telemetry_conversion:
+      enabled: true
+  # Loki push API — logs land in the in-stack loki service.
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/loki]

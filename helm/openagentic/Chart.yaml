@@ -1,0 +1,20 @@
+apiVersion: v2
+name: openagentic
+description: Barebones Helm chart for a self-contained OpenAgentic stack (chat, flows, MCPs)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - openagentic
+  - agents
+  - mcp
+  - ai
+home: https://github.com/agentic-work/openagentic
+sources:
+  - https://github.com/agentic-work/openagentic
+maintainers:
+  - name: agentic-work
+# Self-contained: postgres (pgvector), redis, ollama, and all app services ship
+# as plain Deployments in this chart. No external subcharts. Vector search uses
+# pgvector inside postgres; Milvus is intentionally omitted for a minimal install.
+dependencies: []

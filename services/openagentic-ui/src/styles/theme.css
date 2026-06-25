@@ -1,0 +1,1211 @@
+/* ============================================================================
+ * theme.css — THE ONE SOURCE OF TRUTH for the OpenAgentic UI theme.
+ *
+ * Tailwind v4 CSS-first @theme over native CSS custom properties.
+ *
+ * This is the ONLY file in src/ allowed to contain a raw color / font /
+ * shadow / radius literal (besides the documented allowlist:
+ * assets/icons/ai-brands/brand-colors.ts vendor brand hexes, shiki syntax
+ * palette, workflow node-TYPE identity colors, diagram palettes, and legit
+ * on-accent contrast tokens).
+ *
+ * Measured-brand source: the LIVE https://openagentics.io DOM (Playwright
+ * computed styles). See docs/design/theme-sot-spec.md for the full spec.
+ *
+ * Structure (top → bottom):
+ *   0. @import "tailwindcss"           — v4 base+components+utilities
+ *   0b. @config / @plugin               — legacy utility-name bridge (Phase-0
+ *                                          only; deleted once call sites are
+ *                                          codemodded to the new utilities)
+ *   0c. @custom-variant dark            — dark: variants key off [data-theme]
+ *   1. @theme  — PRIMITIVES (raw brand values) + brand fonts + type/tracking
+ *                + radius + brutalist hard-shadow tokens + the Tailwind
+ *                semantic bindings (bg-bg / text-fg / border-rule / …).
+ *   2. SEMANTIC override blocks — the ONLY theme-switching layer:
+ *        :root,[data-theme="dark"]   (dark default)
+ *        [data-theme="light"]        (paper/ink)
+ *   3. LEGACY ALIAS block — every legacy namespace the app still consumes
+ *        (--color-background / --color-text* / --user-accent-* / --fg-* /
+ *         --bg-* / --line-* / --accent / --cm-* / --ap-* …) aliased to the
+ *        canonical tokens. Transitional; codemodded away in a later phase.
+ *   4. BRUTALIST utility layer — .shadow-hard / .border-ink / .display /
+ *        .eyebrow / .lede / .btn-label helper classes.
+ * ==========================================================================*/
+
+@import "tailwindcss";
+
+/* Legacy bridge: keep the existing tailwind.config.js color/utility mapping +
+   the forms/typography plugins reachable while 900+ files still author the old
+   utility names (bg-surface, text-text-secondary, bg-bg-1, border-line-1,
+   bg-pri, …). Removed once those call sites are codemodded to the new
+   utilities. The config's `safelist` block is deleted (v4 needs no safelist). */
+@config "../../tailwind.config.js";
+
+/* dark: utilities key off the single [data-theme] switch (not a .dark class).
+   The semantic layer flips automatically, so almost no dark: variants remain. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ============================================================================
+ * LAYER 1 — PRIMITIVES + FONTS + TYPE + RADIUS + SHADOWS + Tailwind bindings.
+ *
+ * Everything in @theme is theme-INDEPENDENT raw brand value, EXCEPT the
+ * semantic --color-* at the bottom which Tailwind binds to utilities and the
+ * LAYER-2 blocks override per theme. Tailwind v4 emits every utility as a
+ * var() reference, so the runtime [data-theme] flip repaints all of them.
+ * ==========================================================================*/
+@theme {
+  /* ---- Brand paper/ink ramp (light surfaces + ink text) ---- */
+  --brand-paper:        #F4EFE6;   /* page bg (light)            */
+  --brand-paper-2:      #EBE5D8;   /* surface (light)            */
+  --brand-paper-3:      #DBD3BF;   /* sunken (light)             */
+  --brand-paper-lift:   #FFFAF2;   /* lifted card (light)        */
+  --brand-ink:          #0E0D0B;   /* text primary (light)       */
+  --brand-ink-2:        #2A2722;   /* text secondary (light)     */
+  --brand-muted:        #605545;   /* muted text (light) — AA on paper/2/3 (was #7A6D5A, 3.4-4.4:1) */
+  --brand-muted-2:      #A89B86;   /* muted-er text (light)      */
+  --brand-rule:         #1A1816;   /* hard border (light)        */
+  --brand-rule-soft:    #8A7C66;   /* soft divider (light) — 3:1 UI on paper/2 (was #C8BFAF, 1.45:1) */
+
+  /* ---- Brand terminal ramp (the INVERTED dark block) ---- */
+  --brand-terminal-bg:     #18130C;  /* page bg (dark)           */
+  --brand-terminal-surf:   #211A11;  /* surface (dark)           */
+  --brand-terminal-surf-2: #2C2418;  /* surface-2 / hover (dark) */
+  --brand-terminal-fg:     #F4EFE6;  /* text primary (dark)      */
+  --brand-terminal-fg-2:   #CDC4B2;  /* text secondary (dark)    */
+  --brand-terminal-muted:  #968B76;  /* muted text (dark)        */
+  --brand-terminal-rule:   #554A38;  /* divider (dark) — lifted from #3A3024 (1.43:1) to ~2.1:1 for visibility */
+  --brand-terminal-rule-strong: #736450; /* visible UI border (dark) — ~3:1 on bg/surface */
+
+  /* ---- Signal accent ramp ---- */
+  --brand-signal:       #FF5722;   /* the accent                 */
+  --brand-signal-dim:   #FFE6DA;   /* accent wash (on paper)     */
+  --brand-signal-ink:   #9E320C;   /* accent-as-text on paper — AA on paper/2/3 (was #B83A0E, 3.86:1 on paper3) */
+  --brand-signal-soft:  #FFB87E;   /* secondary / terminal accent*/
+
+  /* ---- Status hues (warm-tuned, not neon) ---- */
+  --brand-success:      #22C55E;
+  --brand-success-ink:  #0D7233;   /* AA on paper/2 (was #16A34A, 2.6-2.9:1) */
+  --brand-warning:      #F59E0B;
+  --brand-warning-ink:  #8F4207;   /* AA on paper/2 (was #B45309, 4.38:1 on paper) */
+  --brand-error:        #FF453A;
+  --brand-error-ink:    #BE1B1B;   /* AA on paper/2 (was #DC2626, 4.22:1 on paper) */
+  --brand-info:         #4DD0E1;   /* diagram/info cyan (dark surfaces) */
+  --brand-info-ink:     #0C6E8A;   /* AA on paper/2 (cyan #4DD0E1 is 1.6:1 on paper) */
+
+  /* ---- On-accent text (the ONE legit "white-ish") ---- */
+  --brand-on-accent:    #0E0D0B;   /* ink on signal-orange btn   */
+
+  /* ============================================================================
+   * CATEGORICAL IDENTITY PALETTES (NOT theme surfaces — a fixed identity scale,
+   * like the workflow node-TYPE colors the guard allowlists). These are warm-
+   * tuned to the brand ramp and live HERE (the one file allowed raw literals)
+   * instead of being scattered across admin-tokens.css / mockup-v067.css.
+   * Components read them via the legacy --provider-*/--cap-*/--tier-*/--toast-*/
+   * --agent-* aliases in the LAYER-3 block below. theme-allow: categorical id.
+   * ==========================================================================*/
+  /* provider brand chips (vendor identity) */
+  --cat-provider-azure:     #0078D4;
+  --cat-provider-google:    #4285F4;
+  --cat-provider-aws:       #FF9900;
+  --cat-provider-ollama:    #22C55E;
+  --cat-provider-anthropic: #D4A574;
+  --cat-provider-openai:    #10A37F;
+  /* capability badges (dark-surface tuned) + their light-surface 700-shades */
+  --cat-cap-chat:        #3b82f6;  --cat-cap-chat-ink:        #1D4ED8;
+  --cat-cap-tools:       #f59e0b;  --cat-cap-tools-ink:       #B45309;
+  --cat-cap-vision:      #10b981;  --cat-cap-vision-ink:      #047857;
+  --cat-cap-thinking:    #ec4899;  --cat-cap-thinking-ink:    #BE185D;
+  --cat-cap-embeddings:  #8b5cf6;  --cat-cap-embeddings-ink:  #6D28D9;
+  --cat-cap-streaming:   #6366f1;  --cat-cap-streaming-ink:   #4338CA;
+  --cat-cap-image-gen:   #06b6d4;  --cat-cap-image-gen-ink:   #0E7490;
+  /* model tier scale + light-surface 700-shades */
+  --cat-tier-economy:    #10b981;  --cat-tier-economy-ink:    #047857;
+  --cat-tier-balanced:   #3b82f6;  --cat-tier-balanced-ink:   #1D4ED8;
+  --cat-tier-premium:    #8b5cf6;  --cat-tier-premium-ink:    #6D28D9;
+  /* sub-agent hash anchors (colorHashForId djb2 → one of four) */
+  --cat-agent-c: #F59E0B;  --cat-agent-g: #22C55E;
+  --cat-agent-s: #FF453A;  --cat-agent-k: #FF5722;
+  /* chat-surface sub-agent anchors (chatmode-v2 djb2 scale; cooler set) */
+  --cat-cm-agent-c: #f59e0b;  --cat-cm-agent-g: #10b981;
+  --cat-cm-agent-s: #ef4444;  --cat-cm-agent-k: #3b82f6;
+  /* tool-domain identity chips (cloud / k8s / filesystem) — dark + light ink */
+  --cat-domain-cloud: #38bdf8;  --cat-domain-cloud-ink: #0284c7;
+  --cat-domain-k8s:   #a78bfa;  --cat-domain-k8s-ink:   #7c3aed;
+  --cat-domain-fs:    #f59e0b;  --cat-domain-fs-ink:    #d97706;
+  /* thinking-stream identity (violet) — dark + light ink */
+  --cat-thinking:      #a78bfa;  --cat-thinking-ink:      #7c3aed;
+  --cat-thinking-soft: #c4b5fd;  --cat-thinking-soft-ink: #5b21b6;
+  /* code-mode named-accent presets (admin data-accent picker) */
+  --cat-accent-orange:  var(--brand-signal);   /* canonical brand default #FF5722 */
+  --cat-accent-gcp:     #5ec8ff;
+  --cat-accent-green:   #3ec77c;
+  --cat-accent-teal:    #14b8a6;
+  --cat-accent-amber:   #ffb547;
+  --cat-accent-violet:  #8b5cf6;
+  --cat-accent-magenta: #ec4899;
+
+  /* ---- Font stacks (3 brand families, loaded in index.html) ---- */
+  --font-display: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  --font-body:    "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans:    "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif:   "Instrument Serif", Georgia, "Times New Roman", serif;
+  --font-mono:    "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  /* code blocks keep JetBrains Mono ligatures (already self-hosted) */
+  --font-code:    "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+
+  /* ---- Type scale (matches the live site) ---- */
+  --text-display:  4.675rem;   /* 74.8px  — h1                   */
+  --text-h1:       3.8125rem;  /* 61px    — h2                   */
+  --text-h2:       2.5rem;     /* 40px                           */
+  --text-h3:       1.2219rem;  /* 19.55px                        */
+  --text-lede:     1.59375rem; /* 25.5px  — Instrument Serif lede*/
+  --text-body:     1.0625rem;  /* 17px    — Inter body           */
+  --text-sm:       0.875rem;   /* 14px                           */
+  --text-eyebrow:  0.6875rem;  /* 11px    — marker               */
+  --text-code:     0.75rem;    /* 12px                           */
+  --leading-display: 0.96;     /* 71.8/74.8                      */
+  --leading-body:    1.647;    /* 28/17                          */
+
+  /* ---- Tracking (the brand type signature) ---- */
+  --tracking-display: -0.04em;   /* h1 tight mono                */
+  --tracking-h2:      -0.03em;
+  --tracking-h3:      -0.015em;
+  --tracking-eyebrow:  0.16em;   /* +UPPERCASE small-caps mono   */
+  --tracking-button:   0.04em;   /* mono uppercase btn label     */
+
+  /* ---- Radius — the SOLE definition site for the --radius-* scale ----
+     theme.css is the ONE SOT (the no-hardcoded-theme-values guard enforces
+     single-definition for --radius-* / --shadow-* / --font-*). The
+     neo-brutalist core is SHARP; the soft M3 container/control sizes below
+     keep the values the (now-deleted) design-tokens.css :root block used to
+     carry, so the admin slide-in panels, toasts, tables, popovers and the
+     workflow canvas render unchanged — but from a single definition site.
+     The colliding names (card/input/sm/full) now resolve to the brutalist
+     value here, fixing the prior drift where the unlayered design-tokens.css
+     copy shadowed these to 20px/28px/6px. */
+  --radius-card:  0px;
+  --radius-btn:   0px;
+  --radius-input: 2px;
+  --radius-sm:    4px;
+  --radius-chip:  6px;
+  --radius-full:  9999px;
+  /* M3 container/control sizes (soft) — consumed via tailwind rounded-*
+     utilities + a few direct var() reads (admin SlideInPanel, workflow
+     canvas). Previously lived in design-tokens.css :root (collapsed here). */
+  --radius-md:        12px;   /* workflow node / generic medium control      */
+  --radius-input-sm:  16px;   /* text inputs, selects, textareas             */
+  --radius-panel:     24px;   /* modals, side panels, dialogs                */
+  --radius-message:   20px;   /* chat message bubbles                        */
+  --radius-toast:     14px;   /* toast notifications                         */
+  --radius-table:     16px;   /* outer table frame                           */
+  --radius-popover:   16px;   /* dropdowns, popovers                         */
+  --radius-checkbox:   6px;   /* checkbox (radio stays --radius-full)        */
+  --radius-btn-pill:  9999px; /* primary buttons, tags, send button          */
+  --radius-btn-soft:  12px;   /* secondary + icon buttons, toolbar           */
+
+  /* ---- Border (2px solid ink — the #2 brutalist signature) ---- */
+  --border-w:   2px;
+
+  /* ---- Hard offset shadows, ZERO blur (the #1 brutalist signature).
+         Shapes only here; the ink/shadow color is theme-bound in LAYER 2. ---- */
+  --shadow-card:    8px 8px 0 0 var(--color-shadow);
+  --shadow-card-lg: 12px 12px 0 0 var(--color-shadow);
+  --shadow-sm:      4px 4px 0 0 var(--color-shadow);
+  --shadow-xs:      2px 2px 0 0 var(--color-shadow);
+  --shadow-signal:  10px 10px 0 0 var(--brand-signal);
+
+  /* ---- Spacing (8px base, generous field-guide whitespace) ---- */
+  --space-section-top:    3.75rem; /* 60px */
+  --space-section-bottom: 4.75rem; /* 76px */
+  --measure:  45rem;               /* ~720px readable column */
+
+  /* ---- LAYER-3 Tailwind semantic bindings ----
+     These generate the utilities (bg-bg / bg-surface / text-fg /
+     text-fg-muted / border-rule / text-accent / shadow-hard / rounded-card /
+     font-display …). Each resolves to a var() so the LAYER-2 [data-theme]
+     overrides win at runtime. Dark defaults inlined here; LAYER 2 overrides. */
+  --color-bg:            var(--brand-terminal-bg);
+  --color-surface:       var(--brand-terminal-surf);
+  --color-surface-2:     var(--brand-terminal-surf-2);
+  --color-fg:            var(--brand-terminal-fg);
+  --color-fg-muted:      var(--brand-terminal-fg-2);
+  --color-fg-subtle:     var(--brand-terminal-muted);
+  --color-rule:          var(--brand-terminal-rule);
+  --color-rule-strong:   var(--brand-terminal-fg);
+  --color-accent:        var(--brand-signal);
+  --color-accent-soft:   color-mix(in srgb, var(--brand-signal) 14%, transparent);
+  --color-accent-line:   color-mix(in srgb, var(--brand-signal) 32%, transparent);
+  --color-on-accent:     var(--brand-on-accent);
+  --color-ok:            var(--brand-success);
+  --color-warn:          var(--brand-warning);
+  --color-err:           var(--brand-error);
+  --color-nfo:           var(--brand-info);
+}
+
+/* ============================================================================
+ * LAYER 2 — SEMANTIC tokens. The ONLY theme-switching layer.
+ *
+ * Defined exactly twice. Dark is the default (matches today's default). A
+ * theme flip is purely toggling [data-theme] on <html>. No !important, no JS
+ * setProperty of these. color-mix derives accent tints from --user-accent so
+ * the single accent write propagates everywhere.
+ * ==========================================================================*/
+:root,
+[data-theme="dark"] {
+  --color-bg:           var(--brand-terminal-bg);
+  --color-surface:      var(--brand-terminal-surf);
+  --color-surface-2:    var(--brand-terminal-surf-2);
+  --color-fg:           var(--brand-terminal-fg);
+  --color-fg-muted:     var(--brand-terminal-fg-2);
+  --color-fg-subtle:    var(--brand-terminal-muted);
+  --color-rule:         var(--brand-terminal-rule);
+  --color-rule-strong:  var(--brand-terminal-fg);
+  --color-shadow:       #000000;
+
+  --color-accent:       var(--user-accent, var(--brand-signal));
+  --color-accent-soft:  color-mix(in srgb, var(--color-accent) 14%, transparent);
+  --color-accent-line:  color-mix(in srgb, var(--color-accent) 32%, transparent);
+  --color-on-accent:    var(--brand-on-accent);
+
+  --color-ok:   var(--brand-success);
+  --color-warn: var(--brand-warning);
+  --color-err:  var(--brand-error);
+  --color-nfo:  var(--brand-info);
+
+  /* Critical text/surface aliases co-located here because the standalone
+   * LAYER-3 :root alias block gets dropped by the v4/lightningcss build, which
+   * left --color-text/--fg-0/--cm-text empty → text fell back to a cold-white
+   * literal. Defining them alongside --color-fg (which resolves) guarantees they
+   * apply + flip per theme. */
+  --color-text: var(--color-fg);            --color-background: var(--color-bg);
+  --color-textSecondary: var(--color-fg-muted);  --color-textMuted: var(--color-fg-subtle);
+  --fg-0: var(--color-fg);  --fg-1: var(--color-fg-muted);  --fg-2: var(--color-fg-subtle);  --fg-3: var(--color-fg-subtle);
+  --cm-text: var(--color-fg);  --cm-fg: var(--color-fg);  --cm-bg: var(--color-bg);  --cm-fg-0: var(--color-fg);
+
+  /* ── TERMINAL GLASS (elevated) — dark "orange-aurora" world ────────────────
+   * The frosted-glass + living-atmosphere design system. theme.css stays the
+   * ONE SOT: surfaces author with the .glass utility + these tokens; the app
+   * shell mounts .aurora/.grain/.vignette behind everything. Dark = the
+   * #140F09 world with a hero orange aurora. See terminal-glass-reference.html.
+   * --------------------------------------------------------------------------*/
+  --glass-page-bg:  #140F09;  /* the deep base the aurora blooms over (dark)   */
+  /* frosted surface = a subtle top-lit gradient of near-transparent warm paper */
+  --glass-surf-1:   color-mix(in srgb, var(--brand-paper) 4%,  transparent);
+  --glass-surf-2:   color-mix(in srgb, var(--brand-paper) 6.5%, transparent);
+  --glass-bg:       linear-gradient(180deg, var(--glass-surf-2), var(--glass-surf-1));
+  --glass-border:   color-mix(in srgb, var(--brand-paper) 9%, transparent);
+  --glass-edge:     color-mix(in srgb, #FFFFFF 14%, transparent);   /* hairline top highlight */
+  --glass-blur:     blur(28px) saturate(1.4);
+  --glass-radius:   18px;
+  --glass-shadow:   0 24px 60px -20px rgba(0,0,0,.7),
+                    0 2px 0 var(--glass-edge) inset,
+                    0 0 0 1px var(--glass-border);
+  --glass-card-shadow: 0 16px 40px -22px rgba(0,0,0,.7),
+                       0 1px 0 var(--glass-edge) inset;
+  /* aurora bloom stack — signal-orange radial blooms that slowly drift */
+  --aurora-1:  color-mix(in srgb, var(--color-accent) 42%, transparent);
+  --aurora-2:  color-mix(in srgb, color-mix(in srgb, var(--color-accent) 56%, #ffffff) 28%, transparent);
+  --aurora-3:  color-mix(in srgb, color-mix(in srgb, var(--color-accent) 56%, #ffffff) 20%, transparent);
+  --aurora-4:  color-mix(in srgb, var(--color-accent) 16%, transparent);
+  --aurora-opacity: 0.9;
+  --aurora-blur:    40px;
+  --grain-opacity:  0.05;
+  --vignette:  radial-gradient(120% 120% at 50% 40%, transparent 55%, rgba(0,0,0,.45));
+  /* on-glass accent tints (user/assistant bubbles, chips, send button) */
+  --glass-accent-fill:   color-mix(in srgb, var(--color-accent) 20%, transparent);
+  --glass-accent-fill-2: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --glass-accent-line:   color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --glass-accent-glow:   color-mix(in srgb, var(--color-accent) 50%, transparent);
+
+  /* ── Glass CONTROL tokens (Button / Input / StatusBadge / Card primitives) ──
+   * Re-skinned chrome surfaces: soft radii, frosted fills, the signal-orange
+   * gradient + glow send button, glow-lift hover, orange focus ring. Dark world.
+   * --------------------------------------------------------------------------*/
+  --ctl-radius:        12px;   /* buttons / inputs (soft, not sharp)          */
+  --ctl-radius-sm:     10px;   /* xs/sm chrome                                */
+  /* frosted neutral fill (secondary / ghost surfaces) */
+  --ctl-surf:          color-mix(in srgb, var(--brand-paper) 7%, transparent);
+  --ctl-surf-hover:    color-mix(in srgb, var(--brand-paper) 11%, transparent);
+  /* primary = the orange gradient send button from the reference */
+  --ctl-primary-grad:  linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 56%, #ffffff), var(--color-accent));
+  --ctl-primary-fg:    color-mix(in srgb, var(--brand-on-accent) 88%, var(--color-accent));
+  --ctl-primary-glow:  0 6px 22px -6px color-mix(in srgb, var(--color-accent) 70%, transparent);
+  --ctl-primary-glow-h:0 12px 30px -6px color-mix(in srgb, var(--color-accent) 78%, transparent);
+  /* danger uses the error hue in the same glass language */
+  --ctl-danger-grad:   linear-gradient(180deg,
+                          color-mix(in srgb, var(--brand-error) 85%, white),
+                          var(--brand-error));
+  --ctl-danger-glow:   0 6px 22px -6px color-mix(in srgb, var(--brand-error) 60%, transparent);
+  /* glow-lift hover for secondary/ghost/chips (warm soft shadow + orange edge) */
+  --ctl-lift-shadow:   0 10px 24px -12px color-mix(in srgb, var(--color-accent) 50%, transparent),
+                       0 1px 0 var(--glass-edge) inset;
+  --ctl-edge:          var(--glass-edge);
+  /* orange focus ring (replaces the brutalist hard offset focus) */
+  --ctl-focus-ring:    0 0 0 3px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --ctl-focus-border:  color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
+[data-theme="light"] {
+  --color-bg:           var(--brand-paper);
+  --color-surface:      var(--brand-paper-2);
+  --color-surface-2:    var(--brand-paper-3);
+  --color-fg:           var(--brand-ink);
+  --color-fg-muted:     var(--brand-ink-2);
+  --color-fg-subtle:    var(--brand-muted);
+  --color-rule:         var(--brand-rule-soft);
+  --color-rule-strong:  var(--brand-ink);
+  --color-shadow:       var(--brand-ink);
+
+  --color-accent:       var(--user-accent, var(--brand-signal));
+  --color-accent-soft:  color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --color-accent-line:  color-mix(in srgb, var(--color-accent) 32%, transparent);
+  --color-on-accent:    var(--brand-on-accent);
+
+  --color-ok:   var(--brand-success-ink);
+  --color-warn: var(--brand-warning-ink);
+  --color-err:  var(--brand-error-ink);
+  --color-nfo:  var(--brand-info-ink);
+
+  /* Same critical aliases for light (ink on paper) — see dark block note. */
+  --color-text: var(--color-fg);            --color-background: var(--color-bg);
+  --color-textSecondary: var(--color-fg-muted);  --color-textMuted: var(--color-fg-subtle);
+  --fg-0: var(--color-fg);  --fg-1: var(--color-fg-muted);  --fg-2: var(--color-fg-subtle);  --fg-3: var(--color-fg-subtle);
+  --cm-text: var(--color-fg);  --cm-fg: var(--color-fg);  --cm-bg: var(--color-bg);  --cm-fg-0: var(--color-fg);
+
+  /* ── TERMINAL GLASS (elevated) — light "Warm Frost" world ──────────────────
+   * The same glass system on the paper palette: frosted cream cards over a soft
+   * peach/orange bloom on #F4EFE6, ink text, soft shadows, a gentler aurora.
+   * --------------------------------------------------------------------------*/
+  --glass-page-bg:  var(--brand-paper);  /* paper base the bloom sits on */
+  /* Frosted cream surface — MORE TRANSLUCENT than before so the backdrop blur +
+   * the warm bloom actually read as glass in light mode (was 62/78% opaque =
+   * near-solid cream over cream paper = looked flat). 44/58% lets the frost show
+   * while a brighter aurora behind gives it depth; ink text still reads fine. */
+  --glass-surf-1:   color-mix(in srgb, var(--brand-paper-lift) 44%, transparent);
+  --glass-surf-2:   color-mix(in srgb, var(--brand-paper-lift) 58%, transparent);
+  --glass-bg:       linear-gradient(180deg, var(--glass-surf-2), var(--glass-surf-1));
+  --glass-border:   color-mix(in srgb, var(--brand-ink) 12%, transparent);
+  --glass-edge:     color-mix(in srgb, #FFFFFF 85%, transparent);   /* bright cream hairline */
+  --glass-blur:     blur(26px) saturate(1.5);
+  --glass-radius:   18px;
+  --glass-shadow:   0 20px 48px -20px color-mix(in srgb, var(--brand-ink) 30%, transparent),
+                    0 1px 0 var(--glass-edge) inset,
+                    0 0 0 1px var(--glass-border);
+  --glass-card-shadow: 0 14px 34px -20px color-mix(in srgb, var(--brand-ink) 24%, transparent),
+                       0 1px 0 var(--glass-edge) inset;
+  /* Stronger peach/orange bloom for Warm Frost — gives the frosted surfaces
+   * something with color + depth to blur, so they read as glass (was too faint). */
+  --aurora-1:  color-mix(in srgb, var(--color-accent) 34%, transparent);
+  --aurora-2:  color-mix(in srgb, color-mix(in srgb, var(--color-accent) 56%, #ffffff) 34%, transparent);
+  --aurora-3:  color-mix(in srgb, color-mix(in srgb, var(--color-accent) 56%, #ffffff) 26%, transparent);
+  --aurora-4:  color-mix(in srgb, var(--color-accent) 16%, transparent);
+  --aurora-opacity: 0.8;
+  --aurora-blur:    48px;
+  --grain-opacity:  0.04;
+  --vignette:  radial-gradient(120% 120% at 50% 40%, transparent 60%, color-mix(in srgb, var(--brand-ink) 8%, transparent));
+  /* on-glass accent tints */
+  --glass-accent-fill:   color-mix(in srgb, var(--color-accent) 16%, transparent);
+  --glass-accent-fill-2: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  --glass-accent-line:   color-mix(in srgb, var(--color-accent) 34%, transparent);
+  --glass-accent-glow:   color-mix(in srgb, var(--color-accent) 40%, transparent);
+
+  /* ── Glass CONTROL tokens — Warm Frost (light) variants ─────────────────────
+   * Same control language on paper: frosted cream chrome, ink labels, the same
+   * orange gradient primary, gentler glow + a peach focus ring.
+   * --------------------------------------------------------------------------*/
+  --ctl-radius:        12px;
+  --ctl-radius-sm:     10px;
+  /* frosted cream neutral fill over paper (mostly opaque so ink reads) */
+  --ctl-surf:          color-mix(in srgb, var(--brand-paper-lift) 70%, transparent);
+  --ctl-surf-hover:    color-mix(in srgb, var(--brand-paper-lift) 92%, transparent);
+  --ctl-primary-grad:  linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 56%, #ffffff), var(--color-accent));
+  --ctl-primary-fg:    var(--brand-on-accent);
+  --ctl-primary-glow:  0 6px 20px -8px color-mix(in srgb, var(--color-accent) 55%, transparent);
+  --ctl-primary-glow-h:0 12px 28px -8px color-mix(in srgb, var(--color-accent) 62%, transparent);
+  --ctl-danger-grad:   linear-gradient(180deg,
+                          color-mix(in srgb, var(--brand-error-ink) 80%, white),
+                          var(--brand-error-ink));
+  --ctl-danger-glow:   0 6px 20px -8px color-mix(in srgb, var(--brand-error-ink) 45%, transparent);
+  --ctl-lift-shadow:   0 10px 22px -12px color-mix(in srgb, var(--color-accent) 38%, transparent),
+                       0 1px 0 var(--glass-edge) inset;
+  --ctl-edge:          var(--glass-edge);
+  --ctl-focus-ring:    0 0 0 3px color-mix(in srgb, var(--color-accent) 26%, transparent);
+  --ctl-focus-border:  color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+
+/* ============================================================================
+ * LAYER 3 — LEGACY ALIAS block (transitional).
+ *
+ * Every legacy semantic/namespace the app still consumes is aliased to a
+ * canonical LAYER-2 token so the existing 900+ files keep rendering against
+ * the ONE palette. These alias names are codemodded away in a later phase;
+ * for now this block lets theme.css be authoritative WITHOUT breaking calls.
+ *
+ * Lives in :root so the values inherit the per-theme [data-theme] overrides
+ * above (the canonical --color-* are already theme-aware, so the aliases
+ * automatically flip too).
+ * ==========================================================================*/
+:root {
+  /* --- legacy --color-* names the Tailwind config + components read --- */
+  --color-background:        var(--color-bg);
+  --color-surfaceHover:      var(--color-surface-2);
+  --color-surfaceSecondary:  var(--color-surface-2);
+  --color-surfaceTertiary:   var(--color-surface);
+  --color-text:              var(--color-fg);
+  --color-textSecondary:     var(--color-fg-muted);
+  --color-textMuted:         var(--color-fg-subtle);
+  --color-text-primary:      var(--color-fg);
+  --color-text-secondary:    var(--color-fg-muted);
+  --color-text-tertiary:     var(--color-fg-subtle);
+  --color-text-muted:        var(--color-fg-subtle);
+  --color-border:            var(--color-rule);
+  --color-border-default:    var(--color-rule);
+  --color-borderHover:       var(--color-rule-strong);
+  --color-primary:           var(--color-accent);
+  --color-secondary:         var(--color-accent-soft);
+  --color-accent-primary:    var(--color-accent);
+  --color-vscode:            var(--color-accent);
+  --color-success:           var(--color-ok);
+  --color-warning:           var(--color-warn);
+  --color-error:             var(--color-err);
+  --color-info:              var(--color-nfo);
+  --color-bg-primary:        var(--color-bg);
+  --color-bg-secondary:      var(--color-surface);
+  --color-bg-tertiary:       var(--color-surface-2);
+  --color-bg-surface:        var(--color-surface);
+  --color-surface-secondary: var(--color-surface-2);
+  /* status dot palette (DashboardOverview / service health) */
+  --color-statusHealthy:     var(--color-ok);
+  --color-statusWarning:     var(--color-warn);
+  --color-statusError:       var(--color-err);
+  --color-statusUnknown:     var(--color-fg-subtle);
+
+  /* --- field-guide brand primitives some components read by name --- */
+  --paper:   var(--brand-paper);   --paper-2: var(--brand-paper-2); --paper-3: var(--brand-paper-3);
+  --ink:     var(--brand-ink);     --ink-2:   var(--brand-ink-2);   --clay-muted: var(--brand-muted);
+  --rule-soft: var(--brand-rule-soft);
+  --signal:  var(--color-accent);  --signal-dim: var(--brand-signal-dim); --signal-ink: var(--brand-signal-ink);
+  --terminal-bg: var(--brand-terminal-bg); --terminal-fg: var(--brand-terminal-fg);
+  --terminal-accent: var(--brand-signal-soft);
+
+  /* --- legacy plain text-* token namespace (index.css used to own these) --- */
+  --text-primary:   var(--color-fg);
+  --text-secondary: var(--color-fg-muted);
+  --text-tertiary:  var(--color-fg-subtle);
+  --text-muted:     var(--color-fg-subtle);
+  --text-subtle:    var(--color-fg-subtle);
+
+  /* --- accent-* family (admin shell + chips) — all derive from --color-accent --- */
+  --accent: var(--color-accent);
+  --accent-soft: var(--color-accent-soft);
+  --accent-line: var(--color-accent-line);
+  --accent-dim:  color-mix(in srgb, var(--color-accent) 16%, transparent);
+  --accent-glow: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  --accent-info:    var(--color-nfo);
+  --accent-success: var(--color-ok);
+  --accent-warning: var(--color-warn);
+  --accent-error:   var(--color-err);
+  --accent-code:    var(--color-fg-subtle);
+  --accent-link:    var(--color-accent);
+
+  /* --- accent driver. ThemeContext writes --user-accent (and the legacy
+         --user-accent-primary/-secondary/-soft/-line) inline on <html>;
+         everything derives from --color-accent above. Defaults here so the
+         app paints correctly before ThemeContext mounts. --- */
+  --user-accent-primary:   var(--color-accent);
+  --user-accent-secondary: var(--brand-signal-soft);
+  --user-accent-color:     var(--color-accent);
+  --user-accent-soft:      var(--color-accent-soft);
+  --user-accent-line:      var(--color-accent-line);
+  --user-accent-soft-light: color-mix(in srgb, var(--color-accent) 10%, transparent);
+
+  /* --- tonal surface scale (design-tokens.css used to own --surface-0..4) --- */
+  --surface-0: var(--color-bg);      --surface-1: var(--color-surface);
+  --surface-2: var(--color-surface-2); --surface-3: var(--color-surface-2);
+  --surface-4: var(--color-surface-2);
+  /* alpha-blend driver for the focus ring (was a stale blue literal) */
+  --primary-rgb: 255, 87, 34;
+  /* --- soft blur-shadow scale (design-tokens.css used to own --shadow-soft-*).
+         Derives alpha from --color-shadow so it stays theme-aware. --- */
+  --shadow-soft-sm: 0 2px 8px  color-mix(in srgb, var(--color-shadow) 8%,  transparent);
+  --shadow-soft-md: 0 8px 24px color-mix(in srgb, var(--color-shadow) 12%, transparent);
+  --shadow-soft-lg: 0 16px 48px color-mix(in srgb, var(--color-shadow) 18%, transparent);
+
+  /* --- mockup-v067 / chatmode-v2 namespace (--bg-* / --fg-* / --line-* / --accent) --- */
+  --bg-0: var(--color-bg);       --bg-1: var(--color-surface);    --bg-2: var(--color-surface-2);
+  --bg-3: var(--color-surface-2);--bg-4: var(--color-surface-2);
+  --fg-0: var(--color-fg);       --fg-1: var(--color-fg-muted);   --fg-2: var(--color-fg-subtle);
+  --fg-3: var(--color-fg-subtle);
+  --line-1: var(--color-rule);   --line-2: var(--color-rule);     --line-3: var(--color-rule-strong);
+  --ok: var(--color-ok);   --warn: var(--color-warn);   --err: var(--color-err);   --info: var(--color-nfo);
+
+  /* --- code-mode (--cm-*) + admin-primitives-v3 (--ap-* / --v3-*) namespaces --- */
+  --cm-bg:     var(--color-bg);      --cm-fg:     var(--color-fg);
+  --cm-surface:var(--color-surface); --cm-border: var(--color-rule);
+  --cm-accent: var(--color-accent);
+  /* longer semantic cm-* names some chat components reference (incl. portal'd
+     content rendered OUTSIDE the .cm-v2 scope, so they live at :root too). */
+  --cm-bg-0: var(--color-bg);        --cm-bg-1: var(--color-surface);
+  --cm-bg-2: var(--color-surface-2); --cm-bg-secondary: var(--color-surface);
+  --cm-fg-0: var(--color-fg);        --cm-fg-1: var(--color-fg-muted);
+  --cm-fg-2: var(--color-fg-subtle); --cm-fg-3: var(--color-fg-subtle);
+  --cm-line-1: var(--color-rule);    --cm-line-2: var(--color-rule);
+  --cm-text:        var(--color-fg);
+  --cm-text-muted:  var(--color-fg-subtle);
+  --cm-text-secondary: var(--color-fg-muted);
+  --cm-success:     var(--color-ok);
+  --cm-error:       var(--color-err);
+  --cm-warning:     var(--color-warn);
+  --cm-bg-3: var(--color-surface-2);  --cm-bg-4: var(--color-surface-2);
+  --cm-line-3: var(--color-rule-strong);
+  --cm-border:  var(--color-rule);    --cm-surface: var(--color-surface);
+  --cm-ok:   var(--color-ok);   --cm-warn: var(--color-warn);
+  --cm-err:  var(--color-err);  --cm-info: var(--color-nfo);
+  --cm-radius-sm: var(--radius-sm); --cm-radius-md: var(--radius-sm);
+  --cm-radius-lg: var(--radius-chip); --cm-shadow-sm: var(--shadow-xs);
+  /* chat-surface categorical identity + glow (was raw literals in chatmode-v2.css) */
+  --cm-agent-c: var(--cat-cm-agent-c);  --cm-agent-g: var(--cat-cm-agent-g);
+  --cm-agent-s: var(--cat-cm-agent-s);  --cm-agent-k: var(--cat-cm-agent-k);
+  --cm-cloud: var(--cat-domain-cloud);  --cm-k8s: var(--cat-domain-k8s);  --cm-fs: var(--cat-domain-fs);
+  --cm-cloud-soft: color-mix(in srgb, var(--cat-domain-cloud) 10%, transparent);
+  --cm-k8s-soft:   color-mix(in srgb, var(--cat-domain-k8s) 10%, transparent);
+  --cm-fs-soft:    color-mix(in srgb, var(--cat-domain-fs) 10%, transparent);
+  --cm-cloud-line: color-mix(in srgb, var(--cat-domain-cloud) 25%, transparent);
+  --cm-k8s-line:   color-mix(in srgb, var(--cat-domain-k8s) 25%, transparent);
+  --cm-fs-line:    color-mix(in srgb, var(--cat-domain-fs) 25%, transparent);
+  --cm-thinking:      var(--cat-thinking);
+  --cm-thinking-soft: var(--cat-thinking-soft);
+  --cm-thinking-glow: color-mix(in srgb, var(--cat-thinking) 40%, transparent);
+  --cm-info-glow: color-mix(in srgb, var(--color-nfo) 40%, transparent);
+  --cm-ok-glow:   color-mix(in srgb, var(--color-ok) 40%, transparent);
+  --cm-warn-glow: color-mix(in srgb, var(--color-warn) 40%, transparent);
+  --cm-err-glow:  color-mix(in srgb, var(--color-err) 40%, transparent);
+  --cm-transcript-max-width: 902px;
+  --ap-bg:     var(--color-surface); --ap-fg: var(--color-fg);   --ap-border: var(--color-rule);
+  --ap-fg-0:   var(--color-fg);      --ap-fg-3: var(--color-fg-subtle);
+  --v3-surface:var(--color-surface); --v3-fg: var(--color-fg);   --v3-border: var(--color-rule);
+
+  /* --- code-mode default surface tokens (used OUTSIDE .code-mode). The
+         opt-in editor themes under styles/themes/*.css scope their own
+         --cm-* under .code-mode[data-cm-theme]; this default tier derives
+         from the canonical palette so un-themed code surfaces match brand. --- */
+  --cm-bg-tertiary: var(--color-surface-2);
+
+  /* --- inline `code` chip + fenced-code chrome (was raw Apple-grey literals) --- */
+  --code-bg:     color-mix(in srgb, var(--color-fg) 8%, transparent);
+  --code-border: color-mix(in srgb, var(--color-fg) 15%, transparent);
+  --code-text:   var(--color-fg);
+
+  /* --- callout banners: info/success/warning/error bg+border tints derive
+         from the canonical status tokens (was raw Apple rgba literals) --- */
+  --callout-info-bg:     color-mix(in srgb, var(--color-nfo) 8%, transparent);
+  --callout-info-border: color-mix(in srgb, var(--color-nfo) 30%, transparent);
+  --callout-success-bg:     color-mix(in srgb, var(--color-ok) 8%, transparent);
+  --callout-success-border: color-mix(in srgb, var(--color-ok) 30%, transparent);
+  --callout-warning-bg:     color-mix(in srgb, var(--color-warn) 8%, transparent);
+  --callout-warning-border: color-mix(in srgb, var(--color-warn) 30%, transparent);
+  --callout-error-bg:     color-mix(in srgb, var(--color-err) 8%, transparent);
+  --callout-error-border: color-mix(in srgb, var(--color-err) 30%, transparent);
+
+  /* --- thinking blocks: violet-coded, derive from the thinking identity hue --- */
+  --thinking-bg:           color-mix(in srgb, var(--cat-thinking) 5%, transparent);
+  --thinking-border:       color-mix(in srgb, var(--cat-thinking) 20%, transparent);
+  --thinking-border-light: color-mix(in srgb, var(--cat-thinking) 10%, transparent);
+  --thinking-accent:       color-mix(in srgb, var(--cat-thinking) 30%, transparent);
+
+  /* --- glow accent colors (decorative; map to brand status/accent, no neon) --- */
+  --purple-glow: var(--color-accent);
+  --blue-glow:   var(--color-nfo);
+  --pink-glow:   var(--color-accent);
+
+  /* --- mock-widget (--mw-*) namespace: inline artifacts (kpi_grid, sankey,
+         mermaid_flow, bar_chart …) read these so they inherit the user's
+         theme+accent. Thin aliases over --cm-* (already theme-aware). Was an
+         index.css :root block with stale cold-grey + violet literals. --- */
+  --mw-bg-0: var(--cm-bg-0); --mw-bg-1: var(--cm-bg-1); --mw-bg-2: var(--cm-bg-2);
+  --mw-bg-3: var(--cm-bg-2); --mw-bg-4: var(--cm-bg-2);
+  --mw-fg-0: var(--cm-fg-0); --mw-fg-1: var(--cm-fg-1); --mw-fg-2: var(--cm-fg-2);
+  --mw-fg-3: var(--cm-fg-3);
+  --mw-accent:      var(--cm-accent);
+  --mw-accent-soft: var(--cm-accent-soft);
+  --mw-accent-line: var(--cm-accent-line);
+  --mw-line-1:      var(--cm-line-1);
+  --mw-success: var(--cm-success); --mw-danger: var(--cm-error);
+  --mw-warning: var(--cm-warning); --mw-info:   var(--color-nfo);
+
+  /* ============================================================================
+   * CATEGORICAL ALIASES — legacy --provider-*/--cap-*/--tier-*/--toast-*/--agent-*
+   * names point at the --cat-* identity scale defined in @theme. Light-theme
+   * 700-shade swaps are applied under [data-theme="light"] further below.
+   * ==========================================================================*/
+  --provider-azure:     var(--cat-provider-azure);
+  --provider-google:    var(--cat-provider-google);
+  --provider-aws:       var(--cat-provider-aws);
+  --provider-ollama:    var(--cat-provider-ollama);
+  --provider-anthropic: var(--cat-provider-anthropic);
+  --provider-openai:    var(--cat-provider-openai);
+  --cap-chat:       var(--cat-cap-chat);
+  --cap-tools:      var(--cat-cap-tools);
+  --cap-vision:     var(--cat-cap-vision);
+  --cap-thinking:   var(--cat-cap-thinking);
+  --cap-embeddings: var(--cat-cap-embeddings);
+  --cap-streaming:  var(--cat-cap-streaming);
+  --cap-image-gen:  var(--cat-cap-image-gen);
+  --tier-economy:   var(--cat-tier-economy);
+  --tier-balanced:  var(--cat-tier-balanced);
+  --tier-premium:   var(--cat-tier-premium);
+  --toast-success:  var(--color-ok);
+  --toast-error:    var(--color-err);
+  --toast-info:     var(--color-nfo);
+  --agent-c: var(--cat-agent-c);  --agent-g: var(--cat-agent-g);
+  --agent-s: var(--cat-agent-s);  --agent-k: var(--cat-agent-k);
+
+  /* --- font namespaces (theme.css is the SOLE place font-family literals live;
+         every legacy font token aliases the brand stacks above) --- */
+  --font-terminal: var(--font-mono);
+  --font-admin:    var(--font-mono);
+  --font-v3-body:  var(--font-body);
+  --font-v3-mono:  var(--font-mono);
+  --font-v3-tele:  var(--font-body);
+}
+
+/* Light-theme categorical contrast lift: capability / tier badges drop below
+   WCAG AA on paper, so swap to the darker 700-shade variants. */
+[data-theme="light"] {
+  --cap-chat:       var(--cat-cap-chat-ink);
+  --cap-tools:      var(--cat-cap-tools-ink);
+  --cap-vision:     var(--cat-cap-vision-ink);
+  --cap-thinking:   var(--cat-cap-thinking-ink);
+  --cap-embeddings: var(--cat-cap-embeddings-ink);
+  --cap-streaming:  var(--cat-cap-streaming-ink);
+  --cap-image-gen:  var(--cat-cap-image-gen-ink);
+  --tier-economy:   var(--cat-tier-economy-ink);
+  --tier-balanced:  var(--cat-tier-balanced-ink);
+  --tier-premium:   var(--cat-tier-premium-ink);
+  /* chat-surface domain/thinking identity lift for paper contrast */
+  --cm-cloud: var(--cat-domain-cloud-ink);  --cm-k8s: var(--cat-domain-k8s-ink);  --cm-fs: var(--cat-domain-fs-ink);
+  --cm-thinking:      var(--cat-thinking-ink);
+  --cm-thinking-soft: var(--cat-thinking-soft-ink);
+  --cm-thinking-glow: color-mix(in srgb, var(--cat-thinking-ink) 30%, transparent);
+  --cm-info-glow: color-mix(in srgb, var(--color-nfo) 30%, transparent);
+  --cm-ok-glow:   color-mix(in srgb, var(--color-ok) 30%, transparent);
+  --cm-warn-glow: color-mix(in srgb, var(--color-warn) 30%, transparent);
+  --cm-err-glow:  color-mix(in srgb, var(--color-err) 30%, transparent);
+}
+
+/* ============================================================================
+ * NAMED-ACCENT SWITCHING (admin data-accent picker: gcp/green/teal/amber/
+ * violet/magenta). Was admin-v2-accents.css. The admin useTheme hook writes
+ * [data-accent] on <html>.
+ *
+ * These presets feed the SINGLE accent driver --user-accent (NOT --color-accent
+ * directly): --color-accent resolves as var(--user-accent, --brand-signal) in
+ * the [data-theme] blocks, so everything (glass, aurora, --user-accent-* family,
+ * legacy --accent) re-tints from this one variable. Crucially, ThemeContext's
+ * chat-side accent picker writes --user-accent INLINE on <html>, and an inline
+ * property outranks any stylesheet rule — so a user-picked accent now wins over
+ * these presets instead of being silently overridden. Default (no data-accent,
+ * no inline) = brand signal via the var() fallback.
+ * ==========================================================================*/
+html[data-accent="orange"]  { --user-accent: var(--cat-accent-orange); }
+html[data-accent="gcp"]     { --user-accent: var(--cat-accent-gcp); }
+html[data-accent="green"]   { --user-accent: var(--cat-accent-green); }
+html[data-accent="teal"]    { --user-accent: var(--cat-accent-teal); }
+html[data-accent="amber"]   { --user-accent: var(--cat-accent-amber); }
+html[data-accent="violet"]  { --user-accent: var(--cat-accent-violet); }
+html[data-accent="magenta"] { --user-accent: var(--cat-accent-magenta); }
+
+/* ============================================================================
+ * LAYER 4 — BRUTALIST utility layer.
+ *
+ * Helper classes the primitives + components use so no other file hardcodes a
+ * shadow / border / tracking literal. Sharp corners + 2px ink borders + hard
+ * zero-blur offset shadows + the tight-tracked mono display type.
+ * ==========================================================================*/
+@layer components {
+  /* hard offset shadows (zero blur) */
+  .shadow-hard     { box-shadow: var(--shadow-card); }
+  .shadow-hard-lg  { box-shadow: var(--shadow-card-lg); }
+  .shadow-hard-sm  { box-shadow: var(--shadow-sm); }
+  .shadow-hard-xs  { box-shadow: var(--shadow-xs); }
+  .shadow-signal   { box-shadow: var(--shadow-signal); }
+
+  /* 2px ink border + sharp corner conventions */
+  .border-ink      { border: var(--border-w) solid var(--color-rule-strong); }
+  .sharp           { border-radius: var(--radius-card); }
+
+  /* type roles — bake the tracking so no file hardcodes letter-spacing */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: var(--tracking-display);
+    line-height: var(--leading-display);
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: var(--text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-eyebrow);
+  }
+  .lede {
+    font-family: var(--font-serif);
+    font-size: var(--text-lede);
+  }
+  .btn-label {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-button);
+  }
+
+  /* neo-brutalist primary button + press affordance */
+  .btn-brutal {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    border: var(--border-w) solid var(--color-rule-strong);
+    border-radius: var(--radius-btn);
+    box-shadow: var(--shadow-sm);
+    font-family: var(--font-mono);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-button);
+    padding: 14px 24px;
+  }
+  .btn-brutal:active {
+    transform: translate(2px, 2px);
+    box-shadow: var(--shadow-xs);
+  }
+}
+
+/* ============================================================================
+ * LAYER 5 — TERMINAL GLASS (elevated): frosted surfaces + living atmosphere.
+ *
+ * The glassmorphism design system (replaces the brutalist hard-shadow look on
+ * the big feature surfaces). All values read the per-theme glass / aurora
+ * tokens defined in the LAYER-2 blocks, so dark ("orange-aurora") and light
+ * ("Warm Frost") both flow from this ONE SOT. Components apply these classes;
+ * the app shell mounts the atmosphere layers behind everything.
+ * Reference: docs/design/terminal-glass-reference.html
+ * ==========================================================================*/
+@layer components {
+  /* ---- frosted glass surface: top-lit gradient + blur + soft border/shadow
+         + a 1px light EDGE highlight at the top (::before hairline). ---- */
+  .glass {
+    position: relative;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: var(--glass-radius);
+    box-shadow: var(--glass-shadow);
+    overflow: hidden;
+  }
+  .glass::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 18px;
+    right: 18px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--glass-edge), transparent);
+    pointer-events: none;
+  }
+  /* a card variant (frosted result CARD inside prose): same surface, softer
+     shadow, no clipping of its own children's hairline. */
+  .glass-card {
+    position: relative;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: var(--radius-chip);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-card-shadow);
+  }
+
+  /* ==========================================================================
+   * RE-SKINNED SHARED PRIMITIVES (Phase 2): Terminal Glass control surfaces.
+   * The shared/ui primitives (Button, Card, Input, StatusBadge, GlassCard,
+   * GlassContainer) apply these classes so they hold ZERO color/font literals
+   * (the no-hardcoding guard stays green). All values read the per-theme glass
+   * / ctl tokens, so every control flips dark ⇄ light from the ONE SOT.
+   * ========================================================================== */
+
+  /* ---- Button: frosted chrome + Inter label + glow-lift hover ---- */
+  .glass-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-body);
+    font-weight: 600;
+    letter-spacing: -0.006em;
+    border-radius: var(--ctl-radius);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 1px 0 var(--ctl-edge) inset;
+    transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.2, 1),
+                box-shadow 0.18s ease, background 0.18s ease,
+                border-color 0.18s ease, color 0.18s ease;
+  }
+  .glass-btn:focus-visible {
+    outline: none;
+    border-color: var(--ctl-focus-border);
+    box-shadow: var(--ctl-focus-ring), 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 1px 0 var(--ctl-edge) inset;
+  }
+  /* mono variant: technical / code buttons keep IBM Plex Mono (per the spec) */
+  .glass-btn-mono { font-family: var(--font-mono); font-weight: 500; }
+
+  /* primary = signal-orange gradient + glow (the reference send button) */
+  .glass-btn-primary {
+    background: var(--ctl-primary-grad);
+    color: var(--ctl-primary-fg);
+    border-color: var(--glass-accent-line);
+    box-shadow: var(--ctl-primary-glow), 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-btn-primary:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: var(--ctl-primary-glow-h), 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-btn-primary:not(:disabled):active { transform: translateY(0); }
+
+  /* secondary = frosted neutral fill, glow-lift on hover */
+  .glass-btn-secondary {
+    background: var(--ctl-surf);
+    color: var(--color-fg);
+  }
+  .glass-btn-secondary:not(:disabled):hover {
+    transform: translateY(-1px);
+    background: var(--ctl-surf-hover);
+    border-color: var(--ctl-focus-border);
+    box-shadow: var(--ctl-lift-shadow);
+  }
+
+  /* ghost = transparent until hover, then a faint frosted lift */
+  .glass-btn-ghost {
+    background: transparent;
+    color: var(--color-fg);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .glass-btn-ghost:not(:disabled):hover {
+    transform: translateY(-1px);
+    background: var(--ctl-surf);
+    border-color: var(--glass-border);
+    box-shadow: var(--ctl-lift-shadow);
+  }
+
+  /* danger = error-hue gradient in the same glass language */
+  .glass-btn-danger {
+    background: var(--ctl-danger-grad);
+    color: var(--color-on-accent);
+    border-color: color-mix(in srgb, var(--color-err) 40%, transparent);
+    box-shadow: var(--ctl-danger-glow), 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-btn-danger:not(:disabled):hover { transform: translateY(-1px); }
+
+  /* ---- Input: frosted field + orange focus glow ---- */
+  .glass-field {
+    width: 100%;
+    font-family: var(--font-body);
+    background: var(--ctl-surf);
+    color: var(--color-fg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--ctl-radius);
+    box-shadow: 0 1px 0 var(--ctl-edge) inset;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  }
+  .glass-field::placeholder { color: var(--color-fg-subtle); }
+  .glass-field:focus {
+    outline: none;
+    border-color: var(--ctl-focus-border);
+    box-shadow: var(--ctl-focus-ring), 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-field-error,
+  .glass-field-error:focus {
+    border-color: var(--color-err);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-err) 26%, transparent),
+                0 1px 0 var(--ctl-edge) inset;
+  }
+  /* field label: Inter (not mono uppercase) — quiet, muted */
+  .glass-field-label {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: var(--text-sm);
+    color: var(--color-fg-muted);
+  }
+
+  /* ---- StatusBadge: frosted chip with a soft tint + mono technical label ---- */
+  .glass-status {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: var(--text-eyebrow);
+    letter-spacing: 0;
+    text-transform: none;
+    border-radius: var(--radius-chip);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-status-success { background: color-mix(in srgb, var(--color-ok) 14%, transparent);  color: var(--color-ok);  border-color: color-mix(in srgb, var(--color-ok) 32%, transparent); }
+  .glass-status-error   { background: color-mix(in srgb, var(--color-err) 14%, transparent); color: var(--color-err); border-color: color-mix(in srgb, var(--color-err) 32%, transparent); }
+  .glass-status-warning { background: color-mix(in srgb, var(--color-warn) 14%, transparent);color: var(--color-warn);border-color: color-mix(in srgb, var(--color-warn) 32%, transparent); }
+  .glass-status-info    { background: color-mix(in srgb, var(--color-nfo) 14%, transparent); color: var(--color-nfo); border-color: color-mix(in srgb, var(--color-nfo) 32%, transparent); }
+  .glass-status-default { background: var(--ctl-surf); color: var(--color-fg-muted); }
+
+  /* ---- Card / GlassContainer surface tiers (frosted, soft radius) ---- */
+  .glass-surface {
+    position: relative;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    color: var(--color-fg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius);
+    box-shadow: var(--glass-card-shadow);
+    transition: transform 0.16s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.18s ease, background 0.18s ease;
+  }
+  .glass-surface-subtle {
+    background: var(--ctl-surf);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 1px 0 var(--ctl-edge) inset;
+  }
+  .glass-surface-strong { box-shadow: var(--glass-shadow); }
+  /* hover-lift variant (Card hover / GlassCard hover) */
+  .glass-surface-hover:hover {
+    transform: translateY(-2px);
+    border-color: var(--ctl-focus-border);
+    box-shadow: var(--ctl-lift-shadow), var(--glass-card-shadow);
+  }
+
+  /* ==========================================================================
+   * CHAT-SURFACE glass helpers (Phase 3): the Terminal Glass chat treatment.
+   * Message bubbles, the frosted result CARD (tags / kv rows / status LEDs /
+   * "N/N healthy" chip), the suggestion/follow-up CHIPS, the top-bar crumb +
+   * mono model pill. Every value reads a per-theme glass / ctl token so the
+   * whole chat flips dark ⇄ light from the ONE SOT. Reference: the chat screen
+   * in docs/design/terminal-glass-reference.html.
+   * ========================================================================== */
+
+  /* ---- user message bubble = subtle orange-tinted glass ---- */
+  .glass-bubble-user {
+    background: linear-gradient(180deg, var(--glass-accent-fill), var(--glass-accent-fill-2));
+    border: 1px solid var(--glass-accent-line);
+    border-radius: 16px 16px 5px 16px;
+    box-shadow: 0 8px 24px -12px var(--glass-accent-glow);
+    color: var(--color-fg);
+  }
+
+  /* ---- assistant avatar = glowing signal-orange chip ---- */
+  .glass-avatar {
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 30% 25%, var(--brand-signal-soft), var(--brand-signal));
+    color: var(--brand-on-accent);
+    box-shadow: 0 3px 14px var(--glass-accent-glow),
+                0 0 0 1px color-mix(in srgb, #FFFFFF 12%, transparent) inset;
+  }
+
+  /* ---- frosted result CARD interior bits (tags / kv rows / status LEDs) ---- */
+  .glass-kv {
+    border-bottom: 1px solid color-mix(in srgb, var(--brand-paper) 6%, transparent);
+  }
+  .glass-kv:last-child { border-bottom: 0; }
+  .glass-tag {
+    font-family: var(--font-mono);
+    background: color-mix(in srgb, var(--glass-page-bg) 50%, transparent);
+    border: 1px solid var(--glass-border);
+    color: var(--brand-signal-soft);
+    border-radius: 7px;
+  }
+  .glass-led {
+    border-radius: 50%;
+    background: var(--color-ok);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-ok) 70%, transparent);
+  }
+  .glass-ok-chip {
+    font-family: var(--font-mono);
+    color: var(--color-ok);
+    background: color-mix(in srgb, var(--color-ok) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-ok) 28%, transparent);
+    border-radius: 6px;
+  }
+
+  /* ---- suggestion / follow-up CHIP = frosted glass button, glow-lift hover ---- */
+  .glass-chip {
+    font-family: var(--font-body);
+    font-weight: 500;
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    background: linear-gradient(180deg,
+                  color-mix(in srgb, var(--brand-paper) 7%, transparent),
+                  color-mix(in srgb, var(--brand-paper) 3%, transparent));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--ctl-radius);
+    box-shadow: 0 1px 0 var(--glass-edge) inset;
+    transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1),
+                box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  }
+  .glass-chip:hover {
+    transform: translateY(-2px);
+    color: var(--color-fg);
+    border-color: var(--ctl-focus-border);
+    box-shadow: var(--ctl-lift-shadow);
+  }
+
+  /* ---- top-bar crumb (⌥ § Chat) + mono model pill with a glowing dot ---- */
+  .glass-crumb {
+    font-family: var(--font-body);
+    font-size: var(--text-eyebrow);
+    color: var(--color-fg-subtle);
+    letter-spacing: 0.04em;
+  }
+  .glass-model-pill {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: var(--text-eyebrow);
+    color: var(--color-fg-muted);
+    background: color-mix(in srgb, var(--brand-paper) 6%, transparent);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--ctl-radius-sm);
+  }
+  .glass-model-dot {
+    border-radius: 50%;
+    background: var(--brand-signal);
+    box-shadow: 0 0 8px var(--brand-signal);
+  }
+
+  /* ==========================================================================
+   * SIDEBAR (Phase 3): frosted nav rows, the segmented tab indicator, and the
+   * orange-tinted-glass "New chat" button — composed by ChatSidebar /
+   * FlowsSidebar. All values read the per-theme glass / ctl tokens (ONE SOT),
+   * so the sidebar flips dark ⇄ light. Matches terminal-glass-reference.html
+   * (.row / .row.on / .tab.on / .newchat).
+   * ========================================================================== */
+
+  /* segmented Chat/Flows tab — the active pane: a lifted frosted slab with the
+     top edge highlight (reference .tab.on). */
+  .glass-tab-active {
+    background: var(--ctl-surf-hover);
+    box-shadow: 0 1px 0 var(--glass-edge) inset;
+  }
+
+  /* session / nav row — hover = a faint frosted wash (reference .row:hover). */
+  .glass-row-hover:hover {
+    background: var(--ctl-surf);
+    border-color: var(--glass-border);
+  }
+  /* active row = lifted frosted surface with the inset edge highlight
+     (reference .row.on). */
+  .glass-row-active {
+    background: var(--ctl-surf-hover);
+    border-color: var(--glass-border);
+    box-shadow: 0 1px 0 var(--glass-edge) inset;
+  }
+
+  /* "New chat" / "New flow" = orange-tinted glass: signal gradient fill, accent
+     line border, soft glow + an Inter label; glow-lift on hover (reference
+     .newchat). */
+  .glass-newchat {
+    font-family: var(--font-body);
+    font-weight: 600;
+    color: var(--brand-signal-soft);
+    background: linear-gradient(180deg, var(--glass-accent-fill), var(--glass-accent-fill-2));
+    border: 1px solid var(--glass-accent-line);
+    border-radius: var(--ctl-radius);
+    box-shadow: var(--ctl-primary-glow), 0 1px 0 var(--glass-edge) inset;
+    transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.2, 1),
+                box-shadow 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+  .glass-newchat:hover {
+    transform: translateY(-1px);
+    border-color: var(--glass-accent-glow);
+    box-shadow: var(--ctl-primary-glow-h), 0 1px 0 var(--glass-edge) inset;
+  }
+  .glass-newchat:active { transform: translateY(0); }
+
+  /* ---- staggered load-in: panels rise+fade with an animation-delay cascade. ---- */
+  .rise {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: oa-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+  .rise-d1 { animation-delay: 0.05s; }
+  .rise-d2 { animation-delay: 0.13s; }
+  .rise-d3 { animation-delay: 0.22s; }
+  .rise-d4 { animation-delay: 0.32s; }
+  .rise-d5 { animation-delay: 0.42s; }
+  .rise-d6 { animation-delay: 0.52s; }
+}
+
+/* ---- the living atmosphere: a fixed aurora + grain + vignette stack the app
+       shell mounts behind everything. Authored at :root (not @layer) so the
+       fixed positioning + z-order are not subject to utility-layer ordering. ---- */
+@keyframes oa-rise {
+  to { opacity: 1; transform: none; }
+}
+@keyframes oa-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(2%, -2%, 0) scale(1.06); }
+  100% { transform: translate3d(-2%, 2%, 0) scale(1.02); }
+}
+
+/* The atmosphere root paints the deep base; children blur THIS for real depth. */
+.oa-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: -1;            /* behind the app content (App shell uses z-10) */
+  background: var(--glass-page-bg);
+  overflow: hidden;
+  pointer-events: none;
+}
+.oa-atmosphere .aurora {
+  position: absolute;
+  inset: -20%;
+  filter: blur(var(--aurora-blur));
+  opacity: var(--aurora-opacity);
+  background:
+    radial-gradient(38% 44% at 16% 18%, var(--aurora-1), transparent 60%),
+    radial-gradient(32% 40% at 82% 26%, var(--aurora-2), transparent 62%),
+    radial-gradient(46% 50% at 70% 96%, var(--aurora-3), transparent 60%),
+    radial-gradient(40% 44% at 30% 88%, var(--aurora-4), transparent 60%);
+  animation: oa-drift 26s ease-in-out infinite alternate;
+}
+.oa-atmosphere .grain {
+  position: absolute;
+  inset: 0;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.oa-atmosphere .vignette {
+  position: absolute;
+  inset: 0;
+  background: var(--vignette);
+}
+
+/* Respect reduced-motion + the user's background-animations=off setting: freeze
+   the aurora drift + rise cascade (the static bloom + glass still render). */
+@media (prefers-reduced-motion: reduce) {
+  .oa-atmosphere .aurora { animation: none; }
+  .rise { animation-duration: 0.01ms; }
+}
+
+/* ----------------------------------------------------------------------------
+   Markdown code fences keep the terminal-dark surface in BOTH light & dark —
+   the field-guide terminal motif. Without this, the shiki `github-dark` syntax
+   palette (light-grey tokens) washes out on light paper. Pins only the fenced-
+   code wrapper; inline `code` chips + tool widgets are untouched.
+   (Moved here from the deleted openagentic-theme.css.)
+   -------------------------------------------------------------------------- */
+.syntax-highlighted-code.rounded-xl,
+.prose pre.shiki,
+pre.shiki.github-dark {
+  background: var(--brand-terminal-bg);   /* warm near-black */
+}

@@ -1,0 +1,75 @@
+{
+  "type": "teams_message",
+  "category": "integration",
+  "label": "Microsoft Teams Message",
+  "description": "Post a message to a Microsoft Teams channel via incoming webhook. Supports plain text or Adaptive Cards.",
+  "icon": "teams",
+  "primary": "sent",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "status": "number",
+          "sent": "boolean"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "webhookUrl",
+      "label": "Webhook URL",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "https://outlook.office.com/webhook/...",
+      "description": "Teams incoming webhook URL. Falls back to TEAMS_WEBHOOK_URL env when unset."
+    },
+    {
+      "name": "message",
+      "label": "Message",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "Alert: {{trigger.subject}}"
+    },
+    {
+      "name": "cardTitle",
+      "label": "Adaptive Card title",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "When set, an Adaptive Card is sent (with title + body) instead of plain text."
+    },
+    {
+      "name": "cardBody",
+      "label": "Adaptive Card body",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    }
+  ],
+  "ai": {
+    "shortDescription": "Post a message to Microsoft Teams via incoming webhook.",
+    "whenToUse": "When you need to notify a Teams channel about a workflow event, alert, or status update. Use cardTitle for richer formatting.",
+    "examplePrompt": "send a Teams card to the engineering channel summarizing the deployment status",
+    "promptHints": "Reference output via {{steps.<id>.result.sent}}. Falls back to TEAMS_WEBHOOK_URL env when webhookUrl unset."
+  },
+  "outputAssertions": [
+    {
+      "name": "sent_ok",
+      "expression": "result && result.sent === true",
+      "errorMessage": "Teams webhook responded with non-success status."
+    }
+  ]
+}

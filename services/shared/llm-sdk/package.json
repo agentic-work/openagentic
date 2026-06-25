@@ -1,0 +1,165 @@
+{
+  "name": "@agentic-work/llm-sdk",
+  "version": "1.0.0",
+  "description": "OpenAgentic LLM SDK — Messages API client with zero telemetry",
+  "author": "OpenAgentic",
+  "types": "dist/index.d.ts",
+  "main": "dist/index.js",
+  "type": "module",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agentic-work/openagentic-sdk.git"
+  },
+  "homepage": "https://github.com/agentic-work/openagentic-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/agentic-work/openagentic-sdk/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "private": false,
+  "scripts": {
+    "build": "tsc && node scripts/fix-esm-imports.js",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock": "^3.1045.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1045.0",
+    "json-schema-to-ts": "^3.1.1"
+  },
+  "peerDependencies": {
+    "@aws-crypto/sha256-js": ">=5.0.0",
+    "@aws-sdk/credential-provider-node": ">=3.0.0",
+    "@smithy/protocol-http": ">=3.0.0",
+    "@smithy/signature-v4": ">=3.0.0",
+    "google-auth-library": ">=9.0.0",
+    "zod": "^3.25.0 || ^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "zod": {
+      "optional": true
+    },
+    "@smithy/signature-v4": {
+      "optional": true
+    },
+    "@smithy/protocol-http": {
+      "optional": true
+    },
+    "@aws-crypto/sha256-js": {
+      "optional": true
+    },
+    "@aws-sdk/credential-provider-node": {
+      "optional": true
+    },
+    "google-auth-library": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@aws-crypto/sha256-js": "^5.0.0",
+    "@aws-sdk/credential-provider-node": "^3.0.0",
+    "@aws-sdk/credential-providers": "^3.1024.0",
+    "@smithy/fetch-http-handler": "^5.3.15",
+    "@smithy/protocol-http": "^4.0.0",
+    "@smithy/signature-v4": "^4.0.0",
+    "@smithy/types": "^3.0.0",
+    "@types/node": "^20.19.39",
+    "google-auth-library": "^9.0.0",
+    "typescript": "5.8.3",
+    "vitest": "^2.1.0",
+    "zod": "^3.25.76"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./package.json": "./package.json",
+    "./error": {
+      "import": "./dist/error.js",
+      "types": "./dist/error.d.ts"
+    },
+    "./streaming": {
+      "import": "./dist/streaming.js",
+      "types": "./dist/streaming.d.ts"
+    },
+    "./resources": {
+      "import": "./dist/resources/index.js",
+      "types": "./dist/resources/index.d.ts"
+    },
+    "./resources/index": {
+      "import": "./dist/resources/index.js",
+      "types": "./dist/resources/index.d.ts"
+    },
+    "./resources/messages": {
+      "import": "./dist/resources/messages/index.js",
+      "types": "./dist/resources/messages/index.d.ts"
+    },
+    "./resources/messages/messages": {
+      "import": "./dist/resources/messages/messages.js",
+      "types": "./dist/resources/messages/messages.d.ts"
+    },
+    "./resources/beta/messages": {
+      "import": "./dist/resources/beta/messages/index.js",
+      "types": "./dist/resources/beta/messages/index.d.ts"
+    },
+    "./resources/beta/messages/messages": {
+      "import": "./dist/resources/beta/messages/messages.js",
+      "types": "./dist/resources/beta/messages/messages.d.ts"
+    },
+    "./client": {
+      "import": "./dist/client.js",
+      "types": "./dist/client.d.ts"
+    },
+    "./lib/MessageStream": {
+      "import": "./dist/lib/MessageStream.js",
+      "types": "./dist/lib/MessageStream.d.ts"
+    },
+    "./lib/normalizers": {
+      "import": "./dist/lib/normalizers/index.js",
+      "types": "./dist/lib/normalizers/index.d.ts"
+    },
+    "./lib/normalizers/index.js": {
+      "import": "./dist/lib/normalizers/index.js",
+      "types": "./dist/lib/normalizers/index.d.ts"
+    },
+    "./lib/normalizers/select": {
+      "import": "./dist/lib/normalizers/select.js",
+      "types": "./dist/lib/normalizers/select.d.ts"
+    },
+    "./lib/agentic-events": {
+      "import": "./dist/lib/agentic-events/index.js",
+      "types": "./dist/lib/agentic-events/index.d.ts"
+    },
+    "./lib/canonical": {
+      "import": "./dist/lib/canonical/index.js",
+      "types": "./dist/lib/canonical/index.d.ts"
+    },
+    "./lib/canonical/index.js": {
+      "import": "./dist/lib/canonical/index.js",
+      "types": "./dist/lib/canonical/index.d.ts"
+    },
+    "./lib/adapters": {
+      "import": "./dist/lib/adapters/index.js",
+      "types": "./dist/lib/adapters/index.d.ts"
+    },
+    "./lib/adapters/index.js": {
+      "import": "./dist/lib/adapters/index.js",
+      "types": "./dist/lib/adapters/index.d.ts"
+    },
+    "./*": {
+      "import": "./dist/*.js",
+      "types": "./dist/*.d.ts"
+    }
+  }
+}

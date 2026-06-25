@@ -1,0 +1,54 @@
+{
+  "type": "parallel",
+  "category": "control",
+  "label": "Parallel",
+  "description": "Fan out to all outgoing branches and execute them in parallel. Returns each branch's result + an aggregate success rate.",
+  "icon": "git-fork",
+  "primary": "branches",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "any",
+        "required": false
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "minSuccessRate",
+      "label": "Minimum Success Rate",
+      "type": "number",
+      "default": 0.5,
+      "min": 0,
+      "max": 1,
+      "required": false,
+      "description": "Lowest acceptable fraction of successful branches (0.5 = half must succeed). Falls below this and the node fails its outputAssertion."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Fan out to multiple branches and run them in parallel.",
+    "whenToUse": "When you want to execute several independent sub-workflows simultaneously and continue once the configured success threshold is met.",
+    "examplePrompt": "run the enrichment step and the notification step in parallel",
+    "promptHints": "Connect multiple output edges to different downstream nodes. The node fails its outputAssertion if fewer than minSuccessRate fraction of branches succeed."
+  },
+  "outputAssertions": [
+    {
+      "name": "parallel_branches_returned",
+      "expression": "result && Array.isArray(result.branches) && result.branches.length > 0",
+      "errorMessage": "Parallel node returned no branch results — verify the node has outgoing edges."
+    },
+    {
+      "name": "parallel_min_success_rate",
+      "expression": "result && result.successRate >= (typeof result.minSuccessRate === 'number' ? result.minSuccessRate : 0.5)",
+      "errorMessage": "Parallel node's success rate fell below the configured minSuccessRate threshold — too many branches failed."
+    }
+  ]
+}

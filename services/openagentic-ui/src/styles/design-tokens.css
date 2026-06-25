@@ -1,0 +1,121 @@
+/* ==========================================================================
+   MATERIAL 3 EXPRESSIVE DESIGN TOKENS
+   Task #160 — Gemini visual language adoption.
+
+   Single source of truth for every shape, elevation, motion and focus
+   decision. Components should reference these tokens (via CSS custom
+   properties or Tailwind utilities) rather than hard-coding values.
+
+   Naming convention:
+     --radius-*    border-radius / shape scale
+     --surface-*   tonal elevation scale (luminance shifts, no drop shadows)
+     --shadow-*    low-opacity blur-heavy drop shadows (soft light)
+     --ease-*      motion curves
+     --duration-*  motion durations
+     --focus-ring  accessible focus outline
+   ========================================================================== */
+
+:root {
+  /* ── Shape scale ──────────────────────────────────────────────────────────
+     The entire --radius-* scale now lives ONCE in src/styles/theme.css (the
+     SOLE SOT — the no-hardcoded-theme-values guard enforces single-definition
+     for --radius-* / --shadow-* / --font-*). The duplicate :root copy that
+     used to live here unintentionally shadowed theme.css's brutalist values
+     (card/input/sm/full) because this file is imported later AND unlayered,
+     while theme.css's @theme emits into @layer theme — so the soft 20px/28px
+     copies won the cascade and ChipsRow/ToolsIndexedPill/.sharp rendered round
+     instead of sharp. Removing it here makes theme.css the single radius
+     definition site; the M3 container/control sizes (panel/toast/table/…)
+     moved there verbatim, so tailwind rounded-* utilities + direct var() reads
+     resolve unchanged. */
+
+  /* --primary-rgb (focus-ring alpha driver), the --surface-0..4 tonal scale,
+     and the --shadow-soft-* scale are now defined ONCE in src/styles/theme.css
+     (the SOLE SOT) — surfaces derive from the canonical --color-* palette and
+     the soft shadows derive from --color-shadow, flipping per [data-theme].
+     The stale old-blue primary-rgb triple + raw surface/shadow literals
+     that used to live here are removed so there is one definition site. */
+
+  /* ── Motion curves ────────────────────────────────────────────────────── */
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --ease-standard:   cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ── Motion durations ────────────────────────────────────────────────── */
+  --duration-short-1: 50ms;
+  --duration-short-2: 100ms;
+  --duration-short-3: 150ms;   /* button press, hover */
+  --duration-medium-1: 200ms;  /* default UI */
+  --duration-medium-2: 300ms;  /* modals, panels */
+  --duration-long-1: 400ms;
+
+  /* ── Focus ring ───────────────────────────────────────────────────────── */
+  --focus-ring: 0 0 0 2px rgba(var(--primary-rgb), 0.5);
+  --focus-ring-offset: 2px;
+
+  /* ── UI typography refinements (M3 Expressive) ─────────────────────────
+     Body keeps Inter var. UI labels bump to medium (500) with a slight
+     letter-spacing tighten for optical balance at 14-15px.
+     Headlines at 600-700 with -0.02em tracking. */
+  --text-ui-label:         14px;
+  --text-ui-tracking:      -0.01em;
+  --text-headline-tracking: -0.02em;
+  --text-headline-leading: 1.2;
+  --text-body-leading:     1.55;
+
+  /* ── Transcript content column ─────────────────────────────────────────
+     Single source of truth for the chat-mode AND code-mode transcript
+     max-width. Set so both modes line-wrap at the same column when the
+     user toggles between them — flipping the sidebar must NOT produce
+     a visible width jump for assistant/user message bubbles.
+
+     Value: 902px = 820px (prior chat width, see ChatMessages.tsx pre-2026-04-24
+     comment) widened by 10% per task `transcript-width-parity`. ~85ch at the
+     editorial 15px Inter — still inside the 70-90ch readability window
+     while giving long-form responses + tool-card output more breathing room.
+
+     Consumers (must use this var, not hardcoded literals):
+       - features/chat/components/ChatMessages.tsx        (assistant column)
+       - features/chat/components/MessageBubble.tsx       (user bubble)
+       - features/chat/components/MessageContent/SharedMarkdownRenderer.tsx
+       - features/code/components/CodeModeChatView.tsx    (codemode transcript) */
+  /* Bumped 2026-05-07 from 902px → 1140px because the codemode
+   * right-side Monaco editor was removed, freeing horizontal real
+   * estate. Both chat-mode and codemode read this token, so both
+   * widen in lockstep. User feedback: 'now that we pulled the
+   * monaco from the right panel- lets make sure both chat and
+   * codemode inline outputs are the same width'. */
+  --transcript-max-width: 1140px;
+}
+
+/* LIGHT-THEME --surface-* / --shadow-soft-* overrides moved to theme.css
+   (the SOLE SOT); they flip per [data-theme] there. */
+
+/* ==========================================================================
+   UTILITY CLASSES
+   For raw CSS consumers (outside Tailwind's class system).
+   ========================================================================== */
+
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.transition-expressive {
+  transition-property: background-color, border-color, box-shadow, transform, opacity, color;
+  transition-duration: var(--duration-medium-1);
+  transition-timing-function: var(--ease-emphasized);
+}
+
+.press-scale:active {
+  transform: scale(0.98);
+  transition-duration: var(--duration-short-3);
+}
+
+/* Tabular numerics — apply to timestamps, costs, token counts. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}

@@ -1,0 +1,14 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_prometheus.prometheus_query with query='up == 0' when ALL TARGETS ARE UP (operational default in a stable cluster). The python tool returns the formatted-text header with Results: 0 and no per-line entries. FastMCP wraps the string return as content[{type:'text', text: <string>}]. This is the empty-case fixture — the downstream analyze transform parses the text, finds zero down targets, the report explicitly renders an 'All N targets up' banner instead of a blank table.",
+  "result": {
+    "result": {
+      "isError": false,
+      "content": [
+        {
+          "type": "text",
+          "text": "Query: up == 0\nResult Type: vector\nResults: 0\n"
+        }
+      ]
+    }
+  }
+}

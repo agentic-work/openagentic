@@ -1,0 +1,81 @@
+{
+  "type": "text_splitter",
+  "category": "data",
+  "label": "Text Splitter",
+  "description": "Split text into chunks for embedding. Strategies: recursive (separator-aware) or fixed (fixed-size). Runs in-process, no HTTP.",
+  "icon": "scissors",
+  "primary": "chunks",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": true
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "chunks": "array",
+          "totalChunks": "number",
+          "originalLength": "number"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "strategy",
+      "label": "Strategy",
+      "type": "enum",
+      "values": [
+        "recursive",
+        "fixed",
+        "semantic"
+      ],
+      "default": "recursive",
+      "required": false,
+      "description": "recursive: respects separators; fixed: pure fixed-size slices; semantic: alias for recursive in this implementation."
+    },
+    {
+      "name": "chunkSize",
+      "label": "Chunk size",
+      "type": "number",
+      "required": false,
+      "default": 512,
+      "min": 1,
+      "max": 8192
+    },
+    {
+      "name": "chunkOverlap",
+      "label": "Chunk overlap",
+      "type": "number",
+      "required": false,
+      "default": 50,
+      "min": 0,
+      "max": 1024
+    },
+    {
+      "name": "separators",
+      "label": "Separators (recursive only)",
+      "type": "json",
+      "required": false,
+      "default": [
+        "\n\n",
+        "\n",
+        ". ",
+        " "
+      ]
+    }
+  ],
+  "ai": {
+    "shortDescription": "Split text into overlapping chunks.",
+    "whenToUse": "Before the embedding node — turn long text into chunks that fit the embedding model's context window.",
+    "examplePrompt": "split the loaded document into 1024-char chunks with 100-char overlap",
+    "promptHints": "Reference chunks via {{steps.<id>.result.chunks}} (each has .content and .metadata)."
+  },
+  "outputAssertions": []
+}

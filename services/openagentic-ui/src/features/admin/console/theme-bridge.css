@@ -1,0 +1,92 @@
+/**
+ * theme-bridge.css — admin console v4 token bridge.
+ *
+ * The v4 console design-system stylesheet (./styles.css, the `.awc-*` rules)
+ * was ported faithfully from upstream, but upstream authored its token
+ * vocabulary (--font-v3-*, --bg-*, --fg-*, --line-*, --accent*, --ok/--warn/
+ * --err/--info) in token files (admin-v2-accents.css + mockup-v067.css) that
+ * were NOT ported into OSS. So the `.awc-*` rules referenced UNDEFINED custom
+ * properties wherever the console mounts and fell back to browser defaults
+ * (black/white, system sans-serif) → the console looked broken.
+ *
+ * This file re-defines EVERY token styles.css (+ the console pages) consume,
+ * scoped to `.awc-root`, mapping each onto the canonical OpenAgentic theme in
+ * src/styles/theme.css (the ONE source of truth). It is imported in
+ * chrome/Shell.tsx IMMEDIATELY BEFORE '../styles.css' so the tokens resolve on
+ * first paint.
+ *
+ * Mapping intent — the console re-skinned to the OpenAgentic identity:
+ *   • type     →  IBM Plex Mono everywhere (var(--font-mono) = the brand
+ *                 display/mono family). Body + mono + tele all map to mono so
+ *                 the whole console reads in the field-guide monospace voice.
+ *   • surfaces →  the warm espresso/cream ramp (--brand-terminal-* dark,
+ *                 --brand-paper-* light) via the canonical --color-* tokens.
+ *   • text     →  the canonical fg ramp (cream on espresso / ink on paper).
+ *   • lines    →  the canonical rule tokens.
+ *   • accent   →  signal-orange #FF5722 (var(--color-accent)) with soft/line/
+ *                 dim/glow tints derived via color-mix so a user-picked accent
+ *                 still propagates.
+ *   • status   →  the brand status tones (--color-ok/warn/err/nfo).
+ *
+ * Every token references the canonical var() chain FIRST (with a literal brand
+ * fallback) so future theme.css edits cascade into the console automatically.
+ * The dark block is the default; the `[data-theme="light"] .awc-root` override
+ * swaps the surface/line ramp to the paper palette (text/accent/status already
+ * flip because the canonical --color-* tokens they chain through are
+ * theme-aware).
+ * ==========================================================================*/
+
+/* ── DARK (default) — espresso world ───────────────────────────────────────*/
+.awc-root {
+  /* type — the whole console in IBM Plex Mono (the brand display/mono font) */
+  --font-v3-body: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  --font-v3-mono: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+  --font-v3-tele: var(--font-mono, "IBM Plex Mono", ui-monospace, monospace);
+
+  /* surfaces — warm espresso ramp (dark) */
+  --bg-0: var(--color-bg, #18130c);
+  --bg-1: var(--color-surface, #211a11);
+  --bg-2: var(--color-surface-2, #2c2418);
+  --bg-3: color-mix(in srgb, var(--color-fg, #f4efe6) 9%, var(--color-surface-2, #2c2418));
+
+  /* text — cream ramp (dark) */
+  --fg-0: var(--color-fg, #f4efe6);
+  --fg-1: var(--color-fg-muted, #cdc4b2);
+  --fg-2: var(--color-fg-subtle, #968b76);
+  --fg-3: color-mix(in srgb, var(--color-fg-subtle, #968b76) 70%, transparent);
+
+  /* lines — warm rules */
+  --line-1: var(--color-rule, #3a3024);
+  --line-2: color-mix(in srgb, var(--color-fg, #f4efe6) 18%, var(--color-rule, #3a3024));
+  --border-1: var(--color-rule, #3a3024);
+
+  /* accent — signal-orange #FF5722 + derived tints */
+  --accent: var(--color-accent, #ff5722);
+  --accent-soft: var(--color-accent-soft, color-mix(in srgb, var(--color-accent, #ff5722) 14%, transparent));
+  --accent-line: var(--color-accent-line, color-mix(in srgb, var(--color-accent, #ff5722) 32%, transparent));
+  --accent-dim: color-mix(in srgb, var(--color-accent, #ff5722) 16%, transparent);
+  --accent-glow: color-mix(in srgb, var(--color-accent, #ff5722) 45%, transparent);
+  --accent-fg: var(--color-on-accent, #18130c);
+
+  /* status — brand tones */
+  --ok: var(--color-ok, #22c55e);
+  --warn: var(--color-warn, #f59e0b);
+  --err: var(--color-err, #ff453a);
+  --info: var(--color-nfo, #4dd0e1);
+}
+
+/* ── LIGHT — Warm Frost paper world ────────────────────────────────────────
+ * Only the surface + line ramp needs an explicit paper override; fg/accent/
+ * status chain through the canonical --color-* tokens, which already flip
+ * under [data-theme="light"] in theme.css.
+ * --------------------------------------------------------------------------*/
+[data-theme="light"] .awc-root {
+  --bg-0: var(--color-bg, #f4efe6);
+  --bg-1: var(--color-surface, #ebe5d8);
+  --bg-2: var(--color-surface-2, #dbd3bf);
+  --bg-3: color-mix(in srgb, var(--color-fg, #0e0d0b) 8%, var(--color-surface-2, #dbd3bf));
+
+  --line-1: var(--color-rule, #c8bfaf);
+  --line-2: color-mix(in srgb, var(--color-fg, #0e0d0b) 16%, var(--color-rule, #c8bfaf));
+  --border-1: var(--color-rule, #c8bfaf);
+}

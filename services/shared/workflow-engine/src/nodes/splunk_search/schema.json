@@ -1,0 +1,185 @@
+{
+  "type": "splunk_search",
+  "category": "integration",
+  "label": "Splunk",
+  "description": "Run SPL searches, acknowledge notable events, or push events via HEC against Splunk Enterprise / Splunk Cloud REST APIs.",
+  "icon": "search",
+  "primary": "events",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "events": "any[]",
+          "earliestTime": "string",
+          "latestTime": "string",
+          "eventCount": "number",
+          "jobId": "string",
+          "ok": "boolean",
+          "notableId": "string",
+          "eventId": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "operation",
+      "label": "Operation",
+      "type": "enum",
+      "values": [
+        "search",
+        "alert_ack",
+        "notable_create"
+      ],
+      "required": true,
+      "description": "search — run SPL and return events; alert_ack — acknowledge a notable event; notable_create — push event via HEC."
+    },
+    {
+      "name": "host",
+      "label": "Splunk host",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": false,
+      "placeholder": "https://splunk.corp.example.com:8089",
+      "validation": {
+        "pattern": "^https?://",
+        "errorMessage": "Host must start with http:// or https://"
+      }
+    },
+    {
+      "name": "token",
+      "label": "Auth token / HEC token",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "description": "Splunk session token or HEC token. Use {{secret:splunk_token}} to reference a workflow secret."
+    },
+    {
+      "name": "allowInsecure",
+      "label": "Allow insecure TLS (dev/sandbox only)",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "description": "When true, TLS certificate verification is disabled. Only use in dev or sandbox environments."
+    },
+    {
+      "name": "spl",
+      "label": "SPL query",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Search Processing Language query. Required when operation=search.",
+      "placeholder": "index=main sourcetype=access_combined status=500 | stats count by host"
+    },
+    {
+      "name": "earliestTime",
+      "label": "Earliest time",
+      "type": "string",
+      "default": "-15m",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Splunk earliest time modifier (e.g. -15m, -1h@h). Only used when operation=search."
+    },
+    {
+      "name": "latestTime",
+      "label": "Latest time",
+      "type": "string",
+      "default": "now",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Splunk latest time modifier. Only used when operation=search."
+    },
+    {
+      "name": "maxResults",
+      "label": "Max results",
+      "type": "number",
+      "default": 100,
+      "min": 1,
+      "max": 50000,
+      "required": false,
+      "description": "Maximum number of events returned by the search job. Only used when operation=search."
+    },
+    {
+      "name": "timeout",
+      "label": "Search timeout (ms)",
+      "type": "number",
+      "default": 60000,
+      "min": 1000,
+      "max": 600000,
+      "required": false,
+      "description": "Maximum time to wait for a search job to complete. Only used when operation=search."
+    },
+    {
+      "name": "notableId",
+      "label": "Notable event ID",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "ID of the Splunk notable event to acknowledge. Required when operation=alert_ack."
+    },
+    {
+      "name": "comment",
+      "label": "Acknowledgement comment",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Optional comment to attach to the acknowledgement. Only used when operation=alert_ack."
+    },
+    {
+      "name": "assignee",
+      "label": "Assignee",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Optional user to assign the notable to during acknowledgement. Only used when operation=alert_ack."
+    },
+    {
+      "name": "event",
+      "label": "HEC event payload (JSON)",
+      "type": "json",
+      "required": false,
+      "description": "Event object to send via HEC. Required when operation=notable_create."
+    },
+    {
+      "name": "index",
+      "label": "Splunk index",
+      "type": "string",
+      "default": "notable",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Target index for the HEC event. Only used when operation=notable_create."
+    },
+    {
+      "name": "sourcetype",
+      "label": "Sourcetype",
+      "type": "string",
+      "default": "stash",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Sourcetype for the HEC event. Only used when operation=notable_create."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Run SPL searches, acknowledge Splunk notable events, or push events via HEC.",
+    "whenToUse": "During incident triage (search for errors/alerts in Splunk), alert workflow automation (acknowledge notables after remediation), or when you need to create new notable events in Splunk from workflow data.",
+    "examplePrompt": "search Splunk for HTTP 500s in the last 15 minutes and return the top hosts",
+    "promptHints": "Use operation=search with an SPL query for log triage. Use operation=alert_ack to close Splunk notables after auto-remediation. Use operation=notable_create to push workflow-detected issues as Splunk notable events via HEC. Set token={{secret:splunk_token}} to use a workflow secret."
+  },
+  "outputAssertions": [
+    {
+      "name": "notable_create_success",
+      "expression": "result && (result.eventCount !== undefined || result.ok !== false)",
+      "errorMessage": "Splunk operation failed — notable_create returned non-success or alert_ack was rejected."
+    }
+  ]
+}

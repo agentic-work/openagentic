@@ -1,0 +1,75 @@
+{
+  "type": "map_reduce",
+  "category": "control",
+  "label": "Map / Reduce",
+  "description": "Fan out over an input collection — run the downstream subgraph once per item under a concurrency limit — then reduce the per-item results into a single value (collect, concat, sum, avg, min, max, count).",
+  "icon": "git-fork",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "reduceStrategy": "string",
+          "itemCount": "number",
+          "concurrency": "number",
+          "mapped": "any",
+          "output": "any"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "items",
+      "label": "Collection",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "{{steps.fetch.output}}",
+      "description": "Path/template that resolves to the array to map over. When unset, maps over the upstream input directly (which must be an array)."
+    },
+    {
+      "name": "itemVariable",
+      "label": "Item variable",
+      "type": "string",
+      "required": false,
+      "default": "item",
+      "description": "Name of the per-item variable bound on each subgraph run (defaults to 'item')."
+    },
+    {
+      "name": "concurrency",
+      "label": "Concurrency",
+      "type": "number",
+      "required": false,
+      "default": 1,
+      "min": 1,
+      "max": 100,
+      "description": "Maximum number of per-item subgraph executions running at once. 1 = sequential. Raise to parallelize fan-out under a bound."
+    },
+    {
+      "name": "reduce",
+      "label": "Reduce strategy",
+      "type": "enum",
+      "values": ["collect", "concat", "sum", "avg", "min", "max", "count"],
+      "default": "collect",
+      "required": false,
+      "description": "How to fold per-item results. collect=array of results; concat=flatten arrays / join strings; sum/avg/min/max=numeric reductions; count=number of items."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Fan out a step over every item in a list, then aggregate the results.",
+    "whenToUse": "When the same downstream chain must run for each element of a collection and you want a single aggregated output — e.g. score every document then sum the scores, or enrich every record then collect them.",
+    "examplePrompt": "for each record in steps.query.output, run the enrichment step with up to 5 in parallel, then collect the results",
+    "promptHints": "Set items to the dotted path of the array. Inside the subgraph reference the current element via input (primitives) or input.<itemVariable> (objects). Output: {{steps.X.output}} is the reduced value, {{steps.X.mapped}} is the raw per-item array."
+  },
+  "outputAssertions": [
+    {
+      "name": "map_reduce_shape",
+      "expression": "result && Array.isArray(result.mapped) && typeof result.itemCount === 'number'",
+      "errorMessage": "map_reduce returned a malformed result — expected { mapped: unknown[], itemCount: number, output }. An empty collection (itemCount: 0) is a valid outcome."
+    }
+  ]
+}

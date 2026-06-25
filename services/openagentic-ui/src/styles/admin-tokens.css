@@ -1,0 +1,15 @@
+/* ==========================================================================
+   ADMIN CONSOLE DESIGN TOKENS — collapsed into the ONE SOT.
+
+   The provider / capability / tier / toast identity colors (and their
+   light-theme 700-shade contrast lifts) are now defined ONCE in
+   src/styles/theme.css:
+     - raw identity hexes live in the @theme --cat-provider-* / --cat-cap-* /
+       --cat-tier-* scale (a categorical identity palette, allowlisted);
+     - the legacy --provider-* / --cap-* / --tier-* / --toast-* names alias
+       that scale in theme.css's LAYER-3 block;
+     - the [data-theme="light"] 700-shade swaps live in theme.css too.
+   This file used to re-declare all of them with raw literals and, because it
+   @imports AFTER theme.css, silently OVERRODE the SOT. Emptied so there is
+   exactly one definition site.
+   ========================================================================== */

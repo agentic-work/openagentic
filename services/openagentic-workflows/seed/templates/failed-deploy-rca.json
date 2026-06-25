@@ -1,0 +1,187 @@
+{
+  "slug": "failed-deploy-rca",
+  "name": "Failed Deploy RCA",
+  "description": "Given a deployment + namespace, pulls Kubernetes rollout state IN PARALLEL — openagentic_kubernetes.k8s_rollout_status (is it progressing/stuck?), openagentic_kubernetes.k8s_list_events (recent namespace events) — alongside openagentic_loki.loki_search_errors (pod logs / errors for the namespace), converges them in a labeled merge keyed by source-node label (rollout/events/logs), pre-computes a rollout summary + events excerpt + log excerpt in a single analyze transform, asks the platform LLM (Smart Router, model:auto) to explain WHY the deploy failed and propose the suggested fix, strips any chain-of-thought preamble, and renders an HTML deploy-RCA report. Zero hardcoded model id or provider.",
+  "category": "aiops",
+  "template": true,
+  "meta": {
+    "purpose": "Explain why a Kubernetes deployment failed to roll out and suggest the fix, by correlating rollout status, namespace events, and pod error logs.",
+    "how_it_works": [
+      "1. Fans the trigger out to three parallel MCP calls: openagentic_kubernetes.k8s_rollout_status (rollout progress for the deployment), openagentic_kubernetes.k8s_list_events (recent events in the namespace), openagentic_loki.loki_search_errors (pod error logs in the namespace/window).",
+      "2. A labeled merge converges the three branches keyed by snake-cased source-node label (rollout / events / logs).",
+      "3. A single analyze transform pre-computes a rollout summary + an events excerpt + a log excerpt.",
+      "4. The platform LLM (model:auto) explains why the deploy failed (image pull, crashloop, quota, readiness probe, etc.) and proposes the suggested fix, citing the rollout/events/log evidence.",
+      "5. A CoT-stripper transform removes any LLM preamble.",
+      "6. webhook_response renders the HTML deploy-RCA report. Healthy short-circuit: when the rollout is complete and events/logs are clean, the report says the deploy succeeded instead of inventing a failure."
+    ],
+    "expected_output": "HTML report: rollout status line, recent namespace events, error-log excerpt, and an LLM verdict — why the deploy failed and the suggested fix.",
+    "useful_when": "A deploy is stuck or rolled back and you need the cause (and the fix) without manually correlating kubectl rollout status, events, and pod logs.",
+    "tools_used": [
+      "openagentic_kubernetes.k8s_rollout_status",
+      "openagentic_kubernetes.k8s_list_events",
+      "openagentic_loki.loki_search_errors",
+      "merge",
+      "transform",
+      "llm_completion",
+      "webhook_response"
+    ],
+    "version": "1.0",
+    "tags": ["aiops", "kubernetes", "deploy", "rca", "rollout", "demo"]
+  },
+  "defaultInputs": {
+    "namespace": "default",
+    "deployment_name": "api",
+    "time_range": "1h"
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "Failed Deploy RCA",
+          "input_schema": {
+            "namespace": "string",
+            "deployment_name": "string",
+            "time_range": "string"
+          }
+        }
+      },
+      {
+        "id": "rollout",
+        "type": "mcp_tool",
+        "data": {
+          "label": "rollout",
+          "toolServer": "openagentic_kubernetes",
+          "toolName": "k8s_rollout_status",
+          "arguments": {
+            "namespace": "{{trigger.namespace}}",
+            "deployment_name": "{{trigger.deployment_name}}"
+          }
+        }
+      },
+      {
+        "id": "events",
+        "type": "mcp_tool",
+        "data": {
+          "label": "events",
+          "toolServer": "openagentic_kubernetes",
+          "toolName": "k8s_list_events",
+          "arguments": {
+            "namespace": "{{trigger.namespace}}",
+            "limit": 50
+          }
+        }
+      },
+      {
+        "id": "logs",
+        "type": "mcp_tool",
+        "data": {
+          "label": "logs",
+          "toolServer": "openagentic_loki",
+          "toolName": "loki_search_errors",
+          "arguments": {
+            "namespace": "{{trigger.namespace}}",
+            "time_range": "{{trigger.time_range}}",
+            "limit": 200
+          }
+        }
+      },
+      {
+        "id": "merge_deploy",
+        "type": "merge",
+        "data": {
+          "label": "Merge Rollout + Events + Logs",
+          "mergeStrategy": "object"
+        }
+      },
+      {
+        "id": "analyze",
+        "type": "transform",
+        "data": {
+          "label": "Analyze Deploy Failure",
+          "operations": [
+            {
+              "op": "set",
+              "target": "rollout_text",
+              "value": "{{ String((input.rollout && input.rollout.content) || '').slice(0, 1500) }}"
+            },
+            {
+              "op": "set",
+              "target": "events_text",
+              "value": "{{ (() => { const b = input && input.events; let t = ''; if (b && typeof b.content === 'string') t = b.content; else if (b && Array.isArray(b.events)) t = b.events.map(e => `${(e && e.type) || ''} ${(e && e.reason) || ''} ${(e && e.message) || ''}`).join('\\n'); const lines = String(t).split(/\\r?\\n/).filter(l => l && l.trim()); return lines.slice(0, 25).join('\\n').slice(0, 2000); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "logs_text",
+              "value": "{{ (() => { const t = String((input.logs && input.logs.content) || ''); const lines = t.split(/\\r?\\n/).filter(l => l && l.trim()); return lines.slice(0, 20).join('\\n').slice(0, 2000); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "rollout_healthy",
+              "value": "{{ (() => { const t = String(input.rollout_text || ''); return /successfully rolled out|complete|deployment .* up to date/i.test(t) && !/stuck|fail|error|exceeded|imagepull|crashloop|backoff/i.test(t); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "healthy_banner",
+              "value": "{{ (() => { const healthy = input.rollout_healthy === true; const noEvents = !String(input.events_text || '').trim(); const noLogs = !String(input.logs_text || '').trim(); if (healthy && noEvents && noLogs) return '<p class=\"healthy\"><strong>Rollout healthy</strong> — the deployment rolled out successfully and there are no error events or logs in the window. No failure to diagnose.</p>'; return ''; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "rca",
+        "type": "llm_completion",
+        "data": {
+          "label": "Deploy Failure RCA",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 700,
+          "system": "You are an SRE diagnosing a failed Kubernetes deployment. You receive rollout status, recent namespace events, and pod error logs. You explain WHY the deploy failed (image pull error, crashloop, readiness probe failure, resource quota, bad config, etc.) and you propose a concrete fix. You cite the rollout/events/logs evidence and never invent a failure that the evidence does not show.",
+          "prompt": "Deployment: {{trigger.deployment_name}}  Namespace: {{trigger.namespace}}  Window: {{trigger.time_range}}\n\n=== Rollout status (k8s_rollout_status) ===\n{{steps.analyze.rollout_text}}\n\n=== Recent namespace events (k8s_list_events) ===\n{{steps.analyze.events_text}}\n\n=== Pod error logs (loki_search_errors) ===\n{{steps.analyze.logs_text}}\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — NO preamble, NO thinking out loud.\n2. Bullet 1: the verdict — did the deploy fail, and the single most likely reason (cite rollout/events/logs).\n3. Bullet 2: the supporting evidence (which event reason + which log line + the rollout state).\n4. Bullet 3: the suggested fix as a concrete operator action (e.g. correct the image tag, raise the memory limit, fix the readiness probe path, rollback).\n5. If the rollout is healthy with no error events/logs, emit one bullet stating the deploy succeeded and one bullet recommending no action."
+        }
+      },
+      {
+        "id": "clean_rca",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const inlineMatch = raw.match(/([\\.\\!\\?\\:]|\\n)\\s*(-\\s+\\S)/); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx !== -1) { const fromLineIdx = lines.slice(firstBulletIdx).join('\\n').trim(); if (inlineMatch && inlineMatch.index !== undefined) { const fromInline = raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); if (fromInline.length < fromLineIdx.length || lines[firstBulletIdx].trim().length > 8 === false) { return fromInline; } } return fromLineIdx; } if (inlineMatch && inlineMatch.index !== undefined) { return raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); } return raw.trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML Deploy RCA Report",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"failed-deploy-rca\"><h2>Failed Deploy RCA — {{trigger.deployment_name}} ({{trigger.namespace}})</h2><p><strong>Window:</strong> {{trigger.time_range}}</p>{{steps.analyze.healthy_banner}}<h3>Why It Failed &amp; Suggested Fix</h3><pre class=\"rca\">{{steps.clean_rca.clean_content}}</pre><h3>Rollout Status</h3><pre class=\"rollout\">{{steps.analyze.rollout_text}}</pre><h3>Recent Events</h3><pre class=\"events\">{{steps.analyze.events_text}}</pre><h3>Pod Error Logs</h3><pre class=\"logs\">{{steps.analyze.logs_text}}</pre></div>",
+          "persistAsArtifact": true,
+          "artifactTitle": "Deploy RCA: {{trigger.deployment_name}}",
+          "artifactMimeType": "text/html",
+          "artifactTags": ["aiops", "kubernetes", "deploy"]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "rollout" },
+      { "id": "e2", "source": "trigger", "target": "events" },
+      { "id": "e3", "source": "trigger", "target": "logs" },
+      { "id": "e4", "source": "rollout", "target": "merge_deploy" },
+      { "id": "e5", "source": "events", "target": "merge_deploy" },
+      { "id": "e6", "source": "logs", "target": "merge_deploy" },
+      { "id": "e7", "source": "merge_deploy", "target": "analyze" },
+      { "id": "e8", "source": "analyze", "target": "rca" },
+      { "id": "e9", "source": "rca", "target": "clean_rca" },
+      { "id": "e10", "source": "clean_rca", "target": "report" }
+    ]
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "type": "save_file",
+  "category": "data",
+  "label": "Save File",
+  "description": "Persist arbitrary text content to the artifact store (MinIO/GCS/Azure via the platform's BlobStorageService). Returns {artifactId, url, sizeBytes, mimeType}. Text payloads only for now — binary mode lands when the binary plane (Tier 2 #5) is wired through. For string-valued flow outputs (JSON, CSV, HTML, Markdown, logs) the text path already covers the canonical use case.",
+  "icon": "save",
+  "primary": "url",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "artifactId": "string",
+          "url": "string",
+          "sizeBytes": "number",
+          "mimeType": "string",
+          "filename": "string",
+          "title": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "content",
+      "label": "Content",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "{{steps.previous.content}}",
+      "description": "The payload to persist. Strings are written verbatim; objects/arrays are JSON.stringify'd before write."
+    },
+    {
+      "name": "filename",
+      "label": "Filename",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "triage-report-{{trigger.execution_id}}.html",
+      "description": "File name including extension. Template-interpolated."
+    },
+    {
+      "name": "mimeType",
+      "label": "MIME type",
+      "type": "string",
+      "required": false,
+      "default": "text/plain",
+      "description": "Content type. Auto-derived from filename when omitted (.html→text/html, .json→application/json, .csv→text/csv, .md→text/markdown, else text/plain)."
+    },
+    {
+      "name": "title",
+      "label": "Title",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Human-readable title shown in the artifacts library."
+    },
+    {
+      "name": "description",
+      "label": "Description",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "tags",
+      "label": "Tags",
+      "type": "json",
+      "required": false,
+      "default": [
+        "save_file"
+      ],
+      "description": "Array of tags applied to the artifact for search/filter."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Persist text content (HTML / JSON / CSV / Markdown / logs) to the artifact store.",
+    "whenToUse": "When a flow produces a report/artifact that needs a stable URL — Slack/email links, reload-survivable inspection, sharing outside the runtime envelope.",
+    "examplePrompt": "save the cluster-triage report as triage-report.html so the slack message can link to it",
+    "promptHints": "Reference output via {{steps.X.result.url}} and {{steps.X.result.artifactId}}. Filename extension drives the default MIME type."
+  },
+  "outputAssertions": [
+    {
+      "name": "artifact_created",
+      "expression": "result && typeof result.artifactId === 'string' && result.artifactId.length > 0",
+      "errorMessage": "save_file did not return an artifactId."
+    }
+  ]
+}

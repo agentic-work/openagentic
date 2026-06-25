@@ -1,0 +1,992 @@
+{
+  "domain": "node-types",
+  "title": "Workflow Node Types",
+  "description": "Registered Flow canvas node types, source-derived from the workflow-engine node registry.",
+  "icon": "flow",
+  "category": "workflows",
+  "generatedAt": "2026-06-25T15:20:26.764Z",
+  "sourceFiles": [
+    "services/shared/workflow-engine/src/nodes/registry.ts",
+    "services/shared/workflow-engine/src/nodes/text/schema.json",
+    "services/shared/workflow-engine/src/nodes/http_request/schema.json",
+    "services/shared/workflow-engine/src/nodes/llm_completion/schema.json",
+    "services/shared/workflow-engine/src/nodes/wait/schema.json",
+    "services/shared/workflow-engine/src/nodes/transform/schema.json",
+    "services/shared/workflow-engine/src/nodes/merge/schema.json",
+    "services/shared/workflow-engine/src/nodes/webhook_response/schema.json",
+    "services/shared/workflow-engine/src/nodes/error_handler/schema.json",
+    "services/shared/workflow-engine/src/nodes/slack_message/schema.json",
+    "services/shared/workflow-engine/src/nodes/teams_message/schema.json",
+    "services/shared/workflow-engine/src/nodes/discord_message/schema.json",
+    "services/shared/workflow-engine/src/nodes/outlook_email/schema.json",
+    "services/shared/workflow-engine/src/nodes/send_email/schema.json",
+    "services/shared/workflow-engine/src/nodes/pagerduty_incident/schema.json",
+    "services/shared/workflow-engine/src/nodes/servicenow_ticket/schema.json",
+    "services/shared/workflow-engine/src/nodes/jira_issue/schema.json",
+    "services/shared/workflow-engine/src/nodes/knowledge_ingest/schema.json",
+    "services/shared/workflow-engine/src/nodes/file_upload/schema.json",
+    "services/shared/workflow-engine/src/nodes/document_loader/schema.json",
+    "services/shared/workflow-engine/src/nodes/embedding/schema.json",
+    "services/shared/workflow-engine/src/nodes/text_splitter/schema.json",
+    "services/shared/workflow-engine/src/nodes/vector_store/schema.json",
+    "services/shared/workflow-engine/src/nodes/rag_query/schema.json",
+    "services/shared/workflow-engine/src/nodes/splunk_search/schema.json",
+    "services/shared/workflow-engine/src/nodes/bedrock/schema.json",
+    "services/shared/workflow-engine/src/nodes/vertex/schema.json",
+    "services/shared/workflow-engine/src/nodes/azure_ai/schema.json",
+    "services/shared/workflow-engine/src/nodes/openagentic_chat/schema.json",
+    "services/shared/workflow-engine/src/nodes/reasoning/schema.json",
+    "services/shared/workflow-engine/src/nodes/structured_output/schema.json",
+    "services/shared/workflow-engine/src/nodes/guardrails/schema.json",
+    "services/shared/workflow-engine/src/nodes/mcp_tool/schema.json",
+    "services/shared/workflow-engine/src/nodes/agent_spawn/schema.json",
+    "services/shared/workflow-engine/src/nodes/a2a/schema.json",
+    "services/shared/workflow-engine/src/nodes/agent_single/schema.json",
+    "services/shared/workflow-engine/src/nodes/agent_pool/schema.json",
+    "services/shared/workflow-engine/src/nodes/agent_supervisor/schema.json",
+    "services/shared/workflow-engine/src/nodes/multi_agent/schema.json",
+    "services/shared/workflow-engine/src/nodes/trigger/schema.json",
+    "services/shared/workflow-engine/src/nodes/user_context/schema.json",
+    "services/shared/workflow-engine/src/nodes/data_query/schema.json",
+    "services/shared/workflow-engine/src/nodes/sub_workflow/schema.json",
+    "services/shared/workflow-engine/src/nodes/human_approval/schema.json",
+    "services/shared/workflow-engine/src/nodes/human_input/schema.json",
+    "services/shared/workflow-engine/src/nodes/data_source_query/schema.json",
+    "services/shared/workflow-engine/src/nodes/condition/schema.json",
+    "services/shared/workflow-engine/src/nodes/switch/schema.json",
+    "services/shared/workflow-engine/src/nodes/parallel/schema.json",
+    "services/shared/workflow-engine/src/nodes/loop/schema.json",
+    "services/shared/workflow-engine/src/nodes/anomaly_detect/schema.json",
+    "services/shared/workflow-engine/src/nodes/filter_data/schema.json",
+    "services/shared/workflow-engine/src/nodes/select_data/schema.json",
+    "services/shared/workflow-engine/src/nodes/extract_key/schema.json",
+    "services/shared/workflow-engine/src/nodes/parse_json/schema.json",
+    "services/shared/workflow-engine/src/nodes/regex/schema.json",
+    "services/shared/workflow-engine/src/nodes/prompt_template/schema.json",
+    "services/shared/workflow-engine/src/nodes/conversation_memory/schema.json",
+    "services/shared/workflow-engine/src/nodes/flow_tool/schema.json",
+    "services/shared/workflow-engine/src/nodes/wait_for/schema.json",
+    "services/shared/workflow-engine/src/nodes/rate_limiter/schema.json",
+    "services/shared/workflow-engine/src/nodes/csv_processor/schema.json",
+    "services/shared/workflow-engine/src/nodes/grounding_check/schema.json",
+    "services/shared/workflow-engine/src/nodes/llm_router/schema.json",
+    "services/shared/workflow-engine/src/nodes/save_file/schema.json",
+    "services/shared/workflow-engine/src/nodes/aggregate/schema.json",
+    "services/shared/workflow-engine/src/nodes/knowledge_search/schema.json",
+    "services/shared/workflow-engine/src/nodes/rerank/schema.json",
+    "services/shared/workflow-engine/src/nodes/multi_query/schema.json",
+    "services/shared/workflow-engine/src/nodes/retry_with_backoff/schema.json",
+    "services/shared/workflow-engine/src/nodes/map_reduce/schema.json",
+    "services/shared/workflow-engine/src/nodes/dedup/schema.json"
+  ],
+  "sections": [
+    {
+      "id": "action",
+      "title": "Action",
+      "description": "2 action node types",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "http_request",
+          "name": "HTTP Request",
+          "description": "Make an HTTP/HTTPS request to any external API. Supports GET/POST/PUT/DELETE/PATCH, custom headers, JSON or string bodies, templating, and per-request timeout.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "http_request",
+            "category": "action",
+            "icon": "globe"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/http_request/schema.json"
+        },
+        {
+          "id": "webhook_response",
+          "name": "Webhook Response",
+          "description": "Send a response back to the webhook caller. Sets the HTTP status code, headers, and body for the inbound webhook that triggered this workflow.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "webhook_response",
+            "category": "action",
+            "icon": "reply"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/webhook_response/schema.json"
+        }
+      ]
+    },
+    {
+      "id": "ai",
+      "title": "Ai",
+      "description": "21 ai node types",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "a2a",
+          "name": "A2A (Agent-to-Agent)",
+          "description": "Agent-to-Agent protocol — alias of agent_spawn that takes a 'prompt' (instead of 'task') and routes through openagentic-proxy.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "a2a",
+            "category": "ai",
+            "icon": "robot"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/a2a/schema.json"
+        },
+        {
+          "id": "agent_pool",
+          "name": "Agent Pool",
+          "description": "Run a fixed list of agents in parallel through openagentic-proxy. Aggregates their results with the configured strategy (merge/first/vote).",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "agent_pool",
+            "category": "ai",
+            "icon": "robot"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/agent_pool/schema.json"
+        },
+        {
+          "id": "agent_single",
+          "name": "Single Agent",
+          "description": "Run one agent through openagentic-proxy with orchestration='parallel'. Returns the unwrapped output plus the per-agent results array.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "agent_single",
+            "category": "ai",
+            "icon": "robot"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/agent_single/schema.json"
+        },
+        {
+          "id": "agent_spawn",
+          "name": "Agent Spawn",
+          "description": "Spawn a single agent through openagentic-proxy. The proxy resolves the agent role to a DB-backed agent record and runs the task.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "agent_spawn",
+            "category": "ai",
+            "icon": "robot"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/agent_spawn/schema.json"
+        },
+        {
+          "id": "agent_supervisor",
+          "name": "Agent Supervisor",
+          "description": "Run a supervisor + worker pool through openagentic-proxy with orchestration='supervisor'. The supervisor delegates subtasks to workers.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "agent_supervisor",
+            "category": "ai",
+            "icon": "robot"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/agent_supervisor/schema.json"
+        },
+        {
+          "id": "aggregate",
+          "name": "Aggregate (LLM)",
+          "description": "LLM-driven reduce over an array. Two modes: `reduce` (single LLM call with the entire array serialized into the prompt → one summary string + one usage entry) and `map` (N LLM calls, one per item → array of N results). Uses the SAME /v1/chat/completions endpoint as llm_completion",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "aggregate",
+            "category": "ai",
+            "icon": "list-tree"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/aggregate/schema.json"
+        },
+        {
+          "id": "azure_ai",
+          "name": "Azure OpenAI",
+          "description": "Send a prompt through Azure OpenAI via the platform's OpenAI-compatible chat-completion endpoint (provider:'azure_openai').",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "azure_ai",
+            "category": "ai",
+            "icon": "azure"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/azure_ai/schema.json"
+        },
+        {
+          "id": "bedrock",
+          "name": "AWS Bedrock",
+          "description": "Send a prompt through AWS Bedrock via the platform's OpenAI-compatible chat-completion endpoint (provider:'bedrock').",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "bedrock",
+            "category": "ai",
+            "icon": "aws"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/bedrock/schema.json"
+        },
+        {
+          "id": "conversation_memory",
+          "name": "Conversation Memory",
+          "description": "Read / write / clear / summarize / semantic-search a tenant-scoped chat conversation history. Backs stateful agents and HITL flows that span multiple user turns.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "conversation_memory",
+            "category": "ai",
+            "icon": "history"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/conversation_memory/schema.json"
+        },
+        {
+          "id": "grounding_check",
+          "name": "Grounding Check",
+          "description": "Verify that an LLM-produced claim references only entities that appear in one or more upstream ground-truth sources. Extracts pod-like / component-like tokens from the claim and intersects with tokens present in the truth sources. Deterministic, no LLM round-trip. Use BEFORE noti",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "grounding_check",
+            "category": "ai",
+            "icon": "shield-check"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/grounding_check/schema.json"
+        },
+        {
+          "id": "guardrails",
+          "name": "Guardrails",
+          "description": "Validate content against safety rules (PII, toxicity, prompt-injection). Calls the platform's DLP scanner API; falls back to local regex on failure.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "guardrails",
+            "category": "ai",
+            "icon": "shield"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/guardrails/schema.json"
+        },
+        {
+          "id": "llm_completion",
+          "name": "LLM Completion",
+          "description": "Send a prompt to a chat-completion model via the platform's OpenAI-compatible endpoint. Supports system + user messages, automatic context injection, and Smart Router model selection.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "llm_completion",
+            "category": "ai",
+            "icon": "sparkles"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/llm_completion/schema.json"
+        },
+        {
+          "id": "llm_router",
+          "name": "LLM Router",
+          "description": "LLM-as-condition. Given a prompt + a configured set of named routes (each with a description), the model picks exactly one route by name. The chosen route is used as the outgoing `sourceHandle` so downstream branches gate naturally. Goes through the SAME /v1/chat/completions endp",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "llm_router",
+            "category": "ai",
+            "icon": "git-fork"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/llm_router/schema.json"
+        },
+        {
+          "id": "multi_agent",
+          "name": "Multi-Agent",
+          "description": "Concurrent fan-out across N agents via openagentic-proxy. Falls back to direct LLM batch when openagentic-proxy is unavailable.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "multi_agent",
+            "category": "ai",
+            "icon": "robot"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/multi_agent/schema.json"
+        },
+        {
+          "id": "multi_query",
+          "name": "Multi-Query Expand",
+          "description": "Expand one question into N retrieval query variants to widen RAG recall (the 'multi-query retriever' pattern). The default path is a DETERMINISTIC rule-based expander — it derives reformulations (keyword-only, question→statement, synonym/paraphrase prefixes, and the original) wit",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "multi_query",
+            "category": "ai",
+            "icon": "list-plus"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/multi_query/schema.json"
+        },
+        {
+          "id": "openagentic_chat",
+          "name": "OpenAgentic Chat",
+          "description": "Conversational LLM via the platform's Smart Router. Same shape as openagentic_llm — supports modelOverride, sliderPosition, and chain-of-thought thinking.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "openagentic_chat",
+            "category": "ai",
+            "icon": "sparkles"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/openagentic_chat/schema.json"
+        },
+        {
+          "id": "prompt_template",
+          "name": "Prompt Template",
+          "description": "Build a reusable prompt with {{variable}} placeholders. Outputs either a single rendered string ('prompt' mode) or a structured chat conversation split on {{system}} / {{user}} / {{assistant}} role markers ('messages' mode).",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "prompt_template",
+            "category": "ai",
+            "icon": "sparkles"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/prompt_template/schema.json"
+        },
+        {
+          "id": "reasoning",
+          "name": "Reasoning",
+          "description": "Extended chain-of-thought via the platform's Smart Router. Forces enableThinking:true at max quality (sliderPosition:100). Use for hard problems.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "reasoning",
+            "category": "ai",
+            "icon": "brain"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/reasoning/schema.json"
+        },
+        {
+          "id": "rerank",
+          "name": "Rerank Chunks",
+          "description": "Re-order a list of retrieved chunks by relevance to a query using a deterministic lexical relevance scorer (BM25-style term-overlap with IDF weighting + phrase-match boost). No model round-trip on the default path, so it is deterministic and harness-friendly. Optionally an LLM cr",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "rerank",
+            "category": "ai",
+            "icon": "sort-desc"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/rerank/schema.json"
+        },
+        {
+          "id": "structured_output",
+          "name": "Structured Output",
+          "description": "Force the LLM to emit valid JSON matching the supplied schema. Retries on parse failure.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "structured_output",
+            "category": "ai",
+            "icon": "code"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/structured_output/schema.json"
+        },
+        {
+          "id": "vertex",
+          "name": "Google Vertex AI",
+          "description": "Send a prompt through Google Vertex AI via the platform's OpenAI-compatible chat-completion endpoint (provider:'vertex').",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "vertex",
+            "category": "ai",
+            "icon": "google"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/vertex/schema.json"
+        }
+      ]
+    },
+    {
+      "id": "annotation",
+      "title": "Annotation",
+      "description": "1 annotation node type",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "text",
+          "name": "Text Annotation",
+          "description": "Visual annotation node — passes input through untouched. Useful for documentation/comments embedded in the canvas.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "text",
+            "category": "annotation",
+            "icon": "type"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/text/schema.json"
+        }
+      ]
+    },
+    {
+      "id": "control",
+      "title": "Control",
+      "description": "16 control node types",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "condition",
+          "name": "Condition",
+          "description": "Evaluate a JavaScript expression and route to the matching downstream branch (true/false or custom labels).",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "condition",
+            "category": "control",
+            "icon": "git-branch"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/condition/schema.json"
+        },
+        {
+          "id": "dedup",
+          "name": "Deduplicate",
+          "description": "Idempotency gate. Computes a key from the configured expression and drops (or errors on) items whose key has already been seen — within the current execution by default, or across executions with an optional TTL window.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "dedup",
+            "category": "control",
+            "icon": "filter-x"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/dedup/schema.json"
+        },
+        {
+          "id": "error_handler",
+          "name": "Error Handler",
+          "description": "Receives routed errors from upstream nodes and handles them via log, notify, transform, or retry actions.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "error_handler",
+            "category": "control",
+            "icon": "shield-alert"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/error_handler/schema.json"
+        },
+        {
+          "id": "flow_tool",
+          "name": "Flow as Tool",
+          "description": "Wrap a saved Flow as a callable tool. Maps caller args to the wrapped flow's trigger input via inputMapping, runs the flow as a sub-execution, and extracts a value at outputExtract from the result. V1: callable from a parent flow; agent dynamic-tool integration is V1.1.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "flow_tool",
+            "category": "control",
+            "icon": "git-fork"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/flow_tool/schema.json"
+        },
+        {
+          "id": "human_approval",
+          "name": "Human Approval",
+          "description": "Pause the workflow until a configured approver accepts or rejects. The engine returns control downstream once an approval decision is recorded, or applies the configured timeout action if the timeout elapses first.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "human_approval",
+            "category": "control",
+            "icon": "user-check"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/human_approval/schema.json"
+        },
+        {
+          "id": "human_input",
+          "name": "Request Data from User",
+          "description": "Pause the workflow and ask the user to fill a typed form, then resume with their answers. Unlike human_approval (which only yields approve/reject), human_input collects actual values mid-run — a missing parameter, a decision the model can't make, or a credential to bind. Downstre",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "human_input",
+            "category": "control",
+            "icon": "form-input"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/human_input/schema.json"
+        },
+        {
+          "id": "loop",
+          "name": "Loop",
+          "description": "Iterate over a collection by re-executing the downstream subgraph once per item, with the iteration variable bound in the per-iteration input.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "loop",
+            "category": "control",
+            "icon": "repeat"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/loop/schema.json"
+        },
+        {
+          "id": "map_reduce",
+          "name": "Map / Reduce",
+          "description": "Fan out over an input collection — run the downstream subgraph once per item under a concurrency limit — then reduce the per-item results into a single value (collect, concat, sum, avg, min, max, count).",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "map_reduce",
+            "category": "control",
+            "icon": "git-fork"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/map_reduce/schema.json"
+        },
+        {
+          "id": "merge",
+          "name": "Merge",
+          "description": "Combine results from multiple incoming branches into a single output using array, object, or concat strategy.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "merge",
+            "category": "control",
+            "icon": "merge"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/merge/schema.json"
+        },
+        {
+          "id": "parallel",
+          "name": "Parallel",
+          "description": "Fan out to all outgoing branches and execute them in parallel. Returns each branch's result + an aggregate success rate.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "parallel",
+            "category": "control",
+            "icon": "git-fork"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/parallel/schema.json"
+        },
+        {
+          "id": "rate_limiter",
+          "name": "Rate Limiter",
+          "description": "Fixed-window throttle for fan-out to rate-limited APIs. Per-(tenant, key) counter; choose block (sleep until reset), drop (return without invoking), or error (throw) on overflow.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "rate_limiter",
+            "category": "control",
+            "icon": "gauge"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/rate_limiter/schema.json"
+        },
+        {
+          "id": "retry_with_backoff",
+          "name": "Retry with Backoff",
+          "description": "Wraps a downstream operation and retries it with exponential backoff on failure. Returns the first successful result; throws a clear error naming the last failure once all retries are exhausted.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "retry_with_backoff",
+            "category": "control",
+            "icon": "rotate-ccw"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/retry_with_backoff/schema.json"
+        },
+        {
+          "id": "sub_workflow",
+          "name": "Sub-workflow",
+          "description": "Invoke another saved workflow by id and inline its output. Lets you compose flows the way you compose functions.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "sub_workflow",
+            "category": "control",
+            "icon": "git-branch"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/sub_workflow/schema.json"
+        },
+        {
+          "id": "switch",
+          "name": "Switch",
+          "description": "Evaluate an expression and route to the matching case branch. Supports a default fallback case.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "switch",
+            "category": "control",
+            "icon": "split-square-horizontal"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/switch/schema.json"
+        },
+        {
+          "id": "wait",
+          "name": "Wait",
+          "description": "Pause workflow execution for a specified duration. Short waits (< 30 s) sleep in-process; long waits store state and schedule a resume.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "wait",
+            "category": "control",
+            "icon": "clock"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/wait/schema.json"
+        },
+        {
+          "id": "wait_for",
+          "name": "Wait For Condition",
+          "description": "Poll an expression until it becomes truthy (or a timeout elapses). Differs from `wait`, which sleeps a fixed duration. Useful for: 'wait until job_status == done', 'wait until pod ready', 'wait until queue depth < N'. Reference: n8n's Wait node 'until condition' variant + the n8n",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "wait_for",
+            "category": "control",
+            "icon": "loader"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/wait_for/schema.json"
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "title": "Data",
+      "description": "20 data node types",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "anomaly_detect",
+          "name": "Anomaly Detect",
+          "description": "Statistical anomaly detection over a time-series window. Flags outliers and exposes a top-level hasAnomaly verdict for downstream branch nodes (policy_guard, runbook_executor, etc.).",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "anomaly_detect",
+            "category": "data",
+            "icon": "activity"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/anomaly_detect/schema.json"
+        },
+        {
+          "id": "csv_processor",
+          "name": "CSV Processor",
+          "description": "Parse CSV text into records (objects keyed by header) or rows (string arrays). V1 ships text-mode only; binary/file mode is a follow-up after the binary data plane lands.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "csv_processor",
+            "category": "data",
+            "icon": "table"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/csv_processor/schema.json"
+        },
+        {
+          "id": "data_query",
+          "name": "Data Query",
+          "description": "Run a vector / collection query against a configured datasource. Returns the matching results so downstream nodes can summarise, rank, or feed an LLM.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "data_query",
+            "category": "data",
+            "icon": "database"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/data_query/schema.json"
+        },
+        {
+          "id": "data_source_query",
+          "name": "Data Source Query",
+          "description": "Run a query against a configured DataSource. Supports raw SQL/REST queries (mode='raw') and natural-language questions that the platform translates to SQL (mode='nl'). Distinct from data_query which performs vector search.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "data_source_query",
+            "category": "data",
+            "icon": "database"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/data_source_query/schema.json"
+        },
+        {
+          "id": "document_loader",
+          "name": "Document Loader",
+          "description": "Fetch a document from a URL (or pass through inline input). Optional parseMode strips HTML or pretty-prints JSON.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "document_loader",
+            "category": "data",
+            "icon": "file-text"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/document_loader/schema.json"
+        },
+        {
+          "id": "embedding",
+          "name": "Embedding",
+          "description": "Generate vector embeddings for one or more texts via the platform's /api/v1/embeddings endpoint. Falls back to /api/v1/vector/embed on primary failure.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "embedding",
+            "category": "data",
+            "icon": "vector"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/embedding/schema.json"
+        },
+        {
+          "id": "extract_key",
+          "name": "Extract Key",
+          "description": "Pull a single value at a dot/bracket path from an object, with optional default. Replaces the transform-extract case for the common 'give me steps.X.data.id' pattern.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "extract_key",
+            "category": "data",
+            "icon": "key"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/extract_key/schema.json"
+        },
+        {
+          "id": "file_upload",
+          "name": "File Upload (Embed)",
+          "description": "Upload content for chunking + embedding into a Milvus collection via the platform's /api/files/embed endpoint.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "file_upload",
+            "category": "data",
+            "icon": "upload"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/file_upload/schema.json"
+        },
+        {
+          "id": "filter_data",
+          "name": "Filter Array",
+          "description": "Filter an array by a typed field predicate. Replaces the JS-expression-only path through `transform` for the common 'keep rows where X' case.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "filter_data",
+            "category": "data",
+            "icon": "filter"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/filter_data/schema.json"
+        },
+        {
+          "id": "knowledge_ingest",
+          "name": "Knowledge Ingest",
+          "description": "Ingest content into a Milvus knowledge base via the platform's /api/chat/knowledge/ingest endpoint.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "knowledge_ingest",
+            "category": "data",
+            "icon": "database"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/knowledge_ingest/schema.json"
+        },
+        {
+          "id": "knowledge_search",
+          "name": "Knowledge Search",
+          "description": "Semantic search against the platform knowledge base (shared_knowledge + the calling user's private collection) via /api/chat/knowledge/search. Returns ranked chunks merged across both. Pair this with knowledge_ingest: the ingest endpoint writes to shared_knowledge / user_<id>_pri",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "knowledge_search",
+            "category": "data",
+            "icon": "search"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/knowledge_search/schema.json"
+        },
+        {
+          "id": "parse_json",
+          "name": "Parse JSON",
+          "description": "Parse a JSON string into a structured object. Replaces the JS-expression-only path through `transform` for the common 'LLM returned a JSON string' case.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "parse_json",
+            "category": "data",
+            "icon": "code"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/parse_json/schema.json"
+        },
+        {
+          "id": "rag_query",
+          "name": "RAG Query",
+          "description": "Run a semantic search against a Milvus collection via the platform's /api/v1/vector/search endpoint. Returns ranked results with optional score threshold.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "rag_query",
+            "category": "data",
+            "icon": "search"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/rag_query/schema.json"
+        },
+        {
+          "id": "regex",
+          "name": "Regex",
+          "description": "Apply a regex pattern to a string. Supports match, replace, and test modes. Replaces the JS-expression-only path through `transform` for pattern extraction and substitution.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "regex",
+            "category": "data",
+            "icon": "search"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/regex/schema.json"
+        },
+        {
+          "id": "save_file",
+          "name": "Save File",
+          "description": "Persist arbitrary text content to the artifact store (MinIO/GCS/Azure via the platform's BlobStorageService). Returns {artifactId, url, sizeBytes, mimeType}. Text payloads only for now — binary mode lands when the binary plane (Tier 2 #5) is wired through. For string-valued flow ",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "save_file",
+            "category": "data",
+            "icon": "save"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/save_file/schema.json"
+        },
+        {
+          "id": "select_data",
+          "name": "Select Fields",
+          "description": "Pick or omit specific fields by dot-path from an object or each row of an array. Replaces the JS-expression-only path through `transform` for the common 'project these columns' case.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "select_data",
+            "category": "data",
+            "icon": "columns"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/select_data/schema.json"
+        },
+        {
+          "id": "text_splitter",
+          "name": "Text Splitter",
+          "description": "Split text into chunks for embedding. Strategies: recursive (separator-aware) or fixed (fixed-size). Runs in-process, no HTTP.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "text_splitter",
+            "category": "data",
+            "icon": "scissors"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/text_splitter/schema.json"
+        },
+        {
+          "id": "transform",
+          "name": "Transform",
+          "description": "Apply map, filter, reduce, or extract operations to the input using sandboxed JavaScript expressions.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "transform",
+            "category": "data",
+            "icon": "shuffle"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/transform/schema.json"
+        },
+        {
+          "id": "user_context",
+          "name": "User Context",
+          "description": "Inject the calling user's profile, memories, and recent chats into the workflow. Calls the platform's /api/user-context endpoint.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "user_context",
+            "category": "data",
+            "icon": "user"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/user_context/schema.json"
+        },
+        {
+          "id": "vector_store",
+          "name": "Vector Store",
+          "description": "Upsert or delete vectors in a Milvus collection via the platform's /api/v1/vector/store endpoint. Falls back to /api/files/embed when the primary endpoint fails.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "vector_store",
+            "category": "data",
+            "icon": "database"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/vector_store/schema.json"
+        }
+      ]
+    },
+    {
+      "id": "integration",
+      "title": "Integration",
+      "description": "10 integration node types",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "discord_message",
+          "name": "Discord Message",
+          "description": "Send a message to a Discord channel via webhook. Supports plain content, custom username, and embeds.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "discord_message",
+            "category": "integration",
+            "icon": "discord"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/discord_message/schema.json"
+        },
+        {
+          "id": "jira_issue",
+          "name": "Jira Issue",
+          "description": "Create a Jira issue via REST API v3. Auth via JIRA_BASE_URL + JIRA_EMAIL + JIRA_API_TOKEN env vars.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "jira_issue",
+            "category": "integration",
+            "icon": "jira"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/jira_issue/schema.json"
+        },
+        {
+          "id": "mcp_tool",
+          "name": "MCP Tool",
+          "description": "Invoke an MCP (Model Context Protocol) tool through the platform's mcp-proxy. Auth runs as the user (OBO federation for AWS/Azure).",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "mcp_tool",
+            "category": "integration",
+            "icon": "plug"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/mcp_tool/schema.json"
+        },
+        {
+          "id": "outlook_email",
+          "name": "Outlook Email",
+          "description": "Send an email via Microsoft 365 / Outlook SMTP (smtp.office365.com:587). Credentials read from OUTLOOK_USER / OUTLOOK_PASSWORD env vars (or SMTP_USER / SMTP_PASS fallback).",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "outlook_email",
+            "category": "integration",
+            "icon": "mail"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/outlook_email/schema.json"
+        },
+        {
+          "id": "pagerduty_incident",
+          "name": "PagerDuty Incident",
+          "description": "Trigger / acknowledge / resolve a PagerDuty incident via Events API v2. Supports dedupKey, severity, custom_details, and client/client_url fields.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "pagerduty_incident",
+            "category": "integration",
+            "icon": "alert"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/pagerduty_incident/schema.json"
+        },
+        {
+          "id": "send_email",
+          "name": "Send Email (SMTP)",
+          "description": "Send email via SMTP. Requires explicit per-node credentials — either literal values or {{secret:NAME}} workflow-secret references. No env-var fallback (2026-05-15 hardening: every flow that sends mail must carry its own credentials).",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "send_email",
+            "category": "integration",
+            "icon": "mail"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/send_email/schema.json"
+        },
+        {
+          "id": "servicenow_ticket",
+          "name": "ServiceNow Ticket",
+          "description": "Create a ServiceNow record via the REST Table API. Defaults to creating an incident; supports any configurable table (change_request, problem, etc).",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "servicenow_ticket",
+            "category": "integration",
+            "icon": "ticket"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/servicenow_ticket/schema.json"
+        },
+        {
+          "id": "slack_message",
+          "name": "Slack Message",
+          "description": "Send a message to a Slack channel via incoming webhook. Supports templated text, channel override, and Block Kit blocks.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "slack_message",
+            "category": "integration",
+            "icon": "slack"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/slack_message/schema.json"
+        },
+        {
+          "id": "splunk_search",
+          "name": "Splunk",
+          "description": "Run SPL searches, acknowledge notable events, or push events via HEC against Splunk Enterprise / Splunk Cloud REST APIs.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "splunk_search",
+            "category": "integration",
+            "icon": "search"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/splunk_search/schema.json"
+        },
+        {
+          "id": "teams_message",
+          "name": "Microsoft Teams Message",
+          "description": "Post a message to a Microsoft Teams channel via incoming webhook. Supports plain text or Adaptive Cards.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "teams_message",
+            "category": "integration",
+            "icon": "teams"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/teams_message/schema.json"
+        }
+      ]
+    },
+    {
+      "id": "trigger",
+      "title": "Trigger",
+      "description": "1 trigger node type",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "trigger",
+          "name": "Trigger",
+          "description": "Workflow entry point. Emits the input as the first event so downstream nodes can reference it via {{trigger.body.*}} and {{trigger.<key>}}.",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "trigger",
+            "category": "trigger",
+            "icon": "play"
+          },
+          "sourceFile": "services/shared/workflow-engine/src/nodes/trigger/schema.json"
+        }
+      ]
+    }
+  ]
+}

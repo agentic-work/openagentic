@@ -1,0 +1,83 @@
+{
+  "type": "csv_processor",
+  "category": "data",
+  "label": "CSV Processor",
+  "description": "Parse CSV text into records (objects keyed by header) or rows (string arrays). V1 ships text-mode only; binary/file mode is a follow-up after the binary data plane lands.",
+  "icon": "table",
+  "primary": "records",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "outputAs": "string",
+          "columns": "array",
+          "count": "number",
+          "records": "array",
+          "rows": "array"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "csv",
+      "label": "CSV text",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "{{steps.http_request.body}}",
+      "description": "Raw CSV text. Template against {{trigger.body.X}} / {{steps.Y.Z}} to pull from an upstream node."
+    },
+    {
+      "name": "hasHeader",
+      "label": "First row is header",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "When true, the first row supplies column names for records mode. When false, output is rows[] regardless of outputAs."
+    },
+    {
+      "name": "delimiter",
+      "label": "Delimiter",
+      "type": "string",
+      "required": false,
+      "default": ",",
+      "description": "Field delimiter. Use \"\\t\" for TSV. Default is comma."
+    },
+    {
+      "name": "outputAs",
+      "label": "Output shape",
+      "type": "enum",
+      "values": [
+        "records",
+        "rows"
+      ],
+      "default": "records",
+      "required": false,
+      "description": "records = array of {col: value} objects (requires hasHeader). rows = array of string[]."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Parse CSV text into records or rows.",
+    "whenToUse": "Place downstream of an http_request returning CSV, or anywhere you have inline CSV text and want structured rows.",
+    "examplePrompt": "parse the body of the http_request as CSV with a header and return records",
+    "promptHints": "Output: {{steps.X.records}} (array of objects) or {{steps.X.rows}} (array of arrays). {{steps.X.columns}} is the header list. Use iterator downstream to loop over rows/records."
+  },
+  "outputAssertions": [
+    {
+      "name": "has_envelope",
+      "expression": "result && typeof result.outputAs === 'string' && typeof result.count === 'number'",
+      "errorMessage": "csv_processor output is missing the {outputAs, count} envelope."
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "type": "loop",
+  "category": "control",
+  "label": "Loop",
+  "description": "Iterate over a collection by re-executing the downstream subgraph once per item, with the iteration variable bound in the per-iteration input.",
+  "icon": "repeat",
+  "primary": "iterations",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "iterations",
+        "type": "any",
+        "required": false
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "iterateOver",
+      "label": "Collection",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Path to the array to iterate over, e.g. 'input.items' or 'steps.fetch.output'. When unset, the loop iterates over the upstream input directly.",
+      "placeholder": "input.items"
+    },
+    {
+      "name": "itemVariable",
+      "label": "Item Variable",
+      "type": "string",
+      "required": false,
+      "default": "item",
+      "description": "Name of the per-iteration variable bound on each loop body run (defaults to 'item')."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Iterate over an array, running the downstream subgraph once per item.",
+    "whenToUse": "When you need to apply the same step (or chain of steps) to each element of a list — e.g. enrich every record returned by an upstream query.",
+    "examplePrompt": "for each item in input.records, run the LLM summarisation step",
+    "promptHints": "Set iterateOver to the dotted path of the array (often 'input.items' or 'steps.X.output'). Inside the loop body, reference the current element with `input` (primitives) or input.<itemVariable> (objects)."
+  },
+  "outputAssertions": [
+    {
+      "name": "loop_result_shape",
+      "expression": "result && Array.isArray(result.iterations) && typeof result.itemCount === 'number'",
+      "errorMessage": "Loop node returned a malformed result — expected { iterations: unknown[], itemCount: number }. Empty arrays are a valid outcome (itemCount: 0, iterations: [])."
+    }
+  ]
+}

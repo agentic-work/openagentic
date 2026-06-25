@@ -1,0 +1,12 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_kubernetes.k8s_list_pods against an empty namespace. Mirrors the success-path envelope but with zero entries. Exercises the empty-namespace path in the namespace-resource-survey template.",
+  "result": {
+    "result": {
+      "success": true,
+      "namespace": "empty-namespace",
+      "is_protected": false,
+      "pods": [],
+      "count": 0
+    }
+  }
+}
