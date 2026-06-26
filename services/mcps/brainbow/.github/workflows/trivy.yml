@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: MIT
+
+# Trivy — filesystem CVE scan. Fails the build if any Dockerfile/code
+# reference a library with a known CRITICAL or HIGH severity CVE.
+name: Trivy Scan
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  trivy:
+    name: Trivy FS Scan
+    runs-on: arc-${{ github.event.repository.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy
+        # v0.35.0 SHA — older v0.33.1 install.sh broke on arm64 ARC pis
+        # ("installing Trivy binary" → exit 1 with no scan output).
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          scan-type: fs
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+          format: table

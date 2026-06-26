@@ -1,0 +1,253 @@
+#!/usr/bin/env bash
+# brainbow-mcp — stdio MCP launcher with auto-bootstrap.
+#
+# Architecture (final design — 2026-05-27):
+#
+#   ONE shared REST server per host on :4444, MANY MCP clients,
+#   each with its own unique sessionId. brainbow's REST already supports
+#   N concurrent sessions (each owns a Puppeteer Chromium process keyed
+#   by sessionId — see src/session.js). The launcher:
+#
+#     1. Ensures the shared REST is running on :4444 (idempotent).
+#     2. Picks a stable unique BRAINBOW_SESSION for this Claude (PPID-
+#        based + per-session cache, so /mcp reconnects within one
+#        Claude reuse the same session + browser window).
+#     3. Does NOT auto-open the viewer by default (BRAINBOW_AUTOOPEN_VIEWER
+#        defaults to false). Open the live viewer ON DEMAND via the
+#        `open_viewer` MCP tool (POST /api/viewer/open) at
+#        http://localhost:4444/?sessionId=<id>. Set
+#        BRAINBOW_AUTOOPEN_VIEWER=true to restore auto-open on launch.
+#     4. Exec's into mcp-server.js for the stdio handshake.
+#
+#   Net result: human bookmarks ONE viewer URL (localhost:4444), each
+#   Claude opens its OWN tab there showing ITS browser session, no
+#   cross-Claude collisions, no port-cache churn, no `pkill` hazards
+#   from one shim killing another's REST.
+#
+# Trace: every shim invocation writes a BEGIN line to
+# /tmp/brainbow-shim-trace.log with timestamp + PID + PPID, so the
+# real Claude-Code MCP-host spawn behavior is forensics-ready.
+#
+# Env vars consumed (all optional):
+#   BRAINBOW_URL                  REST base (default http://localhost:$BRAINBOW_PORT)
+#   BRAINBOW_PORT                 port (default 4444 — shared across Claudes)
+#   BRAINBOW_SESSION              session ID (default: auto-derived per PPID)
+#   BRAINBOW_AUTOSTART_REST       'false' to skip REST autostart      — default 'true'
+#   BRAINBOW_AUTOOPEN_VIEWER      'true' to auto-open viewer on launch — default 'false'
+#                                 (open on demand via the open_viewer MCP tool)
+#   BRAINBOW_VIEWER_OPENED_FLAG   marker file (don't reopen if exists)
+#                                 default $HOME/.cache/brainbow/.viewer-opened-once-<SESSION>
+#   BRAINBOW_VISION_AUTOSTART     vision narrator on first /api/live
+#   BRAINBOW_LOG_TAILS_ENABLED    enable POST /api/log/subscribe
+#   AWS_REGION                    for Bedrock vision provider
+#   BRAINBOW_VISION_PROVIDER      ollama|bedrock|openai|anthropic
+#   BRAINBOW_VISION_MODEL         model id for the provider
+
+set -euo pipefail
+
+# ─── Invocation trace (forensics for any future MCP-init bug) ──────────
+TRACE_FILE="${BRAINBOW_TRACE_FILE:-/tmp/brainbow-shim-trace.log}"
+echo "[$(date '+%H:%M:%S.%3N')] [pid=$$ ppid=${PPID:-?}] BEGIN" >> "$TRACE_FILE" 2>/dev/null || true
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." >/dev/null 2>&1 && pwd)"
+
+# ─── Locate a usable Node ──────────────────────────────────────────────
+for candidate in \
+    "$(command -v node 2>/dev/null || true)"; do
+  if [ -x "$candidate" ]; then NODE_BIN="$candidate"; break; fi
+done
+if [ -z "${NODE_BIN:-}" ]; then
+  echo "[brainbow-mcp] ERROR: no node binary found" >&2
+  exit 1
+fi
+
+# ─── Shared port (default 4444 — one REST per host) ────────────────────
+PORT="${BRAINBOW_PORT:-4444}"
+export BRAINBOW_PORT="$PORT"
+BASE_URL="${BRAINBOW_URL:-http://localhost:$PORT}"
+
+# ─── Per-Claude unique sessionId (PPID-derived, stable per Claude) ─────
+# Each MCP host (Claude process) is the parent of this shim, so $PPID is
+# stable for the lifetime of that Claude session (across /mcp reconnects
+# within one Claude). Different Claudes have different PIDs → different
+# session IDs → different Chromium browser windows on the shared REST.
+#
+# Cached at ~/.cache/brainbow/session-<PPID> so the SAME session is
+# reused if Claude reconnects (otherwise each /mcp would spawn a new
+# Chromium and lose the existing browser state).
+if [ -z "${BRAINBOW_SESSION:-}" ]; then
+  SESSION_CACHE_DIR="${BRAINBOW_SESSION_CACHE_DIR:-$HOME/.cache/brainbow}"
+  SESSION_FILE="$SESSION_CACHE_DIR/session-${PPID:-$$}"
+  if [ -f "$SESSION_FILE" ]; then
+    BRAINBOW_SESSION="$(cat "$SESSION_FILE" 2>/dev/null || true)"
+  fi
+  if [ -z "${BRAINBOW_SESSION:-}" ]; then
+    # Format: claude-<PPID>-<5char hex> — readable + sortable + unique.
+    SUFFIX="$("$NODE_BIN" -e "process.stdout.write(require('crypto').randomBytes(3).toString('hex').slice(0,5))" 2>/dev/null || printf '%05x' $RANDOM)"
+    BRAINBOW_SESSION="claude-${PPID:-$$}-${SUFFIX}"
+    mkdir -p "$SESSION_CACHE_DIR" 2>/dev/null || true
+    echo "$BRAINBOW_SESSION" > "$SESSION_FILE" 2>/dev/null || true
+  fi
+fi
+export BRAINBOW_SESSION
+echo "[brainbow-mcp] session=$BRAINBOW_SESSION rest=$BASE_URL" >&2
+
+AUTOSTART_REST="${BRAINBOW_AUTOSTART_REST:-true}"
+# Bug 2: the viewer no longer AUTO-opens a (Windows) browser window on every
+# MCP/WSL start — that pop was unwanted. Default is now FALSE; the agent/human
+# opens it ON DEMAND via the `open_viewer` MCP tool (POST /api/viewer/open).
+# Set BRAINBOW_AUTOOPEN_VIEWER=true to restore the old auto-open behavior.
+AUTOOPEN_VIEWER="${BRAINBOW_AUTOOPEN_VIEWER:-false}"
+# Viewer marker scoped per-session so each Claude opens its own viewer tab.
+VIEWER_FLAG="${BRAINBOW_VIEWER_OPENED_FLAG:-$HOME/.cache/brainbow/.viewer-opened-once-$BRAINBOW_SESSION}"
+
+# ─── Vision narrator: provider/model selection ─────────────────────────
+# We DELEGATE the model decision to the Node MCP process (src/mcp-server.js
+# → selectVisionModel), which knows about Claude Code (CLAUDECODE=1) and the
+# best-available creds path (Opus-4.8 via anthropic key → bedrock → honest
+# local fallback). The shim only sets a SENTINEL default so the Node side can
+# tell "operator pinned a provider" apart from "shim auto-defaulted".
+#
+# If the operator EXPLICITLY exported BRAINBOW_VISION_PROVIDER, we honor it and
+# do NOT mark the sentinel (so the Node side treats it as an explicit pin).
+#
+# DEFAULT = LOCAL OLLAMA + qwen2.5vl:7b (validated 2026-06-22, sharp+accurate
+# realtime narration of live sessions on the local 4090). Bedrock/Opus are NOT
+# reachable in this env (no API key, invalid AWS token), so the prior bedrock
+# default produced 100% auth errors. Local qwen2.5vl is sovereign (own GPU),
+# free, and actually reads the UI text correctly. An explicit
+# BRAINBOW_VISION_PROVIDER/MODEL in the env still overrides.
+if [ -z "${BRAINBOW_VISION_PROVIDER:-}" ]; then
+  export BRAINBOW_VISION_PROVIDER="ollama"
+  export BRAINBOW_VISION_PROVIDER_AUTO="ollama"
+fi
+if [ -z "${BRAINBOW_OLLAMA_HOST:-}" ]; then
+  export BRAINBOW_OLLAMA_HOST="http://localhost:11434"
+fi
+if [ -z "${BRAINBOW_VISION_MODEL:-}" ]; then
+  # qwen2.5vl:7b — validated sharp/accurate; ~6GB on the local 4090.
+  export BRAINBOW_VISION_MODEL="qwen2.5vl:7b"
+fi
+export BRAINBOW_VISION_AUTOSTART="${BRAINBOW_VISION_AUTOSTART:-false}"
+
+# ─── REST lifecycle: OWNED BY THE NODE MCP PROCESS, not the shim ───────────
+# THE ZOMBIE-REST FIX. The shim used to spawn server.js with
+# `setsid nohup … & disown` — fully ORPHANED from both the shim and the MCP
+# host. When the host disconnected, the MCP exited but NOTHING signaled the
+# REST, so a REST started days ago kept listening on :4444, kept winning the
+# "is the port up?" short-circuit, and served stale bytes forever.
+#
+# Now the long-lived Node MCP process (src/mcp-server.js → createRestLifecycle)
+# does ADOPT-OR-SPAWN of the REST as a NON-detached, refcount-guarded child and
+# kills the one IT spawned when this Claude session disconnects. The shim must
+# NOT pre-spawn an orphan — it only forwards the autostart preference.
+#
+# We keep BRAINBOW_AUTOSTART_REST as the toggle (default true). It is exported
+# so the Node side honors it; setting it 'false' makes brainbow adopt an
+# externally-managed REST without ever spawning one.
+export BRAINBOW_AUTOSTART_REST="$AUTOSTART_REST"
+LOG_DIR="${BRAINBOW_LOG_DIR:-/tmp/brainbow}"
+LOG="${BRAINBOW_LOG_FILE:-${LOG_DIR}/brainbow-${PORT}.log}"
+mkdir -p "$LOG_DIR" 2>/dev/null || true
+echo "[brainbow-mcp] REST lifecycle owned by Node MCP (managed child, autostart=$AUTOSTART_REST)" >&2
+
+# ─── Auto-open viewer (BACKGROUNDED — never blocks MCP-init race) ──────
+# Viewer URL includes ?sessionId=… so this Claude's browser tab shows
+# THIS Claude's session — not another Claude's. Different sessionIds
+# → different tabs on the shared viewer host.
+#
+# CRITICAL: fire-and-forget. If we wait for the opener (wslview /
+# cmd.exe / xdg-open), ANY delay here eats Claude's MCP-init race
+# window — and brainbow loses to other faster-registering MCPs
+# (context7, figma, etc). Viewer is UX, not a registration prerequisite.
+open_viewer() {
+  local url="$1"
+  if command -v wslview >/dev/null 2>&1; then
+    wslview "$url" >/dev/null 2>&1 && return 0
+  fi
+  if command -v cmd.exe >/dev/null 2>&1; then
+    cmd.exe /c start "" "$url" >/dev/null 2>&1 && return 0
+  fi
+  if command -v xdg-open >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ]; then
+    xdg-open "$url" >/dev/null 2>&1 && return 0
+  fi
+  if command -v open >/dev/null 2>&1; then
+    open "$url" >/dev/null 2>&1 && return 0
+  fi
+  return 1
+}
+
+VIEWER_URL="${BASE_URL}/?sessionId=${BRAINBOW_SESSION}"
+if [ "$AUTOOPEN_VIEWER" = "true" ] && [ ! -f "$VIEWER_FLAG" ]; then
+  mkdir -p "$(dirname "$VIEWER_FLAG")" 2>/dev/null || true
+  (
+    if timeout 5 bash -c "$(declare -f open_viewer); open_viewer \"$VIEWER_URL\""; then
+      touch "$VIEWER_FLAG" 2>/dev/null || true
+      echo "[brainbow-mcp] viewer opened at $VIEWER_URL (background)" >> "$TRACE_FILE" 2>/dev/null || true
+    else
+      echo "[brainbow-mcp] viewer auto-open failed/stalled (background)" >> "$TRACE_FILE" 2>/dev/null || true
+    fi
+  ) &
+  disown 2>/dev/null || true
+  echo "[brainbow-mcp] viewer dispatched (background, $VIEWER_URL)" >&2
+fi
+
+# ─── Supervised hand-off to the MCP stdio server ───────────────────────
+# We do NOT `exec` directly. Instead we run mcp-server.js under a tiny
+# restart loop so that if the Node process EVER dies for a reason the
+# in-process never-die guards can't catch (OOM-killer, SIGSEGV in a native
+# addon, a dependency calling process.exit, a kernel signal), we respawn it
+# in-place with the SAME inherited stdio (fd 0/1/2 came from the MCP host).
+# The host's pipe to us stays open across the respawn, so from Claude's point
+# of view the tool surface never vanishes — the new child just picks up the
+# next JSON-RPC frame.
+#
+# The ONLY clean-exit code that should STOP the loop is 0 (the child observed
+# a real stdin EOF = the host genuinely disconnected; respawning would just
+# read EOF again and busy-loop). Any non-zero exit = a crash → respawn.
+#
+# A respawn-storm guard caps restarts to RESTART_MAX within RESTART_WINDOW so
+# a hard-broken build can't spin the CPU; past the cap we exit and let the
+# host's own MCP backoff take over.
+SUPERVISE="${BRAINBOW_MCP_SUPERVISE:-true}"
+RESTART_MAX="${BRAINBOW_MCP_RESTART_MAX:-20}"
+RESTART_WINDOW="${BRAINBOW_MCP_RESTART_WINDOW:-60}"
+
+if [ "$SUPERVISE" != "true" ]; then
+  exec "$NODE_BIN" "$REPO_ROOT/src/mcp-server.js"
+fi
+
+restart_count=0
+window_start=$(date +%s)
+while true; do
+  # Run in the foreground so it inherits our stdio (the host's pipes).
+  set +e
+  "$NODE_BIN" "$REPO_ROOT/src/mcp-server.js"
+  code=$?
+  set -e
+
+  if [ "$code" -eq 0 ]; then
+    echo "[brainbow-mcp] child exited 0 (clean host disconnect) — supervisor stopping" >&2
+    exit 0
+  fi
+
+  # Reset the restart window if it has elapsed.
+  now=$(date +%s)
+  if [ $((now - window_start)) -ge "$RESTART_WINDOW" ]; then
+    window_start=$now
+    restart_count=0
+  fi
+  restart_count=$((restart_count + 1))
+
+  echo "[brainbow-mcp] child crashed (exit $code) — respawn $restart_count/$RESTART_MAX in ${RESTART_WINDOW}s window" >&2
+  echo "[$(date '+%H:%M:%S.%3N')] [pid=$$] child crashed exit=$code respawn=$restart_count" >> "$TRACE_FILE" 2>/dev/null || true
+
+  if [ "$restart_count" -ge "$RESTART_MAX" ]; then
+    echo "[brainbow-mcp] respawn cap ($RESTART_MAX/${RESTART_WINDOW}s) hit — giving up so host backoff applies" >&2
+    exit "$code"
+  fi
+
+  # Small backoff so a tight crash loop doesn't peg a core.
+  sleep 0.5
+done
