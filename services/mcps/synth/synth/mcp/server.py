@@ -162,6 +162,11 @@ and executes NOTHING.""",
                             "description": "Must be true to execute. Set only after a human has reviewed the synthesized code and risk.",
                             "default": False,
                         },
+                        "context": {
+                            "type": "object",
+                            "description": "Optional runtime inputs passed to the synthesized tool's `execute(context)`. Use this to supply arguments to a parameterized tool (e.g. {\"a\": 2, \"b\": 3}). Defaults to an empty object.",
+                            "default": {},
+                        },
                     },
                     "required": ["tool_id"],
                 },
@@ -248,6 +253,10 @@ and executes NOTHING.""",
         """Execute a previously synthesized tool — only with explicit approval."""
         tool_id = args.get("tool_id", "")
         approve = args.get("approve", False)
+        # Optional runtime inputs for the synthesized `execute(context)`. Coerce a
+        # null/missing value to an empty dict so parameterized tools get a real
+        # mapping rather than None.
+        context = args.get("context") or {}
 
         if not tool_id:
             return {"error": "tool_id is required (from a prior synth_synthesize call)"}
@@ -287,7 +296,7 @@ and executes NOTHING.""",
                 credential_provider=creds,
                 capability_registry=self.registry,
             )
-            output = await executor.execute(tool)
+            output = await executor.execute(tool, context=context)
         except Exception as e:  # noqa: BLE001 — surface any execution error into the MCP result payload.
             return {
                 "tool_id": tool.id,
