@@ -138,6 +138,18 @@ RUN cd /app/mcp-servers/oap-github-mcp && pip install --no-cache-dir -r requirem
 # REMOVED: OpenAgentic Knowledge MCP — out of scope (2026-05-01).
 # Per-tool _meta cascade replaces the meta-MCP tool-guidance role.
 
+# Install Synth MCP server (code-synthesis; HITL two-call synth/execute protocol).
+# Pure-stdio Python MCP — installs the package + the `synth.mcp.server` entrypoint.
+RUN cd /app/mcp-servers/synth && pip install --no-cache-dir .
+
+# Install Brainbow MCP *shim* deps (browser-control MCP). The proxy runs ONLY the
+# stdio shim (src/mcp-server.js) and talks to the brainbow sidecar's REST over HTTP
+# (BRAINBOW_AUTOSTART_REST=false), so we skip the ~170MB Chromium download here —
+# Chromium lives in the brainbow sidecar image, not the proxy.
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+RUN cd /app/mcp-servers/brainbow && npm install --omit=dev --no-package-lock --ignore-scripts
+
 # Version build args
 ARG PLATFORM_VERSION=0.0.0
 ARG PLATFORM_CODENAME=dev

@@ -1,0 +1,23 @@
+# Gitleaks config — extend default rules, allowlist documentation
+# examples and shell-variable placeholders.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Doc files showing shell variable refs / placeholder tokens"
+paths = [
+  "^README\\.md$",
+  "^CHANGELOG\\.md$",
+  "^CLAUDE\\.md$",
+  "^docs/",
+  "^examples/",
+  "^\\.github/",
+]
+regexTarget = "match"
+regexes = [
+  '''\$\{?[A-Z_][A-Z0-9_]*\}?:?''',
+  '''<[A-Z_-]+>:?''',
+  '''YOUR_[A-Z_]+''',
+  '''sqa_\.\.\.''',
+  '''=\s*"?(xxx+|...)''',
+]
