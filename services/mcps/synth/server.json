@@ -1,0 +1,39 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.agentic-work/synth",
+  "description": "Synthesize + run one-shot capability-scoped Python tools from intent, sandboxed with mandatory HITL approval.",
+  "version": "0.6.2",
+  "repository": {
+    "url": "https://github.com/agentic-work/synth",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "agenticwork-synth",
+      "version": "0.6.2",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "SYNTH_PROVIDER",
+          "description": "ollama|bedrock|anthropic (default ollama)",
+          "isRequired": false
+        },
+        {
+          "name": "SYNTH_BASE_URL",
+          "description": "LLM base URL (default local stack)",
+          "isRequired": false
+        },
+        {
+          "name": "SYNTH_API_KEY",
+          "description": "Provider API key",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

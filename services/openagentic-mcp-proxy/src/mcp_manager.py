@@ -804,6 +804,54 @@ class MCPManager:
         # the metadata each tool ships, not a separate registry server.
         logger.info("OpenAgentic Knowledge MCP server REMOVED — replaced by per-tool _meta cascade")
 
+        # Synth MCP Server — on-demand tool synthesis (code-synthesis engine).
+        # Pure-stdio Python MCP installed into the proxy image (pip install). It runs
+        # against the platform's local Ollama by default (no external provider). The
+        # security contract is a TWO-CALL HITL protocol enforced by synth itself:
+        #   * synth_synthesize → READ-ONLY (readOnlyHint): only authors code + a
+        #     self-graded risk; never executes. Auto-approved by the platform gate.
+        #   * synth_execute     → DESTRUCTIVE (destructiveHint): runs a previously
+        #     synthesized tool ONLY with approve=true. classifyTool sees the mutating
+        #     `execute` verb → the platform approval-gate hook requires a human.
+        # So executing LLM-authored code is gated twice: synth's own approve flag AND
+        # the platform's before_tool_call approval gate. (The old auto-approve hole
+        # was removed upstream.)
+        if not os.getenv("OPENAGENTIC_SYNTH_MCP_DISABLED", "false").lower() == "true":
+            synth_env = {
+                "LOG_LEVEL": "info",
+                "SYNTH_PROVIDER": os.getenv("SYNTH_PROVIDER", "ollama"),
+                # Default the synth code-model endpoint to the platform Ollama.
+                "SYNTH_BASE_URL": os.getenv("SYNTH_BASE_URL", os.getenv("OLLAMA_HOST", "http://ollama:11434")),
+            }
+            _synth_model = os.getenv("SYNTH_MODEL")
+            if _synth_model:
+                synth_env["SYNTH_MODEL"] = _synth_model
+            self.servers["openagentic_synth"] = MCPServer(MCPServerConfig(
+                name="openagentic_synth",
+                command=["python", "-m", "synth.mcp.server"],
+                env=synth_env,
+            ))
+            logger.info("OpenAgentic Synth MCP server configured (Python stdio - on-demand tool synthesis, HITL two-call gate)")
+
+        # Brainbow MCP Server — shared browser control + recording studio.
+        # The proxy runs ONLY the stdio shim (src/mcp-server.js) and adopts the
+        # brainbow sidecar's REST server over HTTP (BRAINBOW_AUTOSTART_REST=false,
+        # BRAINBOW_URL points at the sidecar). Chromium/ffmpeg live in the brainbow
+        # sidecar image, NOT in the proxy — see the `brainbow` service in compose.
+        if not os.getenv("OPENAGENTIC_BRAINBOW_MCP_DISABLED", "false").lower() == "true":
+            brainbow_env = {
+                "BRAINBOW_AUTOSTART_REST": "false",  # adopt the sidecar's REST; never spawn Chromium here
+                "BRAINBOW_URL": os.getenv("BRAINBOW_URL", "http://brainbow:4444"),
+                "BRAINBOW_AUTOOPEN_VIEWER": "false",
+                "NODE_ENV": "production",
+            }
+            self.servers["openagentic_brainbow"] = MCPServer(MCPServerConfig(
+                name="openagentic_brainbow",
+                command=["node", "/app/mcp-servers/brainbow/src/mcp-server.js"],
+                env=brainbow_env,
+            ))
+            logger.info("OpenAgentic Brainbow MCP server configured (Node stdio shim → brainbow sidecar REST)")
+
         logger.info(f"Initialized {len(self.servers)} MCP servers")
 
     async def start_all(self):

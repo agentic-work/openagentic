@@ -575,7 +575,24 @@ services:
       LOKI_USERNAME: ${LOKI_USERNAME:-}
       LOKI_PASSWORD: ${LOKI_PASSWORD:-}
       ALERTMANAGER_URL: ${ALERTMANAGER_URL:-}
-    depends_on: [api]
+      # Synth MCP (on-demand tool synthesis). Runs against the platform Ollama by
+      # default. Security: HITL two-call protocol — synth_synthesize is read-only,
+      # synth_execute is gated by the platform approval hook (mutating `execute`
+      # verb). Disable with OPENAGENTIC_SYNTH_MCP_DISABLED=true.
+      OPENAGENTIC_SYNTH_MCP_DISABLED: ${OPENAGENTIC_SYNTH_MCP_DISABLED:-false}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      SYNTH_PROVIDER: ${SYNTH_PROVIDER:-ollama}
+      # Nested default so this is NEVER an empty string (an empty SYNTH_BASE_URL
+      # would override the manager's OLLAMA_HOST fallback and break synth).
+      SYNTH_BASE_URL: ${SYNTH_BASE_URL:-${OLLAMA_HOST:-http://ollama:11434}}
+      SYNTH_MODEL: ${SYNTH_MODEL:-}
+      # Brainbow MCP (browser control + recording). The proxy runs only the stdio
+      # shim and adopts the `brainbow` sidecar's REST at BRAINBOW_URL (Chromium lives
+      # in the sidecar). Disable with OPENAGENTIC_BRAINBOW_MCP_DISABLED=true (and stop
+      # the brainbow service).
+      OPENAGENTIC_BRAINBOW_MCP_DISABLED: ${OPENAGENTIC_BRAINBOW_MCP_DISABLED:-false}
+      BRAINBOW_URL: ${BRAINBOW_URL:-http://brainbow:4444}
+    depends_on: [api, brainbow]
 
   # Free, self-hosted metasearch engine — the web MCP's default search backend
   # (no paid API key). Web-search flows (e.g. Research and Publish) need this.
@@ -591,6 +608,33 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+
+  # Brainbow sidecar — shared headless-Chromium browser control + recording studio.
+  # The mcp-proxy runs only the lightweight Node stdio shim and drives THIS
+  # container's REST API (http://brainbow:4444) for every browser tool; Chromium +
+  # ffmpeg live here, not in the proxy image. Turn the whole thing off with
+  # OPENAGENTIC_BRAINBOW_MCP_DISABLED=true (and stop/remove this service).
+  brainbow:
+    <<: *defaults
+    image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-brainbow:${OPENAGENTIC_TAG:-latest}
+    build:
+      context: services/mcps/brainbow
+      dockerfile: Dockerfile
+    environment:
+      BRAINBOW_PORT: "4444"
+      NODE_ENV: production
+      BRAINBOW_RECORDINGS: /tmp/brainbow-recordings
+      # Optional live-vision narration via the platform Ollama (off by default).
+      BRAINBOW_VISION_AUTOSTART: ${BRAINBOW_VISION_AUTOSTART:-false}
+      BRAINBOW_VISION_PROVIDER: ${BRAINBOW_VISION_PROVIDER:-ollama}
+      BRAINBOW_OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      BRAINBOW_VISION_MODEL: ${BRAINBOW_VISION_MODEL:-qwen2.5vl:7b}
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:4444/api/whoami').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   proxy:
     <<: *defaults
