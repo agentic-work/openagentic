@@ -834,11 +834,14 @@ class MCPManager:
             logger.info("OpenAgentic Synth MCP server configured (Python stdio - on-demand tool synthesis, HITL two-call gate)")
 
         # Brainbow MCP Server — shared browser control + recording studio.
+        # OPT-IN, default DISABLED: it requires the external `brainbow` sidecar REST
+        # (Chromium/ffmpeg) which only starts under the compose `brainbow` profile.
+        # Registering the stdio shim with no REST to adopt would just fail on tool
+        # calls, so it stays off unless the operator opts in
+        # (OPENAGENTIC_BRAINBOW_MCP_DISABLED=false + `docker compose --profile brainbow up`).
         # The proxy runs ONLY the stdio shim (src/mcp-server.js) and adopts the
-        # brainbow sidecar's REST server over HTTP (BRAINBOW_AUTOSTART_REST=false,
-        # BRAINBOW_URL points at the sidecar). Chromium/ffmpeg live in the brainbow
-        # sidecar image, NOT in the proxy — see the `brainbow` service in compose.
-        if not os.getenv("OPENAGENTIC_BRAINBOW_MCP_DISABLED", "false").lower() == "true":
+        # sidecar's REST over HTTP (BRAINBOW_AUTOSTART_REST=false, BRAINBOW_URL).
+        if not os.getenv("OPENAGENTIC_BRAINBOW_MCP_DISABLED", "true").lower() == "true":
             brainbow_env = {
                 "BRAINBOW_AUTOSTART_REST": "false",  # adopt the sidecar's REST; never spawn Chromium here
                 "BRAINBOW_URL": os.getenv("BRAINBOW_URL", "http://brainbow:4444"),

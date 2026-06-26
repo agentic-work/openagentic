@@ -586,13 +586,17 @@ services:
       # would override the manager's OLLAMA_HOST fallback and break synth).
       SYNTH_BASE_URL: ${SYNTH_BASE_URL:-${OLLAMA_HOST:-http://ollama:11434}}
       SYNTH_MODEL: ${SYNTH_MODEL:-}
-      # Brainbow MCP (browser control + recording). The proxy runs only the stdio
+      # Brainbow MCP (browser control + recording) — OPT-IN, default OFF. To enable:
+      # set OPENAGENTIC_BRAINBOW_MCP_DISABLED=false AND start the sidecar with
+      # `docker compose --profile brainbow up`. The proxy then runs only the stdio
       # shim and adopts the `brainbow` sidecar's REST at BRAINBOW_URL (Chromium lives
-      # in the sidecar). Disable with OPENAGENTIC_BRAINBOW_MCP_DISABLED=true (and stop
-      # the brainbow service).
-      OPENAGENTIC_BRAINBOW_MCP_DISABLED: ${OPENAGENTIC_BRAINBOW_MCP_DISABLED:-false}
+      # in the sidecar). Left ON by default it would spawn a shim with no REST to
+      # adopt, so it stays disabled unless you opt in.
+      OPENAGENTIC_BRAINBOW_MCP_DISABLED: ${OPENAGENTIC_BRAINBOW_MCP_DISABLED:-true}
       BRAINBOW_URL: ${BRAINBOW_URL:-http://brainbow:4444}
-    depends_on: [api, brainbow]
+    # brainbow is NOT in depends_on — it's an opt-in profile service; the shim adopts
+    # its REST lazily on the first browser tool call once the profile is up.
+    depends_on: [api]
 
   # Free, self-hosted metasearch engine — the web MCP's default search backend
   # (no paid API key). Web-search flows (e.g. Research and Publish) need this.
@@ -610,12 +614,15 @@ services:
       retries: 5
 
   # Brainbow sidecar — shared headless-Chromium browser control + recording studio.
-  # The mcp-proxy runs only the lightweight Node stdio shim and drives THIS
-  # container's REST API (http://brainbow:4444) for every browser tool; Chromium +
-  # ffmpeg live here, not in the proxy image. Turn the whole thing off with
-  # OPENAGENTIC_BRAINBOW_MCP_DISABLED=true (and stop/remove this service).
+  # OPT-IN (`brainbow` profile) — a bare `docker compose up` does NOT start it, so
+  # the ~1.1GB Chromium image stays out of the default stack. Enable with:
+  #   OPENAGENTIC_BRAINBOW_MCP_DISABLED=false docker compose --profile brainbow up -d
+  # The mcp-proxy then runs only the lightweight Node stdio shim and drives THIS
+  # container's REST API (http://brainbow:4444); Chromium + ffmpeg live here, not in
+  # the proxy image.
   brainbow:
     <<: *defaults
+    profiles: ["brainbow"]
     image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-brainbow:${OPENAGENTIC_TAG:-latest}
     build:
       context: services/mcps/brainbow
