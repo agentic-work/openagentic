@@ -585,7 +585,10 @@ services:
       # Nested default so this is NEVER an empty string (an empty SYNTH_BASE_URL
       # would override the manager's OLLAMA_HOST fallback and break synth).
       SYNTH_BASE_URL: ${SYNTH_BASE_URL:-${OLLAMA_HOST:-http://ollama:11434}}
-      SYNTH_MODEL: ${SYNTH_MODEL:-}
+      # Default synth's codegen model to the platform chat model so it works
+      # out-of-the-box — synth's own internal default (llama3.2) would 404 unless
+      # the operator happens to have pulled it.
+      SYNTH_MODEL: ${SYNTH_MODEL:-${OLLAMA_CHAT_MODEL:-}}
       # Brainbow MCP (browser control + recording) — OPT-IN, default OFF. To enable:
       # set OPENAGENTIC_BRAINBOW_MCP_DISABLED=false AND start the sidecar with
       # `docker compose --profile brainbow up`. The proxy then runs only the stdio
