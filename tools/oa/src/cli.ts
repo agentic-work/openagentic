@@ -46,6 +46,7 @@ export function buildContext(global: GlobalOpts, io: Io): CommandContext {
     json: global.json ?? false,
     out: io.out,
     err: io.err,
+    write: (chunk) => process.stdout.write(chunk),
     makeClient: (opts) => new OaClient(opts),
   };
 }
@@ -97,98 +98,98 @@ function createReadlinePrompter(): { prompter: Prompter; close: () => void } {
 }
 /* c8 ignore stop */
 
+/** Attach the connection/output options shared by every leaf command. */
+function common(cmd: Command): Command {
+  return cmd
+    .option("-p, --profile <name>", "config profile to use")
+    .option("--instance <url>", "instance URL / override")
+    .option("--json", "machine-readable JSON output");
+}
+
 export function buildProgram(io: Io): Command {
   const program = new Command();
   program
     .name("oa")
     .description("Headless control plane for OpenAgentic — drive chat, flows, and agents from the terminal")
-    .version(VERSION)
-    .option("-p, --profile <name>", "config profile to use")
-    .option("--instance <url>", "override the instance URL")
-    .option("--json", "machine-readable JSON output");
+    .version(VERSION);
 
   program.configureOutput({
     writeOut: (s) => io.out(s.replace(/\n$/, "")),
     writeErr: (s) => io.err(s.replace(/\n$/, "")),
   });
 
-  const ctx = (): CommandContext => buildContext(program.opts() as GlobalOpts, io);
+  const ctx = (options: GlobalOpts): CommandContext => buildContext(options, io);
 
-  program
-    .command("login")
+  common(program.command("login"))
     .description("Authenticate and store a profile (mints a user-bound api key)")
-    .option("--instance <url>", "instance URL")
     .option("-u, --username <user>", "username or email")
     .option("-w, --password <pw>", "password (or set OA_PASSWORD)")
     .option("--name <profile>", "profile name to save", "default")
-    /* c8 ignore start — wires interactive prompter; logic covered via resolveLoginInput */
-    .action(async (opts) => {
+    /* c8 ignore start — wires the interactive prompter; logic is covered by resolveLoginInput */
+    .action(async (options) => {
       const { prompter, close } = createReadlinePrompter();
       try {
-        const input = await resolveLoginInput(opts, prompter);
+        const input = await resolveLoginInput(options, prompter);
         try {
           const hasUi = await new OaClient({ instanceUrl: input.instanceUrl }).detectUi();
           io.err(hasUi ? "Detected web UI at this instance." : "Headless instance — using username/password login.");
         } catch {
           /* detection is best-effort */
         }
-        await cmdLogin(ctx(), input);
+        await cmdLogin(ctx(options), input);
       } finally {
         close();
       }
     })
     /* c8 ignore stop */;
 
-  program.command("logout").description("Remove a stored profile").action(async () => {
-    await cmdLogout(ctx());
+  common(program.command("logout")).description("Remove a stored profile").action(async (options) => {
+    await cmdLogout(ctx(options));
   });
-  program.command("whoami").description("Show the authenticated identity").action(async () => {
-    await cmdWhoami(ctx());
+  common(program.command("whoami")).description("Show the authenticated identity").action(async (options) => {
+    await cmdWhoami(ctx(options));
   });
-  program.command("health").description("Check instance health").action(async () => {
-    await cmdHealth(ctx());
+  common(program.command("health")).description("Check instance health").action(async (options) => {
+    await cmdHealth(ctx(options));
   });
 
   const key = program.command("key").description("Manage user-bound api keys");
-  key.command("list").description("List your api keys").action(async () => {
-    await cmdKeyList(ctx());
+  common(key.command("list")).description("List your api keys").action(async (options) => {
+    await cmdKeyList(ctx(options));
   });
-  key.command("create <name>").description("Create an api key").action(async (name: string) => {
-    await cmdKeyCreate(ctx(), name);
+  common(key.command("create <name>")).description("Create an api key").action(async (name: string, options) => {
+    await cmdKeyCreate(ctx(options), name);
   });
-  key.command("revoke <id>").description("Revoke an api key").action(async (id: string) => {
-    await cmdKeyRevoke(ctx(), id);
+  common(key.command("revoke <id>")).description("Revoke an api key").action(async (id: string, options) => {
+    await cmdKeyRevoke(ctx(options), id);
   });
 
   const flow = program.command("flow").description("Flows / workflows");
-  flow.command("list").description("List flows").action(async () => {
-    await cmdFlowList(ctx());
+  common(flow.command("list")).description("List flows").action(async (options) => {
+    await cmdFlowList(ctx(options));
   });
-  flow
-    .command("run <id>")
+  common(flow.command("run <id>"))
     .description("Run a flow")
     .option("--input <json>", "JSON input object")
-    .action(async (id: string, opts: { input?: string }) => {
-      await cmdFlowRun(ctx(), id, opts.input ? JSON.parse(opts.input) : undefined);
+    .action(async (id: string, options: { input?: string } & GlobalOpts) => {
+      await cmdFlowRun(ctx(options), id, options.input ? JSON.parse(options.input) : undefined);
     });
 
   const agent = program.command("agent").description("Agents");
-  agent.command("list").description("List agents").action(async () => {
-    await cmdAgentList(ctx());
+  common(agent.command("list")).description("List agents").action(async (options) => {
+    await cmdAgentList(ctx(options));
   });
-  agent
-    .command("run <id> <task...>")
+  common(agent.command("run <id> <task...>"))
     .description("Run an agent on a task")
-    .action(async (id: string, task: string[]) => {
-      await cmdAgentRun(ctx(), id, task.join(" "));
+    .action(async (id: string, task: string[], options) => {
+      await cmdAgentRun(ctx(options), id, task.join(" "));
     });
 
-  program
-    .command("chat <message...>")
+  common(program.command("chat <message...>"))
     .description("Send a chat message and stream the reply")
     .option("--session <id>", "reuse an existing chat session")
-    .action(async (message: string[], opts: { session?: string }) => {
-      await cmdChat(ctx(), message.join(" "), { sessionId: opts.session });
+    .action(async (message: string[], options: { session?: string } & GlobalOpts) => {
+      await cmdChat(ctx(options), message.join(" "), { sessionId: options.session });
     });
 
   return program;

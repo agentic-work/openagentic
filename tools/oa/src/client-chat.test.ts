@@ -66,6 +66,26 @@ describe("OaClient.chatStream", () => {
     ]);
   });
 
+  it("parses bare NDJSON frames (no data: prefix, newline-separated — the real wire format)", async () => {
+    const url = await fakeApi((_req, res) => {
+      res.writeHead(200, { "content-type": "text/event-stream" });
+      res.write('{"type":"stream_start"}\n');
+      res.write('{"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"hmm"}}\n');
+      res.write('{"type":"content_block_delta","delta":{"type":"text_delta","text":"oa "}}\n');
+      res.write('{"type":"content_block_delta","delta":{"type":"text_delta","text":"works"}}\n');
+      res.write('{"type":"done"}\n');
+      res.end();
+    });
+    const client = new OaClient({ instanceUrl: url, token: "t" });
+    const events: Array<{ delta?: { type?: string; text?: string } }> = [];
+    await client.chatStream({ sessionId: "s1", message: "hi" }, (e) => events.push(e as never));
+    const text = events
+      .filter((e) => e.delta?.type === "text_delta")
+      .map((e) => e.delta?.text)
+      .join("");
+    expect(text).toBe("oa works");
+  });
+
   it("throws ApiError on a non-2xx before streaming", async () => {
     const url = await fakeApi((_req, res) => {
       res.writeHead(401, { "content-type": "application/json" });

@@ -11,6 +11,8 @@ export interface CommandContext {
   json: boolean;
   out: (line: string) => void;
   err: (line: string) => void;
+  /** Optional raw writer (no trailing newline) for live token streaming. */
+  write?: (chunk: string) => void;
   makeClient: (opts: ClientOptions) => OaClient;
 }
 
@@ -184,12 +186,21 @@ export async function cmdAgentRun(
 
 // ---- chat -------------------------------------------------------------------
 
-/** Pull the incremental text out of a stream event across common shapes. */
+/** Pull the visible reply text out of a stream event across known shapes.
+ * The platform emits canonical Anthropic frames (content_block_delta with a
+ * delta.text_delta for the answer, delta.thinking_delta for internal reasoning
+ * which we omit); we also tolerate simpler text/delta/OpenAI-choice shapes. */
 function eventText(event: unknown): string {
   if (!event || typeof event !== "object") return "";
   const e = event as Record<string, unknown>;
-  if (typeof e.text === "string") return e.text;
+  const delta = e.delta;
+  if (delta && typeof delta === "object") {
+    const d = delta as { text?: unknown; type?: unknown };
+    if (typeof d.text === "string") return d.text; // text_delta = the reply (thinking_delta omitted)
+    return "";
+  }
   if (typeof e.delta === "string") return e.delta;
+  if (typeof e.text === "string") return e.text;
   if (typeof e.content === "string") return e.content;
   const choices = e.choices as Array<{ delta?: { content?: string } }> | undefined;
   if (choices?.[0]?.delta?.content) return choices[0].delta.content as string;
@@ -203,12 +214,19 @@ export async function cmdChat(
 ): Promise<void> {
   const client = resolveClient(ctx);
   const sessionId = opts.sessionId ?? (await client.createSession()).id;
+  const live = !ctx.json && typeof ctx.write === "function";
   let full = "";
   await client.chatStream({ sessionId, message }, (event) => {
     const t = eventText(event);
     if (!t) return;
     full += t;
-    if (!ctx.json) ctx.out(t); // stream incrementally in human mode
+    if (live) ctx.write!(t); // stream tokens live, no per-token newline
   });
-  if (ctx.json) ctx.out(JSON.stringify({ sessionId, text: full }));
+  if (ctx.json) {
+    ctx.out(JSON.stringify({ sessionId, text: full }));
+  } else if (live) {
+    ctx.out(""); // terminating newline after the streamed tokens
+  } else {
+    ctx.out(full); // no raw writer (e.g. tests) — print the whole reply at once
+  }
 }

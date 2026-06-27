@@ -156,6 +156,49 @@ describe("chat command", () => {
     expect(out.join("")).toContain("Hello world");
   });
 
+  it("renders text from canonical content_block_delta(text_delta) frames and omits thinking", async () => {
+    const url = await fakeApi((r, res) => {
+      if (r.url === "/api/chat/sessions") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ session: { id: "s1" } }));
+        return;
+      }
+      res.writeHead(200, { "content-type": "text/event-stream" });
+      res.write('data: {"type":"stream_start"}\n\n');
+      res.write('data: {"type":"ping"}\n\n');
+      res.write('data: {"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"reasoning here"}}\n\n');
+      res.write('data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hi "}}\n\n');
+      res.write('data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"there"}}\n\n');
+      res.write("data: [DONE]\n\n");
+      res.end();
+    });
+    const { ctx, out } = ctxFor(url);
+    await cmdChat(ctx, "hi", {});
+    const printed = out.join("");
+    expect(printed).toContain("Hi there");
+    expect(printed).not.toContain("reasoning here");
+  });
+
+  it("streams tokens through ctx.write (no per-token newlines) when a raw writer is present", async () => {
+    const url = await fakeApi((r, res) => {
+      if (r.url === "/api/chat/sessions") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ session: { id: "s1" } }));
+        return;
+      }
+      res.writeHead(200, { "content-type": "text/event-stream" });
+      res.write('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Hi "}}\n');
+      res.write('{"type":"content_block_delta","delta":{"type":"text_delta","text":"there"}}\n');
+      res.write('{"type":"done"}\n');
+      res.end();
+    });
+    const { ctx } = ctxFor(url);
+    const written: string[] = [];
+    ctx.write = (s) => written.push(s);
+    await cmdChat(ctx, "hi", {});
+    expect(written.join("")).toBe("Hi there"); // streamed token-by-token, joined seamlessly
+  });
+
   it("reuses an explicit sessionId when provided", async () => {
     const urls: string[] = [];
     const url = await fakeApi((r, res) => {

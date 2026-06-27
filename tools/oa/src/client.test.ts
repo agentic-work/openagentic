@@ -166,6 +166,20 @@ describe("OaClient", () => {
     await expect(client.whoami()).rejects.toBeInstanceOf(ApiError);
   });
 
+  it("renders an object error field as a readable message, never [object Object]", async () => {
+    const api = await fakeApi(() => ({
+      status: 500,
+      json: { error: { code: "NO_MODEL", message: "No chat model configured" } },
+    }));
+    const client = new OaClient({ instanceUrl: api.url, token: "t" });
+
+    await expect(client.whoami()).rejects.toMatchObject({
+      name: "ApiError",
+      status: 500,
+      message: "No chat model configured",
+    });
+  });
+
   it("normalizes a trailing slash in instanceUrl so paths are not doubled", async () => {
     const api = await fakeApi(() => ({ json: { status: "healthy" } }));
     const client = new OaClient({ instanceUrl: `${api.url}/` });

@@ -8,6 +8,24 @@ export class ApiError extends Error {
   }
 }
 
+/** Extract a human-readable message from an error response body of any shape. */
+function errorMessage(data: unknown, statusText: string, status: number): string {
+  const d = data as { error?: unknown; message?: unknown } | null;
+  const err = d?.error;
+  if (typeof err === "string" && err) return err;
+  if (typeof d?.message === "string" && d.message) return d.message;
+  if (err && typeof err === "object") {
+    const nested = (err as { message?: unknown }).message;
+    if (typeof nested === "string" && nested) return nested;
+    try {
+      return JSON.stringify(err);
+    } catch {
+      /* fall through */
+    }
+  }
+  return statusText || `HTTP ${status}`;
+}
+
 export interface ClientOptions {
   instanceUrl: string;
   /** A user-bound api key (oa_…) or a login JWT. Omitted for unauthed calls. */
@@ -99,11 +117,7 @@ export class OaClient {
     const text = await res.text();
     const data = text ? JSON.parse(text) : {};
     if (!res.ok) {
-      const message =
-        (data && (data.error || data.message)) ||
-        res.statusText ||
-        `HTTP ${res.status}`;
-      throw new ApiError(res.status, String(message));
+      throw new ApiError(res.status, errorMessage(data, res.statusText, res.status));
     }
     return data as T;
   }
@@ -199,39 +213,44 @@ export class OaClient {
     });
     if (!res.ok) {
       const text = await res.text();
-      let message = `HTTP ${res.status}`;
+      let data: unknown = {};
       try {
-        const d = JSON.parse(text);
-        message = d.error || d.message || message;
+        data = JSON.parse(text);
       } catch {
         /* non-JSON error body */
       }
-      throw new ApiError(res.status, message);
+      throw new ApiError(res.status, errorMessage(data, res.statusText, res.status));
     }
     if (!res.body) return;
     const reader = (res.body as ReadableStream<Uint8Array>).getReader();
     const decoder = new TextDecoder();
     let buf = "";
+    const emit = (line: string): void => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      // Real wire format is newline-delimited JSON; tolerate an optional SSE
+      // `data:` prefix and skip keepalive sentinels.
+      const payload = trimmed.startsWith("data:")
+        ? trimmed.slice(trimmed.indexOf(":") + 1).trim()
+        : trimmed;
+      if (!payload || payload === "[DONE]") return;
+      try {
+        onEvent(JSON.parse(payload));
+      } catch {
+        /* skip non-JSON keepalive line */
+      }
+    };
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       buf += decoder.decode(value, { stream: true });
-      let sep: number;
-      while ((sep = buf.indexOf("\n\n")) >= 0) {
-        const frame = buf.slice(0, sep);
-        buf = buf.slice(sep + 2);
-        const dataLine = frame.split("\n").find((l) => l.startsWith("data:"));
-        if (!dataLine) continue;
-        const payload = dataLine.slice(5).trim();
-        if (payload === "") continue;
-        if (payload === "[DONE]") return;
-        try {
-          onEvent(JSON.parse(payload));
-        } catch {
-          onEvent({ raw: payload });
-        }
+      let nl: number;
+      while ((nl = buf.indexOf("\n")) >= 0) {
+        emit(buf.slice(0, nl));
+        buf = buf.slice(nl + 1);
       }
     }
+    emit(buf); // flush any trailing frame with no final newline
   }
 
   /** Detect whether the target deploy serves the web UI (SPA) vs is headless. */
