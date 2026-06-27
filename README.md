@@ -84,9 +84,17 @@ Requires **Docker + Docker Compose v2** (or **Helm + kubectl** for the k8s path)
 ```bash
 git clone git@github.com:agentic-work/openagentic.git ~/.openagentic
 cd ~/.openagentic
-cp .env.example .env          # set POSTGRES_PASSWORD (required), admin email/password, OLLAMA_HOST, optional provider keys
-docker compose up -d          # default: pgvector-only, no etcd/minio/milvus
+cp .env.example .env             # set POSTGRES_PASSWORD (required), admin email/password, OLLAMA_HOST, optional provider keys
+docker compose --profile ui up -d   # default: pgvector-only + web UI
 open http://localhost:8080
+```
+
+Want it **headless** (no UI container — drive everything from the terminal with the [`oa`](tools/oa) CLI)? Drop the `ui` profile; the API is published on the host:
+
+```bash
+docker compose up -d             # API only, no UI container
+oa login --instance http://localhost:8080
+oa chat "which pods are crashlooping and why?"
 ```
 
 The default is pgvector-only — Postgres + `pgvector` backs both RAG and semantic tool search. Milvus is optional, for large-scale embedding / RAG workloads:

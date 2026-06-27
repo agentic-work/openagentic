@@ -174,6 +174,10 @@ ENV_FILE_OVERRIDE=""
 # Vector store: pgvector-only by default (lightweight — no etcd/minio/milvus).
 # Opt in to Milvus with --milvus or OPENAGENTIC_MILVUS=1.
 USE_MILVUS="${OPENAGENTIC_MILVUS:-0}"
+# Headless (docker only): skip the UI container — the API is published on the host
+# and you drive everything with the `oa` CLI. Opt in with --headless or
+# OPENAGENTIC_HEADLESS=1. No effect on the Helm path.
+HEADLESS="${OPENAGENTIC_HEADLESS:-0}"
 # Google Vertex AI provider (instead of Ollama). Auth via gcloud ADC by default
 # (no key written); pass --vertex-key KEY for API-key mode. Service-account JSON
 # is NOT supported for Vertex here (ADC user creds are auto-discovered by the SDK).
@@ -216,6 +220,7 @@ while [[ $# -gt 0 ]]; do
     --update)  MODE=update;     shift ;;
     --doctor)  MODE=doctor;     shift ;;
     --down)    MODE=down;       shift ;;
+    --headless) HEADLESS=1;     shift ;;
     --env)     MODE=env-file; ENV_FILE_OVERRIDE="${2:-}"; shift 2 ;;
     --no-open) OPEN_BROWSER=0;  shift ;;
     --ollama)  OLLAMA_HOST_OVERRIDE="${2:-}"; shift 2 ;;
@@ -260,6 +265,8 @@ Modes:
   --quick        Five-minute zero-config Docker path (uses an Ollama you already run if present; never force-installs one).
   --wizard       Explicitly launch the wizard (same as the default).
   --helm         One-line Kubernetes install (needs helm + kubectl + a cluster).
+  --headless     Docker WITHOUT the UI container — the API is published on the host
+                 and you drive everything with the `oa` CLI. Combine with --quick or a provider flag.
   --env PATH     Skip ALL prompts; copy PATH to ./.env and bring the stack up.
   --update       Update an existing install in place (Docker rebuild or helm upgrade).
   --doctor       Diagnose only — checks Docker/Compose, Node, helm/kubectl, disk, ports.
@@ -302,10 +309,15 @@ compose_up() {
   # image was published — so a machine with stale cached images runs OLD code
   # (e.g. misses the welcome screen / a server fix). The digest check is cheap
   # when nothing changed; it only re-downloads layers that actually moved.
+  # The web UI runs behind the `ui` compose profile. A full install brings it up
+  # (--profile ui); a headless install omits it and the API is reached directly on
+  # the host (API_HOST_PORT) via the `oa` CLI.
+  local ui_profile=()
+  [[ "$HEADLESS" == "1" ]] || ui_profile=(--profile ui)
   if [[ "$USE_MILVUS" == "1" ]]; then
-    MILVUS_ENABLED=true docker compose --profile milvus up --pull always "$@"
+    MILVUS_ENABLED=true docker compose "${ui_profile[@]}" --profile milvus up --pull always "$@"
   else
-    docker compose up --pull always "$@"
+    docker compose "${ui_profile[@]}" up --pull always "$@"
   fi
 }
 
@@ -322,7 +334,7 @@ if [[ "$MODE" == "down" ]]; then
     EXIT_OK=1; exit 0
   fi
   info "Removing the OpenAgentic stack at $DOWN_DIR (containers, network, volumes)…"
-  ( cd "$DOWN_DIR" && docker compose --profile milvus --profile monitoring --profile ollama down -v --remove-orphans >/dev/null 2>&1 ) \
+  ( cd "$DOWN_DIR" && docker compose --profile ui --profile milvus --profile monitoring --profile ollama down -v --remove-orphans >/dev/null 2>&1 ) \
     || ( cd "$DOWN_DIR" && docker compose down -v --remove-orphans >/dev/null 2>&1 ) || true
   ok 'Stack torn down.'
   printf '  Your .env + cloud-secrets under %s are kept — re-run install.sh to bring it back up.\n\n' "$DOWN_DIR"
@@ -1029,6 +1041,13 @@ FRONTEND_SECRET=$FRONTEND_SEC
 INTERNAL_SERVICE_SECRET=$INTERNAL_SVC_SEC
 UI_HOST_PORT=8080
 EOF
+  # Headless install: no UI container; publish the API on the host port (the sole
+  # entrypoint for the `oa` CLI) and disable docs auto-ingest (no UI to serve them).
+  if [[ "$HEADLESS" == "1" ]]; then
+    { printf 'OPENAGENTIC_HEADLESS=true\n'
+      printf 'DOCS_AUTO_INGEST=false\n'
+      printf 'API_HOST_PORT=8080\n'; } >> .env
+  fi
   # ── Cloud CHAT providers chosen explicitly via quick-flags ───────────────────
   # --bedrock / --openai / --aif / --huggingface each wire ONE bootstrap CHAT
   # provider. EMBEDDING decision (mirrors the bedrock/aif wizard pattern): keep a

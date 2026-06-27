@@ -344,6 +344,10 @@ export async function launchDocker(cfg: WizardConfig, hooks: BackendHooks): Prom
   const wantsMonitoring =
     cfg.mcps.includes('prometheus') || cfg.mcps.includes('loki');
   const profileArgs = [
+    // The UI container lives behind the `ui` compose profile. A full install
+    // brings it up; a headless install omits it and the API is reached directly
+    // on the host (API_HOST_PORT) via the `oa` CLI.
+    ...(cfg.headless ? [] : ['--profile', 'ui']),
     ...(wantsOllama ? ['--profile', 'ollama'] : []),
     ...(wantsMonitoring ? ['--profile', 'monitoring'] : []),
   ];

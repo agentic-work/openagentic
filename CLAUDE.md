@@ -35,7 +35,7 @@ curl -sSL https://raw.githubusercontent.com/agentic-work/openagentic/main/instal
 cd ~/path/to/openagentic
 (cd tools/setup && npm install)  # first run only
 ./tools/setup/node_modules/.bin/tsx tools/setup/src/index.tsx
-# then: docker compose up -d  (default = pgvector-only; boots healthy with NO Milvus. Add `--profile milvus` + set MILVUS_ENABLED=true + SKIP_TOOL_SEMANTIC_CACHE=false only for large embedding/RAG workloads)
+# then: docker compose --profile ui up -d  (full = web UI + API. The `ui` container is gated behind the `ui` compose profile; a bare `docker compose up -d` with NO `--profile ui` is the HEADLESS path — API only, published on the host via API_HOST_PORT, driven by the `oa` CLI under tools/oa. Default vector store = pgvector-only; boots healthy with NO Milvus. Add `--profile milvus` + set MILVUS_ENABLED=true + SKIP_TOOL_SEMANTIC_CACHE=false only for large embedding/RAG workloads)
 ```
 
 **On osx specifically**, the wizard defaults `OLLAMA_HOST` to `http://host.docker.internal:11434` so containers can reach Ollama running on the host. Docker Desktop's file-sharing must include the user's home dir (for `~/.openagentic/cloud-secrets` mounts) — this is the default, but verify under Docker Desktop → Settings → Resources → File sharing.
@@ -96,5 +96,5 @@ Three variations exercise the main paths: `minimal` (defaults, 1 MCP), `all-mcps
 1. `git clone https://github.com/agentic-work/openagentic.git && cd openagentic`
 2. Re-run the wizard against the local checkout (above), or use `curl … | bash` for the install.sh flow.
 3. Run the PTY harness to confirm the wizard still walks cleanly.
-4. Bring the stack up with `docker compose up -d` (default = pgvector-only; the api boots healthy with NO Milvus. For the optional Milvus path: `docker compose --profile milvus up -d` + set `MILVUS_ENABLED=true` and `SKIP_TOOL_SEMANTIC_CACHE=false` in `.env`); wait for `docker inspect --format '{{.State.Health.Status}}' openagentic-api-1` to report `healthy` (usually ~90s first boot because of the Prisma schema push).
+4. Bring the stack up with `docker compose --profile ui up -d` (full = web UI + API; the `ui` container is behind the `ui` profile, so a bare `docker compose up -d` is the headless/API-only path driven by the `oa` CLI). Default = pgvector-only; the api boots healthy with NO Milvus. For the optional Milvus path: `docker compose --profile ui --profile milvus up -d` + set `MILVUS_ENABLED=true` and `SKIP_TOOL_SEMANTIC_CACHE=false` in `.env`); wait for `docker inspect --format '{{.State.Health.Status}}' openagentic-api-1` to report `healthy` (usually ~90s first boot because of the Prisma schema push).
 5. Smoke test: login via `/api/auth/local/login`, send a chat with `/api/chat/stream`, verify tool calls succeed (the mcp-proxy auto-spawns web/knowledge/admin MCPs; cloud MCPs require creds in `~/.openagentic/cloud-secrets/*.env`).
