@@ -39,7 +39,7 @@ import { SettingsModal } from '@/features/settings/components/SettingsModal';
 import SettingsDropdown from './SettingsDropdown';
 import { useSettings } from '@/features/settings/hooks/useSettings';
 // import { useTextToSpeech } from '../hooks/useTextToSpeech'; // DISABLED
-import CanvasPanel from '@/shared/components/CanvasPanel';
+import CanvasPanel, { type CanvasContent } from '@/shared/components/CanvasPanel';
 import { DocsViewer } from '@/features/docs/DocsViewer';
 import { getDocsUrl } from '@/utils/api';
 // MovableTokenGraph removed - analytics feature deleted
@@ -372,9 +372,9 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   const [inputMessage, setInputMessage] = useState('');
   
   // Tool state - minimal remaining state
-  const [pendingToolCalls, setPendingToolCalls] = useState<any[]>([]);
-  const [executedToolCalls, setExecutedToolCalls] = useState<any[]>([]);
-  const [mcpCalls, setMcpCalls] = useState<any[]>([]);
+  const [pendingToolCalls, setPendingToolCalls] = useState<unknown[]>([]);
+  const [executedToolCalls, setExecutedToolCalls] = useState<unknown[]>([]);
+  const [mcpCalls, setMcpCalls] = useState<unknown[]>([]);
   
   // Track previous session for scroll behavior
   const [previousActiveSessionId, setPreviousActiveSessionId] = useState<string | null>(activeSessionId);
@@ -420,9 +420,9 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     totalTokens: 0,
     chartData: []
   });
-  const [userUsageData, setUserUsageData] = useState<any>(null);
+  const [userUsageData, setUserUsageData] = useState<unknown>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileWithPreview[]>([]);
-  const [canvasContent, setCanvasContent] = useState<any>(() => {
+  const [canvasContent, setCanvasContent] = useState<CanvasContent | null>(() => {
     // Restore last artifact from sessionStorage so closing the canvas doesn't lose it
     try {
       const saved = sessionStorage.getItem('openagentic:lastArtifact');
@@ -484,7 +484,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   }, [openUI, userPermissions.isAdmin]);
 
   // Current workflow state for Flows Agent context (set by WorkflowsPage callback)
-  const currentWorkflowRef = useRef<{ workflowId: string; workflowName: string; nodes: any[]; edges: any[] } | null>(null);
+  const currentWorkflowRef = useRef<{ workflowId: string; workflowName: string; nodes: unknown[]; edges: unknown[] } | null>(null);
 
   // Skills are now configured in Admin Portal > Pipeline Settings (not user-facing)
 
@@ -644,6 +644,8 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     canonicalContentBlocks, // Pure-reducer ContentBlock[] (applyCanonicalFrame SoT)
     contextCompaction, // Context compaction notification (auto-dismisses)
     normalizedEvents, // Normalized stream events for UnifiedActivityTree (UNIFIED_STREAM=true)
+    hitlApprovalsByMessageId, // #109 — pending inline tool-approval cards, keyed by message id
+    setHitlApprovalsByMessageId, // #109 — flip a card out of "pending" once resolved
   } = useChatStream({
     sessionId: activeSessionId || '',
     onMessage: (message) => {
@@ -986,7 +988,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     setCurrentImageForAnalysis(null);
   }, [closeUI]);
 
-  const handleExportFilesSelect = useCallback((files: any[]) => {
+  const handleExportFilesSelect = useCallback((files: unknown[]) => {
     // Handle exported files if needed
     // console.log('Exported files:', files);
   }, []);
@@ -1001,9 +1003,9 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     closeUI('showDocsViewer');
   }, [closeUI]);
 
-  const handleUploadFilesSelect = useCallback((files: any[]) => {
+  const handleUploadFilesSelect = useCallback((files: Array<{ file?: FileWithPreview }>) => {
     // Convert uploaded files to the expected format and add to selected files
-    const convertedFiles = files.map(f => f.file).filter(Boolean);
+    const convertedFiles = files.map(f => f.file).filter((f): f is FileWithPreview => Boolean(f));
     setSelectedFiles(prev => [...prev, ...convertedFiles]);
     
     // Don't auto-trigger image analysis - images will be sent with message
@@ -1063,6 +1065,46 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
       console.error('[HITL] Failed to deny MCP tool:', err);
     }
   }, [mcpApproval, getAccessToken]);
+
+  // #109 — inline HITL approval card resolution. The chat stream parks pending
+  // approvals in hitlApprovalsByMessageId (keyed by message id); the inline
+  // card's Approve/Deny buttons call these. POST the OSS resolution endpoint
+  // (/api/chat/tool-approval/:id) with a Bearer token, then flip the matching
+  // card out of "pending" so the buttons disappear and the gated tool unblocks
+  // (instead of the chat hanging at "Running…" to the 120s timeout).
+  const resolveHitlApproval = useCallback(async (requestId: string, approved: boolean) => {
+    if (!requestId) return;
+    try {
+      let token;
+      try { token = await getAccessToken(['User.Read']); } catch { token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken'); }
+      if (!token) return;
+      const res = await fetch(apiEndpoint(`/chat/tool-approval/${requestId}`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approved }),
+      });
+      if (!res.ok) {
+        console.error('[HITL] tool-approval POST failed:', res.status);
+        return;
+      }
+      // Flip the resolved card (status drives the card UI; pending → resolved
+      // hides the buttons). Scan every message slot for the matching requestId.
+      setHitlApprovalsByMessageId((prev) => {
+        const next: typeof prev = {};
+        for (const [mid, arr] of Object.entries(prev)) {
+          next[mid] = arr.map((a) =>
+            a.requestId === requestId ? { ...a, status: approved ? 'approved' : 'denied' } : a,
+          );
+        }
+        return next;
+      });
+    } catch (err) {
+      console.error('[HITL] Failed to resolve tool approval:', err);
+    }
+  }, [getAccessToken, setHitlApprovalsByMessageId]);
+
+  const handleApproveHitl = useCallback((requestId: string) => { void resolveHitlApproval(requestId, true); }, [resolveHitlApproval]);
+  const handleDenyHitl = useCallback((requestId: string) => { void resolveHitlApproval(requestId, false); }, [resolveHitlApproval]);
 
   // Mutating-tool approval gate (backend commit 7e6637539).
   // Resolve the head of the queue: POST /api/approvals/:auditId/{approve,deny}.
@@ -1393,7 +1435,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
           if (data.models && data.models.length > 0) {
             // Chat dropdown only shows READY models (configured + available)
             // Unpulled/catalog models are managed in Admin Console Model Garden only
-            const readyModels = data.models.filter((m: any) => m.isAvailable !== false);
+            const readyModels = data.models.filter((m: { id: string; isAvailable?: boolean }) => m.isAvailable !== false);
             setAvailableModels(readyModels);
 
             // Model selection is ADMIN ONLY
@@ -1401,7 +1443,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
             if (isAdminUser) {
               // Validate stored model against available models
               const storedModel = localStorage.getItem('selectedModel');
-              const modelIds = data.models.map((m: any) => m.id);
+              const modelIds = data.models.map((m: { id: string; isAvailable?: boolean }) => m.id);
 
               if (storedModel && modelIds.includes(storedModel)) {
                 // Stored model is valid - use it
@@ -1505,10 +1547,10 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
         if (!res.ok) return;
         const data = await res.json();
         if (data.models && data.models.length > 0) {
-          const readyModels = data.models.filter((m: any) => m.isAvailable !== false);
+          const readyModels = data.models.filter((m: { id: string; isAvailable?: boolean }) => m.isAvailable !== false);
           setAvailableModels(readyModels);
           // If the currently selected model was deleted, fall back to Smart Router
-          const modelIds = readyModels.map((m: any) => m.id);
+          const modelIds = readyModels.map((m: { id: string; isAvailable?: boolean }) => m.id);
           if (selectedModel && !modelIds.includes(selectedModel)) {
             console.log('[MODEL-SYNC] Selected model no longer available, reverting to Smart Router');
             setSelectedModel('');
@@ -1781,10 +1823,10 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   }, [isAuthenticated, isAdmin, fetchGlobalTokenUsage]);
 
   // Handle canvas expansion
-  const handleExpandToCanvas = useCallback((content: any, type: string, title: string, language?: string) => {
+  const handleExpandToCanvas = useCallback((content: unknown, type: string, title: string, language?: string) => {
     const canvasItem = {
       id: Math.random().toString(36).substring(2, 15),
-      type: type as any,
+      type: type as CanvasContent['type'],
       title,
       content,
       language,
@@ -2050,13 +2092,14 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
               // console.log('[NEW SESSION] Reset all UI state for clean session');
             });
             // console.log('[NEW SESSION] Successfully created new session');
-          } catch (error: any) {
-            console.error('[NEW SESSION] Failed to create new session:', error);
+          } catch (error: unknown) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            console.error('[NEW SESSION] Failed to create new session:', err);
 
             // Differentiate error messages for admin vs regular users
             const isAdmin = user?.isAdmin || user?.is_admin || false;
             const errorContent = isAdmin
-              ? `**Failed to create session**\n\n${error.message || 'Unknown error'}`
+              ? `**Failed to create session**\n\n${err.message || 'Unknown error'}`
               : 'Something went wrong. Please try again later or contact support.';
 
             // Show error message
@@ -2067,7 +2110,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
               timestamp: new Date().toISOString(),
               metadata: {
                 isError: true,
-                errorDetails: isAdmin ? { message: error.message, stack: error.stack } : undefined
+                errorDetails: isAdmin ? { message: err.message, stack: err.stack } : undefined
               }
             };
 
@@ -2236,6 +2279,9 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
               onExecuteCode={handleExecuteCode}
               onMessageUpdate={handleMessageUpdate}
               onFeedback={handleFeedback}
+              hitlApprovalsByMessageId={hitlApprovalsByMessageId}
+              onApproveHitl={handleApproveHitl}
+              onDenyHitl={handleDenyHitl}
             />
 
             {/* Floating "Go to latest" chip — appears when user has scrolled
@@ -2515,7 +2561,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
       <AdminToolInspector
         visible={showToolInspector && isAdminUser}
         onClose={() => setShowToolInspector(false)}
-        messages={messages as any}
+        messages={messages}
       />
 
       {/* Admin Portal is now embedded in main content area */}

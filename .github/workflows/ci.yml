@@ -228,10 +228,18 @@ jobs:
             | tr '\n' '\0' | xargs -0 -r \
               ./node_modules/.bin/eslint \
                 --no-eslintrc \
+                --no-inline-config \
                 --parser @typescript-eslint/parser \
                 --parser-options ecmaVersion:2022,sourceType:module,ecmaFeatures:{jsx:true} \
                 --plugin @typescript-eslint \
                 --rule '{"@typescript-eslint/no-explicit-any":"error"}'
+                # --no-inline-config: this minimal toolchain only loads
+                # @typescript-eslint, so a file's `// eslint-disable …
+                # react-hooks/exhaustive-deps` (or the custom admin-tokens / import
+                # plugins) would otherwise error "rule not found". Ignoring inline
+                # config sidesteps that AND hardens the gate — an inline
+                # `eslint-disable @typescript-eslint/no-explicit-any` can no longer
+                # smuggle an `any` past the ratchet.
 
   # ---- Non-gating: UI -----------------------------------------------------------
   ui:
