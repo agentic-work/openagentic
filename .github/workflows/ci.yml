@@ -133,6 +133,33 @@ jobs:
       - name: Type-check workflows
         run: npx tsc --noEmit
 
+  # ---- Gating: oa CLI (standalone npm package, like tools/setup) --------------
+  oa:
+    name: oa CLI — tsc + tests + build (gate)
+    runs-on: ubuntu-latest
+    # tools/oa is NOT part of the pnpm workspace; it is npm-managed and self-contained.
+    defaults:
+      run:
+        working-directory: tools/oa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: tools/oa/package-lock.json
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Type-check
+        run: npx tsc --noEmit
+      - name: Unit tests
+        run: npx vitest run
+      - name: Build + smoke
+        run: |
+          npm run build
+          node dist/cli.js --version
+          node dist/cli.js --help > /dev/null
+
   # ---- Gating: no-explicit-any RATCHET (changed files only) -------------------
   # The repo carries a large pre-existing `any` burden (~4k `as any` in api,
   # ~900 in ui — see the burndown comments in .eslintrc.js / .eslintrc.cjs), so
