@@ -188,15 +188,23 @@ jobs:
           } >> "$GITHUB_OUTPUT"
       - name: Lint changed files for new `any`
         if: steps.changed.outputs.files != ''
+        # Run from the temp toolchain dir so eslint resolves its OWN parser +
+        # plugin from $RUNNER_TEMP/lint/node_modules. A bare `--parser
+        # @typescript-eslint/parser` is resolved relative to CWD, and this job's
+        # checkout has no node_modules — so from the repo root eslint dies with
+        # "Cannot find module '@typescript-eslint/parser'" (exit 123). Changed
+        # files are therefore passed as ABSOLUTE ($GITHUB_WORKSPACE-prefixed) paths.
+        working-directory: ${{ runner.temp }}/lint
         run: |
-          echo "${{ steps.changed.outputs.files }}" | tr '\n' '\0' | xargs -0 -r \
-            "$RUNNER_TEMP/lint/node_modules/.bin/eslint" \
-              --no-eslintrc \
-              --resolve-plugins-relative-to "$RUNNER_TEMP/lint" \
-              --parser @typescript-eslint/parser \
-              --parser-options ecmaVersion:2022,sourceType:module,ecmaFeatures:{jsx:true} \
-              --plugin @typescript-eslint \
-              --rule '{"@typescript-eslint/no-explicit-any":"error"}'
+          echo "${{ steps.changed.outputs.files }}" \
+            | sed "s#^#$GITHUB_WORKSPACE/#" \
+            | tr '\n' '\0' | xargs -0 -r \
+              ./node_modules/.bin/eslint \
+                --no-eslintrc \
+                --parser @typescript-eslint/parser \
+                --parser-options ecmaVersion:2022,sourceType:module,ecmaFeatures:{jsx:true} \
+                --plugin @typescript-eslint \
+                --rule '{"@typescript-eslint/no-explicit-any":"error"}'
 
   # ---- Non-gating: UI -----------------------------------------------------------
   ui:
