@@ -120,7 +120,7 @@ export function classifyTool(
   if (
     second &&
     MUTATING_CAPABLE_SERVERS.has(first) &&
-    READ_OVERRIDE_PREFIXES.includes(second as any)
+    READ_OVERRIDE_PREFIXES.includes(second)
   ) {
     return 'READ';
   }
@@ -147,7 +147,7 @@ export function classifyTool(
   // `deployment`→`deploy` would otherwise gate a status read).
   if (
     tokens.some(
-      (t) => READ_OVERRIDE_PREFIXES.includes(t as any) || READ_ONLY_NOUNS.has(t),
+      (t) => READ_OVERRIDE_PREFIXES.includes(t) || READ_ONLY_NOUNS.has(t),
     )
   ) {
     return 'READ';
