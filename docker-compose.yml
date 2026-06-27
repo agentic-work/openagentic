@@ -556,9 +556,9 @@ services:
       # out-of-the-box. None of them hard-require a token/URL to start (see
       # mcp_manager.initialize_servers): the server processes boot and an
       # unconfigured one only surfaces "needs config" / a connection error on a
-      # tool call (an unconfigured cloud MCP behaves the same way). prometheus is wired to the
-      # in-stack prometheus:9090 below; github needs a PAT (GITHUB_TOKEN) and
-      # loki needs an external LOKI_URL — both still start without them.
+      # tool call (an unconfigured cloud MCP behaves the same way). prometheus and loki are
+      # wired to the in-stack prometheus:9090 / loki:3100 below; github needs a PAT
+      # (GITHUB_TOKEN) — all still start without them.
       OpenAgentic_GITHUB_MCP_DISABLED: ${OpenAgentic_GITHUB_MCP_DISABLED:-false}
       OpenAgentic_PROMETHEUS_MCP_DISABLED: ${OpenAgentic_PROMETHEUS_MCP_DISABLED:-false}
       OpenAgentic_LOKI_MCP_DISABLED: ${OpenAgentic_LOKI_MCP_DISABLED:-false}
@@ -571,7 +571,9 @@ services:
       PROMETHEUS_URL: ${PROMETHEUS_URL:-http://prometheus:9090}
       PROMETHEUS_USERNAME: ${PROMETHEUS_USERNAME:-}
       PROMETHEUS_PASSWORD: ${PROMETHEUS_PASSWORD:-}
-      LOKI_URL: ${LOKI_URL:-}
+      # Point the loki MCP at the in-stack loki service (:3100) — mirrors PROMETHEUS_URL,
+      # so loki_query works out-of-the-box under `docker compose --profile monitoring`.
+      LOKI_URL: ${LOKI_URL:-http://loki:3100}
       LOKI_USERNAME: ${LOKI_USERNAME:-}
       LOKI_PASSWORD: ${LOKI_PASSWORD:-}
       ALERTMANAGER_URL: ${ALERTMANAGER_URL:-}

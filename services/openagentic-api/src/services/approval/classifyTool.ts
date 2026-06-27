@@ -54,6 +54,17 @@ const READ_OVERRIDE_PREFIXES: readonly string[] = [
   'web_search',
 ] as const;
 
+/**
+ * Read-only resource NOUNS (not verbs) that make a tool a READ even with no read
+ * verb present (#111). Cloud cost/billing tools like `azure_cost_by_service`,
+ * `azure_cost_forecast`, `aws_cost_by_service` are pure reporting reads but carry
+ * no read verb, so they hit the infra fail-closed branch and were over-gated.
+ * Matched as EXACT tokens only (never prefix) so a genuine mutating verb elsewhere
+ * in the name still wins via the exact-mutating check above (e.g. a hypothetical
+ * `*_cost_delete_budget` stays MUTATING).
+ */
+const READ_ONLY_NOUNS = new Set<string>(['cost', 'billing', 'spend']);
+
 const SEP = /[_\-:.\s/]+/;
 
 /**
@@ -109,7 +120,7 @@ export function classifyTool(
   if (
     second &&
     MUTATING_CAPABLE_SERVERS.has(first) &&
-    READ_OVERRIDE_PREFIXES.includes(second as any)
+    READ_OVERRIDE_PREFIXES.includes(second)
   ) {
     return 'READ';
   }
@@ -134,7 +145,11 @@ export function classifyTool(
   // then beats a LOOSE prefix collision (`postgres`→`post` is already
   // excluded above, but this also catches e.g. `deployment_status` where
   // `deployment`→`deploy` would otherwise gate a status read).
-  if (tokens.some((t) => READ_OVERRIDE_PREFIXES.includes(t as any))) {
+  if (
+    tokens.some(
+      (t) => READ_OVERRIDE_PREFIXES.includes(t) || READ_ONLY_NOUNS.has(t),
+    )
+  ) {
     return 'READ';
   }
 

@@ -1443,7 +1443,10 @@ async def list_server_tools(server_name: str, user_info: Optional[Dict[str, Any]
 # === MCP TOOL EXECUTION ===
 
 class MCPCallRequest(BaseModel):
-    server: str
+    # Optional: a caller that omits the server (e.g. a Flow mcp_tool node that
+    # relies on auto-detection, the way /mcp does) must NOT 422 on a missing
+    # field — /call auto-detects the server from the tool name (#108).
+    server: Optional[str] = None
     tool: str
     arguments: Dict[str, Any] = {}
 
@@ -1822,6 +1825,39 @@ async def batch_call_tools(
         failed=failed
     )
 
+async def autodetect_server_for_tool(tool_name: Optional[str]) -> Optional[str]:
+    """Find which RUNNING MCP server exposes `tool_name` by listing each
+    server's tools. Fallback for callers that omit the server (a Flow mcp_tool
+    node relying on auto-detection, the way /mcp does) so they resolve instead
+    of erroring (#108). Mirrors the inline auto-detect in the /mcp handler."""
+    if not tool_name or not mcp_manager:
+        return None
+    from mcp_manager import MCPServerStatus
+    for server_name, server in mcp_manager.servers.items():
+        if server.status != MCPServerStatus.RUNNING:
+            continue
+        try:
+            unique_id = f"auto-detect-{uuid.uuid4().hex[:8]}"
+            response = await server.send_request(
+                {"jsonrpc": "2.0", "id": unique_id, "method": "tools/list"}
+            )
+            tools = (
+                response.get("result", {}).get("tools", [])
+                if isinstance(response, dict)
+                else []
+            )
+            if any(t.get("name") == tool_name for t in tools):
+                logger.warning(
+                    f"Auto-detected server '{server_name}' for tool '{tool_name}' "
+                    f"- caller should provide the server explicitly"
+                )
+                return server_name
+        except Exception as e:
+            logger.debug(f"Could not list tools for server {server_name}: {e}")
+            continue
+    return None
+
+
 @app.post("/call")
 async def call_mcp_tool(
     call_request: MCPCallRequest,
@@ -1839,6 +1875,18 @@ async def call_mcp_tool(
 
         # Refresh read-only mode from DB (cached, polls every 30s)
         await refresh_readonly_from_db()
+
+        # A Flow mcp_tool node may not pin a server (it relies on auto-detection
+        # the way /mcp does). Resolve it from the tool name IN PLACE so /call
+        # doesn't 422 on the missing field, and so the downstream read-only /
+        # admin-server / RBAC checks below all see the real server (#108).
+        if not call_request.server:
+            call_request.server = await autodetect_server_for_tool(call_request.tool)
+        if not call_request.server:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Server not specified for tool '{call_request.tool}' and auto-detection failed.",
+            )
 
         # Create MCP request for tools/call
         mcp_request = MCPRequest(

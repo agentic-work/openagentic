@@ -50,4 +50,12 @@ describe('VertexPublisherListFetcher (#650 U3)', () => {
     const r = await f.fetch({ modelId: 'custom-model', region: 'us-central1' });
     expect(r.inputTokenUsd).toBe(99.99);
   });
+
+  it('degrades gracefully (no ENOENT) when the rate sheet file is absent (#110)', async () => {
+    // A missing optional sheet must NOT crash construction (was: POST /models 500).
+    const f = new VertexPublisherListFetcher({ sheetPath: '/no/such/vertex-publisher-list.json' });
+    await expect(
+      f.fetch({ modelId: 'gemini-2.5-pro', region: 'us-central1' }),
+    ).rejects.toThrow(/PricingFetch:vertex|not found/);
+  });
 });

@@ -89,6 +89,7 @@ describe('classifyTool — fail-closed gate (regression: verified bypasses)', ()
     'azure_vm_run_command',
     'gcp_compute_reset_instance',
     'aws_ec2_monitor_instances',
+    'azure_create_cost_budget',   // #111 — a real mutating verb still gates despite the cost noun
   ];
   for (const name of MUST_GATE) {
     it(`gates "${name}" (MUTATING)`, () => {
@@ -106,6 +107,12 @@ describe('classifyTool — fail-closed gate (regression: verified bypasses)', ()
     'admin_system_postgres_health_check',
     'prometheus_query',
     'loki_query_range',
+    // #111 — cloud cost/billing reports carry no read VERB but are read-only nouns.
+    'azure_cost_by_service',
+    'azure_cost_forecast',
+    'azure_cost_query',
+    'aws_cost_by_service',
+    'gcp_billing_by_service',
   ];
   for (const name of STILL_READ) {
     it(`does not over-gate "${name}" (READ)`, () => {
