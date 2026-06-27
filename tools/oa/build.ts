@@ -1,5 +1,5 @@
 import { build } from "esbuild";
-import { chmodSync } from "node:fs";
+import { chmodSync, writeFileSync } from "node:fs";
 
 // Bundle the CLI to a single runnable ESM file with a node shebang.
 await build({
@@ -19,4 +19,8 @@ await build({
   },
 });
 chmodSync("dist/cli.js", 0o755);
+// Mark dist/ as ESM so node never has to walk up to a parent package.json to
+// learn the module type — keeps the bundle self-contained (no MODULE_TYPELESS
+// warning) even when dist/cli.js is run or copied outside the package tree.
+writeFileSync("dist/package.json", JSON.stringify({ type: "module" }, null, 2) + "\n");
 console.log("built dist/cli.js");

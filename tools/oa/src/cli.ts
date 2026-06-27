@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import * as readline from "node:readline/promises";
-import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { OaClient } from "./client.ts";
 import { configDir } from "./config.ts";
 import {
@@ -196,8 +197,19 @@ export function buildProgram(io: Io): Command {
 }
 
 /* c8 ignore start — process entrypoint */
-const invokedDirectly = import.meta.url === pathToFileURL(process.argv[1] ?? "").href;
-if (invokedDirectly) {
+// Detect "run as the program" robustly: when installed as a global npm bin,
+// process.argv[1] is a SYMLINK to this file, so a plain URL comparison fails and
+// the CLI would silently do nothing. Resolve both through realpath first.
+function invokedAsMain(): boolean {
+  const argv1 = process.argv[1];
+  if (!argv1) return false;
+  try {
+    return realpathSync(argv1) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return import.meta.url === pathToFileURL(argv1).href;
+  }
+}
+if (invokedAsMain()) {
   const io: Io = { out: (s) => console.log(s), err: (s) => console.error(s) };
   buildProgram(io)
     .parseAsync(process.argv)
