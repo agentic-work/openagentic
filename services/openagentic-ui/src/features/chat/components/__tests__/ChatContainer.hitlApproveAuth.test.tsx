@@ -1,45 +1,49 @@
 /**
- * Q1-blocker-8 (2026-05-12) — Approve/Deny click must send
- * `Authorization: Bearer <token>` to /api/permissions/approvals/:id/*
- * AND update local hitlApprovalsByMessageId state on success so the
- * card buttons disappear and the cascade unblocks.
+ * #109 — inline HITL approval card must be wired in ChatContainer.
  *
- * Pre-fix: handler used `credentials: 'include'` only — no Bearer
- *          header. Cookie-based auth isn't how AAD is wired on this
- *          deployment, so the api receives userId='unknown' and
- *          PermissionService.submitApproval REJECTS the request as
- *          un-authenticated. Approve button visually did nothing.
- * Post-fix: handler awaits getAccessToken, sends Bearer header,
- *          awaits the POST, and updates the live state slot on success.
+ * A gated (mutating / high-risk) tool emits `mcp_approval_required`; useChatStream
+ * parks it in `hitlApprovalsByMessageId` and the transcript chain
+ * (ChatMessages → MessageBubble → AgenticActivityStream → HitlInlineCard) already
+ * knows how to render an approve/deny card from that state and call
+ * `onApproveHitl`/`onDenyHitl`. The bug: ChatContainer never destructured that
+ * state from useChatStream nor passed the props down — so the card got no data
+ * (never rendered) and had no callbacks, and the tool hung to the 120s timeout.
  *
- * Source-grep style.
+ * The fix wires it: pass `hitlApprovalsByMessageId` + `onApproveHitl`/`onDenyHitl`
+ * to <ChatMessages>; the handlers POST the OSS endpoint
+ * `/api/chat/tool-approval/:id` with a Bearer token and flip the card out of
+ * "pending" via `setHitlApprovalsByMessageId` so the buttons disappear.
+ *
+ * (Supersedes the pre-OSS Q1-blocker-8 test, which asserted the removed AAD
+ * `/api/permissions/approvals/:id` path.)
+ *
+ * Source-grep style: ChatContainer is too large to mount in a unit test; the
+ * rendered card + button behavior is covered by
+ * AgenticActivityStream.hitlInline.test.tsx.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 
 const SRC = join(__dirname, '..', 'ChatContainer.tsx');
+const src = readFileSync(SRC, 'utf8');
 
-describe('ChatContainer — HITL approve handler auth + state update (Q1-fix-8)', () => {
-  it('approve handler sends Authorization: Bearer header', () => {
-    const src = readFileSync(SRC, 'utf8');
-    // Find the onApproveHitl block; assert it composes a Bearer header
-    // (the rest of the file is full of Bearer fetches — we anchor on
-    // the permissions/approvals URL).
-    const idx = src.indexOf('permissions/approvals/');
-    expect(idx).toBeGreaterThan(-1);
-    // Within the next 2000 chars (the surrounding handler body) we
-    // expect a Bearer composition. The full file uses template-literal
-    // form: `Bearer ${token}`.
-    const slice = src.slice(idx, idx + 2000);
-    expect(slice).toContain('Bearer ${token}');
+describe('ChatContainer — inline HITL approval wiring (#109)', () => {
+  it('passes the inline-approval props down to <ChatMessages>', () => {
+    expect(src).toMatch(/hitlApprovalsByMessageId=\{/);
+    expect(src).toMatch(/onApproveHitl=\{/);
+    expect(src).toMatch(/onDenyHitl=\{/);
   });
 
-  it('approve handler updates hitlApprovalsByMessageId after a successful POST', () => {
-    const src = readFileSync(SRC, 'utf8');
-    // The fix expects the approve/deny click handlers to call the
-    // setter exposed by useChatStream so the card transitions to a
-    // non-pending state and the buttons disappear.
+  it('resolves an approval via the OSS tool-approval endpoint with a Bearer token', () => {
+    // A requestId-parameterized handler (not just the single-modal mcpApproval one)
+    // must POST to /chat/tool-approval/:id with an Authorization: Bearer header.
+    expect(src).toMatch(/chat\/tool-approval\/\$\{requestId\}/);
+    expect(src).toContain('Bearer ${token}');
+    expect(src).toMatch(/approved\b/);
+  });
+
+  it('flips the card out of "pending" via setHitlApprovalsByMessageId on success', () => {
     expect(src).toMatch(/setHitlApprovalsByMessageId/);
   });
 });
