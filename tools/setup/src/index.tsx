@@ -33,6 +33,8 @@ export const App: React.FC = () => {
   const existing = readCurrent();
   const [config, setConfig] = useState<WizardConfig>(() => ({
     ...DEFAULT_CONFIG,
+    // Re-detect a prior headless install so a wizard re-run keeps the choice.
+    headless: existing.OPENAGENTIC_HEADLESS === 'true',
     admin: {
       ...DEFAULT_CONFIG.admin,
       email: existing.ADMIN_USER_EMAIL || DEFAULT_CONFIG.admin.email,
@@ -203,8 +205,8 @@ export const App: React.FC = () => {
   if (screen === 'target') {
     return (
       <DeployTargetStep
-        onPick={(t: DeployTarget) => {
-          setConfig({ ...config, target: t });
+        onPick={(t: DeployTarget, headless: boolean) => {
+          setConfig({ ...config, target: t, headless });
           setScreen(t === 'helm' ? 'helm-preflight' : 'admin');
         }}
       />

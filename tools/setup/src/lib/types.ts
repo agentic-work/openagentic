@@ -123,6 +123,9 @@ export interface WizardConfig {
   /** Per-MCP inline auth values keyed by env var name (merged into .env at launch). */
   mcpAuth: Record<string, string>;
   uiPort: number;
+  /** Docker only: skip the UI container and publish the API on the host port so
+   *  the platform is driven headlessly via the `oa` CLI. No effect on helm. */
+  headless: boolean;
   /** Helm path only: resolved kubeconfig path used for cluster probe. */
   kubeconfigPath?: string;
 }
@@ -152,4 +155,5 @@ export const DEFAULT_CONFIG: WizardConfig = {
   mcps: [],          // populated from defaultEnabledMcps() in the MCP step
   mcpAuth: {},
   uiPort: 8080,
+  headless: false,
 };

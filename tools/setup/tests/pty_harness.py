@@ -177,6 +177,64 @@ def assert_minimal(env: dict[str, str]) -> list[str]:
         fails.append("AWS MCP should be DISABLED=true")
     if env.get("OpenAgentic_WEB_MCP_DISABLED") != "false":
         fails.append("Web MCP should be DISABLED=false")
+    # Full (docker, UI) mode must NOT write the headless markers.
+    if env.get("DOCS_AUTO_INGEST") == "false":
+        fails.append("DOCS_AUTO_INGEST should NOT be 'false' in full (UI) mode")
+    if env.get("API_HOST_PORT"):
+        fails.append(f"API_HOST_PORT should be unset in full mode, got {env.get('API_HOST_PORT')!r}")
+    return fails
+
+
+def script_headless(child: pexpect.spawn) -> None:
+    """Docker HEADLESS (no UI container) — same minimal LLM/MCP flow, but the
+    deploy target is 'Docker — headless' (the 2nd item). The platform comes up
+    API-only; the user drives it with the `oa` CLI. Proves the wizard records
+    headless in .env (DOCS_AUTO_INGEST=false + API_HOST_PORT exposing the API)."""
+    expect_screen(child, "Where do you want to run openagentic?")
+    send(child, DOWN)                          # item 1 = Docker — headless (API only)
+    send(child, ENTER)
+
+    expect_screen(child, "Create your admin account")
+    send(child, ENTER)                         # accept default email
+    type_and_enter(child, "headless1!")        # password (>= 8 chars)
+
+    expect_screen(child, "Which LLM provider should the platform use?")
+    send(child, DOWN); send(child, DOWN)       # "AWS Bedrock"
+    send(child, ENTER)
+
+    expect_screen(child, "models via your AWS account")
+    send(child, ENTER)                         # "Enter IAM access key + secret"
+    expect_screen(child, "IAM access key")
+    send(child, ENTER)                         # region — default us-east-1
+    type_and_enter(child, "AKIA-HEADLESS")     # access key id
+    type_and_enter(child, "headless-secret")   # secret access key
+    send(child, ENTER)                         # model — default
+
+    expect_screen(child, "Which MCPs do you want enabled?")
+    send(child, "n")                           # clear all
+    send(child, SPACE)                         # web on
+    send(child, ENTER)
+
+    expect_screen(child, "Review & launch")
+    send(child, ENTER)                         # Launch
+
+    expect_screen(child, "dry-run", timeout=15.0)
+
+
+def assert_headless(env: dict[str, str]) -> list[str]:
+    fails = []
+    # Headless markers: no UI to serve docs; API published on the host for `oa`.
+    if env.get("DOCS_AUTO_INGEST") != "false":
+        fails.append(f"DOCS_AUTO_INGEST expected 'false' in headless, got {env.get('DOCS_AUTO_INGEST')!r}")
+    if not env.get("API_HOST_PORT"):
+        fails.append("API_HOST_PORT must be set in headless (the API is the only entrypoint)")
+    elif env.get("API_HOST_PORT") != env.get("UI_HOST_PORT"):
+        fails.append(f"API_HOST_PORT should equal the chosen port in headless, got {env.get('API_HOST_PORT')!r} vs {env.get('UI_HOST_PORT')!r}")
+    # The LLM/admin still configure normally in headless.
+    if env.get("BOOTSTRAP_PROVIDER_TYPE") != "aws-bedrock":
+        fails.append(f"BOOTSTRAP_PROVIDER_TYPE expected 'aws-bedrock', got {env.get('BOOTSTRAP_PROVIDER_TYPE')!r}")
+    if env.get("ADMIN_SEED_PASSWORD") != "headless1!":
+        fails.append(f"ADMIN_SEED_PASSWORD expected 'headless1!' got {env.get('ADMIN_SEED_PASSWORD')!r}")
     return fails
 
 
@@ -693,6 +751,12 @@ VARIATIONS: list[Variation] = [
         description="AWS Bedrock (inline IAM + entered model), 1 MCP (web), no raw keys",
         script=script_minimal,
         assertions=assert_minimal,
+    ),
+    Variation(
+        name="headless",
+        description="Docker headless (no UI container) → API-only, drive with `oa`",
+        script=script_headless,
+        assertions=assert_headless,
     ),
     Variation(
         name="all-mcps-inline",
