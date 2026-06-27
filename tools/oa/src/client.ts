@@ -175,4 +175,76 @@ export class OaClient {
       body: { task, context: context ?? {} },
     });
   }
+
+  async createSession(title?: string): Promise<{ id: string; [key: string]: unknown }> {
+    const res = await this.request<{ session: { id: string; [key: string]: unknown } }>(
+      "POST",
+      "/api/chat/sessions",
+      { body: { title: title ?? "oa" } },
+    );
+    return res.session;
+  }
+
+  /** Stream a chat turn; invokes onEvent for each parsed SSE `data:` frame. */
+  async chatStream(
+    params: { sessionId: string; message: string; model?: string },
+    onEvent: (event: unknown) => void,
+  ): Promise<void> {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    if (this.token) headers.authorization = `Bearer ${this.token}`;
+    const res = await fetch(`${this.baseUrl}/api/chat/stream`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      let message = `HTTP ${res.status}`;
+      try {
+        const d = JSON.parse(text);
+        message = d.error || d.message || message;
+      } catch {
+        /* non-JSON error body */
+      }
+      throw new ApiError(res.status, message);
+    }
+    if (!res.body) return;
+    const reader = (res.body as ReadableStream<Uint8Array>).getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let sep: number;
+      while ((sep = buf.indexOf("\n\n")) >= 0) {
+        const frame = buf.slice(0, sep);
+        buf = buf.slice(sep + 2);
+        const dataLine = frame.split("\n").find((l) => l.startsWith("data:"));
+        if (!dataLine) continue;
+        const payload = dataLine.slice(5).trim();
+        if (payload === "") continue;
+        if (payload === "[DONE]") return;
+        try {
+          onEvent(JSON.parse(payload));
+        } catch {
+          onEvent({ raw: payload });
+        }
+      }
+    }
+  }
+
+  /** Detect whether the target deploy serves the web UI (SPA) vs is headless. */
+  async detectUi(): Promise<boolean> {
+    try {
+      const res = await fetch(`${this.baseUrl}/`, { method: "GET" });
+      if (!res.ok) return false;
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("text/html")) return false;
+      const body = await res.text();
+      return body.includes('id="root"') || body.toLowerCase().includes("<!doctype html");
+    } catch {
+      return false;
+    }
+  }
 }
