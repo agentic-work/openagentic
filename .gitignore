@@ -130,6 +130,11 @@ data/
 volumes/
 *.pid
 
+# Exception: the vendored Vertex pricing rate sheet is a committed, admin-editable
+# asset that must SHIP in the image (#110) — re-include it despite the data/ rule.
+!services/openagentic-api/src/services/pricing/data/
+!services/openagentic-api/src/services/pricing/data/*.json
+
 # Test files
 test-files-temp/
 *.test.js.map

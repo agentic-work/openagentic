@@ -1,0 +1,22 @@
+{
+  "_meta": {
+    "source": "https://cloud.google.com/vertex-ai/generative-ai/pricing",
+    "captured_at": "2026-05-06",
+    "captured_by": "task #650 — refresh runbook in docs/runbooks/refresh-vertex-pricing.md",
+    "note": "Vendored because GCP does not publish a public REST endpoint for per-model Vertex GenAI pricing. CloudCatalog SKUs do not consistently cover Gemini SKUs. This file is admin-editable and the daily refresh cron flags drift via diff log."
+  },
+  "rates": {
+    "gemini-2.5-pro": { "inputTokenUsd": 1.25, "outputTokenUsd": 10.0 },
+    "gemini-2.5-flash": { "inputTokenUsd": 0.30, "outputTokenUsd": 2.50 },
+    "gemini-2.5-flash-lite": { "inputTokenUsd": 0.10, "outputTokenUsd": 0.40 },
+    "gemini-2.0-flash-001": { "inputTokenUsd": 0.10, "outputTokenUsd": 0.40 },
+    "gemini-2.0-flash-lite-001": { "inputTokenUsd": 0.075, "outputTokenUsd": 0.30 },
+    "gemini-3-pro": { "inputTokenUsd": 2.0, "outputTokenUsd": 12.0 },
+    "text-embedding-005": { "embeddingTokenUsd": 0.025 },
+    "text-multilingual-embedding-002": { "embeddingTokenUsd": 0.025 },
+    "imagen-3.0-generate-002": { "imageGenPerRequestUsd": 0.04 },
+    "imagen-4.0-generate-001": { "imageGenPerRequestUsd": 0.04 },
+    "claude-opus-4-6@20260101": { "inputTokenUsd": 15.0, "outputTokenUsd": 75.0, "cacheReadUsd": 1.5, "cacheWriteUsd": 18.75 },
+    "claude-sonnet-4-6@20260101": { "inputTokenUsd": 3.0, "outputTokenUsd": 15.0, "cacheReadUsd": 0.3, "cacheWriteUsd": 3.75 }
+  }
+}

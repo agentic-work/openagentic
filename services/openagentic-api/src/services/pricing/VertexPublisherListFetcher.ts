@@ -48,7 +48,33 @@ export class VertexPublisherListFetcher implements PricingFetcher {
       this.sheet = opts.sheet;
     } else {
       const path = opts?.sheetPath ?? DEFAULT_SHEET_PATH;
-      this.sheet = JSON.parse(readFileSync(path, 'utf8')) as VertexPublisherSheet;
+      this.sheet = VertexPublisherListFetcher.loadSheet(path);
+    }
+  }
+
+  /**
+   * Load the vendored rate sheet, degrading gracefully if it is absent (#110).
+   * The sheet is an optional, admin-editable pricing aid — a missing file must
+   * NOT crash model/pricing endpoints. Fall back to an empty sheet so `fetch`
+   * returns a clean "pricing unavailable" PricingFetchError per model instead
+   * of an ENOENT bubbling out of the constructor (e.g. POST /models 500).
+   */
+  private static loadSheet(path: string): VertexPublisherSheet {
+    try {
+      return JSON.parse(readFileSync(path, 'utf8')) as VertexPublisherSheet;
+    } catch (err) {
+      console.warn(
+        `[VertexPublisherListFetcher] rate sheet unavailable at ${path} ` +
+          `(${(err as Error).message}); Vertex pricing will report as unavailable ` +
+          `until an admin uploads one`,
+      );
+      return {
+        _meta: {
+          captured_at: 'unavailable',
+          note: 'vertex-publisher-list.json not found; Vertex pricing unavailable',
+        },
+        rates: {},
+      };
     }
   }
 
