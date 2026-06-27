@@ -38,6 +38,7 @@ Other install paths: `… | bash -s -- --helm` (Kubernetes via Helm), `… | bas
 | 10 | **[Security & Compliance Posture](10-security.md)** | Password/JWT/API-key handling, inter-service auth, no-weak-secret-defaults, the artifact sandbox, SSRF guards, the immutable audit chain, zero-telemetry enforcement, and the NIST 800-53 control framing. |
 | 11 | **[API Reference](11-api-reference.md)** | The base URL, Swagger/OpenAPI, auth headers, chat streaming (NDJSON), the OpenAI-compatible endpoints, workflows, system config, and the admin API surface. |
 | 12 | **[Operations & Troubleshooting](12-operations.md)** | Health checks, updates and rollbacks, secret rotation, the first-boot landmines and their fixes, backups, scaling, and logs. |
+| 13 | **[The `oa` CLI](13-oa-cli.md)** | The headless control plane: what `oa` is, installing it, every command (chat, flows, agents, keys), the headless (no-UI-container) install, profiles, and scripting/CI use cases. |
 
 ---
 
@@ -45,6 +46,7 @@ Other install paths: `… | bash -s -- --helm` (Kubernetes via Helm), `… | bas
 
 - **New here?** Start with **[Overview](01-overview.md)**, then **[Installation](03-installation.md)**.
 - **Standing up a deployment?** **[Installation](03-installation.md)** → **[Configuration](04-configuration.md)** → **[Operations](12-operations.md)**.
+- **No UI, terminal-only, or automating it?** Run it **headless** and drive it with **[the `oa` CLI](13-oa-cli.md)**.
 - **Evaluating capability?** **[MCP Servers](06-mcp-servers.md)**, **[Chat & Artifacts](07-chat-and-artifacts.md)**, and **[Flows & Workflows](08-flows.md)**.
 - **Security review?** **[Security & Compliance Posture](10-security.md)** and the [zero-telemetry proof](../zero-telemetry.md).
 - **Integrating?** **[API Reference](11-api-reference.md)** and **[LLM Providers & Models](05-providers-and-models.md)**.
