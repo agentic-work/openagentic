@@ -9,7 +9,14 @@ await build({
   target: "node18",
   format: "esm",
   outfile: "dist/cli.js",
-  banner: { js: "#!/usr/bin/env node" },
+  // Shim `require` so bundled CommonJS deps (e.g. commander) work inside ESM.
+  banner: {
+    js: [
+      "#!/usr/bin/env node",
+      "import { createRequire as __cr } from 'node:module';",
+      "const require = __cr(import.meta.url);",
+    ].join("\n"),
+  },
 });
 chmodSync("dist/cli.js", 0o755);
 console.log("built dist/cli.js");
