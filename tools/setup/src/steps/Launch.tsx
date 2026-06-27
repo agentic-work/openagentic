@@ -30,7 +30,10 @@ const BAR_STOPS = ['#6FB3A8', '#9FD8C4', '#88CCA0', '#D9AE52', '#DB8240'];
 /** The summary the wizard shows once the stack is healthy. */
 interface LaunchResult {
   chatUrl: string;
-  magicUrl: string;
+  magicUrl?: string;
+  /** Headless = no UI container; the report shows `oa` connect info instead of
+   *  a browser chat URL + magic link. */
+  headless: boolean;
   adminEmail: string;
   password?: string;
 }
@@ -121,6 +124,21 @@ export const LaunchStep: React.FC<Props> = ({ config, step, total, onDone }) => 
         });
 
         if (cancelled) return;
+
+        // Headless install: no UI container, so there's nothing to open in a
+        // browser. The API is the entrypoint — the user drives it with `oa`.
+        if (config.headless) {
+          const apiUrl = `http://localhost:${config.uiPort || 8080}`;
+          setTask(4, { state: 'ok', detail: `headless — control with the oa CLI (${apiUrl})` });
+          setResult({
+            chatUrl: apiUrl,
+            headless: true,
+            adminEmail: config.admin.email || 'admin@openagentic.local',
+            password: config.admin.password || undefined,
+          });
+          return;
+        }
+
         // Open the AUTO-LOGIN magic link rather than the bare page, so the user
         // lands already signed in as the seeded admin.
         const magicUrl = `http://localhost:${config.uiPort || 8080}/auth/magic?token=${magicToken}`;
@@ -131,6 +149,7 @@ export const LaunchStep: React.FC<Props> = ({ config, step, total, onDone }) => 
         setResult({
           chatUrl: url,
           magicUrl,
+          headless: false,
           adminEmail: config.admin.email || 'admin@openagentic.local',
           password: config.admin.password || undefined,
         });
@@ -232,16 +251,32 @@ const CompletionReport: React.FC<{ result: LaunchResult; step: number; total: nu
         </Box>
         <Box marginTop={1}><Rule width={w} stops={BAR_STOPS} /></Box>
 
-        <Box marginTop={1} flexDirection="column">
-          <Box>
-            <Text color={COLORS.accent} bold>Chat UI    </Text>
-            <Link url={result.chatUrl} text={result.chatUrl} />
+        {result.headless ? (
+          <Box marginTop={1} flexDirection="column">
+            <Box>
+              <Text color={COLORS.accent} bold>API        </Text>
+              <Link url={result.chatUrl} text={result.chatUrl} />
+            </Box>
+            <Box>
+              <Text color={COLORS.accent} bold>Control it </Text>
+              <Text color={COLORS.ink}>oa login --instance {result.chatUrl}</Text>
+            </Box>
+            <Box marginTop={1}>
+              <Text color={COLORS.faint}>no UI container — drive everything from the terminal with `oa`</Text>
+            </Box>
           </Box>
-          <Box>
-            <Text color={COLORS.accent} bold>Sign in    </Text>
-            <Link url={result.magicUrl} text="one-shot auto-login link (opens you in, signed in)" />
+        ) : (
+          <Box marginTop={1} flexDirection="column">
+            <Box>
+              <Text color={COLORS.accent} bold>Chat UI    </Text>
+              <Link url={result.chatUrl} text={result.chatUrl} />
+            </Box>
+            <Box>
+              <Text color={COLORS.accent} bold>Sign in    </Text>
+              <Link url={result.magicUrl ?? result.chatUrl} text="one-shot auto-login link (opens you in, signed in)" />
+            </Box>
           </Box>
-        </Box>
+        )}
 
         <Box marginTop={1} flexDirection="column">
           <Text color={COLORS.faint}>admin login</Text>
@@ -250,11 +285,11 @@ const CompletionReport: React.FC<{ result: LaunchResult; step: number; total: nu
         </Box>
 
         <Box marginTop={1} flexDirection="column">
-          <Text color={COLORS.faint}>try asking the agent</Text>
+          <Text color={COLORS.faint}>{result.headless ? 'try it from the terminal' : 'try asking the agent'}</Text>
           {STARTER_PROMPTS.map((p, i) => (
             <Box key={i} marginLeft={2}>
               <Text color={COLORS.signal}>› </Text>
-              <Text color={COLORS.muted}>{p}</Text>
+              <Text color={COLORS.muted}>{result.headless ? `oa chat "${p}"` : p}</Text>
             </Box>
           ))}
         </Box>
@@ -300,6 +335,16 @@ function toEnv(c: WizardConfig, magicToken?: string): Record<string, string> {
   // against this, so it must be in .env before the stack boots. The wizard
   // builds the auto-login URL from the SAME token and opens it post-health.
   if (magicToken) env.MAGIC_BOOT_TOKEN = magicToken;
+
+  // Headless (docker, no UI container). docker.ts drops the `ui` compose profile,
+  // so we publish the API on the host port (API_HOST_PORT → compose api ports) as
+  // the sole entrypoint for the `oa` CLI, and turn off docs auto-ingest (there is
+  // no UI to serve the docs manifest). OPENAGENTIC_HEADLESS is a re-detect marker.
+  if (c.headless) {
+    env.OPENAGENTIC_HEADLESS = 'true';
+    env.API_HOST_PORT = String(c.uiPort);
+    env.DOCS_AUTO_INGEST = 'false';
+  }
 
   // Ollama envs only when the user EXPLICITLY chose Ollama. The compose
   // defaults are provider-agnostic (OLLAMA_ENABLED=false, empty

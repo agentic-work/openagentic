@@ -191,6 +191,11 @@ services:
         # fallbacks + the platform version reported by the api.
         PLATFORM_VERSION: ${OPENAGENTIC_VERSION:-1.0.0}
         PLATFORM_CODENAME: ${OPENAGENTIC_CODENAME:-Open Field}
+    # Publish the API on the host. This is how the `oa` CLI and a headless install
+    # (no UI container) reach the platform; in a full install the UI also proxies
+    # it internally. Every route requires auth, so direct exposure is safe.
+    ports:
+      - "${API_HOST_PORT:-8000}:8000"
     extra_hosts:
       - "ollama.local:127.0.0.1"
       # host-gateway is the docker keyword that resolves to the host's
@@ -409,6 +414,10 @@ services:
 
   ui:
     <<: *defaults
+    # The web UI is OPTIONAL: it lives behind the `ui` profile so a headless
+    # install (no UI container) is `docker compose up` with NO --profile ui, while
+    # a full install adds `--profile ui`. The API is always reachable directly.
+    profiles: ["ui"]
     image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-ui:${OPENAGENTIC_TAG:-latest}
     build:
       context: .
