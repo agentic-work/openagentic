@@ -9,6 +9,10 @@ export type EnvMap = Record<string, string>;
  *  .env.example free of any real credential. */
 const INSTALL_PLACEHOLDER = 'REPLACE_ME_AT_INSTALL_TIME';
 const randomSecret = (bytes = 24): string => crypto.randomBytes(bytes).toString('base64url');
+/** Hex secret — for keys consumed as raw bytes via Buffer.from(key, 'hex')
+ *  (e.g. LOCAL_ENCRYPTION_KEY → vault AES-256-GCM: must decode to 32 bytes =
+ *  64 hex chars). base64url would Buffer.from(..,'hex') to a garbage short key. */
+const randomHex = (bytes = 32): string => crypto.randomBytes(bytes).toString('hex');
 
 export function readExample(): EnvMap {
   if (!fs.existsSync(ENV_EXAMPLE)) return {};
@@ -28,6 +32,11 @@ const REQUIRED_SECRETS = [
   'POSTGRES_PASSWORD', 'JWT_SECRET', 'SIGNING_SECRET',
   'INTERNAL_API_KEY', 'FRONTEND_SECRET', 'INTERNAL_SERVICE_SECRET',
 ];
+/** Required secrets that MUST be hex (consumed as raw key bytes, not opaque
+ *  strings). LOCAL_ENCRYPTION_KEY backs vault.service's at-rest AES-256 envelope;
+ *  generating it here makes encrypted integration/provider secrets DURABLE across
+ *  restarts (an unset key makes vault fall back to an ephemeral random key). */
+const REQUIRED_HEX_SECRETS = ['LOCAL_ENCRYPTION_KEY'];
 
 export function writeEnv(values: EnvMap): void {
   const example = fs.existsSync(ENV_EXAMPLE) ? fs.readFileSync(ENV_EXAMPLE, 'utf8') : '';
@@ -41,6 +50,11 @@ export function writeEnv(values: EnvMap): void {
   for (const k of REQUIRED_SECRETS) {
     if (!(k in values)) {
       values[k] = existing[k] && existing[k] !== INSTALL_PLACEHOLDER ? existing[k] : randomSecret(32);
+    }
+  }
+  for (const k of REQUIRED_HEX_SECRETS) {
+    if (!(k in values)) {
+      values[k] = existing[k] && existing[k] !== INSTALL_PLACEHOLDER ? existing[k] : randomHex(32);
     }
   }
   // Start from the example (preserves comments), then overlay values.

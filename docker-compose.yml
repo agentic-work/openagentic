@@ -182,6 +182,11 @@ services:
   api:
     <<: *defaults
     image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-api:${OPENAGENTIC_TAG:-latest}
+    # The Slack/Teams integration gateway runs INSIDE this api container — there is
+    # NO separate gateway service. Inbound events hit /api/v1/hooks/{slack,teams};
+    # integrations are configured at /api/admin/integrations and their secrets are
+    # stored ENCRYPTED at rest (backed by LOCAL_ENCRYPTION_KEY — set it in .env to
+    # a stable value so encrypted secrets survive a restart).
     build:
       context: .
       dockerfile: services/openagentic-api/Dockerfile
@@ -347,6 +352,10 @@ services:
       # JWT signing (generated-random fallback is ephemeral; set once for stable sessions)
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env — generate with openssl rand -hex 32}
       SIGNING_SECRET: ${SIGNING_SECRET:?set SIGNING_SECRET in .env — generate with openssl rand -hex 32}
+      # At-rest encryption key for vault.service (encrypts integration + LLM-provider
+      # secrets in Postgres). Empty → ephemeral random key → encrypted secrets are LOST
+      # on restart. Set a stable 64-hex key (openssl rand -hex 32); the wizard generates one.
+      LOCAL_ENCRYPTION_KEY: ${LOCAL_ENCRYPTION_KEY:-}
       # Initial admin seed (written on first boot only)
       ADMIN_USER_EMAIL: ${ADMIN_USER_EMAIL:-admin@openagentic.local}
       ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:-changeme-on-first-login}
