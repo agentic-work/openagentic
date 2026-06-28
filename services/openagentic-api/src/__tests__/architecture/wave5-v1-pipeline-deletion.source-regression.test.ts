@@ -136,6 +136,7 @@ describe('V1 chat pipeline rip — full inventory deletion gate (2026-05-05)', (
     'routes/chat/pipeline/dlp-scan.stage.ts',
     'routes/chat/pipeline/memory.stage.ts',
     'routes/chat/pipeline/message-preparation.stage.ts',
+    'routes/chat/pipeline/mcp.stage.ts',
     'routes/chat/pipeline/meta-tools.stage.ts',
     'routes/chat/pipeline/multi-model.stage.ts',
     'routes/chat/pipeline/rag.stage.ts',
