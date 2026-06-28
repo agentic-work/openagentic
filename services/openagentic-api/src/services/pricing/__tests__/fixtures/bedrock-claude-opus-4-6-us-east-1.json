@@ -1,0 +1,26 @@
+{
+  "_meta": {
+    "captured_at": "2026-04-23T22:00:00Z",
+    "captured_from": "@aws-sdk/client-pricing GetProductsCommand",
+    "filters": [
+      {
+        "Type": "TERM_MATCH",
+        "Field": "ServiceCode",
+        "Value": "AmazonBedrock"
+      },
+      {
+        "Type": "TERM_MATCH",
+        "Field": "regionCode",
+        "Value": "us-east-1"
+      }
+    ],
+    "note": "Hand-crafted fixture matching the shape returned by the AWS Pricing SDK. Each PriceList entry is a JSON-encoded string in the real response; tests parse that shape. Values match the public Bedrock pricing page for us-east-1 on 2026-04-23."
+  },
+  "FormatVersion": "aws_v1",
+  "PriceList": [
+    "{\"product\":{\"productFamily\":\"Bedrock\",\"attributes\":{\"servicecode\":\"AmazonBedrock\",\"region\":\"us-east-1\",\"regionCode\":\"us-east-1\",\"location\":\"US East (N. Virginia)\",\"usagetype\":\"USE1-Bedrock-InputTokens-Anthropic-Claude-Opus-4-6\",\"model\":\"anthropic.claude-opus-4-6-v1:0\",\"inputOutput\":\"Input\",\"operation\":\"\"},\"sku\":\"CLOPUS46IN001\"},\"serviceCode\":\"AmazonBedrock\",\"terms\":{\"OnDemand\":{\"CLOPUS46IN001.JRTCKXETXF\":{\"offerTermCode\":\"JRTCKXETXF\",\"sku\":\"CLOPUS46IN001\",\"effectiveDate\":\"2026-01-01T00:00:00Z\",\"priceDimensions\":{\"CLOPUS46IN001.JRTCKXETXF.6YS6EN2CT7\":{\"rateCode\":\"CLOPUS46IN001.JRTCKXETXF.6YS6EN2CT7\",\"description\":\"Input tokens for Anthropic Claude Opus 4.6 in us-east-1\",\"beginRange\":\"0\",\"endRange\":\"Inf\",\"unit\":\"tokens\",\"pricePerUnit\":{\"USD\":\"0.0000150000\"}}},\"termAttributes\":{}}}},\"version\":\"20260123000000\",\"publicationDate\":\"2026-01-23T00:00:00Z\"}",
+    "{\"product\":{\"productFamily\":\"Bedrock\",\"attributes\":{\"servicecode\":\"AmazonBedrock\",\"region\":\"us-east-1\",\"regionCode\":\"us-east-1\",\"location\":\"US East (N. Virginia)\",\"usagetype\":\"USE1-Bedrock-OutputTokens-Anthropic-Claude-Opus-4-6\",\"model\":\"anthropic.claude-opus-4-6-v1:0\",\"inputOutput\":\"Output\",\"operation\":\"\"},\"sku\":\"CLOPUS46OUT001\"},\"serviceCode\":\"AmazonBedrock\",\"terms\":{\"OnDemand\":{\"CLOPUS46OUT001.JRTCKXETXF\":{\"offerTermCode\":\"JRTCKXETXF\",\"sku\":\"CLOPUS46OUT001\",\"effectiveDate\":\"2026-01-01T00:00:00Z\",\"priceDimensions\":{\"CLOPUS46OUT001.JRTCKXETXF.6YS6EN2CT7\":{\"rateCode\":\"CLOPUS46OUT001.JRTCKXETXF.6YS6EN2CT7\",\"description\":\"Output tokens for Anthropic Claude Opus 4.6 in us-east-1\",\"beginRange\":\"0\",\"endRange\":\"Inf\",\"unit\":\"tokens\",\"pricePerUnit\":{\"USD\":\"0.0000750000\"}}},\"termAttributes\":{}}}},\"version\":\"20260123000000\",\"publicationDate\":\"2026-01-23T00:00:00Z\"}",
+    "{\"product\":{\"productFamily\":\"Bedrock\",\"attributes\":{\"servicecode\":\"AmazonBedrock\",\"region\":\"us-east-1\",\"regionCode\":\"us-east-1\",\"location\":\"US East (N. Virginia)\",\"usagetype\":\"USE1-Bedrock-CacheReadTokens-Anthropic-Claude-Opus-4-6\",\"model\":\"anthropic.claude-opus-4-6-v1:0\",\"inputOutput\":\"Cache Read\",\"operation\":\"\"},\"sku\":\"CLOPUS46CR001\"},\"serviceCode\":\"AmazonBedrock\",\"terms\":{\"OnDemand\":{\"CLOPUS46CR001.JRTCKXETXF\":{\"offerTermCode\":\"JRTCKXETXF\",\"sku\":\"CLOPUS46CR001\",\"effectiveDate\":\"2026-01-01T00:00:00Z\",\"priceDimensions\":{\"CLOPUS46CR001.JRTCKXETXF.6YS6EN2CT7\":{\"rateCode\":\"CLOPUS46CR001.JRTCKXETXF.6YS6EN2CT7\",\"description\":\"Cache Read tokens for Anthropic Claude Opus 4.6 in us-east-1\",\"beginRange\":\"0\",\"endRange\":\"Inf\",\"unit\":\"tokens\",\"pricePerUnit\":{\"USD\":\"0.0000015000\"}}},\"termAttributes\":{}}}},\"version\":\"20260123000000\",\"publicationDate\":\"2026-01-23T00:00:00Z\"}",
+    "{\"product\":{\"productFamily\":\"Bedrock\",\"attributes\":{\"servicecode\":\"AmazonBedrock\",\"region\":\"us-east-1\",\"regionCode\":\"us-east-1\",\"location\":\"US East (N. Virginia)\",\"usagetype\":\"USE1-Bedrock-CacheWriteTokens-Anthropic-Claude-Opus-4-6\",\"model\":\"anthropic.claude-opus-4-6-v1:0\",\"inputOutput\":\"Cache Write\",\"operation\":\"\"},\"sku\":\"CLOPUS46CW001\"},\"serviceCode\":\"AmazonBedrock\",\"terms\":{\"OnDemand\":{\"CLOPUS46CW001.JRTCKXETXF\":{\"offerTermCode\":\"JRTCKXETXF\",\"sku\":\"CLOPUS46CW001\",\"effectiveDate\":\"2026-01-01T00:00:00Z\",\"priceDimensions\":{\"CLOPUS46CW001.JRTCKXETXF.6YS6EN2CT7\":{\"rateCode\":\"CLOPUS46CW001.JRTCKXETXF.6YS6EN2CT7\",\"description\":\"Cache Write tokens for Anthropic Claude Opus 4.6 in us-east-1\",\"beginRange\":\"0\",\"endRange\":\"Inf\",\"unit\":\"tokens\",\"pricePerUnit\":{\"USD\":\"0.0000187500\"}}},\"termAttributes\":{}}}},\"version\":\"20260123000000\",\"publicationDate\":\"2026-01-23T00:00:00Z\"}"
+  ]
+}

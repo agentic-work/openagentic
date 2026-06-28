@@ -1,0 +1,110 @@
+{
+  "type": "multi_agent",
+  "category": "ai",
+  "label": "Multi-Agent",
+  "description": "Concurrent fan-out across N agents via openagentic-proxy. Falls back to direct LLM batch when openagentic-proxy is unavailable.",
+  "icon": "robot",
+  "primary": "content",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "content": "string",
+          "agents": "array"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "pattern",
+      "label": "Orchestration pattern",
+      "type": "enum",
+      "required": false,
+      "default": "parallel",
+      "values": [
+        "parallel",
+        "sequential",
+        "supervisor",
+        "debate"
+      ],
+      "description": "How agents collaborate. parallel = fan-out + aggregate. sequential = handoff chain. supervisor = first agent coordinates rest. debate = sequential with pro/con/judge framing."
+    },
+    {
+      "name": "agents",
+      "label": "Agents",
+      "type": "json",
+      "required": true,
+      "default": [],
+      "description": "Array of agent slots. RECOMMENDED: { agentId } referencing a registered agent from the Admin console. Inline { role, taskDescription, systemPrompt, tools } is supported but bypasses the registry SOT — registered agents inherit tools/prompt/model/memory from prisma.agent."
+    },
+    {
+      "name": "maxConcurrency",
+      "label": "Max concurrency",
+      "type": "number",
+      "required": false,
+      "default": 5,
+      "min": 1,
+      "max": 50
+    },
+    {
+      "name": "aggregationStrategy",
+      "label": "Aggregation strategy",
+      "type": "enum",
+      "required": false,
+      "default": "merge",
+      "values": [
+        "merge",
+        "first",
+        "vote"
+      ]
+    },
+    {
+      "name": "sharedContext",
+      "label": "Share context across agents",
+      "type": "boolean",
+      "required": false,
+      "default": true
+    },
+    {
+      "name": "timeoutMs",
+      "label": "Timeout (ms)",
+      "type": "number",
+      "required": false,
+      "default": 120000
+    }
+  ],
+  "ai": {
+    "shortDescription": "Run a list of agents concurrently via openagentic-proxy.",
+    "whenToUse": "When you have N specialized agents that should all process the same input and return aggregated results.",
+    "examplePrompt": "spawn researcher, fact-checker, and synthesizer agents concurrently on the input topic",
+    "promptHints": "Reference the merged result with {{steps.<id>.content}} and the per-agent results with {{steps.<id>.agents}}."
+  },
+  "outputAssertions": [
+    {
+      "name": "multi_agent_count",
+      "expression": "result && Array.isArray(result.agents) && result.agents.length > 0",
+      "errorMessage": "No agents executed in the multi-agent run."
+    },
+    {
+      "name": "multi_agent_majority_succeeded",
+      "expression": "result && Array.isArray(result.agents) && result.agents.filter(a => a && (a.status === 'completed' || a.status === 'success' || (!a.error && (a.content || a.output)))).length >= Math.ceil(result.agents.length / 2)",
+      "errorMessage": "Less than half of the agents completed successfully — orchestration likely failed."
+    },
+    {
+      "name": "multi_agent_substantive_output",
+      "expression": "!result || !result.content || (result.content.length > 100 && !result.content.match(/^\\s*(I (could not|couldn't|cannot|can't|do not have|don't have|am unable|wasn't able|was not able)|Sorry,? (I|but)|I'?m sorry,?|I apologize,?|Unfortunately,? (I|no)|No (information|data|results|content) (available|found))/i))",
+      "errorMessage": "Multi-agent run produced no substantive output (likely all agents returned 'no info' / refusal responses)."
+    }
+  ]
+}

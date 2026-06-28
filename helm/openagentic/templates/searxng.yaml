@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: searxng-settings
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+data:
+  # The web MCP queries SearXNG's JSON API, so `json` must be in formats.
+  settings.yml: |
+    # REMOVE (not just disable) the Tor-only default engines: `disabled: true`
+    # still initializes them, which throws (no Tor proxy shipped) and logs
+    # "loading engine ... failed" on boot. `engines.remove` excludes them from
+    # the default set entirely, so they're never loaded — no boot ERROR.
+    use_default_settings:
+      engines:
+        remove:
+          - ahmia
+          - torch
+    server:
+      secret_key: {{ required "secrets.signingSecret is required — run `./install.sh --helm` or pass -f with an `openssl rand -hex 32` value" .Values.secrets.signingSecret | quote }}
+      limiter: false
+      image_proxy: false
+    search:
+      safe_search: 0
+      formats:
+        - html
+        - json
+    engines:
+      - name: wikipedia
+        disabled: false
+      - name: duckduckgo
+        disabled: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: searxng
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: searxng
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: searxng
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: searxng
+  template:
+    metadata:
+      labels:
+        app: searxng
+    spec:
+      enableServiceLinks: false
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "searxng") | nindent 6 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # searxng's entrypoint writes into /etc/searxng (uwsgi.ini etc.), so the
+      # read-only ConfigMap is copied into a writable emptyDir first.
+      initContainers:
+        - name: copy-settings
+          image: busybox:1.36
+          command: ["sh", "-c", "cp /src/settings.yml /etc/searxng/settings.yml"]
+          volumeMounts:
+            - name: settings-src
+              mountPath: /src
+            - name: settings
+              mountPath: /etc/searxng
+      containers:
+        - name: searxng
+          image: {{ .Values.searxng.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "searxng") | nindent 10 }}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SEARXNG_BASE_URL
+              value: http://localhost:8080/
+          volumeMounts:
+            - name: settings
+              mountPath: /etc/searxng
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              # SearXNG's botdetection logs an ERROR when a request arrives with
+              # neither X-Forwarded-For nor X-Real-IP. The kubelet probe has no
+              # such header, so it tripped that line every 10s. Send a loopback
+              # XFF on the probe to keep botdetection quiet (probe only).
+              httpHeaders:
+                - name: X-Forwarded-For
+                  value: 127.0.0.1
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources.searxng | nindent 12 }}
+      volumes:
+        - name: settings-src
+          configMap:
+            name: searxng-settings
+        - name: settings
+          emptyDir: {}

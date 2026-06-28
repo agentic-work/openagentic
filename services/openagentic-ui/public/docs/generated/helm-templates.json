@@ -1,0 +1,140 @@
+{
+  "domain": "helm-templates",
+  "title": "Helm Templates",
+  "description": "Kubernetes templates in the platform Helm chart",
+  "icon": "infra",
+  "category": "infrastructure",
+  "generatedAt": "2026-06-25T15:20:26.769Z",
+  "sourceFiles": [
+    "helm/openagentic/templates/api.yaml",
+    "helm/openagentic/templates/ingress.yaml",
+    "helm/openagentic/templates/loki.yaml",
+    "helm/openagentic/templates/mcp-proxy-rbac.yaml",
+    "helm/openagentic/templates/mcp-proxy.yaml",
+    "helm/openagentic/templates/milvus.yaml",
+    "helm/openagentic/templates/ollama.yaml",
+    "helm/openagentic/templates/postgres.yaml",
+    "helm/openagentic/templates/prometheus.yaml",
+    "helm/openagentic/templates/proxy.yaml",
+    "helm/openagentic/templates/redis.yaml",
+    "helm/openagentic/templates/searxng.yaml",
+    "helm/openagentic/templates/secret.yaml",
+    "helm/openagentic/templates/ui.yaml",
+    "helm/openagentic/templates/workflows.yaml"
+  ],
+  "sections": [
+    {
+      "id": "templates",
+      "title": "Templates",
+      "description": "All Helm chart templates",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "api.yaml",
+          "name": "api",
+          "description": "Template api.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/api.yaml"
+        },
+        {
+          "id": "ingress.yaml",
+          "name": "ingress",
+          "description": "Template ingress.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/ingress.yaml"
+        },
+        {
+          "id": "loki.yaml",
+          "name": "loki",
+          "description": "Template loki.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/loki.yaml"
+        },
+        {
+          "id": "mcp-proxy-rbac.yaml",
+          "name": "mcp proxy rbac",
+          "description": "Template mcp-proxy-rbac.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/mcp-proxy-rbac.yaml"
+        },
+        {
+          "id": "mcp-proxy.yaml",
+          "name": "mcp proxy",
+          "description": "Template mcp-proxy.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/mcp-proxy.yaml"
+        },
+        {
+          "id": "milvus.yaml",
+          "name": "milvus",
+          "description": "Template milvus.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/milvus.yaml"
+        },
+        {
+          "id": "ollama.yaml",
+          "name": "ollama",
+          "description": "Template ollama.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/ollama.yaml"
+        },
+        {
+          "id": "postgres.yaml",
+          "name": "postgres",
+          "description": "Template postgres.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/postgres.yaml"
+        },
+        {
+          "id": "prometheus.yaml",
+          "name": "prometheus",
+          "description": "Template prometheus.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/prometheus.yaml"
+        },
+        {
+          "id": "proxy.yaml",
+          "name": "proxy",
+          "description": "Template proxy.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/proxy.yaml"
+        },
+        {
+          "id": "redis.yaml",
+          "name": "redis",
+          "description": "Template redis.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/redis.yaml"
+        },
+        {
+          "id": "searxng.yaml",
+          "name": "searxng",
+          "description": "Template searxng.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/searxng.yaml"
+        },
+        {
+          "id": "secret.yaml",
+          "name": "secret",
+          "description": "Template secret.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/secret.yaml"
+        },
+        {
+          "id": "ui.yaml",
+          "name": "ui",
+          "description": "Template ui.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/ui.yaml"
+        },
+        {
+          "id": "workflows.yaml",
+          "name": "workflows",
+          "description": "Template workflows.yaml",
+          "type": "helm-template",
+          "sourceFile": "helm/openagentic/templates/workflows.yaml"
+        }
+      ]
+    }
+  ]
+}

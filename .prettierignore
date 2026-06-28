@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+coverage/
+.turbo/
+
+# Generated files
+*.generated.ts
+*.generated.js
+*.generated.json
+prisma/client/
+.prisma/
+
+# Environments
+.env*
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+__snapshots__/
+
+# Public assets
+public/animations/
+public/images/
+
+# Vendor files
+vendor/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+
+# Charts
+helm/
+*.yaml
+*.yml
+
+# Data files
+*.csv
+*.sql
+*.sqlite

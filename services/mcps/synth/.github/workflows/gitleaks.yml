@@ -1,0 +1,42 @@
+# Secret scanner — fails the build if committed secrets (API keys,
+# tokens, credentials) are detected via gitleaks.
+name: Secret Scan
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gitleaks:
+    name: Gitleaks
+    runs-on: arc-${{ github.event.repository.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # PR: diff-only (base..head). Push: working tree only.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 0 || 1 }}
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          case "$(uname -m)" in
+            x86_64)  ARCH=x64 ;;
+            aarch64|arm64) ARCH=arm64 ;;
+            *) echo "Unsupported arch $(uname -m)"; exit 1 ;;
+          esac
+          curl -sL "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_${ARCH}.tar.gz" | tar xz
+          sudo mv gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Scan PR diff
+        if: github.event_name == 'pull_request'
+        run: |
+          gitleaks detect --verbose --config .gitleaks.toml \
+            --source . \
+            --redact \
+            --exit-code 1 \
+            --log-opts "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
+      - name: Scan working tree (no-git)
+        if: github.event_name != 'pull_request'
+        run: gitleaks detect --verbose --config .gitleaks.toml --source . --no-git --redact --exit-code 1

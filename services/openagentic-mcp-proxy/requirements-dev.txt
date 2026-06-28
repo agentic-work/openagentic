@@ -1,0 +1,5 @@
+# Dev/test-only deps for mcp-proxy. NOT installed in the production Dockerfile.
+# Install with: pip install -r requirements.txt -r requirements-dev.txt
+pytest>=8.0
+pytest-asyncio>=0.23
+respx>=0.20

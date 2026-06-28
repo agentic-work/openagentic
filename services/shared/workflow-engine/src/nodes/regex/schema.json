@@ -1,0 +1,82 @@
+{
+  "type": "regex",
+  "category": "data",
+  "label": "Regex",
+  "description": "Apply a regex pattern to a string. Supports match, replace, and test modes. Replaces the JS-expression-only path through `transform` for pattern extraction and substitution.",
+  "icon": "search",
+  "primary": "matches",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "text",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "input",
+      "label": "Input (template or upstream)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "{{steps.http_request.body}}",
+      "description": "Path-template to the source string. Omit to use the upstream connection's input directly."
+    },
+    {
+      "name": "pattern",
+      "label": "Pattern",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": false,
+      "placeholder": "\\b(\\w+)@(\\w+\\.\\w+)\\b",
+      "description": "Regex source string without the surrounding //. Use $1, $2 etc. in replacement to refer to capture groups."
+    },
+    {
+      "name": "flags",
+      "label": "Flags",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": false,
+      "placeholder": "gi",
+      "description": "Optional regex flags. 'g' = match all occurrences (required for replace to substitute every match), 'i' = case-insensitive, 'm' = multiline."
+    },
+    {
+      "name": "mode",
+      "label": "Mode",
+      "type": "enum",
+      "values": [
+        "match",
+        "replace",
+        "test"
+      ],
+      "default": "match",
+      "required": true,
+      "description": "match = collect all matches and their capture groups; replace = substitute matches with replacement; test = boolean does-it-match check."
+    },
+    {
+      "name": "replacement",
+      "label": "Replacement (replace mode only)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": false,
+      "placeholder": "$1 at $2",
+      "description": "Replacement string for mode='replace'. Reference capture groups with $1, $2, ..."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Match, replace, or test with a regex pattern.",
+    "whenToUse": "When you need to extract structured data from unstructured text (emails, IDs, URLs) or scrub PII before passing to the next node.",
+    "examplePrompt": "extract all email addresses from the body using \\b(\\w+)@(\\w+\\.\\w+)\\b with the g flag",
+    "promptHints": "match: {{steps.X.matches}} (array of {full, groups}) + {{steps.X.count}}. replace: {{steps.X.result}} (string) + {{steps.X.replacedCount}}. test: {{steps.X.matches}} (boolean)."
+  },
+  "outputAssertions": []
+}

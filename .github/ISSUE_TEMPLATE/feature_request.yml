@@ -1,0 +1,157 @@
+
+
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement
+title: "[FEATURE]: "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ✨ **Feature Request**
+
+        Thank you for suggesting a new feature! Please provide detailed information to help us understand and evaluate your request.
+
+  - type: checkboxes
+    id: search-existing
+    attributes:
+      label: Check for existing requests
+      description: Please search for existing feature requests
+      options:
+        - label: I have searched for existing feature requests and this is not a duplicate
+          required: true
+
+  - type: dropdown
+    id: feature-category
+    attributes:
+      label: Feature Category
+      description: What category does this feature belong to?
+      options:
+        - UI/UX Enhancement
+        - API/Backend Feature
+        - Performance Improvement
+        - Security Enhancement
+        - AI/ML Capability
+        - MCP Integration
+        - Documentation
+        - DevOps/Deployment
+        - Testing/Quality
+        - Integration/Plugin
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature?
+      options:
+        - Critical (blocking core functionality)
+        - High (significant value)
+        - Medium (nice to have)
+        - Low (future consideration)
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve?
+      placeholder: |
+        Describe the problem or limitation that this feature would address:
+        - Current pain points
+        - User frustrations
+        - Missing capabilities
+        - Workflow inefficiencies
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed solution in detail
+      placeholder: |
+        Detailed description of the proposed feature:
+        - How it would work
+        - User interface changes
+        - API modifications
+        - Technical approach
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story
+    attributes:
+      label: User Story
+      description: Describe this feature from a user's perspective
+      placeholder: |
+        As a [type of user]
+        I want to [action/capability]
+        So that [benefit/outcome]
+
+        Example:
+        As an administrator
+        I want to bulk import users from CSV
+        So that I can efficiently onboard large teams
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: What criteria must be met for this feature to be considered complete?
+      placeholder: |
+        - [ ] Criteria 1
+        - [ ] Criteria 2
+        - [ ] Criteria 3
+        - [ ] Testing criteria
+        - [ ] Documentation criteria
+
+  - type: textarea
+    id: technical-considerations
+    attributes:
+      label: Technical Considerations
+      description: Any technical requirements, constraints, or considerations
+      placeholder: |
+        - Database schema changes
+        - API compatibility
+        - Performance impact
+        - Security implications
+        - Third-party dependencies
+        - Browser/platform compatibility
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered any alternative approaches?
+      placeholder: |
+        - Alternative approach 1
+        - Alternative approach 2
+        - Workarounds currently being used
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups/Screenshots
+      description: Visual representations of the proposed feature (if applicable)
+      placeholder: |
+        Attach mockups, wireframes, or screenshots that illustrate the feature.
+        You can drag and drop images here.
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information about this feature request
+      placeholder: |
+        - Related issues or features
+        - User feedback or requests
+        - Business justification
+        - Timeline considerations

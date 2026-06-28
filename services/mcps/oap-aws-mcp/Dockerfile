@@ -1,0 +1,98 @@
+# OpenAgentic AWS MCP Server — Chainguard hardened runtime (2026-04-22)
+#
+# Migrated from `python:3.11-slim` (many HIGH/CRITICAL Trivy findings)
+# to cgr.dev/chainguard/python — distroless, non-root by default, daily CVE
+# rebuilds, SBOM attached.
+#
+# Two stages:
+#   builder  — cgr.dev/chainguard/python:latest-dev (has apk + shell) for
+#              installing AWS CLI v2 + pip deps into a venv, then compiling
+#              the MCP server source to bytecode.
+#   runtime  — cgr.dev/chainguard/python:latest (no shell, no apk, no curl)
+#              carries only the venv, the AWS CLI install tree, and the
+#              pre-compiled .pyc. Image is uid 65532 by default.
+#
+# Build from repo root with scripts/build.sh — this Dockerfile assumes the
+# build context is the repo root, not services/mcps/oap-aws-mcp.
+
+ARG PYTHON_TAG=latest
+
+# =============================================================================
+# Stage 1: builder — install AWS CLI + Python deps + compile server code
+# =============================================================================
+FROM cgr.dev/chainguard/python:${PYTHON_TAG}-dev AS builder
+
+# apk requires root; drop back to nonroot for everything else.
+USER root
+RUN apk add --no-cache curl unzip groff less \
+ && ARCH=$(uname -m) \
+ && case "$ARCH" in \
+      x86_64) AWS_ARCH="x86_64" ;; \
+      aarch64) AWS_ARCH="aarch64" ;; \
+      *) AWS_ARCH="x86_64" ;; \
+    esac \
+ && curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_ARCH}.zip" -o /tmp/awscliv2.zip \
+ && cd /tmp && unzip -q awscliv2.zip \
+ && ./aws/install --install-dir /opt/aws-cli --bin-dir /opt/aws-cli/bin \
+ && rm -rf /tmp/awscliv2.zip /tmp/aws
+
+USER nonroot
+WORKDIR /home/nonroot
+
+COPY --chown=nonroot:nonroot services/mcps/oap-aws-mcp/requirements.txt /home/nonroot/requirements.txt
+
+RUN python -m venv /home/nonroot/.venv \
+ && /home/nonroot/.venv/bin/pip install --no-cache-dir -U pip setuptools wheel \
+ && /home/nonroot/.venv/bin/pip install --no-cache-dir -r /home/nonroot/requirements.txt \
+        fastapi uvicorn \
+        opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp \
+        opentelemetry-instrumentation-fastapi opentelemetry-instrumentation-httpx \
+        prometheus-client python-json-logger structlog
+
+COPY --chown=nonroot:nonroot services/mcps/shared/ /home/nonroot/app/shared/
+COPY --chown=nonroot:nonroot services/mcps/oap-aws-mcp/server.py /home/nonroot/app/server.py
+
+# IP protection: compile source to bytecode then strip .py files
+# Each step has `|| true` because the chainguard python:latest-dev image
+# doesn't always ship `find`, and a single failing step in an && chain
+# previously aborted the whole build.
+RUN /home/nonroot/.venv/bin/python -m compileall -b /home/nonroot/app/shared/ 2>/dev/null || true \
+ && /home/nonroot/.venv/bin/python -c "import py_compile; py_compile.compile('/home/nonroot/app/server.py', '/home/nonroot/app/server.pyc')" 2>/dev/null || true \
+ && /home/nonroot/.venv/bin/python -c "import os; [os.remove(os.path.join(r,f)) for r,_,fs in os.walk('/home/nonroot/app/shared') for f in fs if f.endswith('.py')]" 2>/dev/null || true \
+ && rm -f /home/nonroot/app/server.py || true
+
+# =============================================================================
+# Stage 2: runtime — distroless python, non-root, no shell, no package mgr
+# =============================================================================
+FROM cgr.dev/chainguard/python:${PYTHON_TAG}
+
+LABEL org.opencontainers.image.title="oap-aws-mcp"
+LABEL org.opencontainers.image.description="OpenAgentic AWS MCP — OBO-authenticated AWS operations"
+
+LABEL org.opencontainers.image.source="https://github.com/agentic-work/openagentic/tree/main/services/mcps/oap-aws-mcp"
+
+COPY --from=builder /opt/aws-cli /opt/aws-cli
+COPY --from=builder --chown=nonroot:nonroot /home/nonroot/.venv /home/nonroot/.venv
+COPY --from=builder --chown=nonroot:nonroot /home/nonroot/app  /home/nonroot/app
+
+USER nonroot
+WORKDIR /home/nonroot/app
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/home/nonroot/.venv/bin:/opt/aws-cli/bin:/usr/local/bin:/usr/bin:/bin" \
+    MCP_HTTP_MODE=true \
+    LOG_LEVEL=INFO \
+    LOG_FORMAT=json \
+    OTEL_SERVICE_NAME=oap-aws-mcp \
+    OTEL_RESOURCE_ATTRIBUTES="service.namespace=openagentic,deployment.environment=production" \
+    MCP_SERVER_NAME=oap-aws-mcp \
+    MCP_SERVER_PORT=8082
+
+EXPOSE 8082
+
+# No HEALTHCHECK directive — distroless runtime has no curl/wget. k8s
+# liveness/readiness probes in the Deployment manifest cover /health.
+
+ENTRYPOINT ["/home/nonroot/.venv/bin/python"]
+CMD ["/home/nonroot/app/server.pyc"]

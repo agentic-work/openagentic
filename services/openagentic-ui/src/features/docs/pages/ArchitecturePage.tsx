@@ -1,0 +1,458 @@
+import React, { useEffect, useMemo } from 'react';
+import { motion, type Transition } from 'framer-motion';
+import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';
+import { DocsInfraIcon } from '../components/DocsIcons';
+import { useDocsStore } from '@/stores/useDocsStore';
+
+/**
+ * ArchitecturePage — the topology narrative stays hand-written, but the MCP
+ * server count + node-type count embedded in the architecture diagram and the
+ * agent-type count in the standards-alignment prose are SOURCE-READ from the
+ * generated manifests so they track real source.
+ */
+
+// ============================================================================
+// FULL ARCHITECTURE DIAGRAM (counts SOURCE-READ from generated manifests)
+// ============================================================================
+
+function buildFullArchitectureDiagram(mcpCount: number, nodeCount: number): DiagramDefinition {
+  return {
+  type: 'architecture',
+  title: 'OpenAgentic System Architecture',
+  description: 'End-to-end request flow across all services',
+  layout: 'vertical',
+  nodes: [
+    // Frontend tier
+    { id: 'frontend', label: 'openagentic-ui', description: 'React SPA', shape: 'rounded', color: 'blue' },
+    // API tier
+    { id: 'api', label: 'openagentic-api', description: 'Express + WebSocket', shape: 'server', color: 'primary' },
+    // Pipeline
+    { id: 'pipeline', label: 'Chat Pipeline', description: 'Auth / DLP / RAG / Prompt', shape: 'rounded', color: 'indigo' },
+    { id: 'provider-mgr', label: 'ProviderManager', description: 'Model routing', shape: 'diamond', color: 'orange' },
+    // LLM Providers
+    { id: 'azure', label: 'Azure OpenAI', shape: 'cloud', color: 'azure' },
+    { id: 'aws', label: 'AWS Bedrock', shape: 'cloud', color: 'aws' },
+    { id: 'google', label: 'Google Vertex', shape: 'cloud', color: 'gcp' },
+    { id: 'anthropic', label: 'Anthropic', shape: 'cloud', color: 'purple' },
+    { id: 'openai', label: 'OpenAI', shape: 'cloud', color: 'green' },
+    { id: 'ollama', label: 'Ollama', shape: 'cloud', color: 'gray' },
+    // MCP Proxy
+    { id: 'mcp-proxy', label: 'MCP Proxy', description: `${mcpCount} MCP servers`, shape: 'server', color: 'orange' },
+    // Agent Proxy
+    { id: 'openagentic-proxy', label: 'Agent Proxy', description: 'Sub-agents', shape: 'server', color: 'purple' },
+    // Workflow Engine
+    { id: 'workflow', label: 'Workflow Engine', description: `${nodeCount} node types`, shape: 'server', color: 'teal' },
+    // Search backend (powers the web MCP)
+    { id: 'searxng', label: 'SearXNG', description: 'Web search backend', shape: 'server', color: 'cyan' },
+    // Databases
+    { id: 'pg', label: 'PostgreSQL', description: 'pgvector + RLS', shape: 'database', color: 'blue' },
+    { id: 'redis', label: 'Redis', description: 'Cache + sessions', shape: 'database', color: 'red' },
+    { id: 'milvus', label: 'Milvus', description: 'GPU vector search', shape: 'database', color: 'cyan' },
+    { id: 'minio', label: 'MinIO', description: 'Object storage', shape: 'database', color: 'orange' },
+    // Auth
+    { id: 'local-auth', label: 'Local Auth', description: 'username + password', shape: 'rounded', color: 'azure' },
+    { id: 'api-keys', label: 'API Keys', description: 'oa_ prefix', shape: 'rounded', color: 'gray' },
+    // Observability
+    { id: 'prometheus', label: 'Prometheus', description: 'Metrics', shape: 'rounded', color: 'red' },
+  ],
+  edges: [
+    { source: 'frontend', target: 'api', label: 'HTTPS / WSS', animated: true },
+    { source: 'api', target: 'pipeline' },
+    { source: 'pipeline', target: 'provider-mgr' },
+    { source: 'provider-mgr', target: 'azure', style: 'dashed', color: 'azure' },
+    { source: 'provider-mgr', target: 'aws', style: 'dashed', color: 'aws' },
+    { source: 'provider-mgr', target: 'google', style: 'dashed', color: 'gcp' },
+    { source: 'provider-mgr', target: 'anthropic', style: 'dashed', color: 'purple' },
+    { source: 'provider-mgr', target: 'openai', style: 'dashed', color: 'green' },
+    { source: 'provider-mgr', target: 'ollama', style: 'dashed', color: 'gray' },
+    { source: 'api', target: 'mcp-proxy', label: 'tools', style: 'dashed', color: 'orange' },
+    { source: 'api', target: 'openagentic-proxy', label: 'delegate', style: 'dashed', color: 'purple' },
+    { source: 'api', target: 'workflow', style: 'dashed', color: 'teal' },
+    { source: 'mcp-proxy', target: 'searxng', label: 'search', style: 'dashed', color: 'cyan' },
+    { source: 'pipeline', target: 'pg', style: 'dashed', color: 'blue' },
+    { source: 'pipeline', target: 'redis', style: 'dashed', color: 'red' },
+    { source: 'pipeline', target: 'milvus', style: 'dashed', color: 'cyan' },
+    { source: 'api', target: 'minio', style: 'dashed', color: 'orange' },
+    { source: 'api', target: 'local-auth', style: 'dashed', color: 'azure' },
+    { source: 'api', target: 'api-keys', style: 'dashed', color: 'gray' },
+    { source: 'api', target: 'prometheus', style: 'dashed', color: 'red' },
+  ],
+  };
+}
+
+// ============================================================================
+// INDUSTRY COMPARISON DATA (agent count SOURCE-READ from generated manifest)
+// ============================================================================
+
+function buildIndustryComparisons(agentCount: number) {
+  return [
+  {
+    title: 'Model Context Protocol (MCP)',
+    description:
+      'OpenAgentic implements the MCP specification by Anthropic, providing a standardized interface for AI models to interact with external tools and data sources. This ensures interoperability and future-proofing as the ecosystem grows.',
+    link: 'https://modelcontextprotocol.io',
+    linkLabel: 'MCP Specification',
+  },
+  {
+    title: 'Multi-Agent Patterns',
+    description:
+      `Agent orchestration follows proven multi-agent patterns: parallel execution, sequential chaining, supervisor delegation, and hierarchical task decomposition. The Agent Proxy manages lifecycle and coordination across ${agentCount} built-in agent types.`,
+  },
+  {
+    title: 'Dual Vector Store RAG',
+    description:
+      'RAG retrieval uses both pgvector (PostgreSQL extension) and Milvus (GPU-accelerated) for resilience. If one store is unavailable, the other continues serving queries. This dual-store pattern provides both low-latency and high-throughput vector search.',
+  },
+  {
+    title: 'Local Auth + Per-Call Audit',
+    description:
+      'The open-source edition authenticates users locally (username + password or API key). Cloud MCP servers (AWS / Azure / GCP) use their own configured service-account / static-keypair / ADC credentials — not a per-user token. Every tool invocation is still recorded against the authenticated local user, so the audit trail reflects who ran each action. (Per-user SSO run-as / On-Behalf-Of is an enterprise-only capability.)',
+  },
+  ];
+}
+
+// ============================================================================
+// SECRETS MANAGEMENT DATA
+// ============================================================================
+
+const secretsSteps = [
+  {
+    title: 'Wizard-written .env',
+    description:
+      'The install wizard collects platform secrets (admin credentials, internal JWT/signing secrets, provider API keys) and writes them to a local .env that the compose stack reads. Nothing is committed to Git.',
+  },
+  {
+    title: 'Cloud-secret env mounts',
+    description:
+      'Per-cloud credentials live in ~/.openagentic/cloud-secrets/*.env (one file per cloud) and are mounted into the MCP proxy. The AWS / Azure / GCP MCP servers only spawn once their credential file is present.',
+  },
+  {
+    title: 'Cloud service-account credentials',
+    description:
+      'Cloud MCP servers authenticate with their own configured service-account / static-keypair / ADC credentials supplied via the cloud-secret env files — not a per-user token. Every tool call is recorded against the authenticated local user, so the audit trail still reflects who ran each action. (Per-user SSO run-as / OBO is enterprise-only.)',
+  },
+  {
+    title: 'Per-Tool Credential Scoping',
+    description:
+      'Each MCP tool only receives the credentials it needs. The GitHub tool gets a GitHub token; the cloud tools get their cloud credentials. No tool has access to credentials outside its scope.',
+  },
+];
+
+// ============================================================================
+// STYLES
+// ============================================================================
+
+const sectionStyle: React.CSSProperties = {
+  marginBottom: '64px',
+};
+
+const sectionHeadingStyle: React.CSSProperties = {
+  fontSize: '13px',
+  fontWeight: 600,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.08em',
+  color: 'var(--color-textMuted)',
+  marginBottom: '8px',
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: '28px',
+  fontWeight: 700,
+  color: 'var(--color-text)',
+  marginBottom: '16px',
+  lineHeight: 1.2,
+};
+
+const sectionDescStyle: React.CSSProperties = {
+  fontSize: '16px',
+  color: 'var(--color-textSecondary)',
+  lineHeight: 1.65,
+  maxWidth: '640px',
+};
+
+const cardStyle: React.CSSProperties = {
+  background: 'var(--color-surface)',
+  border: '1px solid var(--color-border)',
+  borderRadius: '12px',
+  padding: '24px',
+};
+
+const cardTitleStyle: React.CSSProperties = {
+  fontSize: '15px',
+  fontWeight: 600,
+  color: 'var(--color-text)',
+  marginBottom: '8px',
+};
+
+const cardDescStyle: React.CSSProperties = {
+  fontSize: '13px',
+  color: 'var(--color-textSecondary)',
+  lineHeight: 1.6,
+};
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
+const ArchitecturePage: React.FC = () => {
+  const { loadManifest, loadedManifests } = useDocsStore();
+
+  useEffect(() => {
+    for (const d of ['mcp-servers', 'node-types', 'agent-types']) {
+      if (!loadedManifests.has(d)) loadManifest(d).catch(() => {});
+    }
+  }, [loadManifest, loadedManifests]);
+
+  const mcpCount = loadedManifests.get('mcp-servers')?.sections.length ?? 9;
+  const nodeCount =
+    loadedManifests.get('node-types')?.sections.reduce((n, s) => n + s.items.length, 0) ?? 71;
+  const agentCount =
+    loadedManifests.get('agent-types')?.sections.reduce((n, s) => n + s.items.length, 0) ?? 8;
+
+  const fullArchitectureDiagram = useMemo(
+    () => buildFullArchitectureDiagram(mcpCount, nodeCount),
+    [mcpCount, nodeCount],
+  );
+  const industryComparisons = useMemo(
+    () => buildIndustryComparisons(agentCount),
+    [agentCount],
+  );
+
+  const fadeUp = useMemo(
+    () => ({
+      initial: { opacity: 0, y: 20 },
+      animate: { opacity: 1, y: 0 },
+      transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] } as Transition,
+    }),
+    []
+  );
+
+  return (
+    <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 32px 96px' }}>
+      {/* ================================================================
+          HERO
+          ================================================================ */}
+      <motion.section style={{ marginBottom: '80px', textAlign: 'center' }} {...fadeUp}>
+        <div style={{ marginBottom: '24px' }}>
+          <DocsInfraIcon size={48} />
+        </div>
+        <h1
+          style={{
+            fontSize: '42px',
+            fontWeight: 700,
+            color: 'var(--color-text)',
+            lineHeight: 1.15,
+            marginBottom: '16px',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          System Architecture
+        </h1>
+        <p
+          style={{
+            fontSize: '18px',
+            color: 'var(--color-textSecondary)',
+            lineHeight: 1.6,
+            maxWidth: '600px',
+            margin: '0 auto',
+          }}
+        >
+          A comprehensive reference for the OpenAgentic platform architecture,
+          covering service topology, data flow, secrets management, and
+          industry-standard protocol alignment.
+        </p>
+      </motion.section>
+
+      {/* ================================================================
+          INTERACTIVE ARCHITECTURE DIAGRAM
+          ================================================================ */}
+      <motion.section
+        style={sectionStyle}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.15, duration: 0.5 }}
+      >
+        <p style={sectionHeadingStyle}>System Topology</p>
+        <h2 style={sectionTitleStyle}>Full Architecture Diagram</h2>
+        <p style={{ ...sectionDescStyle, marginBottom: '32px' }}>
+          The diagram below shows the complete service graph. The frontend connects to the
+          API over HTTPS and WebSocket. The API orchestrates the chat pipeline, delegates
+          to MCP servers for tool execution (the web MCP searches via SearXNG), routes to
+          LLM providers via the ProviderManager, and coordinates sub-agents through the
+          Agent Proxy. All data persists across PostgreSQL, Redis, Milvus, and MinIO.
+        </p>
+
+        <ReactFlowDiagram
+          diagram={fullArchitectureDiagram}
+          height={700}
+          interactive
+          showControls
+          showMiniMap
+        />
+      </motion.section>
+
+      {/* ================================================================
+          INDUSTRY COMPARISON
+          ================================================================ */}
+      <motion.section
+        style={sectionStyle}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3, duration: 0.5 }}
+      >
+        <p style={sectionHeadingStyle}>Standards Alignment</p>
+        <h2 style={sectionTitleStyle}>Industry Comparison</h2>
+        <p style={{ ...sectionDescStyle, marginBottom: '32px' }}>
+          OpenAgentic adopts open protocols and proven patterns from the broader
+          AI ecosystem rather than inventing proprietary alternatives.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+          {industryComparisons.map((item, i) => (
+            <motion.div
+              key={item.title}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 + i * 0.06, duration: 0.35 }}
+              style={cardStyle}
+            >
+              <h4 style={cardTitleStyle}>{item.title}</h4>
+              <p style={cardDescStyle}>{item.description}</p>
+              {item.link && (
+                <a
+                  href={item.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-block',
+                    marginTop: '12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: 'var(--color-primary)',
+                    textDecoration: 'none',
+                    borderBottom: '1px solid var(--color-primary)',
+                    paddingBottom: '1px',
+                  }}
+                >
+                  {item.linkLabel}
+                </a>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* ================================================================
+          SECRETS MANAGEMENT
+          ================================================================ */}
+      <motion.section
+        style={sectionStyle}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4, duration: 0.5 }}
+      >
+        <p style={sectionHeadingStyle}>Credential Lifecycle</p>
+        <h2 style={sectionTitleStyle}>Secrets Management</h2>
+        <p style={{ ...sectionDescStyle, marginBottom: '32px' }}>
+          Platform secrets are written to a local .env by the install wizard, and
+          per-cloud credentials are mounted from ~/.openagentic/cloud-secrets. Cloud
+          MCP servers run with their own service-account credentials, every tool call
+          is audited against the local user, and each tool only receives the
+          credentials it needs.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {secretsSteps.map((step, i) => (
+            <motion.div
+              key={step.title}
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.45 + i * 0.08, duration: 0.35 }}
+              style={{
+                ...cardStyle,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '16px',
+              }}
+            >
+              <div
+                style={{
+                  flexShrink: 0,
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: 'var(--color-surfaceSecondary)',
+                  border: '1px solid var(--color-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  color: 'var(--color-primary)',
+                }}
+              >
+                {i + 1}
+              </div>
+              <div>
+                <h4 style={cardTitleStyle}>{step.title}</h4>
+                <p style={cardDescStyle}>{step.description}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* ================================================================
+          EXTERNAL LINKS
+          ================================================================ */}
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5, duration: 0.5 }}
+      >
+        <p style={sectionHeadingStyle}>Resources</p>
+        <h2 style={sectionTitleStyle}>External Links</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+          {[
+            { label: 'MCP Specification', href: 'https://modelcontextprotocol.io', desc: 'Model Context Protocol by Anthropic' },
+          ].map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                ...cardStyle,
+                textDecoration: 'none',
+                cursor: 'pointer',
+                transition: 'border-color 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-primary)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border)';
+              }}
+            >
+              <h4 style={{ ...cardTitleStyle, color: 'var(--color-primary)' }}>{link.label}</h4>
+              <p style={cardDescStyle}>{link.desc}</p>
+              <span
+                style={{
+                  display: 'inline-block',
+                  marginTop: '8px',
+                  fontSize: '12px',
+                  color: 'var(--color-textMuted)',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                {link.href}
+              </span>
+            </a>
+          ))}
+        </div>
+      </motion.section>
+    </div>
+  );
+};
+
+export default ArchitecturePage;

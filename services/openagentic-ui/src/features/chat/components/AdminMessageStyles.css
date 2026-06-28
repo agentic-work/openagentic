@@ -1,0 +1,189 @@
+/* Import Nerd Fonts */
+@import url('https://www.nerdfonts.com/assets/css/webfont.css');
+
+/* Admin message container */
+.admin-message {
+  position: relative;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.05) 100%);
+  border-left: 3px solid #10b981;
+  padding-left: 1rem;
+  margin-left: -1rem;
+}
+
+/* Admin message text - green tinted */
+.admin-message .message-content {
+  color: #10b981 !important;
+  font-family: 'FiraCode Nerd Font', 'Hack Nerd Font', 'JetBrainsMono Nerd Font', monospace;
+  text-shadow: 0 0 1px rgba(16, 185, 129, 0.3);
+}
+
+/* Admin badge with nerd font icon */
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: linear-gradient(135deg, #10b981 0%, #16A34A 100%);
+  color: white;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-family: 'FiraCode Nerd Font', 'Hack Nerd Font', 'JetBrainsMono Nerd Font', monospace;
+}
+
+.admin-badge::before {
+  content: '\f0f3'; /* Nerd Font shield icon */
+  font-family: 'Symbols Nerd Font', sans-serif;
+  font-size: 1rem;
+  margin-right: 0.25rem;
+}
+
+/* Admin avatar glow */
+.admin-avatar {
+  box-shadow: 0 0 0 2px #10b981, 0 0 10px rgba(16, 185, 129, 0.5);
+  border: 2px solid #10b981;
+}
+
+/* Admin typing indicator */
+.admin-typing {
+  color: #10b981;
+  font-family: 'FiraCode Nerd Font', monospace;
+}
+
+.admin-typing::before {
+  content: '\uf0e7'; /* Nerd Font lightning bolt */
+  font-family: 'Symbols Nerd Font', sans-serif;
+  margin-right: 0.25rem;
+  animation: pulse 1s infinite;
+}
+
+/* Admin code blocks */
+.admin-message pre {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  border: 1px solid #10b981;
+}
+
+.admin-message code {
+  color: #10b981;
+  font-family: 'FiraCode Nerd Font', 'Hack Nerd Font', monospace;
+}
+
+/* Admin headers */
+.admin-message h1,
+.admin-message h2,
+.admin-message h3,
+.admin-message h4,
+.admin-message h5,
+.admin-message h6 {
+  color: #16A34A;
+  font-family: 'FiraCode Nerd Font', monospace;
+}
+
+/* Admin links */
+.admin-message a {
+  color: #10b981;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.admin-message a:hover {
+  color: #16A34A;
+  text-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+}
+
+/* Admin list items with nerd font bullets */
+.admin-message ul li::before {
+  content: '\uf058'; /* Nerd Font check circle */
+  font-family: 'Symbols Nerd Font', sans-serif;
+  color: #10b981;
+  margin-right: 0.5rem;
+  margin-left: -1.5rem;
+}
+
+.admin-message ol li::before {
+  color: #10b981;
+  font-weight: bold;
+}
+
+/* Admin status indicators */
+.admin-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #10b981;
+  font-family: 'FiraCode Nerd Font', monospace;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+.admin-status::before {
+  content: '\uf2c1'; /* Nerd Font admin/user icon */
+  font-family: 'Symbols Nerd Font', sans-serif;
+  font-size: 1rem;
+}
+
+/* Animation for admin elements */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Admin terminal-style formatting */
+.admin-terminal {
+  background: #000;
+  color: #10b981;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  font-family: 'FiraCode Nerd Font', monospace;
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-terminal::before {
+  content: '$ sudo ';
+  color: #16A34A;
+  font-weight: bold;
+}
+
+/* Matrix rain effect for admin messages (optional fun effect) */
+.admin-matrix {
+  position: absolute;
+  top: 0;
+  right: 0;
+  opacity: 0.1;
+  font-family: 'FiraCode Nerd Font', monospace;
+  color: #10b981;
+  pointer-events: none;
+  animation: matrix-fall 10s linear infinite;
+}
+
+@keyframes matrix-fall {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .admin-message {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  }
+  
+  .admin-message .message-content {
+    color: #34d399 !important;
+    text-shadow: 0 0 2px rgba(52, 211, 153, 0.5);
+  }
+  
+  .admin-terminal {
+    background: #0a0a0a;
+    border: 1px solid #10b981;
+  }
+}

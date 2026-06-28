@@ -1,0 +1,96 @@
+{
+  "type": "llm_router",
+  "category": "ai",
+  "label": "LLM Router",
+  "description": "LLM-as-condition. Given a prompt + a configured set of named routes (each with a description), the model picks exactly one route by name. The chosen route is used as the outgoing `sourceHandle` so downstream branches gate naturally. Goes through the SAME /v1/chat/completions endpoint as `llm_completion` — model selection follows the platform's Smart Router + the DB-backed provider/model registry (SoT). Never bypasses into chatmode's V3 pipeline.",
+  "icon": "git-fork",
+  "primary": "route",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "route": "string",
+          "reasoning": "string",
+          "model": "string",
+          "fallbackUsed": "boolean",
+          "usage": "object"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "prompt",
+      "label": "Prompt",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "Severity: {{steps.structured.output.severity}}. Pick the right channel.",
+      "description": "The classification question. Template-interpolated against the input."
+    },
+    {
+      "name": "routes",
+      "label": "Routes",
+      "type": "json",
+      "required": true,
+      "description": "Array of `{ name, description }` — the route names become outgoing `sourceHandle` values on edges. Description is what the model uses to decide.",
+      "placeholder": "[{\"name\":\"slack\",\"description\":\"Internal chat\"},{\"name\":\"pagerduty\",\"description\":\"Wake on-call\"}]"
+    },
+    {
+      "name": "fallbackRoute",
+      "label": "Fallback route",
+      "type": "string",
+      "required": false,
+      "description": "Route name to use when the model picks an invalid value. When unset, an invalid model pick fails the node."
+    },
+    {
+      "name": "systemPrompt",
+      "label": "System prompt",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Override the default routing-classifier system prompt. Leave empty for the built-in strict-JSON instructions."
+    },
+    {
+      "name": "model",
+      "label": "Model",
+      "type": "string",
+      "required": false,
+      "default": "auto",
+      "description": "Leave as `auto` to use Smart Router (recommended). Explicit model names MUST exist in the platform provider/model registry."
+    },
+    {
+      "name": "temperature",
+      "label": "Temperature",
+      "type": "number",
+      "required": false,
+      "default": 0.1,
+      "min": 0,
+      "max": 2,
+      "description": "Low values (0.0-0.2) give deterministic routing. Default 0.1."
+    }
+  ],
+  "ai": {
+    "shortDescription": "LLM picks one of N named routes based on the input. Drives downstream edge gating.",
+    "whenToUse": "When `condition` (JS expression) isn't expressive enough — e.g. 'route by severity tone', 'pick the channel that matches customer urgency', 'classify intent into one of these buckets'.",
+    "examplePrompt": "Route critical incidents to pagerduty, internal-team notifications to slack, customer comms to email.",
+    "promptHints": "Use descriptive route names (slack/email/pagerduty, not branch1/branch2/branch3). Always configure `fallbackRoute` for production flows — it's the difference between 'flow fails on LLM hallucination' and 'flow degrades to safe default'."
+  },
+  "outputAssertions": [
+    {
+      "name": "route_picked",
+      "expression": "result && typeof result.route === 'string' && result.route.length > 0",
+      "errorMessage": "llm_router did not produce a route selection."
+    }
+  ]
+}

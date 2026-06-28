@@ -1,0 +1,61 @@
+{
+  "type": "knowledge_search",
+  "category": "data",
+  "label": "Knowledge Search",
+  "description": "Semantic search against the platform knowledge base (shared_knowledge + the calling user's private collection) via /api/chat/knowledge/search. Returns ranked chunks merged across both. Pair this with knowledge_ingest: the ingest endpoint writes to shared_knowledge / user_<id>_private, which this node reads from. rag_query targets a different Milvus collection set (code/docs/memories) — use that for code/doc lookups, this one for content the flow itself ingested.",
+  "icon": "search",
+  "primary": "results",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "query": "string",
+          "resultCount": "number",
+          "results": "array"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "query",
+      "label": "Query",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "what does the latest research say about {{trigger.topic}}?"
+    },
+    {
+      "name": "topK",
+      "label": "Top K",
+      "type": "number",
+      "required": false,
+      "default": 5,
+      "min": 1,
+      "max": 50
+    }
+  ],
+  "ai": {
+    "shortDescription": "Search the platform knowledge base (shared + private).",
+    "whenToUse": "When the flow has ingested content via knowledge_ingest and now wants to retrieve it for RAG. For pre-existing code/doc collections use rag_query instead.",
+    "examplePrompt": "search the knowledge base for chunks matching the user's topic",
+    "promptHints": "Reference results via {{steps.<id>.result.results}} (array of {id, content, score, source} per chunk). resultCount=0 means nothing matched — handle with a condition node if downstream logic needs context."
+  },
+  "outputAssertions": [
+    {
+      "name": "knowledge_search_result_shape",
+      "expression": "result && typeof result.query === 'string' && typeof result.resultCount === 'number' && Array.isArray(result.results)",
+      "errorMessage": "knowledge_search result must be { query, resultCount, results[] }."
+    }
+  ]
+}

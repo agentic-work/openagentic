@@ -1,0 +1,16 @@
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './app/App'
+// theme.css is THE source of truth (Tailwind v4 @theme SOT). Imported FIRST so
+// it brings in `@import "tailwindcss"` (base+components+utilities) and the
+// canonical @theme tokens before any legacy stylesheet — and so theme.css is
+// authoritative for the dark/light + accent semantics. See
+// docs/design/theme-sot-spec.md.
+import './styles/theme.css'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)

@@ -1,0 +1,19 @@
+/* Dracula — code mode only
+   Source: https://draculatheme.com/contribute */
+.code-mode[data-cm-theme="dracula"] {
+  --cm-bg: #282a36;            /* Background */
+  --cm-bg-secondary: #21222c;
+  --cm-bg-tertiary: #191a21;
+  --cm-surface: #44475a;        /* Selection */
+  --cm-text: #f8f8f2;           /* Foreground */
+  --cm-text-secondary: #e2e2dc;
+  --cm-text-muted: #6272a4;     /* Comment */
+  --cm-accent: #bd93f9;         /* Purple */
+  --cm-success: #50fa7b;        /* Green */
+  --cm-warning: #f1fa8c;        /* Yellow */
+  --cm-error: #ff5555;          /* Red */
+  --cm-info: #8be9fd;           /* Cyan */
+  --cm-muted: #6272a4;          /* Comment */
+  --cm-border: #44475a;         /* Selection */
+  --cm-prompt: #ff79c6;         /* Pink */
+}

@@ -1,0 +1,14 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_prometheus.prometheus_query with query='up == 0', captured live 2026-05-13 from the dev environment (k3s prod, monitoring-stack/prometheus-55b9bd979c-fxkw8). The python tool (server.py prometheus_query) returns a FORMATTED MULTI-LINE TEXT STRING that begins with the header 'Query: ... / Result Type: vector / Results: N' and then emits one line per result containing a JSON-stringified metric label dict followed by `: <value>`. FastMCP wraps the string return as content[{type:'text', text: <string>}]. The mcp-proxy passes through 2 layers of result unwrap (proxy.result → jsonrpc.result) and surfaces { content: [...], isError: false }. The mcp_tool node's content-block joiner (WorkflowExecutionEngine.ts) collapses content[].text into a single `content` string. This fixture captures THREE down targets so the analyze transform's parse + extract + slice exercise: 1 minio (app='minio'), 1 postgresql (app_kubernetes_io_name='postgresql'), 1 redis-master. All in namespace openagentic. These are REAL down targets in the cluster as of 2026-05-13.",
+  "result": {
+    "result": {
+      "isError": false,
+      "content": [
+        {
+          "type": "text",
+          "text": "Query: up == 0\nResult Type: vector\nResults: 3\n\n  {\"__name__\": \"up\", \"app\": \"minio\", \"instance\": \"10.42.5.38:9000\", \"job\": \"kubernetes-pods\", \"kubernetes_namespace\": \"openagentic\", \"kubernetes_pod_name\": \"milvus-minio-79c85c7c4c-xtcs8\", \"namespace\": \"openagentic\", \"pod_template_hash\": \"79c85c7c4c\", \"release\": \"milvus\"}: 0\n  {\"__name__\": \"up\", \"app_kubernetes_io_component\": \"primary\", \"app_kubernetes_io_instance\": \"pgvector\", \"app_kubernetes_io_managed_by\": \"Helm\", \"app_kubernetes_io_name\": \"postgresql\", \"app_kubernetes_io_version\": \"18.3.0\", \"apps_kubernetes_io_pod_index\": \"0\", \"controller_revision_hash\": \"postgresql-68b6449b99\", \"helm_sh_chart\": \"postgresql-18.6.4\", \"instance\": \"10.42.7.133:9187\", \"job\": \"kubernetes-pods\", \"kubernetes_namespace\": \"openagentic\", \"kubernetes_pod_name\": \"postgresql-0\", \"namespace\": \"openagentic\", \"statefulset_kubernetes_io_pod_name\": \"postgresql-0\"}: 0\n  {\"__name__\": \"up\", \"app_kubernetes_io_component\": \"master\", \"app_kubernetes_io_instance\": \"redis\", \"app_kubernetes_io_managed_by\": \"Helm\", \"app_kubernetes_io_name\": \"redis\", \"app_kubernetes_io_version\": \"8.6.3\", \"apps_kubernetes_io_pod_index\": \"0\", \"controller_revision_hash\": \"redis-master-78747b967d\", \"helm_sh_chart\": \"redis-25.5.2\", \"instance\": \"10.42.7.121:9121\", \"job\": \"kubernetes-pods\", \"kubernetes_namespace\": \"openagentic\", \"kubernetes_pod_name\": \"redis-master-0\", \"namespace\": \"openagentic\", \"statefulset_kubernetes_io_pod_name\": \"redis-master-0\"}: 0"
+        }
+      ]
+    }
+  }
+}

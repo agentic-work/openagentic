@@ -1,0 +1,119 @@
+{
+  "type": "k8s_sandbox_run",
+  "category": "action",
+  "label": "K8s Sandbox Run",
+  "description": "Apply a kubectl manifest in a fully-isolated ephemeral namespace, wait for resources to be Ready, capture pod logs / status / events, then tear down the namespace. Ideal for infrastructure dry-runs, ephemeral testing, and sandboxed workload experiments.",
+  "icon": "container",
+  "primary": "status",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "namespace": "string",
+          "applied": "string[]",
+          "events": "any[]",
+          "logs": "object",
+          "status": "string",
+          "errorReason": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "operation",
+      "label": "Operation",
+      "type": "enum",
+      "values": [
+        "apply_and_wait",
+        "apply_only",
+        "cleanup"
+      ],
+      "default": "apply_and_wait",
+      "required": true,
+      "description": "apply_and_wait: create namespace, apply manifest, wait for Ready, capture logs+events, delete namespace. apply_only: create namespace + apply, no wait/cleanup (caller is responsible for cleanup). cleanup: delete a previously-created sandbox namespace by label selector."
+    },
+    {
+      "name": "manifest",
+      "label": "Manifest (YAML)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Kubernetes manifest YAML to apply. Required for apply_and_wait and apply_only operations. Supports {{steps.X.yaml}} template references.",
+      "placeholder": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: sandbox-probe\nspec:\n  containers:\n    - name: probe\n      image: busybox\n      command: ['sh', '-c', 'echo hello && sleep 5']"
+    },
+    {
+      "name": "timeoutSeconds",
+      "label": "Timeout (seconds)",
+      "type": "number",
+      "default": 300,
+      "min": 10,
+      "max": 3600,
+      "required": false,
+      "description": "How long to wait for resources to become Ready before declaring a timeout (apply_and_wait only)."
+    },
+    {
+      "name": "cpuLimit",
+      "label": "CPU Limit",
+      "type": "string",
+      "default": "2",
+      "required": false,
+      "description": "ResourceQuota CPU limit applied to the sandbox namespace (e.g. '2', '500m')."
+    },
+    {
+      "name": "memoryLimit",
+      "label": "Memory Limit",
+      "type": "string",
+      "default": "4Gi",
+      "required": false,
+      "description": "ResourceQuota memory limit applied to the sandbox namespace (e.g. '4Gi', '512Mi')."
+    },
+    {
+      "name": "allowEgress",
+      "label": "Allow Egress",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "description": "When false (default), a default-deny NetworkPolicy blocks all egress from the sandbox namespace. Set to true only when the workload explicitly needs outbound network access."
+    },
+    {
+      "name": "keepNamespaceOnFailure",
+      "label": "Keep Namespace on Failure",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "description": "When true (default), the sandbox namespace is preserved if the workload fails or times out — useful for post-mortem debugging. Set to false to always clean up."
+    },
+    {
+      "name": "namespaceSelector",
+      "label": "Namespace Selector (cleanup)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Label selector to identify sandbox namespaces to delete. Required for the cleanup operation. Example: 'flows-sandbox-execution=exec-abc123'."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Ephemeral K8s sandbox: apply manifest in isolated namespace, capture results, auto-cleanup.",
+    "whenToUse": "Use when you need to run a workload in a fully-isolated Kubernetes namespace — for infrastructure dry-runs, ephemeral integration tests, or sandboxed experiments. Automatically enforces ResourceQuota + NetworkPolicy and cleans up when done. Prefer this over mcp_tool for bounded sandbox experiments that need lifecycle management.",
+    "examplePrompt": "apply this Pod manifest in a sandbox namespace, wait for it to complete, and return the logs",
+    "promptHints": "Reference namespace with {{steps.<id>.result.namespace}}. Reference logs with {{steps.<id>.result.logs}}. Use operation=apply_only when you want to start the workload and check back later. Use operation=cleanup to tear down a namespace from an earlier apply_only."
+  },
+  "outputAssertions": [
+    {
+      "name": "sandbox_run_succeeded",
+      "expression": "result && (result.status === 'success' || !result._assertOnStatus)",
+      "errorMessage": "K8s sandbox run did not complete successfully — check result.status and result.errorReason for details."
+    }
+  ]
+}

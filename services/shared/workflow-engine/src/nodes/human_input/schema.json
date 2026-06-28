@@ -1,0 +1,104 @@
+{
+  "type": "human_input",
+  "category": "control",
+  "label": "Request Data from User",
+  "description": "Pause the workflow and ask the user to fill a typed form, then resume with their answers. Unlike human_approval (which only yields approve/reject), human_input collects actual values mid-run — a missing parameter, a decision the model can't make, or a credential to bind. Downstream nodes read the answers via {{steps.<id>.output.values.<fieldName>}}.",
+  "icon": "form-input",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "status": "string",
+          "requestId": "string",
+          "fields": "array",
+          "values": "object",
+          "providedBy": "string",
+          "providedAt": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "fields",
+      "label": "Form fields",
+      "type": "json",
+      "required": true,
+      "supportsTemplating": false,
+      "description": "Array of field descriptors the user must fill. Each: { name, label, type (string|number|enum|secret|boolean|file|date|json), required (bool), options? (string[] for enum), default?, placeholder?, validation? (regex string or {min,max}) }. secret-typed fields write to the workflow secret vault and never appear in execution data.",
+      "default": [
+        { "name": "value", "label": "Value", "type": "string", "required": true }
+      ]
+    },
+    {
+      "name": "title",
+      "label": "Form title",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "We need a bit more information to continue",
+      "description": "Heading shown above the form. Templating is supported (e.g. reference an upstream value)."
+    },
+    {
+      "name": "description",
+      "label": "Form description",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "Please provide the following so the flow can proceed.",
+      "description": "Explanatory text shown under the title. Templating is supported."
+    },
+    {
+      "name": "timeout",
+      "label": "Timeout (seconds)",
+      "type": "number",
+      "required": false,
+      "default": 86400,
+      "min": 1,
+      "max": 2592000,
+      "description": "How long to wait for the user to submit before applying timeoutAction (default 24h)."
+    },
+    {
+      "name": "timeoutAction",
+      "label": "Timeout action",
+      "type": "enum",
+      "required": false,
+      "values": ["fail", "use_default"],
+      "default": "fail",
+      "description": "What to do when the timeout elapses without a submission. 'fail' aborts the run (fail-closed); 'use_default' resumes using each field's configured default (only valid if every required field has a default)."
+    },
+    {
+      "name": "assignTo",
+      "label": "Assign to",
+      "type": "json",
+      "required": false,
+      "description": "Array of user ids or group names allowed to answer. Defaults to the user who started the run."
+    },
+    {
+      "name": "channel",
+      "label": "Channel",
+      "type": "enum",
+      "required": false,
+      "values": ["chat", "in_app", "email", "slack"],
+      "default": "chat",
+      "description": "Where to surface the form. 'chat' renders it inline in the conversation; 'in_app' on the flows canvas; email/slack send a link."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Pause and ask the user for typed input mid-run, then resume.",
+    "whenToUse": "When a node needs a value that cannot be pre-collected at author time — a per-run decision (which framework? which schema?), a parameter derived from earlier nodes, or a credential the tenant must bind. Insert this so the flow asks the user exactly what's missing instead of guessing or failing.",
+    "examplePrompt": "before generating the SQL, ask the user which schema to query",
+    "promptHints": "Read answers via {{steps.<id>.output.values.<fieldName>}}. Use required:true with no default to force an answer. Prefer this over inventing a default for a required field."
+  },
+  "outputAssertions": [
+    {
+      "name": "non_empty_fields",
+      "expression": "result && Array.isArray(result.fields) && result.fields.length > 0",
+      "errorMessage": "human_input node has no fields[] — the user would see an empty form. Configure at least one field."
+    }
+  ]
+}

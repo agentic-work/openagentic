@@ -1,0 +1,46 @@
+{
+  "name": "@agenticwork/brainbow",
+  "version": "0.7.1",
+  "description": "Brainbow — programmable shared browser + live-vision narrator. Apps embed via `Brainbow.launch()` (Playwright-style) or run the REST/MCP server.",
+  "license": "MIT",
+  "mcpName": "io.github.agentic-work/brainbow",
+  "type": "module",
+  "main": "./src/lib.js",
+  "exports": {
+    ".": "./src/lib.js",
+    "./server": "./server.js",
+    "./mcp": "./src/mcp-server.js",
+    "./session": "./src/session.js"
+  },
+  "bin": {
+    "brainbow": "./server.js",
+    "brainbow-mcp": "./bin/brainbow-mcp"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agentic-work/brainbow.git"
+  },
+  "homepage": "https://github.com/agentic-work/brainbow#readme",
+  "bugs": {
+    "url": "https://github.com/agentic-work/brainbow/issues"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1054.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "express": "^4.21.0",
+    "puppeteer-core": "^24.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^1.6.0",
+    "supertest": "^6.3.4",
+    "vitest": "^1.6.0"
+  }
+}

@@ -1,0 +1,409 @@
+import React, { useState, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Upload, 
+  Paperclip, 
+  X, 
+  Plus,
+  AlertCircle,
+  CheckCircle2,
+  FileText
+} from '@/shared/icons';
+import { FileAttachment as FileAttachmentType, getFileTypeInfo, formatFileSize } from '@/types/filePreview';
+import { FileAttachment } from './FileAttachment';
+import { onKeyActivate } from '@/utils/a11y';
+
+interface FileUploadProps {
+  files: FileAttachmentType[];
+  onFilesChange: (files: FileAttachmentType[]) => void;
+  maxFiles?: number;
+  maxFileSize?: number; // in bytes
+  acceptedTypes?: string[];
+  compact?: boolean;
+  className?: string;
+}
+
+export const FileUpload: React.FC<FileUploadProps> = ({
+  files,
+  onFilesChange,
+  maxFiles = 10,
+  maxFileSize = 50 * 1024 * 1024, // 50MB default
+  acceptedTypes,
+  compact = false,
+  className = ''
+}) => {
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const validateFile = (file: File): string | null => {
+    if (file.size > maxFileSize) {
+      return `File "${file.name}" is too large. Maximum size is ${formatFileSize(maxFileSize)}.`;
+    }
+
+    if (acceptedTypes && acceptedTypes.length > 0) {
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      const isAccepted = acceptedTypes.some(type => {
+        if (type.startsWith('.')) {
+          return type.slice(1) === fileExtension;
+        }
+        return file.type.includes(type);
+      });
+
+      if (!isAccepted) {
+        return `File type "${fileExtension}" is not supported.`;
+      }
+    }
+
+    return null;
+  };
+
+  const processFiles = useCallback(async (fileList: FileList) => {
+    const newErrors: string[] = [];
+    const validFiles: FileAttachmentType[] = [];
+
+    // Check total file count
+    if (files.length + fileList.length > maxFiles) {
+      newErrors.push(`Cannot upload more than ${maxFiles} files.`);
+      setUploadErrors(newErrors);
+      return;
+    }
+
+    setIsUploading(true);
+
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      const error = validateFile(file);
+      
+      if (error) {
+        newErrors.push(error);
+        continue;
+      }
+
+      try {
+        // Create object URL for preview
+        const url = URL.createObjectURL(file);
+        
+        // Generate thumbnail for images
+        let preview: FileAttachmentType['preview'] | undefined;
+        const fileType = getFileTypeInfo(file.name);
+        
+        if (fileType?.category === 'image') {
+          try {
+            const thumbnail = await generateImageThumbnail(file);
+            const img = new Image();
+            await new Promise((resolve) => {
+              img.onload = resolve;
+              img.src = url;
+            });
+            
+            preview = {
+              thumbnail,
+              dimensions: {
+                width: img.naturalWidth,
+                height: img.naturalHeight
+              }
+            };
+          } catch (error) {
+            // console.warn('Failed to generate thumbnail:', error);
+          }
+        }
+
+        const fileAttachment: FileAttachmentType = {
+          id: `${Date.now()}-${i}`,
+          name: file.name,
+          url,
+          type: file.type,
+          size: file.size,
+          uploadedAt: new Date().toISOString(),
+          preview
+        };
+
+        validFiles.push(fileAttachment);
+      } catch (error) {
+        newErrors.push(`Failed to process file "${file.name}".`);
+      }
+    }
+
+    setIsUploading(false);
+    setUploadErrors(newErrors);
+
+    if (validFiles.length > 0) {
+      onFilesChange([...files, ...validFiles]);
+    }
+  }, [files, maxFiles, maxFileSize, acceptedTypes, onFilesChange]);
+
+  const generateImageThumbnail = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      img.onload = () => {
+        // Calculate thumbnail dimensions (max 200x200)
+        const maxSize = 200;
+        let { width, height } = img;
+        
+        if (width > height) {
+          if (width > maxSize) {
+            height = (height * maxSize) / width;
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = (width * maxSize) / height;
+            height = maxSize;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles.length > 0) {
+      processFiles(droppedFiles);
+    }
+  }, [processFiles]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (selectedFiles && selectedFiles.length > 0) {
+      processFiles(selectedFiles);
+    }
+    // Reset input value to allow selecting the same file again
+    e.target.value = '';
+  }, [processFiles]);
+
+  const handleRemoveFile = useCallback((fileId: string) => {
+    const updatedFiles = files.filter(file => file.id !== fileId);
+    onFilesChange(updatedFiles);
+    
+    // Revoke object URL to free memory
+    const removedFile = files.find(f => f.id === fileId);
+    if (removedFile && removedFile.url.startsWith('blob:')) {
+      URL.revokeObjectURL(removedFile.url);
+    }
+  }, [files, onFilesChange]);
+
+  const openFileDialog = () => {
+    fileInputRef.current?.click();
+  };
+
+  const clearErrors = () => {
+    setUploadErrors([]);
+  };
+
+  if (compact) {
+    return (
+      <div className={`space-y-2 ${className}`}>
+        {/* Compact upload button */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openFileDialog}
+            disabled={files.length >= maxFiles}
+            
+            className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-surface-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}
+          >
+            <Paperclip size={14} />
+            Attach ({files.length}/{maxFiles})
+          </button>
+          
+          {isUploading && (
+            <div 
+            className="flex items-center gap-2 text-sm"
+            style={{ color: 'var(--color-textSecondary)' }}>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-accent border-t-transparent" />
+              Uploading...
+            </div>
+          )}
+        </div>
+
+        {/* File list */}
+        {files.length > 0 && (
+          <div className="space-y-1">
+            {files.map((file) => (
+              <FileAttachment
+                key={file.id}
+                file={file}
+                onRemove={() => handleRemoveFile(file.id)}
+                showRemove
+                compact
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Errors */}
+        {uploadErrors.length > 0 && (
+          <div className="p-2 border border-[var(--color-error)] rounded-lg" style={{ background: 'color-mix(in srgb, var(--color-error) 10%, transparent)' }}>
+            <div className="flex items-start gap-2">
+              <AlertCircle size={14} className="text-error mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                {uploadErrors.map((error, index) => (
+                  <p key={index} className="text-xs text-error">
+                    {error}
+                  </p>
+                ))}
+              </div>
+              <button
+                onClick={clearErrors}
+                className="text-error hover:opacity-80 transition-colors"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          onChange={handleFileSelect}
+          accept={acceptedTypes?.join(',')}
+          className="hidden"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className={`space-y-4 ${className}`}>
+      {/* Upload area */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label="Upload files"
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onClick={openFileDialog}
+        onKeyDown={onKeyActivate(openFileDialog)}
+        className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+          isDragOver
+            ? 'border-accent bg-[var(--color-accent-soft)] '
+            : 'border-border hover:border-[var(--color-borderHover)]'
+        } ${files.length >= maxFiles ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        <div className="space-y-4">
+          <div className="flex justify-center">
+            {isUploading ? (
+              <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
+            ) : (
+              <Upload size={48} style={{ color: 'var(--color-textMuted)' }} />
+            )}
+          </div>
+          
+          <div>
+            <h3 
+            className="text-lg font-semibold"
+            style={{ color: 'var(--color-text)' }}>
+              {isUploading ? 'Processing files...' : 'Drop files here or click to upload'}
+            </h3>
+            <p 
+            className="mt-2"
+            style={{ color: 'var(--color-textSecondary)' }}>
+              {files.length}/{maxFiles} files • Max {formatFileSize(maxFileSize)} each
+            </p>
+            {acceptedTypes && acceptedTypes.length > 0 && (
+              <p 
+              className="text-sm mt-1"
+              style={{ color: 'var(--color-textMuted)' }}>
+                Supported: {acceptedTypes.join(', ')}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* File grid */}
+      <AnimatePresence>
+        {files.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
+            {files.map((file) => (
+              <FileAttachment
+                key={file.id}
+                file={file}
+                onRemove={() => handleRemoveFile(file.id)}
+                showRemove
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Upload errors */}
+      <AnimatePresence>
+        {uploadErrors.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 border border-[var(--color-error)] rounded-lg" style={{ background: 'color-mix(in srgb, var(--color-error) 10%, transparent)' }}
+          >
+            <div className="flex items-start gap-3">
+              <AlertCircle size={20} className="text-error flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="font-semibold text-error mb-1">
+                  Upload Errors
+                </h4>
+                <ul className="space-y-1">
+                  {uploadErrors.map((error, index) => (
+                    <li key={index} className="text-sm text-error">
+                      {error}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <button
+                onClick={clearErrors}
+                className="text-error hover:opacity-80 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        onChange={handleFileSelect}
+        accept={acceptedTypes?.join(',')}
+        className="hidden"
+      />
+    </div>
+  );
+};

@@ -1,0 +1,107 @@
+{
+  "type": "jira_issue",
+  "category": "integration",
+  "label": "Jira Issue",
+  "description": "Create a Jira issue via REST API v3. Auth via JIRA_BASE_URL + JIRA_EMAIL + JIRA_API_TOKEN env vars.",
+  "icon": "jira",
+  "primary": "key",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "status": "number",
+          "created": "boolean",
+          "key": "string",
+          "id": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "action",
+      "label": "Action",
+      "type": "enum",
+      "values": [
+        "create"
+      ],
+      "default": "create",
+      "required": false
+    },
+    {
+      "name": "projectKey",
+      "label": "Project key",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "PROJ"
+    },
+    {
+      "name": "issueType",
+      "label": "Issue type",
+      "type": "string",
+      "required": false,
+      "default": "Task",
+      "placeholder": "Task / Bug / Story"
+    },
+    {
+      "name": "summary",
+      "label": "Summary",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true
+    },
+    {
+      "name": "description",
+      "label": "Description",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "priority",
+      "label": "Priority",
+      "type": "enum",
+      "values": [
+        "Highest",
+        "High",
+        "Medium",
+        "Low",
+        "Lowest"
+      ],
+      "default": "Medium",
+      "required": false
+    },
+    {
+      "name": "assignee",
+      "label": "Assignee accountId",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Atlassian accountId of the assignee."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Create a Jira issue via REST API v3.",
+    "whenToUse": "When workflow output should land in Jira as a tracked issue (Task, Bug, Story, etc).",
+    "examplePrompt": "open a Jira bug in the PROJ project when a deploy fails, with the failing step output as the description",
+    "promptHints": "Auth via env: JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN. Reference output via {{steps.<id>.result.key}} (e.g. PROJ-123)."
+  },
+  "outputAssertions": [
+    {
+      "name": "created_ok",
+      "expression": "result && result.status === 201",
+      "errorMessage": "Jira API did not return 201 Created."
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "type": "user_context",
+  "category": "data",
+  "label": "User Context",
+  "description": "Inject the calling user's profile, memories, and recent chats into the workflow. Calls the platform's /api/user-context endpoint.",
+  "icon": "user",
+  "primary": "context",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "context": "array",
+          "userId": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "contextSources",
+      "label": "Sources",
+      "type": "json",
+      "required": false,
+      "default": [
+        "chat",
+        "workflow",
+        "memory"
+      ],
+      "description": "Array of sources to pull from. Common values: chat, workflow, memory, profile."
+    },
+    {
+      "name": "contextQuery",
+      "label": "Query",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "recent posts about {{topic}}",
+      "description": "Optional semantic query to filter the returned context."
+    },
+    {
+      "name": "contextMaxTokens",
+      "label": "Max tokens",
+      "type": "number",
+      "required": false,
+      "default": 2000,
+      "min": 1,
+      "max": 32000,
+      "description": "Cap on the context payload size returned by the API."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Pulls per-user context (chat history, memories, profile) into the workflow.",
+    "whenToUse": "When a downstream LLM or agent needs personalization tied to the calling user.",
+    "examplePrompt": "load the user's recent chat history and memories before the agent answers",
+    "promptHints": "Use {{steps.<id>.context}} to reference the array. Leave sources blank for the default chat/workflow/memory bundle."
+  },
+  "outputAssertions": [
+    {
+      "name": "non_empty_content",
+      "expression": "result && !result.error && Array.isArray(result.context)",
+      "errorMessage": "User Context node failed to load — the upstream /api/user-context call errored or returned an unexpected shape."
+    }
+  ]
+}

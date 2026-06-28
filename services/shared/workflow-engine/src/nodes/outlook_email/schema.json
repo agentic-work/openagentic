@@ -1,0 +1,84 @@
+{
+  "type": "outlook_email",
+  "category": "integration",
+  "label": "Outlook Email",
+  "description": "Send an email via Microsoft 365 / Outlook SMTP (smtp.office365.com:587). Credentials read from OUTLOOK_USER / OUTLOOK_PASSWORD env vars (or SMTP_USER / SMTP_PASS fallback).",
+  "icon": "mail",
+  "primary": "messageId",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "sent": "boolean",
+          "messageId": "string",
+          "to": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "to",
+      "label": "To",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "user@example.com",
+      "validation": {
+        "pattern": "^[^@]+@[^@]+",
+        "errorMessage": "Must be a valid email address"
+      }
+    },
+    {
+      "name": "cc",
+      "label": "CC",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "subject",
+      "label": "Subject",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true
+    },
+    {
+      "name": "body",
+      "label": "Body",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "isHtml",
+      "label": "Send as HTML",
+      "type": "boolean",
+      "required": false,
+      "default": true
+    }
+  ],
+  "ai": {
+    "shortDescription": "Send email via Microsoft 365 (Outlook) SMTP.",
+    "whenToUse": "When you need to send a transactional email through an Outlook / Office 365 mailbox.",
+    "examplePrompt": "email the on-call engineer at {{trigger.oncall}} with the deploy status",
+    "promptHints": "Reference output via {{steps.<id>.result.sent}} and {{steps.<id>.result.messageId}}."
+  },
+  "outputAssertions": [
+    {
+      "name": "sent_ok",
+      "expression": "result && result.sent === true",
+      "errorMessage": "Outlook email send failed."
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "type": "select_data",
+  "category": "data",
+  "label": "Select Fields",
+  "description": "Pick or omit specific fields by dot-path from an object or each row of an array. Replaces the JS-expression-only path through `transform` for the common 'project these columns' case.",
+  "icon": "columns",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [{ "name": "result", "type": "any", "required": true }]
+  },
+  "settings": [
+    {
+      "name": "input",
+      "label": "Input (template or upstream)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "{{trigger.pods}}",
+      "description": "Path-template to the object/array. Omit to use the upstream connection's input directly."
+    },
+    {
+      "name": "fields",
+      "label": "Fields (dot-paths)",
+      "type": "json",
+      "required": true,
+      "supportsTemplating": false,
+      "placeholder": "[\"name\", \"status\", \"metadata.namespace\"]",
+      "description": "Array of dot-paths to keep (pick) or drop (omit). Each path is applied per-row when the input is an array."
+    },
+    {
+      "name": "mode",
+      "label": "Mode",
+      "type": "enum",
+      "values": ["pick", "omit"],
+      "default": "pick",
+      "required": false,
+      "description": "pick = keep only the listed fields; omit = drop the listed fields, keep everything else."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Pick or omit fields by dot-path from a row or array of rows.",
+    "whenToUse": "When you need to slim down an upstream array/object to a fixed set of columns before passing it to the next node (LLM context, email body, table render).",
+    "examplePrompt": "select name and status fields from each pod",
+    "promptHints": "Output shape mirrors input — array stays array, object stays object. Use dot-paths for nested fields ('metadata.name')."
+  },
+  "outputAssertions": []
+}

@@ -1,0 +1,21 @@
+name: OSS Sanity Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - main
+      - 'feat/**'
+      - 'fix/**'
+      - 'chore/**'
+
+jobs:
+  sanity:
+    name: OSS sanity check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: OSS sanity check (edition flag + core install artifacts)
+        run: ./tools/verify-oss-integrity.sh

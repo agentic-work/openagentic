@@ -1,0 +1,83 @@
+{
+  "type": "reasoning",
+  "category": "ai",
+  "label": "Reasoning",
+  "description": "Extended chain-of-thought via the platform's Smart Router. Forces enableThinking:true at max quality (sliderPosition:100). Use for hard problems.",
+  "icon": "brain",
+  "primary": "content",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "content": "string",
+          "thinking": "string",
+          "model": "string",
+          "usage": "object",
+          "provider": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "prompt",
+      "label": "Prompt",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true
+    },
+    {
+      "name": "systemPrompt",
+      "label": "System prompt",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "modelOverride",
+      "label": "Model override",
+      "type": "string",
+      "required": false,
+      "description": "Leave blank to use Smart Router (auto). Hard-coded model IDs are discouraged."
+    },
+    {
+      "name": "thinkingBudget",
+      "label": "Thinking budget (tokens)",
+      "type": "number",
+      "required": false,
+      "default": 10000
+    },
+    {
+      "name": "maxTokens",
+      "label": "Max tokens",
+      "type": "number",
+      "required": false,
+      "default": 8192,
+      "min": 1,
+      "max": 200000
+    }
+  ],
+  "ai": {
+    "shortDescription": "Extended chain-of-thought reasoning via Smart Router (max quality).",
+    "whenToUse": "Hard analytical / multi-step problems where you want explicit thinking + max model quality.",
+    "examplePrompt": "use the reasoning node to derive root cause from these stack traces",
+    "promptHints": "Reference the answer with {{steps.<id>.content}} and the trace with {{steps.<id>.thinking}}."
+  },
+  "outputAssertions": [
+    {
+      "name": "non_empty_content",
+      "expression": "result && typeof result.content === 'string' && result.content.trim().length > 0",
+      "errorMessage": "Reasoning returned an empty completion."
+    }
+  ]
+}
