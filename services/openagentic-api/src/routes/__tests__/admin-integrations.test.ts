@@ -26,6 +26,12 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
+// Real encryption helpers (NOT mocked) — used to build encrypted fixtures and
+// to prove round-trip behaviour at the route boundary (G1).
+import {
+  encryptIntegrationConfig,
+  decryptIntegrationConfig,
+} from '../../services/IntegrationConfigService.js';
 
 // ---------------------------------------------------------------------------
 // Logger stub — must be before any dynamic import
@@ -423,6 +429,162 @@ describe('Admin Integrations — Send Test Message endpoint', () => {
     const body = JSON.parse(res.payload);
     expect(body.success).toBe(false);
     expect(body.details.error).toBe('channel_not_found');
+  });
+
+});
+
+// ---------------------------------------------------------------------------
+// G1 — Encryption at rest
+// ---------------------------------------------------------------------------
+
+describe('Admin Integrations — encryption at rest (G1)', () => {
+
+  // E1 — POST stores ciphertext, never the raw secret
+  it('E1: POST /integrations persists config secrets as ciphertext (not the raw xoxb- token)', async () => {
+    mockPrismaIntegration.create.mockImplementation(async (args: any) => ({
+      id: 'new-int-1',
+      webhook_id: 'wh-abc',
+      ...args.data,
+    }));
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/admin/integrations',
+      payload: {
+        name: 'My Slack',
+        platform: 'slack',
+        config: { botToken: VALID_BOT_TOKEN, signingSecret: VALID_SIGNING_SECRET, appId: 'A0123456789' },
+      },
+    });
+
+    expect(res.statusCode).toBe(201);
+
+    const persisted = mockPrismaIntegration.create.mock.calls[0][0].data.config;
+    // Secrets must be enveloped — NOT the raw values
+    expect(persisted.botToken).not.toBe(VALID_BOT_TOKEN);
+    expect(persisted.botToken).toMatch(/^local2:/);
+    expect(persisted.signingSecret).not.toBe(VALID_SIGNING_SECRET);
+    expect(persisted.signingSecret).toMatch(/^local2:/);
+    // Non-secret appId left as-is
+    expect(persisted.appId).toBe('A0123456789');
+    // And it decrypts back to the originals
+    const round = decryptIntegrationConfig(persisted);
+    expect(round.botToken).toBe(VALID_BOT_TOKEN);
+    expect(round.signingSecret).toBe(VALID_SIGNING_SECRET);
+  });
+
+  // E2 — PUT stores ciphertext
+  it('E2: PUT /integrations/:id persists updated config secrets as ciphertext', async () => {
+    mockPrismaIntegration.update.mockImplementation(async (args: any) => ({
+      id: 'int-slack-1',
+      name: 'Updated',
+      status: 'active',
+      ...args.data,
+    }));
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/admin/integrations/int-slack-1',
+      payload: { config: { botToken: VALID_BOT_TOKEN, signingSecret: VALID_SIGNING_SECRET } },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const persisted = mockPrismaIntegration.update.mock.calls[0][0].data.config;
+    expect(persisted.botToken).toMatch(/^local2:/);
+    expect(persisted.botToken).not.toBe(VALID_BOT_TOKEN);
+  });
+
+  // E3 — list never returns config (secrets)
+  it('E3: GET /integrations select excludes config (secrets never returned)', async () => {
+    mockPrismaIntegration.findMany.mockResolvedValue([]);
+    await app.inject({ method: 'GET', url: '/api/admin/integrations' });
+    const select = mockPrismaIntegration.findMany.mock.calls[0][0].select;
+    expect(select.config).toBeUndefined();
+  });
+
+  // E4 — /test decrypts before using the bot token
+  it('E4: POST /test decrypts the stored botToken before calling Slack auth.test', async () => {
+    const encryptedConfig = encryptIntegrationConfig({
+      botToken: VALID_BOT_TOKEN,
+      signingSecret: VALID_SIGNING_SECRET,
+      appId: 'A0123456789',
+    });
+    // Sanity: the fixture really is encrypted (so we are proving decryption)
+    expect(encryptedConfig.botToken).toMatch(/^local2:/);
+
+    mockPrismaIntegration.findUnique.mockResolvedValue({
+      id: 'int-slack-1',
+      platform: 'slack',
+      config: encryptedConfig,
+    });
+
+    mockFetch
+      .mockResolvedValueOnce(makeResponse({ ok: true, team: 'X', team_id: 'T1', user: 'b', user_id: 'U1', bot_id: 'B1', url: 'https://x.slack.com/' }))
+      .mockResolvedValueOnce(makeResponse({ ok: false, error: 'missing_scope' }));
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/admin/integrations/int-slack-1/test',
+    });
+
+    expect(res.statusCode).toBe(200);
+    // The Authorization header must carry the DECRYPTED token, not the ciphertext
+    const authTestCall = mockFetch.mock.calls[0];
+    expect(authTestCall[1].headers.Authorization).toBe(`Bearer ${VALID_BOT_TOKEN}`);
+  });
+
+  // E5 — /test/send-message decrypts before using the bot token
+  it('E5: POST /test/send-message decrypts the stored botToken before chat.postMessage', async () => {
+    const encryptedConfig = encryptIntegrationConfig({
+      botToken: VALID_BOT_TOKEN,
+      signingSecret: VALID_SIGNING_SECRET,
+    });
+    mockPrismaIntegration.findUnique.mockResolvedValue({
+      id: 'int-slack-1',
+      platform: 'slack',
+      config: encryptedConfig,
+    });
+
+    mockFetch.mockResolvedValue(makeResponse({ ok: true, ts: '1.2', channel: 'C1' }));
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/admin/integrations/int-slack-1/test/send-message',
+      payload: { channel: 'C1' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const postCall = mockFetch.mock.calls[0];
+    expect(postCall[1].headers.Authorization).toBe(`Bearer ${VALID_BOT_TOKEN}`);
+  });
+
+  // E6 — Teams /test decrypts appPassword before the token request
+  it('E6: POST /test decrypts the stored appPassword before the Teams token request', async () => {
+    const encryptedConfig = encryptIntegrationConfig({
+      appId: VALID_APP_ID,
+      appPassword: VALID_APP_PASSWORD,
+      tenantId: 'tenant-abc',
+    });
+    expect(encryptedConfig.appPassword).toMatch(/^local2:/);
+
+    mockPrismaIntegration.findUnique.mockResolvedValue({
+      id: 'int-teams-1',
+      platform: 'teams',
+      config: encryptedConfig,
+    });
+
+    mockFetch.mockResolvedValue(makeResponse({ access_token: 'tok', token_type: 'Bearer', expires_in: 3599 }));
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/admin/integrations/int-teams-1/test',
+    });
+
+    expect(res.statusCode).toBe(200);
+    const tokenCall = mockFetch.mock.calls[0];
+    // The form body must carry the DECRYPTED app password
+    const sentBody = String(tokenCall[1].body);
+    expect(sentBody).toContain(`client_secret=${encodeURIComponent(VALID_APP_PASSWORD)}`);
   });
 
 });

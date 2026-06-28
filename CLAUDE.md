@@ -10,7 +10,7 @@ The open-source OpenAgentic platform — services for building, orchestrating, a
 
 | Service | Purpose |
 |---|---|
-| `services/openagentic-api` | Platform API: chat, flows, providers, RAG, admin |
+| `services/openagentic-api` | Platform API: chat, flows, providers, RAG, admin, Slack/Teams gateway (in-API: `/api/v1/hooks/{slack,teams}` inbound, `/api/admin/integrations` config; integration secrets encrypted at rest via `LOCAL_ENCRYPTION_KEY`) |
 | `services/openagentic-ui` | React UI (chat, flows, admin) |
 | `services/openagentic-workflows` | Workflow engine (Flowise-derived) |
 | `services/openagentic-mcp-proxy` | MCP server proxy (spawns built-in MCPs as subprocesses) |

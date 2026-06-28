@@ -14,6 +14,7 @@ import crypto from 'crypto';
 import { prisma } from '../utils/prisma.js';
 import { loggers } from '../utils/logger.js';
 import { DEFAULT_SERVICE_PROMPTS } from './prompt/ServicePromptService.js';
+import { decryptIntegrationConfig } from './IntegrationConfigService.js';
 
 const logger = loggers.services;
 
@@ -42,11 +43,62 @@ interface SlackEvent {
   event_id?: string;
 }
 
+interface SlackBlock {
+  type: string;
+  [key: string]: unknown;
+}
+
 interface SlackBlockKitMessage {
   channel: string;
   text: string;
-  blocks: any[];
+  blocks: SlackBlock[];
   thread_ts?: string;
+}
+
+/** Secret-bearing Slack integration config (decrypted before reads). */
+interface IntegrationConfig {
+  botToken?: string;
+  signingSecret?: string;
+  [key: string]: unknown;
+}
+
+/** The fields of an Integration row this service reads. */
+interface LoadedIntegration {
+  id: string;
+  status: string;
+  config: unknown;
+  allowed_channels?: string[];
+  allowed_workflows?: string[];
+}
+
+/** Normalized workflow execution result. */
+interface WorkflowExecutionResult {
+  summary: string;
+  executionId: string | null;
+  status: string;
+  outputs: Record<string, unknown>;
+}
+
+/** Subset of an OpenAI-style chat completion response. */
+interface ChatCompletionResponse {
+  choices?: Array<{ message?: { content?: string } }>;
+}
+
+/** Subset of an SSE event emitted by the workflow execute endpoint. */
+interface WorkflowSseEvent {
+  executionId?: string;
+  type?: string;
+  output?: unknown;
+  data?: unknown;
+  status?: string;
+  nodeLabel?: string;
+  nodeId?: string;
+  error?: string;
+  message?: string;
+}
+
+function errMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 // ---------------------------------------------------------------------------
@@ -112,7 +164,7 @@ export class SlackIntegrationService {
   /**
    * Handle incoming Slack event
    */
-  async handleEvent(integrationId: string, event: SlackEvent): Promise<{ statusCode: number; body: any }> {
+  async handleEvent(integrationId: string, event: SlackEvent): Promise<{ statusCode: number; body: unknown }> {
     // URL verification challenge
     if (event.type === 'url_verification') {
       return { statusCode: 200, body: { challenge: event.challenge } };
@@ -120,15 +172,18 @@ export class SlackIntegrationService {
 
     const integration = await prisma.integration.findUnique({
       where: { id: integrationId },
-    });
+    }) as LoadedIntegration | null;
 
     if (!integration || integration.status !== 'active') {
       return { statusCode: 403, body: { error: 'Integration not active' } };
     }
 
+    // SC-28: decrypt secret fields ONCE after load, before any read of botToken.
+    integration.config = decryptIntegrationConfig(integration.config as IntegrationConfig);
+
     // Check channel allowlist
     const channelId = event.event?.channel;
-    if (channelId && (integration as any).allowed_channels?.length > 0 && !(integration as any).allowed_channels.includes(channelId)) {
+    if (channelId && (integration.allowed_channels?.length ?? 0) > 0 && !integration.allowed_channels?.includes(channelId)) {
       await this.logEvent(integrationId, 'inbound', 'slack', channelId, event.event?.user, event.event?.text, null, null, 'error', 'Channel not in allowlist');
       return { statusCode: 403, body: { error: 'Channel not allowed' } };
     }
@@ -139,7 +194,7 @@ export class SlackIntegrationService {
     // Parse message and determine workflow
     if (event.event?.type === 'message' || event.event?.type === 'app_mention') {
       const text = event.event.text || '';
-      const allowedWorkflows = (integration as any).allowed_workflows || [];
+      const allowedWorkflows = integration.allowed_workflows || [];
       const workflowId = this.extractWorkflowId(text, allowedWorkflows);
 
       if (workflowId) {
@@ -164,8 +219,8 @@ export class SlackIntegrationService {
    * Smart workflow dispatcher — auto-matches Slack messages to available workflows
    * and executes the best match. Shows workflow list if no match found.
    */
-  private async directLLMResponse(integration: any, event: SlackEvent): Promise<void> {
-    const config = integration.config as any;
+  private async directLLMResponse(integration: LoadedIntegration, event: SlackEvent): Promise<void> {
+    const config = integration.config as IntegrationConfig;
     const botToken = config?.botToken;
     if (!botToken) return;
 
@@ -223,7 +278,7 @@ export class SlackIntegrationService {
                 role: 'system',
                 content: (await this.getSlackSystemPrompt()) +
                   (workflows.length > 0
-                    ? ' Available workflows include: ' + workflows.slice(0, 10).map((w: any) => w.name).join(', ') + '.'
+                    ? ' Available workflows include: ' + workflows.slice(0, 10).map((w) => w.name).join(', ') + '.'
                     : ''),
               },
               { role: 'user', content: cleanMessage },
@@ -237,7 +292,7 @@ export class SlackIntegrationService {
           throw new Error(`Chat API: ${chatResponse.status} - ${errText.substring(0, 200)}`);
         }
 
-        const chatData = await chatResponse.json() as any;
+        const chatData = await chatResponse.json() as ChatCompletionResponse;
         const aiResponse = chatData.choices?.[0]?.message?.content || 'I received your message but could not generate a response.';
 
         await this.postMessage(botToken, {
@@ -254,26 +309,28 @@ export class SlackIntegrationService {
           integration.id, 'outbound', 'slack', event.event?.channel,
           event.event?.user, aiResponse.substring(0, 200), null, null, 'success',
         );
-      } catch (chatErr: any) {
-        logger.error({ err: chatErr.message }, '[SlackIntegration] Chat fallback failed');
+      } catch (chatErr: unknown) {
+        const msg = errMessage(chatErr);
+        logger.error({ err: msg }, '[SlackIntegration] Chat fallback failed');
         await this.postMessage(botToken, {
           channel: event.event?.channel || '',
-          text: `Error: ${chatErr.message}`,
+          text: `Error: ${msg}`,
           blocks: [{
             type: 'section',
-            text: { type: 'mrkdwn', text: `:warning: ${chatErr.message}\n\n_Use \`/run <workflow-name>\` to run a specific workflow._` },
+            text: { type: 'mrkdwn', text: `:warning: ${msg}\n\n_Use \`/run <workflow-name>\` to run a specific workflow._` },
           }],
           thread_ts: event.event?.thread_ts || event.event?.ts,
         });
       }
-    } catch (err: any) {
-      logger.error({ err: err.message }, '[SlackIntegration] Workflow dispatch failed');
+    } catch (err: unknown) {
+      const msg = errMessage(err);
+      logger.error({ err: msg }, '[SlackIntegration] Workflow dispatch failed');
       await this.postMessage(botToken, {
         channel: event.event?.channel || '',
-        text: `Error: ${err.message}`,
+        text: `Error: ${msg}`,
         blocks: [{
           type: 'section',
-          text: { type: 'mrkdwn', text: `:warning: *Error*: ${err.message}` },
+          text: { type: 'mrkdwn', text: `:warning: *Error*: ${msg}` },
         }],
         thread_ts: event.event?.thread_ts || event.event?.ts,
       });
@@ -333,8 +390,8 @@ export class SlackIntegrationService {
   /**
    * Execute workflow and send result back to Slack
    */
-  private async executeAndRespond(integration: any, event: SlackEvent, workflowId: string): Promise<void> {
-    const config = integration.config as any;
+  private async executeAndRespond(integration: LoadedIntegration, event: SlackEvent, workflowId: string): Promise<void> {
+    const config = integration.config as IntegrationConfig;
     const botToken = config?.botToken;
 
     if (!botToken) {
@@ -367,21 +424,22 @@ export class SlackIntegrationService {
         integration.id, 'outbound', 'slack', event.event?.channel,
         event.event?.user, executionResult.summary, workflowId, executionResult.executionId, 'success',
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = errMessage(err);
       // Post error to Slack
       await this.postMessage(botToken, {
         channel: event.event?.channel || '',
-        text: `Workflow execution failed: ${err.message}`,
+        text: `Workflow execution failed: ${msg}`,
         blocks: [{
           type: 'section',
-          text: { type: 'mrkdwn', text: `:x: *Workflow Error*\n${err.message}` },
+          text: { type: 'mrkdwn', text: `:x: *Workflow Error*\n${msg}` },
         }],
         thread_ts: event.event?.thread_ts || event.event?.ts,
       });
 
       await this.logEvent(
         integration.id, 'outbound', 'slack', event.event?.channel,
-        event.event?.user, null, workflowId, null, 'error', err.message,
+        event.event?.user, null, workflowId, null, 'error', msg,
       );
     }
   }
@@ -403,7 +461,7 @@ export class SlackIntegrationService {
       throw new Error(`Slack API error: ${response.status}`);
     }
 
-    const data = await response.json() as any;
+    const data = await response.json() as { ok?: boolean; error?: string };
     if (!data.ok) {
       throw new Error(`Slack API error: ${data.error}`);
     }
@@ -412,7 +470,7 @@ export class SlackIntegrationService {
   /**
    * Execute a workflow via the internal API
    */
-  private async executeWorkflow(workflowId: string, context: any): Promise<any> {
+  private async executeWorkflow(workflowId: string, context: Record<string, unknown>): Promise<WorkflowExecutionResult> {
     try {
       const response = await fetch(`http://localhost:8000/api/workflows/${workflowId}/execute`, {
         method: 'POST',
@@ -435,7 +493,7 @@ export class SlackIntegrationService {
       // Collect all events and extract the final result.
       const sseText = await response.text();
       const lines = sseText.split('\n');
-      let lastOutput: any = null;
+      let lastOutput: unknown = null;
       let executionId: string | null = null;
       let finalStatus = 'completed';
       const nodeOutputs: string[] = [];
@@ -443,7 +501,7 @@ export class SlackIntegrationService {
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         try {
-          const event = JSON.parse(line.substring(6));
+          const event = JSON.parse(line.substring(6)) as WorkflowSseEvent;
           if (event.executionId) executionId = event.executionId;
           if (event.type === 'execution_complete') {
             lastOutput = event.output || event.data;
@@ -473,10 +531,10 @@ export class SlackIntegrationService {
         summary,
         executionId,
         status: finalStatus,
-        outputs: lastOutput || {},
+        outputs: (lastOutput && typeof lastOutput === 'object' ? lastOutput as Record<string, unknown> : {}),
       };
-    } catch (err: any) {
-      logger.error({ err: err.message, workflowId }, '[SlackIntegration] Workflow execution failed');
+    } catch (err: unknown) {
+      logger.error({ err: errMessage(err), workflowId }, '[SlackIntegration] Workflow execution failed');
       throw err;
     }
   }
@@ -484,8 +542,8 @@ export class SlackIntegrationService {
   /**
    * Format workflow result as Slack Block Kit
    */
-  formatBlockKitResponse(result: any): any[] {
-    const blocks: any[] = [];
+  formatBlockKitResponse(result: WorkflowExecutionResult): SlackBlock[] {
+    const blocks: SlackBlock[] = [];
 
     // Header
     blocks.push({
