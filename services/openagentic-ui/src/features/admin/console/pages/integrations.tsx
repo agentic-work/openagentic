@@ -32,9 +32,7 @@
  *   integration-logs → PARTIAL — the integration LIST is REAL; the unified
  *                      delivery feed is composed by fanning the existing per-id
  *                      `/logs` sub-route across every integration row (no
- *                      cross-integration `/logs` rollup exists yet). Account
- *                      links (SlackAccountLink) are NOT surfaced on the read
- *                      path yet → honest-empty Banner, never fabricated rows.
+ *                      cross-integration `/logs` rollup exists yet).
  */
 import * as React from 'react'
 import {
@@ -53,6 +51,11 @@ import {
 import type { Tone } from '../types'
 import { useAdminQuery } from '../../hooks/useAdminQuery'
 import type { LeafPageProps } from './registry'
+import {
+  IntegrationModal,
+  type IntegrationEditing,
+  type NotifyFn,
+} from './IntegrationsDialogs'
 
 /* ============================================================
  * format helpers (honest "—" on missing) — port of flows.tsx's
@@ -203,6 +206,31 @@ function pickPlatform(rows: IntegrationRow[], platform: string): IntegrationRow 
   return rows.find((r) => String(r.platform ?? '').toLowerCase() === platform)
 }
 
+/** Map a list row → the (secret-free) editing shape the write modal expects. */
+function toEditing(row: IntegrationRow): IntegrationEditing {
+  return {
+    id: row.id,
+    name: row.name,
+    platform: row.platform,
+    allowed_channels: row.allowed_channels,
+    allowed_workflows: row.allowed_workflows,
+  }
+}
+
+/** Transient inline status toast — token-only, auto-dismisses (mirrors models.tsx). */
+function useNotify(): { node: React.ReactNode; notify: NotifyFn } {
+  const [msg, setMsg] = React.useState<{ tone: 'ok' | 'err' | 'info'; text: string } | null>(null)
+  const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const notify: NotifyFn = React.useCallback((tone, text) => {
+    setMsg({ tone, text })
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => setMsg(null), 4500)
+  }, [])
+  React.useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
+  const node = msg ? <Banner tone={msg.tone}>{msg.text}</Banner> : null
+  return { node, notify }
+}
+
 /* ============================================================
  * 1. slack · is — Slack connection status + channel binding + settings
  * ============================================================ */
@@ -212,6 +240,9 @@ function SlackPage(_props: LeafPageProps) {
   const slack = pickPlatform(rows, 'slack')
   const logsQ = useIntegrationLogs(slack?.id, 100)
   const logRows: IntegrationLogRow[] = logsQ.data?.logs ?? []
+
+  const { node: toast, notify } = useNotify()
+  const [modal, setModal] = React.useState<{ editing: IntegrationEditing | null } | null>(null)
 
   const allowed = (slack?.allowed_channels ?? []).filter(Boolean)
   const workflows = (slack?.allowed_workflows ?? []).filter(Boolean)
@@ -358,9 +389,25 @@ function SlackPage(_props: LeafPageProps) {
             ? `workspace connection + channel routing · ${slack.name ?? '—'} · ${statusLabel(slack.status)}`
             : 'workspace connection + channel routing · /api/admin/integrations'
         }
-        actions={[{ label: 'Reconnect OAuth', ic: '↻ ', primary: true }]}
-        mode="hitl"
+        actions={[
+          { label: 'Refresh', ic: '↻ ', onClick: () => integ.refetch() },
+          slack
+            ? {
+                label: 'Edit integration',
+                ic: '✎ ',
+                primary: true,
+                onClick: () => setModal({ editing: toEditing(slack) }),
+              }
+            : {
+                label: 'Add Slack integration',
+                ic: '＋ ',
+                primary: true,
+                onClick: () => setModal({ editing: null }),
+              },
+        ]}
+        mode="editable"
       />
+      {toast}
       <LoadErr isLoading={integ.isLoading} isError={integ.isError} label="integrations" />
       {integ.data && !slack && (
         <Banner tone="warn">
@@ -429,12 +476,12 @@ function SlackPage(_props: LeafPageProps) {
           />
           <Section
             title="Settings"
-            sub="event + slash URLs and secrets · mutations route through the HITL connect/rotate flow"
+            sub="event + slash URLs and secrets · edit via the write modal (secrets write-only)"
           />
           <Banner tone="info">
             <b>Bot token</b> and <b>signing secret</b> are encrypted at rest and excluded from this
-            read — they render as <b>masked</b>, never the plaintext value. Use <b>Reconnect OAuth</b>{' '}
-            or <b>Rotate token</b> (both HITL) to change them.
+            read — they render as <b>masked</b>, never the plaintext value. Use <b>Edit integration</b>{' '}
+            to rotate them (entering a new value replaces the stored credential).
           </Banner>
           <FormSection
             title="Inbound + secrets"
@@ -457,15 +504,19 @@ function SlackPage(_props: LeafPageProps) {
             ]}
             mode="readonly"
           />
-          <Section title="Account links" sub="Slack identity → platform user (run-as)" />
-          <Banner tone="warn">
-            Slack identity links (<b>SlackAccountLink</b>) are not yet on the admin read path.
-            The delivery log above shows the <b>Slack user ids</b> actually driving the
-            integration; a dedicated <b>/api/admin/slack-account-links</b> view/revoke list
-            (with the resolved platform user) is the additive next step — until then no link
-            rows are fabricated.
-          </Banner>
         </>
+      )}
+      {modal && (
+        <IntegrationModal
+          platform="slack"
+          editing={modal.editing}
+          notify={notify}
+          onSaved={() => {
+            integ.refetch()
+            logsQ.refetch()
+          }}
+          onClose={() => setModal(null)}
+        />
       )}
     </>
   )
@@ -480,6 +531,9 @@ function MsTeamsPage(_props: LeafPageProps) {
   const teams = pickPlatform(rows, 'teams')
   const channels = (teams?.allowed_channels ?? []).filter(Boolean)
   const workflows = (teams?.allowed_workflows ?? []).filter(Boolean)
+
+  const { node: toast, notify } = useNotify()
+  const [modal, setModal] = React.useState<{ editing: IntegrationEditing | null } | null>(null)
 
   const strip: Kpi[] = [
     {
@@ -534,9 +588,25 @@ function MsTeamsPage(_props: LeafPageProps) {
             ? `tenant connection · ${teams.name ?? '—'} · ${statusLabel(teams.status)}`
             : 'tenant connection · /api/admin/integrations'
         }
-        actions={[{ label: 'Reconnect', ic: '↻ ', primary: true }]}
-        mode="hitl"
+        actions={[
+          { label: 'Refresh', ic: '↻ ', onClick: () => integ.refetch() },
+          teams
+            ? {
+                label: 'Edit integration',
+                ic: '✎ ',
+                primary: true,
+                onClick: () => setModal({ editing: toEditing(teams) }),
+              }
+            : {
+                label: 'Add Teams integration',
+                ic: '＋ ',
+                primary: true,
+                onClick: () => setModal({ editing: null }),
+              },
+        ]}
+        mode="editable"
       />
+      {toast}
       <LoadErr isLoading={integ.isLoading} isError={integ.isError} label="integrations" />
       {integ.data && !teams && (
         <Banner tone="warn">
@@ -575,11 +645,11 @@ function MsTeamsPage(_props: LeafPageProps) {
             pageSize={8}
             empty="No teams or channels linked to this tenant yet"
           />
-          <Section title="Settings" sub="app registration + secrets · mutations route through the HITL flow" />
+          <Section title="Settings" sub="app registration + secrets · edit via the write modal (secrets write-only)" />
           <Banner tone="info">
             <b>App id</b> and <b>client secret</b> are encrypted at rest and excluded from this read —
-            they render as <b>masked</b>, never the plaintext value. Use <b>Reconnect</b> or{' '}
-            <b>Rotate</b> (both HITL) to change them.
+            they render as <b>masked</b>, never the plaintext value. Use <b>Edit integration</b> to
+            rotate them (entering new values replaces the stored credentials).
           </Banner>
           <FormSection
             title="App registration + secrets"
@@ -603,6 +673,15 @@ function MsTeamsPage(_props: LeafPageProps) {
             mode="readonly"
           />
         </>
+      )}
+      {modal && (
+        <IntegrationModal
+          platform="teams"
+          editing={modal.editing}
+          notify={notify}
+          onSaved={() => integ.refetch()}
+          onClose={() => setModal(null)}
+        />
       )}
     </>
   )

@@ -21,6 +21,9 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 import crypto from 'crypto';
+// Real encryption helper (NOT mocked) — used to build an encrypted-at-rest
+// signing secret fixture so we can prove the route decrypts before verifying (G1).
+import { encryptIntegrationConfig } from '../../services/IntegrationConfigService.js';
 
 // ---------------------------------------------------------------------------
 // Logger stub — must be declared before dynamic imports
@@ -172,6 +175,42 @@ describe('S0-12 — Slack webhook signature enforcement', () => {
     expect(response.statusCode).toBe(403);
     expect(JSON.parse(response.body)).toMatchObject({ error: 'invalid_signature' });
     expect(mockHandleEvent).not.toHaveBeenCalled();
+  });
+
+  // ─── G1: signing secret is decrypted at rest before verification ─────────
+  it('G1: POST /slack decrypts the stored signing secret before verifySignature', async () => {
+    // Build an ENCRYPTED-at-rest config (what the DB now stores).
+    const encryptedConfig = encryptIntegrationConfig({ signingSecret: SIGNING_SECRET });
+    // Sanity: the fixture really is enveloped (so we are proving decryption).
+    expect(encryptedConfig.signingSecret).toMatch(/^local2:/);
+
+    mockFindFirst.mockResolvedValueOnce({ ...MOCK_INTEGRATION, config: encryptedConfig });
+
+    let capturedSecret: string | undefined;
+    mockVerifySignature.mockImplementationOnce((secret: string) => {
+      capturedSecret = secret;
+      return true;
+    });
+    mockHandleEvent.mockResolvedValueOnce({ statusCode: 200, body: { ok: true } });
+
+    const ts = freshTimestamp();
+    const validSig = computeSlackSig(SIGNING_SECRET, ts, EVENT_BODY_STR);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/slack',
+      headers: {
+        'content-type': 'application/json',
+        'x-slack-request-timestamp': ts,
+        'x-slack-signature': validSig,
+      },
+      payload: EVENT_BODY_STR,
+    });
+
+    expect(response.statusCode).toBe(200);
+    // verifySignature must have received the DECRYPTED secret, not the ciphertext.
+    expect(capturedSecret).toBe(SIGNING_SECRET);
+    expect(capturedSecret).not.toMatch(/^local2:/);
   });
 
   // ─── AC1: Valid signature → dispatch ─────────────────────────────────────

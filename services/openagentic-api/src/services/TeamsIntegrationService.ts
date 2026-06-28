@@ -1,16 +1,64 @@
 import { PrismaClient } from '@prisma/client';
-import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import jwksRsaImport, { JwksClient } from 'jwks-rsa';
 import { loggers } from '../utils/logger.js';
+import { decryptIntegrationConfig } from './IntegrationConfigService.js';
+
+type JwksClientFactory = (opts: Record<string, unknown>) => JwksClient;
 
 // jwks-rsa ships as CJS; the actual factory may live at .default or at the
-// module root depending on the bundler/runtime. Match the pattern used in
-// azureADAuth.ts for consistent behaviour.
-const jwksClientFactory: (opts: any) => JwksClient =
-  (jwksRsaImport as any).default ?? (jwksRsaImport as any);
+// module root depending on the bundler/runtime.
+const jwksClientFactory: JwksClientFactory =
+  (jwksRsaImport as unknown as { default?: JwksClientFactory }).default ??
+  (jwksRsaImport as unknown as JwksClientFactory);
 
 const logger = loggers.routes;
+
+/** Secret-bearing Teams integration config (decrypted before reads). */
+interface IntegrationConfig {
+  appId?: string;
+  appPassword?: string;
+  [key: string]: unknown;
+}
+
+/** The fields of an Integration row this service reads. */
+interface LoadedIntegration {
+  id: string;
+  status: string;
+  config: unknown;
+  allowed_channels?: string[];
+  allowed_workflows?: string[];
+}
+
+/** Normalized workflow execution result. */
+interface WorkflowExecutionResult {
+  summary: string;
+  executionId: string | null;
+  status: string;
+  outputs: Record<string, unknown>;
+}
+
+/** Subset of an SSE event emitted by the workflow execute endpoint. */
+interface WorkflowSseEvent {
+  executionId?: string;
+  type?: string;
+  output?: unknown;
+  data?: unknown;
+  status?: string;
+  nodeLabel?: string;
+  nodeId?: string;
+  error?: string;
+  message?: string;
+}
+
+/** Subset of the Bot Framework token response. */
+interface TeamsTokenResponse {
+  access_token?: string;
+}
+
+function errMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
 
 interface TeamsActivity {
   type: string; // 'message', 'conversationUpdate', etc.
@@ -22,15 +70,15 @@ interface TeamsActivity {
   conversation: { id: string; tenantId: string; conversationType?: string };
   recipient: { id: string; name: string };
   text?: string;
-  value?: any;
+  value?: unknown;
 }
 
 interface AdaptiveCard {
   type: 'AdaptiveCard';
   $schema: string;
   version: string;
-  body: any[];
-  actions?: any[];
+  body: Array<Record<string, unknown>>;
+  actions?: Array<Record<string, unknown>>;
 }
 
 /**
@@ -181,14 +229,14 @@ export class TeamsIntegrationService {
       });
 
       return true;
-    } catch (err: any) {
-      logger.warn('[TeamsIntegration] Token verification failed: %s', err?.message ?? err);
+    } catch (err: unknown) {
+      logger.warn('[TeamsIntegration] Token verification failed: %s', errMessage(err));
       return false;
     }
   }
 
   // Handle incoming Teams activity
-  async handleActivity(integrationId: string, activity: TeamsActivity): Promise<{ statusCode: number; body: any }> {
+  async handleActivity(integrationId: string, activity: TeamsActivity): Promise<{ statusCode: number; body: unknown }> {
     const integration = await this.prisma.integration.findUnique({
       where: { id: integrationId }
     });
@@ -196,6 +244,10 @@ export class TeamsIntegrationService {
     if (!integration || integration.status !== 'active') {
       return { statusCode: 403, body: { error: 'Integration not active' } };
     }
+
+    // SC-28: decrypt secret fields ONCE after load, before any read of appId/appPassword.
+    (integration as { config: unknown }).config =
+      decryptIntegrationConfig(integration.config as unknown as IntegrationConfig);
 
     // Check channel allowlist
     const channelId = activity.conversation?.id;
@@ -227,8 +279,8 @@ export class TeamsIntegrationService {
   }
 
   // Execute workflow and send Adaptive Card response
-  private async executeAndRespond(integration: any, activity: TeamsActivity, workflowId: string): Promise<void> {
-    const config = integration.config as any;
+  private async executeAndRespond(integration: LoadedIntegration, activity: TeamsActivity, workflowId: string): Promise<void> {
+    const config = integration.config as IntegrationConfig;
     const appId = config?.appId;
     const appPassword = config?.appPassword;
 
@@ -259,21 +311,22 @@ export class TeamsIntegrationService {
         integration.id, 'outbound', 'teams', activity.conversation?.id,
         activity.from?.id, executionResult.summary, workflowId, executionResult.executionId, 'success'
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = errMessage(err);
       await this.sendActivity(activity.serviceUrl, activity.conversation.id, activity.id, appId, appPassword, {
         type: 'message',
-        text: `Workflow execution failed: ${err.message}`
+        text: `Workflow execution failed: ${msg}`
       });
 
       await this.logEvent(
         integration.id, 'outbound', 'teams', activity.conversation?.id,
-        activity.from?.id, null, workflowId, null, 'error', err.message
+        activity.from?.id, null, workflowId, null, 'error', msg
       );
     }
   }
 
   // Send activity to Teams via Bot Framework
-  private async sendActivity(serviceUrl: string, conversationId: string, replyToId: string, appId: string, appPassword: string, activity: any): Promise<void> {
+  private async sendActivity(serviceUrl: string, conversationId: string, replyToId: string, appId: string, appPassword: string, activity: Record<string, unknown>): Promise<void> {
     // Get Bot Framework token
     const tokenResponse = await fetch('https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token', {
       method: 'POST',
@@ -286,7 +339,7 @@ export class TeamsIntegrationService {
       })
     });
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = await tokenResponse.json() as TeamsTokenResponse;
     if (!tokenData.access_token) throw new Error('Failed to get Bot Framework token');
 
     const url = `${serviceUrl}v3/conversations/${conversationId}/activities/${replyToId}`;
@@ -305,8 +358,8 @@ export class TeamsIntegrationService {
   }
 
   // Format workflow result as Adaptive Card
-  formatAdaptiveCard(result: any): AdaptiveCard {
-    const body: any[] = [];
+  formatAdaptiveCard(result: WorkflowExecutionResult): AdaptiveCard {
+    const body: Array<Record<string, unknown>> = [];
 
     // Header
     body.push({
@@ -359,7 +412,7 @@ export class TeamsIntegrationService {
     };
   }
 
-  private async executeWorkflow(workflowId: string, context: any): Promise<any> {
+  private async executeWorkflow(workflowId: string, context: Record<string, unknown>): Promise<WorkflowExecutionResult> {
     const baseUrl =
       process.env.WORKFLOW_SERVICE_URL ||
       process.env.OPENAGENTIC_API_URL ||
@@ -387,7 +440,7 @@ export class TeamsIntegrationService {
     // Collect all events and extract the final result.
     const sseText = await response.text();
     const lines = sseText.split('\n');
-    let lastOutput: any = null;
+    let lastOutput: unknown = null;
     let executionId: string | null = null;
     let finalStatus = 'completed';
     const nodeOutputs: string[] = [];
@@ -395,7 +448,7 @@ export class TeamsIntegrationService {
     for (const line of lines) {
       if (!line.startsWith('data: ')) continue;
       try {
-        const event = JSON.parse(line.substring(6));
+        const event = JSON.parse(line.substring(6)) as WorkflowSseEvent;
         if (event.executionId) executionId = event.executionId;
         if (event.type === 'execution_complete') {
           lastOutput = event.output || event.data || null;
@@ -425,7 +478,7 @@ export class TeamsIntegrationService {
       summary,
       executionId,
       status: finalStatus,
-      outputs: lastOutput || {},
+      outputs: (lastOutput && typeof lastOutput === 'object' ? lastOutput as Record<string, unknown> : {}),
     };
   }
 
