@@ -58,7 +58,9 @@ describe("OaClient.chatStream", () => {
     const client = new OaClient({ instanceUrl: url, token: "t" });
 
     const events: unknown[] = [];
-    await client.chatStream({ sessionId: "s1", message: "hi" }, (e) => events.push(e));
+    await client.chatStream({ sessionId: "s1", message: "hi" }, (e) => {
+      events.push(e);
+    });
 
     expect(events).toEqual([
       { type: "content", text: "Hel" },
@@ -78,7 +80,9 @@ describe("OaClient.chatStream", () => {
     });
     const client = new OaClient({ instanceUrl: url, token: "t" });
     const events: Array<{ delta?: { type?: string; text?: string } }> = [];
-    await client.chatStream({ sessionId: "s1", message: "hi" }, (e) => events.push(e as never));
+    await client.chatStream({ sessionId: "s1", message: "hi" }, (e) => {
+      events.push(e as never);
+    });
     const text = events
       .filter((e) => e.delta?.type === "text_delta")
       .map((e) => e.delta?.text)

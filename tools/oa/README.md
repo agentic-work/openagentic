@@ -13,12 +13,57 @@ Foundation (#117) — in progress. Implemented and tested:
 | `oa logout` | Remove a stored profile. |
 | `oa whoami` | Show the authenticated identity. |
 | `oa health` | Check instance health. |
+| `oa key list \| create <name> \| revoke <id>` | Manage user-bound api keys. |
+| `oa flow list \| run <id> [--input <json>]` | List / run flows (workflows). |
+| `oa agent list \| run <id> <task…>` | List / run registered agents. |
+| `oa chat <message…> [--session <id>]` | Send one chat turn and stream the reply. |
+| `oa do <text…>` / `oa "<english>"` | Natural-language layer (#120) — route plain English through the chat pipeline; concrete platform actions, with mutating-tool approvals handled in your terminal. |
 
 Global flags: `-p/--profile <name>`, `--instance <url>`, `--json`.
 
-Planned next (same epic): `oa key`, `oa flow`, `oa agent`, `oa chat`, the
-natural-language layer (`oa "create an agent that …"`, #120), the Ink TUI
-(#121), and the autonomous agent runtime (#122).
+Planned next (same epic): the Ink TUI (#121) and the autonomous agent
+runtime (#122).
+
+## Natural language — `oa do`
+
+`oa do "<english>"` (and the bare shorthand `oa "<english>"`) routes plain
+English through the **existing chat pipeline** — no special server endpoints.
+The model turns your request into concrete platform actions (MCP tool calls);
+`oa` stays a thin client and streams the assistant's reply to your terminal.
+
+```bash
+# bare form — anything that isn't a known subcommand is treated as a request
+oa "what's the status of the prod cluster?"
+
+# explicit form (identical behaviour)
+oa do "scale the api deployment to 5 replicas"
+
+# reuse a session, or get machine-readable output
+oa do --session <id> "and now roll it back"
+oa do --json "delete the stuck pod in namespace prod"
+```
+
+`oa do` is just `do` with the word spliced in for you: the first non-flag token
+that isn't a real subcommand makes `oa` insert `do`. Real subcommands
+(`oa chat …`, `oa flow …`) and flags (`--help`, `--version`) pass through
+untouched.
+
+### Mutating-tool approvals (HITL)
+
+When the model calls a **mutating** tool, the server pauses and the stream
+emits an `approval_required` event. `oa` prints the tool name, a preview, and
+the arguments, then asks you to approve:
+
+- **Interactive (a TTY):** you get a `Approve tool <name>? [y/N]` prompt. `y`
+  approves; anything else denies. `oa` POSTs your decision and the stream
+  resumes.
+- **`-y` / `--yes`:** auto-approves every tool call (non-interactive runs / CI).
+- **`--json` or a non-TTY (no `--yes`):** **fails safe — denies.** Nothing
+  mutating runs unless you explicitly approved it.
+
+On timeout the server itself fails safe (deny). Approvals go to
+`POST /api/chat/approvals/:id` with your user-bound key — the same gate the web
+UI uses, driven from the terminal.
 
 ## Auth model
 

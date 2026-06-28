@@ -199,10 +199,21 @@ export class OaClient {
     return res.session;
   }
 
-  /** Stream a chat turn; invokes onEvent for each parsed SSE `data:` frame. */
+  /** Resolve a server-side pending tool-call approval (id = the approval's requestId).
+   * The chat stream blocks server-side until this POST lands (or it times out and
+   * fails safe = deny). */
+  async approveChatToolCall(id: string, approved: boolean): Promise<void> {
+    await this.request("POST", `/api/chat/approvals/${encodeURIComponent(id)}`, {
+      body: { approved },
+    });
+  }
+
+  /** Stream a chat turn; invokes onEvent for each parsed SSE `data:` frame.
+   * onEvent may be async — the read loop awaits it, so consumers can pause the
+   * stream (e.g. to prompt for approval) while the server is blocked waiting. */
   async chatStream(
     params: { sessionId: string; message: string; model?: string },
-    onEvent: (event: unknown) => void,
+    onEvent: (event: unknown) => void | Promise<void>,
   ): Promise<void> {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (this.token) headers.authorization = `Bearer ${this.token}`;
@@ -225,7 +236,7 @@ export class OaClient {
     const reader = (res.body as ReadableStream<Uint8Array>).getReader();
     const decoder = new TextDecoder();
     let buf = "";
-    const emit = (line: string): void => {
+    const emit = async (line: string): Promise<void> => {
       const trimmed = line.trim();
       if (!trimmed) return;
       // Real wire format is newline-delimited JSON; tolerate an optional SSE
@@ -234,11 +245,15 @@ export class OaClient {
         ? trimmed.slice(trimmed.indexOf(":") + 1).trim()
         : trimmed;
       if (!payload || payload === "[DONE]") return;
+      let parsed: unknown;
       try {
-        onEvent(JSON.parse(payload));
+        parsed = JSON.parse(payload);
       } catch {
-        /* skip non-JSON keepalive line */
+        return; // skip non-JSON keepalive line
       }
+      // Await consumption so an async onEvent can pause the stream (e.g. to
+      // prompt for + POST an approval) before the next frame is processed.
+      await onEvent(parsed);
     };
     for (;;) {
       const { done, value } = await reader.read();
@@ -246,11 +261,11 @@ export class OaClient {
       buf += decoder.decode(value, { stream: true });
       let nl: number;
       while ((nl = buf.indexOf("\n")) >= 0) {
-        emit(buf.slice(0, nl));
+        await emit(buf.slice(0, nl));
         buf = buf.slice(nl + 1);
       }
     }
-    emit(buf); // flush any trailing frame with no final newline
+    await emit(buf); // flush any trailing frame with no final newline
   }
 
   /** Detect whether the target deploy serves the web UI (SPA) vs is headless. */
