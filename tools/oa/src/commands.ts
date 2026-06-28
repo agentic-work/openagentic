@@ -1,5 +1,5 @@
 import { eventText } from "./chat-text.ts";
-import { type ClientOptions, OaClient } from "./client.ts";
+import { type ClientOptions, type Execution, OaClient } from "./client.ts";
 import { getProfile, loadConfig, removeProfile, saveProfile } from "./config.ts";
 
 /** Shared context every command receives — config location, output sinks,
@@ -301,4 +301,207 @@ export async function cmdDo(
   } else if (full) {
     ctx.out(full); // no raw writer (e.g. tests) — print the whole reply at once
   }
+}
+
+// ---- autonomous agents (flow + schedule) ------------------------------------
+//
+// An "autonomous agent" (#122) is an existing flow plus a cron schedule that
+// runs it unattended. These commands are a thin façade over the schedule CRUD
+// API + the existing workflow/execution endpoints — no new runtime. Report-out
+// is the flow's own terminal node (send_email/slack), surfaced via `agent logs`.
+//
+// They live in the `oa agent` group alongside the existing platform-agent
+// `list`/`run` commands. `list` already belongs to platform agents, so the
+// scheduled-agent listing is exposed as `oa agent schedules` to avoid colliding.
+
+export interface AgentCreateInput {
+  /** The flow / workflow id to schedule. */
+  flowId: string;
+  /** Cron expression, e.g. "0 9 * * *". */
+  cron: string;
+  name?: string;
+  timezone?: string;
+  /** Advisory only — see the SMTP note printed at create time. */
+  reportTo?: string;
+}
+
+/** Decide whether a confirm-gated action should proceed. Explicit intent
+ * (`-y` or `--json`) proceeds; an interactive TTY prompts; otherwise (no way to
+ * ask) it does not proceed. */
+async function shouldProceed(
+  ctx: CommandContext,
+  yes: boolean | undefined,
+  question: string,
+): Promise<boolean> {
+  if (yes) return true;
+  if (ctx.json) return true; // machine-driven, explicit intent
+  if (ctx.confirm) return ctx.confirm(question);
+  return false;
+}
+
+/** Turn a flow into a scheduled, unattended agent. */
+export async function cmdScheduledAgentCreate(
+  ctx: CommandContext,
+  input: AgentCreateInput,
+  opts: { yes?: boolean } = {},
+): Promise<void> {
+  if (!input.flowId) throw new Error("A flow id is required (--flow <workflowId>).");
+  if (!input.cron) throw new Error('A schedule is required (--schedule "<cron>").');
+
+  const client = resolveClient(ctx);
+
+  // Honest report-out note: we cannot verify a send_email node or SMTP from here.
+  if (input.reportTo && !ctx.json) {
+    ctx.err(
+      `Note: --report-to is advisory. Email report-out requires the flow to contain a ` +
+        `send_email node and server SMTP config; oa cannot verify either from here. ` +
+        `Use \`oa agent logs ${input.flowId}\` to see each run's output regardless.`,
+    );
+  }
+
+  // Print the resolved plan before asking for confirmation.
+  if (!ctx.json) {
+    ctx.out(`Plan: schedule flow ${input.flowId}`);
+    ctx.out(`  cron: ${input.cron}${input.timezone ? `   timezone: ${input.timezone}` : ""}`);
+    if (input.name) ctx.out(`  name: ${input.name}`);
+  }
+
+  const proceed = await shouldProceed(ctx, opts.yes, `Create scheduled agent for flow ${input.flowId}?`);
+  if (!proceed) {
+    ctx.out(ctx.json ? JSON.stringify({ created: false }) : "Aborted; no schedule created.");
+    return;
+  }
+
+  const schedule = await client.createSchedule(input.flowId, {
+    cron_expression: input.cron,
+    name: input.name,
+    timezone: input.timezone,
+  });
+
+  if (ctx.json) {
+    ctx.out(JSON.stringify(schedule, null, 2));
+    return;
+  }
+  ctx.out(`Created schedule ${schedule.id} for flow ${schedule.workflow_id}.`);
+  ctx.out(`  next run: ${schedule.next_run_at ?? "(pending)"}`);
+  ctx.out(`  active: ${schedule.is_active}`);
+}
+
+/** List autonomous agents: flows that have ≥1 schedule, joined with their schedules. */
+export async function cmdScheduledAgentList(ctx: CommandContext): Promise<void> {
+  const client = resolveClient(ctx);
+  const flows = await client.listWorkflows();
+  const rows: Array<{ id: string; name: string; schedules: Awaited<ReturnType<typeof client.listSchedules>> }> = [];
+  for (const f of flows) {
+    const schedules = await client.listSchedules(f.id);
+    if (schedules.length > 0) rows.push({ id: f.id, name: f.name, schedules });
+  }
+
+  if (ctx.json) {
+    ctx.out(JSON.stringify(rows, null, 2));
+    return;
+  }
+  if (rows.length === 0) {
+    ctx.out('No scheduled agents. Create one with `oa agent create --flow <id> --schedule "<cron>"`.');
+    return;
+  }
+  for (const { id, name, schedules } of rows) {
+    ctx.out(`${id}  ${name}`);
+    for (const s of schedules) {
+      ctx.out(
+        `  ${s.id}  ${s.cron_expression}  active=${s.is_active}  ` +
+          `next=${s.next_run_at ?? "-"}  last=${s.last_run_status ?? "-"}`,
+      );
+    }
+  }
+}
+
+/** Show a flow's schedule(s) + recent runs. */
+export async function cmdScheduledAgentStatus(ctx: CommandContext, workflowId: string): Promise<void> {
+  const client = resolveClient(ctx);
+  const schedules = await client.listSchedules(workflowId);
+  let executions: Execution[] = [];
+  try {
+    executions = await client.listExecutions(workflowId);
+  } catch {
+    /* execution history is best-effort */
+  }
+
+  if (ctx.json) {
+    ctx.out(JSON.stringify({ workflowId, schedules, recentExecutions: executions.slice(0, 5) }, null, 2));
+    return;
+  }
+  if (schedules.length === 0) {
+    ctx.out(`No schedules for flow ${workflowId}.`);
+  }
+  for (const s of schedules) {
+    ctx.out(
+      `${s.id}  ${s.cron_expression}  active=${s.is_active}  ` +
+        `next=${s.next_run_at ?? "-"}  last=${s.last_run_status ?? "-"}  runs=${s.total_runs}`,
+    );
+  }
+  if (executions.length > 0) {
+    ctx.out("recent runs:");
+    for (const e of executions.slice(0, 5)) {
+      ctx.out(`  ${e.id}  ${e.status ?? "-"}${e.started_at ? `  ${e.started_at}` : ""}`);
+    }
+  }
+}
+
+/** Show the most recent run's output — the flow's report payload. */
+export async function cmdScheduledAgentLogs(ctx: CommandContext, workflowId: string): Promise<void> {
+  const client = resolveClient(ctx);
+  const executions = await client.listExecutions(workflowId);
+  if (executions.length === 0) {
+    ctx.out(ctx.json ? JSON.stringify({ workflowId, execution: null }) : `No runs yet for flow ${workflowId}.`);
+    return;
+  }
+  const latest = await client.getExecution(workflowId, executions[0].id);
+
+  if (ctx.json) {
+    ctx.out(JSON.stringify(latest, null, 2));
+    return;
+  }
+  ctx.out(`execution ${latest.id}${latest.status ? ` (${latest.status})` : ""}`);
+  const payload = latest.output ?? latest.result ?? latest.node_outputs ?? latest;
+  ctx.out(typeof payload === "string" ? payload : JSON.stringify(payload, null, 2));
+}
+
+/** Pause/resume a schedule by toggling is_active. */
+async function setScheduleActive(
+  ctx: CommandContext,
+  workflowId: string,
+  scheduleId: string,
+  active: boolean,
+): Promise<void> {
+  const schedule = await resolveClient(ctx).updateSchedule(workflowId, scheduleId, { is_active: active });
+  if (ctx.json) {
+    ctx.out(JSON.stringify(schedule, null, 2));
+    return;
+  }
+  ctx.out(`Schedule ${schedule.id} ${active ? "started" : "stopped"} (active=${schedule.is_active}).`);
+}
+
+export function cmdScheduledAgentStart(ctx: CommandContext, workflowId: string, scheduleId: string): Promise<void> {
+  return setScheduleActive(ctx, workflowId, scheduleId, true);
+}
+
+export function cmdScheduledAgentStop(ctx: CommandContext, workflowId: string, scheduleId: string): Promise<void> {
+  return setScheduleActive(ctx, workflowId, scheduleId, false);
+}
+
+/** Delete a schedule (confirm unless -y / --json). */
+export async function cmdScheduledAgentDelete(
+  ctx: CommandContext,
+  workflowId: string,
+  scheduleId: string,
+  opts: { yes?: boolean } = {},
+): Promise<void> {
+  const proceed = await shouldProceed(ctx, opts.yes, `Delete schedule ${scheduleId}?`);
+  if (!proceed) {
+    ctx.out(ctx.json ? JSON.stringify({ deleted: false }) : "Aborted; nothing deleted.");
+    return;
+  }
+  await resolveClient(ctx).deleteSchedule(workflowId, scheduleId);
+  ctx.out(ctx.json ? JSON.stringify({ deleted: scheduleId }) : `Deleted schedule ${scheduleId}.`);
 }

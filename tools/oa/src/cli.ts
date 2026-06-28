@@ -18,6 +18,13 @@ import {
   cmdKeyRevoke,
   cmdLogin,
   cmdLogout,
+  cmdScheduledAgentCreate,
+  cmdScheduledAgentDelete,
+  cmdScheduledAgentList,
+  cmdScheduledAgentLogs,
+  cmdScheduledAgentStart,
+  cmdScheduledAgentStatus,
+  cmdScheduledAgentStop,
   cmdWhoami,
   type LoginInput,
 } from "./commands.ts";
@@ -207,14 +214,81 @@ export function buildProgram(io: Io): Command {
       await cmdFlowRun(ctx(options), id, options.input ? JSON.parse(options.input) : undefined);
     });
 
-  const agent = program.command("agent").description("Agents");
-  common(agent.command("list")).description("List agents").action(async (options) => {
+  const agent = program.command("agent").description("Agents (platform registry + autonomous scheduled flows)");
+  common(agent.command("list")).description("List platform agents").action(async (options) => {
     await cmdAgentList(ctx(options));
   });
   common(agent.command("run <id> <task...>"))
-    .description("Run an agent on a task")
+    .description("Run a platform agent on a task")
     .action(async (id: string, task: string[], options) => {
       await cmdAgentRun(ctx(options), id, task.join(" "));
+    });
+
+  // Autonomous agents (#122) = a flow + a cron schedule, run unattended. These
+  // sit in the same `agent` group; the scheduled-agent listing is `schedules`
+  // (the bare `list` already lists platform agents).
+  common(agent.command("create"))
+    .description("Create an autonomous agent: schedule a flow to run unattended on a cron")
+    .option("--flow <workflowId>", "flow / workflow id to schedule")
+    .option("--schedule <cron>", 'cron expression, e.g. "0 9 * * *"')
+    .option("--name <name>", "human-readable name for the schedule")
+    .option("--timezone <tz>", "IANA timezone, e.g. America/New_York")
+    .option("--report-to <email>", "advisory: email for run reports (requires a send_email node + SMTP)")
+    .option("-y, --yes", "skip the confirmation prompt")
+    .action(
+      async (
+        options: {
+          flow?: string;
+          schedule?: string;
+          name?: string;
+          timezone?: string;
+          reportTo?: string;
+          yes?: boolean;
+        } & GlobalOpts,
+      ) => {
+        await cmdScheduledAgentCreate(
+          ctx(options),
+          {
+            flowId: options.flow ?? "",
+            cron: options.schedule ?? "",
+            name: options.name,
+            timezone: options.timezone,
+            reportTo: options.reportTo,
+          },
+          { yes: options.yes },
+        );
+      },
+    );
+  common(agent.command("schedules"))
+    .description("List autonomous agents (flows that have a schedule)")
+    .action(async (options) => {
+      await cmdScheduledAgentList(ctx(options));
+    });
+  common(agent.command("status <workflowId>"))
+    .description("Show an autonomous agent's schedule(s) + recent runs")
+    .action(async (workflowId: string, options) => {
+      await cmdScheduledAgentStatus(ctx(options), workflowId);
+    });
+  common(agent.command("logs <workflowId>"))
+    .description("Show the most recent run's output (the report payload)")
+    .action(async (workflowId: string, options) => {
+      await cmdScheduledAgentLogs(ctx(options), workflowId);
+    });
+  common(agent.command("start <workflowId> <scheduleId>"))
+    .description("Activate a schedule (resume the autonomous agent)")
+    .action(async (workflowId: string, scheduleId: string, options) => {
+      await cmdScheduledAgentStart(ctx(options), workflowId, scheduleId);
+    });
+  common(agent.command("stop <workflowId> <scheduleId>"))
+    .description("Deactivate a schedule (pause the autonomous agent)")
+    .action(async (workflowId: string, scheduleId: string, options) => {
+      await cmdScheduledAgentStop(ctx(options), workflowId, scheduleId);
+    });
+  common(agent.command("delete <workflowId> <scheduleId>"))
+    .description("Delete a schedule")
+    .option("-y, --yes", "skip the confirmation prompt")
+    .action(async (workflowId: string, scheduleId: string, options: { yes?: boolean } & GlobalOpts) => {
+      await cmdScheduledAgentDelete(ctx(options), workflowId, scheduleId, { yes: options.yes });
     });
 
   common(program.command("chat <message...>"))
