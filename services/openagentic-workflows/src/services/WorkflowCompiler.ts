@@ -487,7 +487,7 @@ export class WorkflowCompiler {
 
     for (const node of definition.nodes) {
       const nodeLabel = node.data?.label || node.id;
-      const d = node.data || {};
+      const d = (node.data || {}) as { prompt?: string; model?: string; code?: string; url?: string; toolName?: string; agentId?: string; [key: string]: unknown };
 
       // --- LLM nodes: check model, prompt, and provider credentials ---
       if (['llm_completion', 'bedrock', 'vertex', 'azure_ai', 'openagentic_llm', 'openagentic_chat'].includes(node.type)) {
@@ -534,7 +534,7 @@ export class WorkflowCompiler {
             const providedParams = Object.keys(d.toolParams || d.params || d.arguments || {});
             for (const reqParam of required) {
               // Allow if it's a template variable reference (will be resolved at runtime)
-              const paramVal = (d.toolParams || d.params || d.arguments || {})[reqParam];
+              const paramVal = ((d.toolParams || d.params || d.arguments || {}) as Record<string, unknown>)[reqParam];
               if (!paramVal && paramVal !== 0 && paramVal !== false) {
                 // Check if the node has incoming data that might supply it
                 const hasIncoming = (incomingEdges.get(node.id) || []).length > 0;
@@ -712,7 +712,7 @@ export class WorkflowCompiler {
       if (node.type === 'trigger') continue; // Triggers generate data
       if (inputRequiringTypes.has(node.type)) {
         const incoming = incomingEdges.get(node.id) || [];
-        if (incoming.length === 0 && !node.data?.prompt?.includes('{{')) {
+        if (incoming.length === 0 && !(node.data?.prompt as string | undefined)?.includes('{{')) {
           // This node has no incoming data AND no template vars — it may be orphaned
           const nodeLabel = node.data?.label || node.id;
           issues.push({ code: 'NO_INPUT_SOURCE', message: `"${nodeLabel}" has no incoming connection to provide input data`, nodeId: node.id });
@@ -784,7 +784,7 @@ export class WorkflowCompiler {
     const agentNodeTypes = new Set(['agent_single', 'agent_pool', 'agent_supervisor', 'multi_agent']);
 
     for (const node of definition.nodes) {
-      const d = node.data || {};
+      const d = (node.data || {}) as { prompt?: string; model?: string; code?: string; url?: string; toolName?: string; agentId?: string; [key: string]: unknown };
       const nodeLabel = d.label || node.id;
 
       // --- Agent node validation ---
@@ -845,7 +845,7 @@ export class WorkflowCompiler {
         if (d.toolName && options?.mcpToolSchemas?.[d.toolName]) {
           const schema = options.mcpToolSchemas[d.toolName];
           const required = schema.inputSchema?.required || [];
-          const providedParams = d.toolParams || d.params || d.arguments || {};
+          const providedParams = (d.toolParams || d.params || d.arguments || {}) as Record<string, unknown>;
           for (const reqParam of required) {
             const paramVal = providedParams[reqParam];
             if (paramVal === undefined || paramVal === null || paramVal === '') {

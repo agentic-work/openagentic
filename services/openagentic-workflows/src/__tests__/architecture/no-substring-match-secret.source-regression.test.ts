@@ -6,28 +6,22 @@ import { fileURLToPath } from 'node:url';
 /**
  * Substrate-fix S4 (spec §3) source-regression arch test.
  *
- * The legacy code in WorkflowExecutionEngine.executeHTTPRequestNode
- * substring-matched the resolved URL for `openagentic-api` (and
- * `localhost:8000`) and auto-injected the X-Internal-Secret header.
+ * Historically the engine's HTTP node substring-matched the resolved URL
+ * for `openagentic-api` (and `localhost:8000`) and auto-injected the
+ * X-Internal-Secret header — an SSRF + cross-tenant auth-leak hazard.
  *
- * That is an SSRF + cross-tenant auth-leak hazard:
- *   - workflow author can target `http://openagentic-api.evil.com/`
- *     and the engine will trust the secret to a hostile destination.
- *   - workflow author can target `http://169.254.169.254/...` (IMDS)
- *     to exfil cloud creds.
- *
- * This arch test pins the contract:
- *   1. NO substring/regex match for `openagentic-api` gates the secret.
- *   2. The engine imports HostAllowList helpers (denyIfPrivate +
- *      isAllowedInternalHost) and uses them.
- *
- * the design notes
+ * The HTTP node executor now lives in the shared workflow-engine package
+ * (services/shared/workflow-engine/src/nodes/http_request/), which owns the
+ * denyIfPrivate / allow-list SSRF guard and its own regression tests. This
+ * arch test pins the remaining engine-source contract:
+ *   - NO substring/regex match for `openagentic-api` gates the secret in
+ *     WorkflowExecutionEngine.ts.
  */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const ENGINE_TS = resolve(__dirname, '../../services/WorkflowExecutionEngine.ts');
 
-describe('arch: WorkflowExecutionEngine.executeHTTPRequestNode hardening (S4)', () => {
+describe('arch: WorkflowExecutionEngine HTTP secret-injection hardening (S4)', () => {
   const content = readFileSync(ENGINE_TS, 'utf8');
 
   it('does NOT substring-match for "openagentic-api" to inject X-Internal-Secret', () => {
@@ -41,11 +35,5 @@ describe('arch: WorkflowExecutionEngine.executeHTTPRequestNode hardening (S4)', 
     ];
     const violations = banned.filter(([re]) => re.test(content)).map(([, label]) => label);
     expect(violations).toEqual([]);
-  });
-
-  it('imports HostAllowList helpers (denyIfPrivate + isAllowedInternalHost)', () => {
-    expect(content).toMatch(/import\s*\{[^}]*denyIfPrivate[^}]*\}\s*from\s*['"][^'"]*HostAllowList(?:\.js)?['"]/);
-    expect(content).toMatch(/\bdenyIfPrivate\s*\(/);
-    expect(content).toMatch(/\bisAllowedInternalHost\s*\(/);
   });
 });

@@ -66,31 +66,12 @@ describe('arch: HTTPRequestNode SSRF + secret-leak hardening (5 vectors, S4)', (
     expect(violations).toEqual([]);
   });
 
-  it('source imports + uses denyIfPrivate and isAllowedInternalHost from HostAllowList', () => {
-    expect(content).toMatch(
-      /import\s*\{[^}]*denyIfPrivate[^}]*\}\s*from\s*['"][^'"]*HostAllowList(?:\.js)?['"]/,
-    );
-    expect(content).toMatch(/\bdenyIfPrivate\s*\(/);
-    expect(content).toMatch(/\bisAllowedInternalHost\s*\(/);
-  });
-
-  it('executeHTTPRequestNode calls denyIfPrivate BEFORE any internal-secret injection', () => {
-    // Locate executeHTTPRequestNode body bounds.
-    const startIdx = content.indexOf('private async executeHTTPRequestNode(');
-    expect(startIdx).toBeGreaterThan(0);
-
-    // Find the next sibling private/public method declaration after start.
-    const tail = content.slice(startIdx + 1);
-    const nextMethod = tail.search(/\n\s{2}(?:private|public|protected|async)\s+\w/);
-    const body = nextMethod > 0 ? tail.slice(0, nextMethod) : tail;
-
-    const denyAt = body.indexOf('denyIfPrivate(');
-    const injectAt = body.indexOf('isAllowedInternalHost(');
-    expect(denyAt).toBeGreaterThan(0);
-    expect(injectAt).toBeGreaterThan(0);
-    // Deny must run BEFORE the allow-list gate.
-    expect(denyAt).toBeLessThan(injectAt);
-  });
+  // NOTE: the HTTP node executor (and its denyIfPrivate → allow-list ordering)
+  // now lives in the shared workflow-engine package
+  // (services/shared/workflow-engine/src/nodes/http_request/), which carries its
+  // own executor-level regression tests. The engine-source contract pinned here
+  // is limited to the substring-ban above; the runtime contract below still
+  // exercises the HostAllowList helpers directly.
 
   // -------------------------------------------------------------------------
   // RUNTIME contract — drive the helpers through each of the 5 URL shapes.

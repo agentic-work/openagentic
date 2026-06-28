@@ -8,23 +8,18 @@
  */
 
 import { EventEmitter } from 'events';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
 import { loggers } from '../utils/logger.js';
 import { PricingLookup } from './pricingLookup.js';
-import { MODELS } from '../config/models.js';
 import { canAutoApprove } from './approvalGate.js';
 import { createApprovalRecord } from './approvalRecord.js';
 import { createDataRequestRecord } from './dataRequestRecord.js';
 import { redactSecrets, redactLogMeta, type RedactionMap } from './secretRedaction.js';
 import { checkSecretAcl } from './secretAcl.js';
 import type { AclSecretRow } from './secretAcl.js';
-import {
-  denyIfPrivate,
-  isAllowedInternalHost,
-  EgressBlockedError,
-} from '../utils/HostAllowList.js';
 import axios from 'axios';
-import { abortableAxiosPost, abortableAxiosGet, abortableAxios } from './abortableAxios.js';
+import { abortableAxiosPost } from './abortableAxios.js';
 import { runSandboxed } from './sandbox.js';
 import { registry as nodeRegistry, runWithAssertions } from '../nodes/registry.js';
 import { OutputAssertionError } from '../nodes/types.js';
@@ -44,7 +39,7 @@ const logger = loggers.services;
 export interface WorkflowNode {
   id: string;
   type: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   position?: { x: number; y: number };
 }
 
@@ -91,13 +86,13 @@ export interface ExecutionContext {
    * Used by WorkflowSecret ACL enforcement (allowed_groups check). S0-9 / B5.
    */
   userGroups?: readonly string[];
-  input: Record<string, any>;
-  variables: Map<string, any>;
-  nodeResults: Map<string, any>;
+  input: Record<string, unknown>;
+  variables: Map<string, unknown>;
+  nodeResults: Map<string, unknown>;
   startTime: number;
   agenticExecutionId?: string;
-  sharedContext: Map<string, any>;
-  webhookResponse?: { statusCode: number; headers: Record<string, string>; body: any };
+  sharedContext: Map<string, unknown>;
+  webhookResponse?: { statusCode: number; headers: Record<string, string>; body: unknown };
   /** Resolved secret values keyed by secret name. Populated at execution start. */
   resolvedSecrets?: Map<string, string>;
   /**
@@ -122,13 +117,15 @@ export interface ExecutionContext {
    * 3) by reading ctx.subFlowDepth. Gap-analysis 2026-05-14 P0 #3.
    */
   subFlowDepth?: number;
+  /** Structured output envelopes for terminal nodes, attached at execution end. */
+  outputEnvelopes?: OutputEnvelope[];
 }
 
 export interface NodeExecutionResult {
   nodeId: string;
   nodeType: string;
   status: 'success' | 'error' | 'skipped';
-  output: any;
+  output: unknown;
   error?: string;
   executionTimeMs: number;
 }
@@ -139,7 +136,7 @@ export interface OutputEnvelope {
   format: OutputFormat;
   title: string;
   content: string;
-  raw: any;
+  raw: unknown;
   artifacts: string[];
   nodeId?: string;
   nodeType?: string;
@@ -151,7 +148,7 @@ export interface ExecutionEvent {
   executionId: string;
   nodeId?: string;
   nodeType?: string;
-  data?: any;
+  data?: unknown;
   timestamp: string;
 }
 
@@ -176,7 +173,7 @@ export interface RetryConfig {
 
 export interface FallbackConfig {
   fallbackNodeId?: string;       // Node to execute on failure
-  fallbackValue?: any;           // Static value to return on failure
+  fallbackValue?: unknown;       // Static value to return on failure
   continueOnFailure?: boolean;   // Continue workflow even if node fails
   propagateError?: boolean;      // Include error info in output
 }
@@ -196,6 +193,29 @@ export interface ApprovalResult {
   rejectedBy?: string;
   message?: string;
 }
+
+/**
+ * Permissive view over a node's runtime result. Node executors return
+ * arbitrary JSON; this captures the well-known fields the engine inspects
+ * (status, content, usage, error markers) while keeping everything else
+ * `unknown` via the index signature. Used only as a read/write lens — the
+ * canonical stored value remains untyped JSON.
+ */
+type NodeResultView = {
+  __contextUpdates?: Record<string, unknown>;
+  error?: unknown;
+  errorMessage?: unknown;
+  isError?: boolean;
+  status?: string;
+  content?: string;
+  usage?: { total_tokens?: number; prompt_tokens?: number; completion_tokens?: number };
+  model?: string;
+  _costMeta?: unknown;
+  requestId?: unknown;
+  approvalId?: unknown;
+  autoApproved?: boolean;
+  [key: string]: unknown;
+};
 
 // =============================================================================
 // WorkflowExecutionEngine
@@ -267,7 +287,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
   private apiUrl: string;
   private nodeRetryState: Map<string, number>; // Track retry counts per node
   private abortController: AbortController;
-  private pendingNodeOutputs: Map<string, any>; // Accumulated node outputs for batch write
+  private pendingNodeOutputs: Map<string, unknown>; // Accumulated node outputs for batch write
   private mergeBarriers: Map<string, { arrived: number; expected: number; resolve: (() => void) | null; promise: Promise<void> | null }>; // Barrier for merge nodes
   private mergeSkipCounts: Map<string, number>; // Pre-registered skip counts for merge nodes from condition routing
   private pricingLookup: PricingLookup; // DB-backed per-execution token cost calculator
@@ -286,6 +306,12 @@ export class WorkflowExecutionEngine extends EventEmitter {
   private _nodeAclDenials: string[] = [];
   /** LLM tracing service — one instance per engine boot; fan-out to configured provider. */
   private tracing: LLMTracingService;
+  /** Admin-level workflow defaults loaded from systemConfiguration at execution start. */
+  private adminSettings?: Record<string, unknown>;
+  /** Workflow-level settings loaded from the workflow row at execution start. */
+  private workflowSettings?: { defaultTimeoutMs?: number; [key: string]: unknown };
+  /** Accumulated token cost across all LLM nodes in this execution. */
+  private totalCost = 0;
 
   constructor(
     definition: WorkflowDefinition,
@@ -323,7 +349,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     this.mergeSkipCounts = new Map();
 
     // DB-driven pricing lookup; one instance per execution so rates are cached across LLM nodes
-    this.pricingLookup = new PricingLookup(prisma as any, logger);
+    this.pricingLookup = new PricingLookup(prisma as unknown as ConstructorParameters<typeof PricingLookup>[0], logger);
 
     // LLM tracing service — reads OBSERVABILITY_PROVIDER env; default = none (no-op).
     this.tracing = new LLMTracingService();
@@ -436,7 +462,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
   /**
    * Execute the workflow
    */
-  async execute(): Promise<{ success: boolean; output: any; error?: string }> {
+  async execute(): Promise<{ success: boolean; output: unknown; error?: string }> {
     const { executionId } = this.context;
 
     // Pillar 2 (#52): attach a TraceCollector to the engine's event
@@ -486,8 +512,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
         where: { key: 'workflow_defaults' }
       });
       if (adminConfig?.value) {
-        (this as any).adminSettings = typeof adminConfig.value === 'string'
-          ? JSON.parse(adminConfig.value) : adminConfig.value;
+        this.adminSettings = (typeof adminConfig.value === 'string'
+          ? JSON.parse(adminConfig.value) : adminConfig.value) as Record<string, unknown>;
       }
     } catch (err) {
       logger.debug({ err }, '[WorkflowEngine] Failed to load admin settings (using defaults)');
@@ -500,15 +526,15 @@ export class WorkflowExecutionEngine extends EventEmitter {
         select: { settings: true }
       });
       if (workflow?.settings) {
-        (this as any).workflowSettings = typeof workflow.settings === 'string'
-          ? JSON.parse(workflow.settings as string) : workflow.settings;
+        this.workflowSettings = (typeof workflow.settings === 'string'
+          ? JSON.parse(workflow.settings as string) : workflow.settings) as { defaultTimeoutMs?: number; [key: string]: unknown };
       }
     } catch (err) {
       logger.debug({ err }, '[WorkflowEngine] Failed to load workflow settings (using defaults)');
     }
 
     // Initialize cost tracking accumulator
-    (this as any).totalCost = 0;
+    this.totalCost = 0;
 
     try {
       // Pre-load workflow secrets referenced by {{secret:name}} patterns
@@ -575,13 +601,13 @@ export class WorkflowExecutionEngine extends EventEmitter {
       // input MUST satisfy every required name — a workflow without a topic
       // cannot run a research team. Caught the user's "Please provide the
       // topic" fake-success on Multi-Agent Research Team (2026-04-26).
-      const runtimeInput =
+      const runtimeInput: Record<string, unknown> =
         this.context.input && typeof this.context.input === 'object'
-          ? (this.context.input as Record<string, any>)
+          ? (this.context.input as Record<string, unknown>)
           : {};
       const missingRequired: string[] = [];
       for (const trigger of triggerNodes) {
-        const inputs = (trigger.data as any)?.inputs;
+        const inputs = trigger.data?.inputs;
         if (!Array.isArray(inputs)) continue;
         for (const param of inputs) {
           if (!param?.required) continue;
@@ -610,7 +636,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
         n => (this.outgoingEdges.get(n.id)?.length || 0) === 0
       );
 
-      let finalOutput: any = {};
+      const finalOutputs: Record<string, unknown> = {};
       const outputEnvelopes: OutputEnvelope[] = [];
       for (const node of terminalNodes) {
         const result = this.context.nodeResults.get(node.id);
@@ -618,17 +644,18 @@ export class WorkflowExecutionEngine extends EventEmitter {
           // Wrap terminal node output in a structured envelope for rich rendering
           const envelope = this.formatOutputEnvelope(node, result);
           outputEnvelopes.push(envelope);
-          finalOutput[node.id] = result;
+          finalOutputs[node.id] = result;
         }
       }
 
       // If only one terminal node, unwrap
-      if (Object.keys(finalOutput).length === 1) {
-        finalOutput = Object.values(finalOutput)[0];
+      let finalOutput: unknown = finalOutputs;
+      if (Object.keys(finalOutputs).length === 1) {
+        finalOutput = Object.values(finalOutputs)[0];
       }
 
       // Attach output envelopes to the execution context for downstream use
-      (this.context as any).outputEnvelopes = outputEnvelopes;
+      this.context.outputEnvelopes = outputEnvelopes;
 
       // Honest status: if any node failed during this run, the workflow as
       // a whole is FAILED — even if downstream nodes (merge, compare) ran
@@ -637,7 +664,10 @@ export class WorkflowExecutionEngine extends EventEmitter {
       // where the engine reported green but the output was a meta-summary
       // describing the failures. Caught 2026-04-26 on Smart Router Showcase.
       const failedNodes = Array.from(this.pendingNodeOutputs.entries())
-        .filter(([, data]: [string, any]) => data?.status === 'failed' || (data?.error != null && data.error !== ''))
+        .filter(([, data]) => {
+          const d = data as { status?: string; error?: string } | null | undefined;
+          return d?.status === 'failed' || (d?.error != null && d.error !== '');
+        })
         .map(([id]) => id);
       const finalStatus: 'completed' | 'failed' = failedNodes.length > 0 ? 'failed' : 'completed';
       const summaryError = failedNodes.length > 0
@@ -810,8 +840,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
 
       return { success: true, output: finalOutput };
 
-    } catch (error: any) {
-      const errorMessage = error.message || 'Unknown error';
+    } catch (error) {
+      const errorMessage = (error as Error).message || 'Unknown error';
 
       // Update execution record (includes partial node_outputs)
       try {
@@ -874,7 +904,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
   /**
    * Execute a single node with error recovery (retry + fallback)
    */
-  private async executeNode(nodeId: string, input: any): Promise<any> {
+  private async executeNode(nodeId: string, input: unknown): Promise<unknown> {
     // Check if execution was aborted
     if (this.abortController.signal.aborted) {
       throw new Error('Workflow execution aborted');
@@ -962,7 +992,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     const circuitBreakerConfig = errorRecovery?.circuitBreaker;
 
     // Merge node.data.retryPolicy with errorRecovery.retry (node.data takes precedence)
-    const nodeRetry = node.data.retryPolicy;
+    const nodeRetry = node.data.retryPolicy as { maxRetries?: number; delayMs?: number; backoff?: string; retryOnPatterns?: string[] } | undefined;
     const retryConfig: RetryConfig | undefined = nodeRetry ? {
       maxRetries: nodeRetry.maxRetries ?? baseRetryConfig?.maxRetries ?? 0,
       initialDelay: nodeRetry.delayMs ?? baseRetryConfig?.initialDelay ?? 1000,
@@ -983,7 +1013,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     const startTime = Date.now();
     this.emitEvent('node_start', { nodeId, nodeType: node.type });
 
-    let result: any;
+    let result: NodeResultView | undefined;
     let lastError: Error | null = null;
     const maxRetries = retryConfig?.maxRetries ?? 0;
 
@@ -1011,14 +1041,14 @@ export class WorkflowExecutionEngine extends EventEmitter {
         }
 
         // Execute with optional per-node timeout
-        const nodeTimeout = node.data.timeoutMs || (this as any).workflowSettings?.defaultTimeoutMs || 0;
+        const nodeTimeout = (node.data.timeoutMs as number | undefined) || this.workflowSettings?.defaultTimeoutMs || 0;
         if (nodeTimeout > 0) {
           result = await Promise.race([
             this.executeNodeCore(node, input),
             new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Node timeout after ${nodeTimeout}ms`)), nodeTimeout))
-          ]);
+          ]) as NodeResultView | undefined;
         } else {
-          result = await this.executeNodeCore(node, input);
+          result = await this.executeNodeCore(node, input) as NodeResultView | undefined;
         }
 
         // Secret ACL enforcement — S0-9 / B5.
@@ -1043,9 +1073,10 @@ export class WorkflowExecutionEngine extends EventEmitter {
         const inputPreview = input === undefined ? 'undefined' : input === null ? 'null' :
           typeof input === 'string' ? `string(${input.length})` :
           typeof input === 'object' ? `object(${Object.keys(input).join(',').substring(0, 60)})` : typeof input;
-        const resultPreview = result === undefined ? 'undefined' : result === null ? 'null' :
-          typeof result === 'string' ? `string(${result.length})` :
-          typeof result === 'object' ? `object(${Object.keys(result).join(',').substring(0, 60)})` : typeof result;
+        const rp: unknown = result;
+        const resultPreview = rp === undefined ? 'undefined' : rp === null ? 'null' :
+          typeof rp === 'string' ? `string(${rp.length})` :
+          typeof rp === 'object' ? `object(${Object.keys(rp).join(',').substring(0, 60)})` : typeof rp;
         logger.info({ nodeId, nodeType: node.type, inputPreview, resultPreview }, '[WorkflowEngine] Node data flow'); // previews contain only type/length/key-name metadata, not values — no secret interpolation
 
         // Success - reset circuit breaker on successful execution
@@ -1078,17 +1109,17 @@ export class WorkflowExecutionEngine extends EventEmitter {
         const nodeStatus = resultHasError ? 'failed' : 'completed';
 
         if (resultHasError) {
-          const errorMsg = result.error || result.errorMessage || ((node.type === 'llm_completion' || node.type === 'openagentic_llm') ? 'LLM returned empty response' : 'Node returned error result');
+          const errorMsg = result?.error || result?.errorMessage || ((node.type === 'llm_completion' || node.type === 'openagentic_llm') ? 'LLM returned empty response' : 'Node returned error result');
           this.emitEvent('node_error', { nodeId, nodeType: node.type, error: String(errorMsg) });
         }
 
         // Calculate per-node cost from token usage BEFORE storing
         if ((node.type === 'llm_completion' || node.type === 'openagentic_llm' || node.type === 'agent_single') && result?.usage) {
           const usage = result.usage;
-          const modelName = result.model || node.data.model || 'unknown';
+          const modelName = result.model || (node.data.model as string | undefined) || 'unknown';
           const totalTokens = usage.total_tokens || ((usage.prompt_tokens || 0) + (usage.completion_tokens || 0));
           const nodeCost = await this.calculateTokenCost(modelName, usage.prompt_tokens || 0, usage.completion_tokens || 0);
-          (this as any).totalCost = ((this as any).totalCost || 0) + nodeCost;
+          this.totalCost += nodeCost;
 
           result._costMeta = {
             tokens: totalTokens,
@@ -1101,7 +1132,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
 
         // Store node execution in database (non-fatal for ad-hoc test executions)
         try {
-          await this.storeNodeExecution(nodeId, node.type, nodeStatus, result, executionTimeMs, resultHasError ? String(result.error || 'Node result indicates failure') : undefined, input);
+          await this.storeNodeExecution(nodeId, node.type, nodeStatus, result, executionTimeMs, resultHasError ? String(result?.error || 'Node result indicates failure') : undefined, input);
         } catch (storeErr) {
           logger.warn({ storeErr, nodeId }, '[WorkflowEngine] Non-fatal: failed to store node execution');
         }
@@ -1113,15 +1144,17 @@ export class WorkflowExecutionEngine extends EventEmitter {
             if (registry) {
               // Record tool calls for MCP tool nodes
               if (node.type === 'mcp_tool') {
-                const toolName = node.data.toolName || node.data.toolServer
-                  ? `${node.data.toolServer || 'unknown'}/${node.data.toolName || 'unknown'}`
+                const dataToolName = node.data.toolName as string | undefined;
+                const dataToolServer = node.data.toolServer as string | undefined;
+                const toolName = dataToolName || dataToolServer
+                  ? `${dataToolServer || 'unknown'}/${dataToolName || 'unknown'}`
                   : nodeId;
                 registry.recordToolCall(this.context.agenticExecutionId, toolName);
               }
 
               // Record LLM usage in AgentRegistry
               if ((node.type === 'llm_completion' || node.type === 'openagentic_llm' || node.type === 'agent_single') && result?.usage) {
-                const modelName = result.model || node.data.model || 'unknown';
+                const modelName = result.model || (node.data.model as string | undefined) || 'unknown';
                 registry.recordToolCall(
                   this.context.agenticExecutionId,
                   `llm/${modelName}`
@@ -1190,11 +1223,11 @@ export class WorkflowExecutionEngine extends EventEmitter {
 
         return result;
 
-      } catch (error: any) {
-        lastError = error;
+      } catch (error) {
+        lastError = error as Error;
 
         // Check if we should retry this error
-        if (retryConfig && !this.shouldRetry(error, retryConfig, attempt, maxRetries)) {
+        if (retryConfig && !this.shouldRetry(error as Error, retryConfig, attempt, maxRetries)) {
           break;
         }
 
@@ -1212,7 +1245,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     // Try fallback
     if (fallbackConfig) {
       try {
-        result = await this.handleFallback(node, input, lastError!, fallbackConfig);
+        result = await this.handleFallback(node, input, lastError!, fallbackConfig) as NodeResultView | undefined;
 
         if (fallbackConfig.continueOnFailure) {
           this.context.nodeResults.set(nodeId, result);
@@ -1232,10 +1265,10 @@ export class WorkflowExecutionEngine extends EventEmitter {
 
           return result;
         }
-      } catch (fallbackError: any) {
+      } catch (fallbackError) {
         logger.error({
           nodeId,
-          fallbackError: fallbackError.message
+          fallbackError: (fallbackError as Error).message
         }, '[WorkflowEngine] Fallback also failed');
       }
     }
@@ -1296,7 +1329,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
   private async fanOutToDownstream(
     nodeId: string,
     nodeType: string,
-    payload: any,
+    payload: unknown,
     contextLabel: string,
   ): Promise<void> {
     if (ROUTING_OWNS_DOWNSTREAM.has(nodeType)) return;
@@ -1342,7 +1375,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     for (const edge of outgoing) {
       const targetNode = this.nodeMap.get(edge.target);
       if (targetNode?.type === 'merge') {
-        // Store error result so executeMergeNode can see this branch's outcome
+        // Store error result so the merge gate can see this branch's outcome
         if (!this.context.nodeResults.has(failedNodeId)) {
           this.context.nodeResults.set(failedNodeId, {
             error: `Node ${failedNodeId} failed`,
@@ -1369,8 +1402,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
           logger.info({ nodeId: edge.target }, '[WorkflowEngine] Merge gate: all branches arrived (including failures), executing merge');
           try {
             await this.executeNode(edge.target, null);
-          } catch (err: any) {
-            this.safeLog('warn', { nodeId: edge.target, error: err.message }, '[WorkflowEngine] Merge node execution failed after failed branch notification'); // err.message may contain secret-interpolated content
+          } catch (err) {
+            this.safeLog('warn', { nodeId: edge.target, error: (err as Error).message }, '[WorkflowEngine] Merge node execution failed after failed branch notification'); // err.message may contain secret-interpolated content
           }
         }
       } else {
@@ -1383,10 +1416,10 @@ export class WorkflowExecutionEngine extends EventEmitter {
   /**
    * Execute the core logic of a node (without retry/fallback handling)
    */
-  private async executeNodeCore(node: WorkflowNode, input: any): Promise<any> {
+  private async executeNodeCore(node: WorkflowNode, input: unknown): Promise<unknown> {
     // Provide shared context to the node via input
     if (input && typeof input === 'object' && !Array.isArray(input)) {
-      input.__sharedContext = Object.fromEntries(this.context.sharedContext);
+      (input as Record<string, unknown>).__sharedContext = Object.fromEntries(this.context.sharedContext);
     }
 
     // Track the current node type so interpolateTemplate can enforce secret ACLs
@@ -1403,8 +1436,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
 
     // All node types are now schema-driven via the nodes/<type>/ registry
     // above; the legacy switch only retains the default-throw guard for
-    // unknown types. Some node executor classes are still in this file as
-    // dead code pending physical removal.
+    // unknown types.
     switch (node.type) {
       default:
         throw new Error(`Unknown node type: ${node.type}`);
@@ -1420,8 +1452,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
   private async runRegistryNode(
     plugin: import('../nodes/types.js').NodePlugin,
     node: WorkflowNode,
-    input: any,
-  ): Promise<any> {
+    input: unknown,
+  ): Promise<unknown> {
     const ctx: NodeExecutionContext = {
       signal: this.signal,
       executionId: this.context.executionId,
@@ -1513,10 +1545,10 @@ export class WorkflowExecutionEngine extends EventEmitter {
             '[engine] persistArtifact wrote artifact_files row',
           );
           return id;
-        } catch (err: any) {
+        } catch (err) {
           logger.warn(
             {
-              err: err?.message ?? String(err),
+              err: (err as Error)?.message ?? String(err),
               executionId: this.context.executionId,
             },
             '[engine] persistArtifact failed (non-fatal)',
@@ -1573,7 +1605,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
           const value = this.context.nodeResults.get(edge.source);
           if (value !== undefined) {
             const sourceNode = this.nodeMap.get(edge.source);
-            const label = (sourceNode?.data?.label || sourceNode?.id || edge.source)
+            const label = ((sourceNode?.data?.label as string | undefined) || sourceNode?.id || edge.source)
               .replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
             results.push({ sourceId: edge.source, label, value });
           }
@@ -1851,7 +1883,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
           workflowId,
           subExecId,
           subDef,
-          (subInput as Record<string, any>) ?? {},
+          (subInput as Record<string, unknown>) ?? {},
           this.context.userId,
           this.context.authToken,
           undefined, // no event handler for sub-workflow
@@ -1897,8 +1929,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
                 nodeResults: Object.fromEntries(this.context.nodeResults),
                 variables: Object.fromEntries(this.context.variables),
                 pendingApprovalId: approval.id,
-                input: payload.input as any,
-              } as any,
+                input: payload.input,
+              } as unknown as Prisma.InputJsonValue,
             },
           });
         } catch (dbErr) {
@@ -1936,7 +1968,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
         const request = await createDataRequestRecord(prisma, {
           executionId: this.context.executionId,
           nodeId: payload.nodeId,
-          fields: payload.fields as any,
+          fields: payload.fields as unknown as Parameters<typeof createDataRequestRecord>[1]['fields'],
           title: payload.title,
           description: payload.description,
           timeoutSeconds: payload.timeoutSeconds,
@@ -1960,8 +1992,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
                 nodeResults: Object.fromEntries(this.context.nodeResults),
                 variables: Object.fromEntries(this.context.variables),
                 pendingDataRequestId: request.id,
-                input: payload.input as any,
-              } as any,
+                input: payload.input,
+              } as unknown as Prisma.InputJsonValue,
             },
           });
         } catch (dbErr) {
@@ -1991,7 +2023,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       testMocks: this.context.testMocks,
     };
 
-    let result: any;
+    let result: unknown;
     try {
       result = await runWithAssertions(plugin, node, input, ctx);
     } catch (err) {
@@ -2014,24 +2046,25 @@ export class WorkflowExecutionEngine extends EventEmitter {
     // The executor returns { status: 'waiting', durationMs, resumeAt, message }
     // when the duration is >= 30s. The engine handles the Prisma state-save
     // and emitEvent (same as the legacy executeWaitNode did).
-    if (node.type === 'wait' && result?.status === 'waiting') {
+    const waitResult = result as { status?: string; resumeAt?: string | number | Date } | undefined;
+    if (node.type === 'wait' && waitResult?.status === 'waiting') {
       await prisma.workflowExecution.update({
         where: { id: this.context.executionId },
         data: {
           status: 'waiting',
           current_node_id: node.id,
-          resume_at: new Date(result.resumeAt),
+          resume_at: new Date(waitResult.resumeAt as string | number | Date),
           state: {
             nodeResults: Object.fromEntries(this.context.nodeResults),
             variables: Object.fromEntries(this.context.variables),
             input,
-          },
+          } as unknown as Prisma.InputJsonValue,
         },
       });
 
       this.emitEvent('execution_paused', {
         nodeId: node.id,
-        resumeAt: result.resumeAt,
+        resumeAt: waitResult.resumeAt,
         reason: 'wait_node',
       });
     }
@@ -2096,10 +2129,10 @@ export class WorkflowExecutionEngine extends EventEmitter {
    */
   private async handleFallback(
     node: WorkflowNode,
-    input: any,
+    input: unknown,
     error: Error,
     config?: FallbackConfig
-  ): Promise<any> {
+  ): Promise<unknown> {
     if (!config) {
       throw error;
     }
@@ -2115,7 +2148,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       const fallbackNode = this.nodeMap.get(config.fallbackNodeId);
       if (fallbackNode) {
         const fallbackInput = config.propagateError
-          ? { ...input, __error: { message: error.message, nodeId: node.id } }
+          ? { ...(input as Record<string, unknown>), __error: { message: error.message, nodeId: node.id } }
           : input;
         return this.executeNodeCore(fallbackNode, fallbackInput);
       }
@@ -2197,1231 +2230,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
     }
   }
 
-  // ===========================================================================
-  // Node Type Executors
-  // ===========================================================================
-
-  /**
-   * Execute trigger node - validates and passes through input
-   */
-  private async executeTrigger(node: WorkflowNode, input: any): Promise<any> {
-    const { triggerType, triggerConfig } = node.data;
-
-    logger.info({ triggerType, nodeId: node.id }, '[WorkflowEngine] Executing trigger');
-
-    // Store trigger input for {{trigger.*}} template variable resolution
-    // Supports both {{trigger.body.message}} (canonical nested) and {{trigger.message}} (flat alias)
-    const triggerData: Record<string, any> = {};
-    if (input && typeof input === 'object' && !Array.isArray(input)) {
-      Object.assign(triggerData, input);        // flat keys: trigger.message, trigger.topic, etc.
-    }
-    triggerData.body = input;                   // canonical nested: trigger.body.message
-    this.context.nodeResults.set('__trigger__', triggerData);
-
-    // For manual triggers, just pass through input
-    // Future: handle webhook, schedule, etc.
-    return input;
-  }
-
-  /**
-   * Execute LLM completion node
-   */
-  private async executeLLMNode(node: WorkflowNode, input: any): Promise<any> {
-    const { model, temperature, maxTokens, prompt, systemPrompt } = node.data;
-
-    // Interpolate variables in prompt
-    const resolvedPrompt = this.interpolateTemplate(prompt || '', input);
-    const resolvedSystemPrompt = this.interpolateTemplate(systemPrompt || '', input);
-
-    logger.info({
-      nodeId: node.id,
-      model,
-      promptLength: resolvedPrompt.length
-    }, '[WorkflowEngine] Executing LLM node');
-
-    const messages: Array<{ role: string; content: string }> = [];
-
-    if (resolvedSystemPrompt) {
-      messages.push({ role: 'system', content: resolvedSystemPrompt });
-    }
-
-    // Auto-append input context to the prompt when it doesn't reference template variables.
-    // This ensures the LLM always sees the data flowing through the workflow.
-    let userContent = resolvedPrompt;
-    const hadTemplateVars = (prompt || '').includes('{{');
-    if (!hadTemplateVars && input != null) {
-      const inputStr = typeof input === 'string' ? input
-        : typeof input === 'object' ? JSON.stringify(input, null, 2)
-        : String(input);
-      if (inputStr && inputStr !== '{}' && inputStr !== 'null') {
-        userContent = `${resolvedPrompt}\n\n--- Input Data ---\n${inputStr}`;
-      }
-    }
-
-    messages.push({ role: 'user', content: userContent });
-
-    // Resolve model: prefer explicit model, otherwise use 'auto' for Smart Router
-    const effectiveModel = model && model !== 'auto' ? model : 'auto';
-
-    // Call the OpenAI-compatible endpoint
-    const response = await abortableAxiosPost(
-      this,
-      `${this.apiUrl}/api/v1/chat/completions`,
-      {
-        model: effectiveModel,
-        messages,
-        temperature: temperature ?? 0.7,
-        max_tokens: maxTokens || 2000,
-        stream: false
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getInternalAuthHeaders(),
-          'X-Workflow-Execution': this.context.executionId
-        },
-        timeout: 600000 // 10 minute timeout for slow models (e.g. Ollama)
-      }
-    );
-
-    const content = response.data?.choices?.[0]?.message?.content || '';
-
-    return {
-      content,
-      model: response.data?.model,
-      usage: response.data?.usage
-    };
-  }
-
-  /**
-   * Execute MCP tool node
-   */
-  private async executeMCPToolNode(node: WorkflowNode, input: any): Promise<any> {
-    const { toolName, toolServer: toolServerRaw, serverName, arguments: argsField, toolParams, toolArgs: toolArgsField } = node.data;
-    const toolServer = toolServerRaw || serverName; // Fall back to serverName for UI compat
-
-    // Normalize server name: hyphens → underscores, strip trailing _mcp
-    // MCP proxy registers servers with underscores (e.g. openagentic_azure) but workflow
-    // nodes may store hyphens (e.g. oap-azure-mcp)
-    const normalizedServer = toolServer
-      ? toolServer.replaceAll('-', '_').replace(/_mcp$/, '')
-      : toolServer;
-
-    // Interpolate variables in arguments (support all field names: arguments, toolArgs, toolParams)
-    const rawArgs = argsField || toolArgsField || toolParams || {};
-    const resolvedArgs: Record<string, any> = {};
-    for (const [key, value] of Object.entries(rawArgs)) {
-      if (typeof value === 'string') {
-        resolvedArgs[key] = this.interpolateTemplate(value, input);
-      } else {
-        resolvedArgs[key] = value;
-      }
-    }
-
-    // Smart parameter resolution: if arguments are empty/blank but upstream input exists,
-    // try to extract tool parameters from the input. This handles templates where
-    // MCP tool nodes rely on upstream LLM/merge output without explicit argument mapping.
-    // Also handles cases where template interpolation resolved to empty strings.
-    const hasEmptyArgs = Object.keys(resolvedArgs).length === 0 ||
-      Object.values(resolvedArgs).every(v => v === '' || v === undefined || v === null);
-    if (hasEmptyArgs && input) {
-      const inputStr = typeof input === 'string' ? input : JSON.stringify(input);
-      // For web_search: extract query from input text
-      if (toolName === 'web_search' || toolName === 'web_news_search') {
-        resolvedArgs.query = typeof input === 'string' ? input.substring(0, 500) :
-          (input?.query || input?.search || input?.text || input?.message || inputStr.substring(0, 500));
-      }
-      // For k8s tools: extract namespace and deployment_name from input
-      else if (toolName?.startsWith('k8s_') && !resolvedArgs.namespace) {
-        resolvedArgs.namespace = input?.namespace || process.env.OPENAGENTIC_NAMESPACE || 'default';
-        if (input?.deployment_name) resolvedArgs.deployment_name = input.deployment_name;
-        if (input?.deployment) resolvedArgs.deployment_name = input.deployment;
-      }
-      // For loki_query: extract query from input
-      else if (toolName === 'loki_query' && !resolvedArgs.query) {
-        resolvedArgs.query = input?.query || input?.loki_query ||
-          `{namespace="${input?.namespace || process.env.OPENAGENTIC_NAMESPACE || 'default'}"}`;
-      }
-      // Generic: if input is an object with simple values, pass as arguments
-      // BUT skip LLM output fields (content, model, usage, provider, _costMeta)
-      // which leak from upstream openagentic_llm nodes
-      else if (typeof input === 'object' && !Array.isArray(input)) {
-        const llmOutputFields = new Set(['content', 'model', 'usage', 'provider', '_costMeta', 'message', 'role']);
-        for (const [k, v] of Object.entries(input)) {
-          if (!k.startsWith('__') && !llmOutputFields.has(k) && typeof v !== 'object') {
-            resolvedArgs[k] = v;
-          }
-        }
-      }
-    }
-
-    // Strip internal workflow properties that MCP tools don't expect
-    delete resolvedArgs.__sharedContext;
-    delete resolvedArgs.__nodeId;
-    delete resolvedArgs.__executionId;
-
-    // Route web_search and web_news_search through openagentic_web MCP server
-    // (Searx on K8s — handles rate limiting, multi-engine aggregation)
-    const effectiveServer = (toolName === 'web_search' || toolName === 'web_news_search')
-      ? 'openagentic_web'
-      : normalizedServer;
-
-    logger.info({
-      nodeId: node.id,
-      toolName,
-      toolServer: effectiveServer,
-      originalServer: toolServer,
-    }, '[WorkflowEngine] Executing MCP tool node');
-
-    // Call MCP Proxy — authToken is already the real Azure AD token (loaded in workflows.ts)
-    const response = await abortableAxiosPost(
-      this,
-      `${this.mcpProxyUrl}/call`,
-      {
-        server: effectiveServer,
-        tool: toolName,
-        arguments: resolvedArgs
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          // Authenticate as System Root via the service-internal key so mcp-proxy
-          // authorizes WITHOUT a per-user policy round-trip to the api. The
-          // user-token path is fragile: mcp-proxy must reach the api to resolve
-          // group policies, which fails transiently and 401s the whole tool call
-          // (made grounded flows non-deterministic). Single-tenant: correct.
-          'Authorization': (process.env.API_INTERNAL_KEY || process.env.INTERNAL_API_KEY)
-            ? `Bearer ${process.env.API_INTERNAL_KEY || process.env.INTERNAL_API_KEY}`
-            : (this.context.authToken || ''),
-          // OSS: no OBO (On-Behalf-Of) token forwarding. Cloud MCP servers
-          // authenticate via their own service-account / static-keypair / ADC
-          // credentials, not via a per-user OBO token (enterprise-only).
-        },
-        timeout: 60000,
-        validateStatus: () => true,
-      }
-    );
-
-    // Check HTTP status
-    if (response.status >= 400) {
-      const errorMsg = response.data?.error || response.data?.message || `MCP call failed with HTTP ${response.status}`;
-      throw new Error(`MCP tool "${toolName}" failed: ${errorMsg}`);
-    }
-
-    // Check for error in response body (MCP proxy returns 200 with error objects)
-    // The proxy /call endpoint returns: { server, tool, result: <jsonrpc_response>, error?: envelope }
-    // where <jsonrpc_response> is: { jsonrpc, id, result: { content: [...], isError }, error?: {...} }
-    // We need to unwrap through both layers to get the actual MCP tool result.
-
-    const proxyResponse = response.data;
-
-    // Layer 0: Check proxy-level error envelope (MCPErrorEnvelope from classify_error)
-    if (proxyResponse?.error && typeof proxyResponse.error === 'object' && proxyResponse.error.code) {
-      const errMsg = proxyResponse.error.message || 'MCP proxy error';
-      throw new Error(`MCP tool "${toolName}" error: ${errMsg}`);
-    }
-
-    // Layer 1: Unwrap proxy wrapper → JSONRPC response
-    const jsonrpcResponse = proxyResponse?.result ?? proxyResponse;
-
-    // Layer 2: Check JSONRPC-level error (protocol error from MCP server)
-    if (jsonrpcResponse?.error) {
-      const errMsg = jsonrpcResponse.error.message || jsonrpcResponse.error.data || JSON.stringify(jsonrpcResponse.error);
-      throw new Error(`MCP tool "${toolName}" error: ${errMsg}`);
-    }
-
-    // Layer 3: Unwrap JSONRPC result → actual MCP tool result ({ content, isError })
-    const mcpResult = jsonrpcResponse?.result ?? jsonrpcResponse;
-
-    if (mcpResult && typeof mcpResult === 'object') {
-      // Check isError flag (MCP SDK standard)
-      if (mcpResult.isError) {
-        const errContent = mcpResult.content?.[0]?.text || 'Unknown MCP error';
-        throw new Error(`MCP tool "${toolName}" error: ${errContent}`);
-      }
-
-      // Check for tool-level failure inside MCP content blocks
-      // Tools like Azure/AWS return { content: [{ text: '{"success":false,"error":"..."}' }], isError: false }
-      if (Array.isArray(mcpResult.content)) {
-        for (const block of mcpResult.content) {
-          if (block?.type === 'text' && typeof block.text === 'string') {
-            try {
-              const parsed = JSON.parse(block.text);
-              if (parsed && typeof parsed === 'object' && parsed.success === false && parsed.error) {
-                const errMsg = typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error);
-                const errType = parsed.error_type ? ` (${parsed.error_type})` : '';
-                throw new Error(`MCP tool "${toolName}" failed${errType}: ${errMsg}`);
-              }
-            } catch (parseErr) {
-              if (parseErr instanceof Error && parseErr.message.startsWith(`MCP tool "${toolName}"`)) {
-                throw parseErr;
-              }
-            }
-          }
-        }
-      }
-
-      // Check top-level success:false pattern (flat result objects)
-      if (mcpResult.success === false && (mcpResult.error || mcpResult.error_message)) {
-        const errMsg = mcpResult.error || mcpResult.error_message;
-        const errType = mcpResult.error_type ? ` (${mcpResult.error_type})` : '';
-        throw new Error(`MCP tool "${toolName}" failed${errType}: ${typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg)}`);
-      }
-    }
-
-    // Normalize MCP result: extract text content from content blocks array
-    // so template variables like {{nodeId.content}} resolve to readable text
-    if (mcpResult && Array.isArray(mcpResult.content)) {
-      const textContent = mcpResult.content
-        .filter((b: any) => b?.type === 'text' && typeof b.text === 'string')
-        .map((b: any) => b.text)
-        .join('\n');
-      return {
-        ...mcpResult,
-        content: textContent || JSON.stringify(mcpResult.content),
-      };
-    }
-
-    return mcpResult;
-  }
-
-
-  /**
-   * Execute HTTP Request node - makes HTTP calls with template interpolation
-   */
-  private async executeHTTPRequestNode(node: WorkflowNode, input: any): Promise<any> {
-    const {
-      url,
-      method = 'GET',
-      headers: requestHeaders = {},
-      body,
-      timeout = 30000,
-      responseType = 'json',
-    } = node.data;
-
-    // Interpolate variables in URL, headers, and body
-    const resolvedUrl = this.interpolateTemplate(url || '', input);
-    const resolvedHeaders: Record<string, string> = {};
-    for (const [key, value] of Object.entries(requestHeaders)) {
-      if (typeof value === 'string') {
-        resolvedHeaders[key] = this.interpolateTemplate(value, input);
-      }
-    }
-
-    let resolvedBody: any = undefined;
-    if (body && method !== 'GET' && method !== 'HEAD') {
-      if (typeof body === 'string') {
-        resolvedBody = this.interpolateTemplate(body, input);
-        // Try to parse as JSON for JSON content types
-        if (resolvedHeaders['Content-Type']?.includes('json') || !resolvedHeaders['Content-Type']) {
-          try {
-            resolvedBody = JSON.parse(resolvedBody);
-          } catch {
-            // Keep as string if not valid JSON
-          }
-        }
-      } else {
-        resolvedBody = body;
-      }
-    }
-
-    if (!resolvedUrl) {
-      throw new Error('HTTP Request node requires a url');
-    }
-
-    // Substrate-fix S4 (spec §3): SSRF + IMDS + RFC1918 deny-then-allowlist.
-    //
-    // 1) FIRST: parse + deny private/loopback/IMDS/cluster-local targets.
-    //    Replaces silent fetch failures (or worse, IMDS-token exfil) with
-    //    an EgressBlockedError surfaced at the node-failure boundary.
-    let parsedUrl: URL;
-    try {
-      parsedUrl = new URL(resolvedUrl);
-    } catch (e: any) {
-      throw new Error(`HTTP request failed: invalid URL: ${resolvedUrl}`);
-    }
-    await denyIfPrivate(parsedUrl); // throws EgressBlockedError on private/IMDS
-
-    // 2) THEN: gate X-Internal-Secret on an explicit allowlist, NOT on
-    //    substring match. Default allowlist covers the in-cluster api
-    //    Service DNS; admins can override via INTERNAL_HOST_ALLOWLIST
-    //    (comma-separated FQDNs). Empty allowlist → no secret injected.
-    //
-    //    Note: denyIfPrivate above will reject `*.svc.cluster.local`
-    //    targets BEFORE this branch fires, so the allowlist below is
-    //    effectively narrowed by the deny step. Internal-cluster traffic
-    //    has to flow through the api proxy (which uses Kubernetes
-    //    short-name DNS — not the FQDN — so it hits no deny rule).
-    const internalAllowList = (process.env.INTERNAL_HOST_ALLOWLIST?.split(',').map((s) => s.trim()).filter(Boolean))
-      ?? [`openagentic-api.${process.env.OPENAGENTIC_NAMESPACE || 'default'}.svc.cluster.local`];
-    let isInternalUrl = false;
-    if (await isAllowedInternalHost(parsedUrl, internalAllowList)) {
-      isInternalUrl = true;
-      if (!resolvedHeaders['Authorization'] && !resolvedHeaders['X-Internal-Secret']) {
-        Object.assign(resolvedHeaders, this.getInternalAuthHeaders());
-      }
-    }
-
-    logger.info({
-      nodeId: node.id,
-      method,
-      url: resolvedUrl,
-      isInternal: isInternalUrl,
-    }, '[WorkflowEngine] Executing HTTP request node');
-
-    try {
-      const response = await abortableAxios(this, {
-        method: method.toLowerCase(),
-        url: resolvedUrl,
-        headers: resolvedHeaders,
-        data: resolvedBody,
-        timeout,
-        validateStatus: () => true, // Don't throw on non-2xx
-      });
-
-      const result: Record<string, any> = {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-      };
-
-      if (responseType === 'text') {
-        result.data = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-      } else {
-        result.data = response.data;
-      }
-
-      // Check if the node opts into raw HTTP responses (for APIs that use non-2xx codes intentionally)
-      const acceptAllStatuses = node.data.acceptAllStatuses === true;
-
-      // For non-2xx responses (excluding redirects), throw an error so the workflow engine's
-      // error recovery mechanism (retry, fallback, error routing via onError) activates.
-      // Without this, HTTP errors silently cascade to downstream nodes as bad input data.
-      if (!acceptAllStatuses && (response.status >= 400 || (response.status >= 300 && response.status !== 301 && response.status !== 302 && response.status !== 304))) {
-        logger.warn({
-          nodeId: node.id,
-          status: response.status,
-          url: resolvedUrl,
-        }, '[WorkflowEngine] HTTP request returned non-2xx status');
-        // Include response data in the error for downstream error handlers
-        const errorDetail = typeof response.data === 'string'
-          ? response.data.substring(0, 500)
-          : JSON.stringify(response.data)?.substring(0, 500) || '';
-        const err = new Error(`HTTP ${response.status} ${response.statusText || 'error'} from ${resolvedUrl}: ${errorDetail}`);
-        (err as any).httpStatus = response.status;
-        (err as any).httpResponse = result;
-        throw err;
-      }
-
-      return result;
-    } catch (error: any) {
-      throw new Error(`HTTP request failed: ${error.message}`);
-    }
-  }
-
-  // ===========================================================================
-  // Integration Node Handlers (Slack, Teams, PagerDuty, ServiceNow, Jira, Email, Discord)
-  // ===========================================================================
-
-  /**
-   * Send a Slack message via webhook
-   */
-  private async executeSlackNode(node: WorkflowNode, input: any): Promise<any> {
-    const { webhookUrl, channel, message, blocks } = node.data;
-    const resolvedUrl = this.interpolateTemplate(webhookUrl || process.env.SLACK_WEBHOOK_URL || '', input);
-    const resolvedMsg = this.interpolateTemplate(message || '', input);
-
-    if (!resolvedUrl) throw new Error('Slack node requires a webhook URL (or SLACK_WEBHOOK_URL env)');
-
-    logger.info({ nodeId: node.id, channel }, '[WorkflowEngine] Executing Slack message node');
-
-    const payload: any = { text: resolvedMsg };
-    if (channel) payload.channel = this.interpolateTemplate(channel, input);
-    if (blocks && blocks.length > 0) payload.blocks = blocks;
-
-    const response = await abortableAxiosPost(this, resolvedUrl, payload, { timeout: 15000, validateStatus: () => true });
-    return { status: response.status, sent: response.status === 200, channel: channel || 'default' };
-  }
-
-  /**
-   * Send a Microsoft Teams message via webhook
-   */
-  private async executeTeamsNode(node: WorkflowNode, input: any): Promise<any> {
-    const { webhookUrl, message, cardTitle, cardBody } = node.data;
-    const resolvedUrl = this.interpolateTemplate(webhookUrl || process.env.TEAMS_WEBHOOK_URL || '', input);
-    const resolvedMsg = this.interpolateTemplate(message || '', input);
-
-    if (!resolvedUrl) throw new Error('Teams node requires a webhook URL (or TEAMS_WEBHOOK_URL env)');
-
-    logger.info({ nodeId: node.id }, '[WorkflowEngine] Executing Teams message node');
-
-    // Use Adaptive Card if cardTitle provided, otherwise plain text
-    let payload: any;
-    if (cardTitle) {
-      payload = {
-        type: 'message',
-        attachments: [{
-          contentType: 'application/vnd.microsoft.card.adaptive',
-          content: {
-            $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
-            type: 'AdaptiveCard',
-            version: '1.4',
-            body: [
-              { type: 'TextBlock', text: this.interpolateTemplate(cardTitle, input), weight: 'Bolder', size: 'Medium' },
-              { type: 'TextBlock', text: this.interpolateTemplate(cardBody || message || '', input), wrap: true },
-            ],
-          },
-        }],
-      };
-    } else {
-      payload = { text: resolvedMsg };
-    }
-
-    const response = await abortableAxiosPost(this, resolvedUrl, payload, { timeout: 15000, validateStatus: () => true });
-    return { status: response.status, sent: response.status === 200 || response.status === 202 };
-  }
-
-  /**
-   * Send email via SMTP (Outlook, Gmail, SendGrid, custom)
-   */
-  private async executeEmailNode(node: WorkflowNode, input: any): Promise<any> {
-    const { to, cc, subject, body, isHtml, smtpHost, smtpPort, smtpUser, smtpPasswordRef } = node.data;
-    const resolvedTo = this.interpolateTemplate(to || '', input);
-    const resolvedSubject = this.interpolateTemplate(subject || '', input);
-    const resolvedBody = this.interpolateTemplate(body || '', input);
-
-    if (!resolvedTo) throw new Error('Email node requires a "to" address');
-    if (!resolvedSubject) throw new Error('Email node requires a subject');
-
-    logger.info({ nodeId: node.id, to: resolvedTo }, '[WorkflowEngine] Executing email node');
-
-    // Use platform NotificationService if no SMTP override
-    if (!smtpHost) {
-      // Try platform email service
-      const emailServiceUrl = process.env.EMAIL_SERVICE_URL;
-      if (emailServiceUrl) {
-        const response = await abortableAxiosPost(this, emailServiceUrl, {
-          to: resolvedTo, cc: cc ? this.interpolateTemplate(cc, input) : undefined,
-          subject: resolvedSubject, body: resolvedBody, isHtml: isHtml !== false,
-        }, { timeout: 30000, validateStatus: () => true });
-        return { status: response.status, sent: response.status >= 200 && response.status < 300, to: resolvedTo };
-      }
-      // Fallback: use nodemailer directly if env vars set
-      const host = process.env.SMTP_HOST;
-      if (!host) throw new Error('No SMTP configuration found. Set SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS or EMAIL_SERVICE_URL');
-    }
-
-    // Direct SMTP via nodemailer
-    const nodemailer = require('nodemailer');
-    const transport = nodemailer.createTransport({
-      host: smtpHost || process.env.SMTP_HOST,
-      port: smtpPort || Number.parseInt(process.env.SMTP_PORT || '587'),
-      secure: (smtpPort || Number.parseInt(process.env.SMTP_PORT || '587')) === 465,
-      auth: { user: smtpUser || process.env.SMTP_USER, pass: smtpPasswordRef || process.env.SMTP_PASS },
-    });
-
-    const info = await transport.sendMail({
-      from: smtpUser || process.env.SMTP_USER || 'noreply@openagentic.io',
-      to: resolvedTo,
-      cc: cc ? this.interpolateTemplate(cc, input) : undefined,
-      subject: resolvedSubject,
-      [isHtml !== false ? 'html' : 'text']: resolvedBody,
-    });
-
-    return { sent: true, messageId: info.messageId, to: resolvedTo };
-  }
-
-  /**
-   * Create/trigger/resolve PagerDuty incidents via Events API v2
-   */
-  private async executePagerDutyNode(node: WorkflowNode, input: any): Promise<any> {
-    const { action = 'trigger', routingKey, severity = 'error', summary, source = 'openagentic', dedupKey } = node.data;
-    const resolvedKey = this.interpolateTemplate(routingKey || process.env.PAGERDUTY_ROUTING_KEY || '', input);
-    const resolvedSummary = this.interpolateTemplate(summary || '', input);
-
-    if (!resolvedKey) throw new Error('PagerDuty node requires a routing key (or PAGERDUTY_ROUTING_KEY env)');
-
-    logger.info({ nodeId: node.id, action, severity }, '[WorkflowEngine] Executing PagerDuty node');
-
-    const payload: any = {
-      routing_key: resolvedKey,
-      event_action: action, // trigger, acknowledge, resolve
-    };
-
-    if (action === 'trigger') {
-      payload.payload = {
-        summary: resolvedSummary,
-        severity, // critical, error, warning, info
-        source: this.interpolateTemplate(source, input),
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    if (dedupKey) payload.dedup_key = this.interpolateTemplate(dedupKey, input);
-
-    const response = await abortableAxiosPost(this, 'https://events.pagerduty.com/v2/enqueue', payload, {
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 15000,
-      validateStatus: () => true,
-    });
-
-    return { status: response.status, sent: response.status === 202, dedupKey: response.data?.dedup_key, action };
-  }
-
-  /**
-   * Create/update ServiceNow records via REST Table API
-   */
-  private async executeServiceNowNode(node: WorkflowNode, input: any): Promise<any> {
-    const { action = 'create_incident', instanceUrl, table = 'incident', fields = {} } = node.data;
-    const resolvedUrl = this.interpolateTemplate(instanceUrl || process.env.SERVICENOW_INSTANCE_URL || '', input);
-
-    if (!resolvedUrl) throw new Error('ServiceNow node requires an instance URL (or SERVICENOW_INSTANCE_URL env)');
-
-    logger.info({ nodeId: node.id, action, table }, '[WorkflowEngine] Executing ServiceNow node');
-
-    // Resolve template expressions in field values
-    const resolvedFields: Record<string, any> = {};
-    for (const [key, value] of Object.entries(fields)) {
-      resolvedFields[key] = typeof value === 'string' ? this.interpolateTemplate(value, input) : value;
-    }
-
-    const baseUrl = resolvedUrl.replace(/\/$/, '');
-    const apiUrl = `${baseUrl}/api/now/table/${table}`;
-    const auth = process.env.SERVICENOW_AUTH_TOKEN || process.env.SERVICENOW_USERNAME;
-
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-    if (auth?.startsWith('Basic ') || auth?.startsWith('Bearer ')) {
-      headers['Authorization'] = auth;
-    } else if (process.env.SERVICENOW_USERNAME && process.env.SERVICENOW_PASSWORD) {
-      headers['Authorization'] = 'Basic ' + Buffer.from(`${process.env.SERVICENOW_USERNAME}:${process.env.SERVICENOW_PASSWORD}`).toString('base64');
-    }
-
-    const response = await abortableAxiosPost(this, apiUrl, resolvedFields, { headers, timeout: 30000, validateStatus: () => true });
-    return { status: response.status, created: response.status === 201, sysId: response.data?.result?.sys_id, number: response.data?.result?.number };
-  }
-
-  /**
-   * Create/update Jira issues via REST API v3
-   */
-  private async executeJiraNode(node: WorkflowNode, input: any): Promise<any> {
-    const { action = 'create', projectKey, issueType = 'Task', summary, description, priority = 'Medium', assignee } = node.data;
-    const baseUrl = this.interpolateTemplate(process.env.JIRA_BASE_URL || '', input);
-    const email = process.env.JIRA_EMAIL;
-    const apiToken = process.env.JIRA_API_TOKEN;
-
-    if (!baseUrl) throw new Error('Jira node requires JIRA_BASE_URL env var');
-    if (!email || !apiToken) throw new Error('Jira node requires JIRA_EMAIL and JIRA_API_TOKEN env vars');
-
-    const resolvedSummary = this.interpolateTemplate(summary || '', input);
-    const resolvedDesc = this.interpolateTemplate(description || '', input);
-    const resolvedProject = this.interpolateTemplate(projectKey || '', input);
-
-    logger.info({ nodeId: node.id, action, projectKey: resolvedProject }, '[WorkflowEngine] Executing Jira node');
-
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Basic ' + Buffer.from(`${email}:${apiToken}`).toString('base64'),
-    };
-
-    if (action === 'create') {
-      const payload: any = {
-        fields: {
-          project: { key: resolvedProject },
-          summary: resolvedSummary,
-          issuetype: { name: issueType },
-          priority: { name: priority },
-        },
-      };
-      if (resolvedDesc) payload.fields.description = { type: 'doc', version: 1, content: [{ type: 'paragraph', content: [{ type: 'text', text: resolvedDesc }] }] };
-      if (assignee) payload.fields.assignee = { accountId: this.interpolateTemplate(assignee, input) };
-
-      const response = await abortableAxiosPost(this, `${baseUrl}/rest/api/3/issue`, payload, { headers, timeout: 30000, validateStatus: () => true });
-      return { status: response.status, created: response.status === 201, key: response.data?.key, id: response.data?.id };
-    }
-
-    throw new Error(`Jira action "${action}" not yet implemented`);
-  }
-
-  /**
-   * Send Discord message via webhook
-   */
-  private async executeDiscordNode(node: WorkflowNode, input: any): Promise<any> {
-    const { webhookUrl, content, username = 'OpenAgentic', embeds } = node.data;
-    const resolvedUrl = this.interpolateTemplate(webhookUrl || '', input);
-    const resolvedContent = this.interpolateTemplate(content || '', input);
-
-    if (!resolvedUrl) throw new Error('Discord node requires a webhook URL');
-
-    logger.info({ nodeId: node.id }, '[WorkflowEngine] Executing Discord message node');
-
-    const payload: any = { content: resolvedContent, username };
-    if (embeds && embeds.length > 0) payload.embeds = embeds;
-
-    const response = await abortableAxiosPost(this, resolvedUrl, payload, {
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 15000,
-      validateStatus: () => true,
-    });
-
-    return { status: response.status, sent: response.status === 204 || response.status === 200 };
-  }
-
-  /**
-   * Execute RAG query node — semantic search against a Milvus collection
-   */
-  private async executeRagQueryNode(node: WorkflowNode, input: any): Promise<any> {
-    const {
-      collection = 'default',
-      query,
-      topK = 5,
-      filters,
-      scoreThreshold,
-    } = node.data;
-
-    const resolvedQuery = this.interpolateTemplate(query || '', input);
-    const resolvedCollection = this.interpolateTemplate(collection, input);
-
-    if (!resolvedQuery) throw new Error('RAG query node requires a query');
-
-    logger.info({
-      nodeId: node.id,
-      collection: resolvedCollection,
-      topK,
-    }, '[WorkflowEngine] Executing RAG query node');
-
-    // Call the vector search API endpoint
-    const response = await abortableAxiosPost(
-      this,
-      `${this.apiUrl}/api/v1/vector/search`,
-      {
-        collection: resolvedCollection,
-        query: resolvedQuery,
-        topK,
-        filters: filters ? (typeof filters === 'string' ? JSON.parse(this.interpolateTemplate(filters, input)) : filters) : undefined,
-        scoreThreshold: scoreThreshold || 0.5,
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getInternalAuthHeaders(),
-        },
-        timeout: 30000,
-        validateStatus: () => true,
-      }
-    );
-
-    if (response.status >= 400) {
-      throw new Error(`RAG query failed: ${response.data?.error || response.statusText}`);
-    }
-
-    const results = response.data?.results || response.data || [];
-    return {
-      query: resolvedQuery,
-      collection: resolvedCollection,
-      resultCount: Array.isArray(results) ? results.length : 0,
-      results,
-    };
-  }
-
-  /**
-   * Execute file upload node — embed documents into a Milvus collection
-   */
-  private async executeFileUploadNode(node: WorkflowNode, input: any): Promise<any> {
-    const {
-      collection = 'default',
-      content: fileContent,
-      fileName,
-      chunkSize = 512,
-      chunkOverlap = 50,
-      metadata,
-    } = node.data;
-
-    const resolvedCollection = this.interpolateTemplate(collection, input);
-    const resolvedContent = this.interpolateTemplate(fileContent || '', input);
-    const resolvedFileName = this.interpolateTemplate(fileName || 'workflow-upload', input);
-
-    // Content can come from node data or from upstream input
-    const contentToEmbed = resolvedContent || (typeof input === 'string' ? input : input?.content || input?.text || '');
-
-    if (!contentToEmbed) throw new Error('File upload node requires content to embed');
-
-    logger.info({
-      nodeId: node.id,
-      collection: resolvedCollection,
-      contentLength: contentToEmbed.length,
-      chunkSize,
-    }, '[WorkflowEngine] Executing file upload (embed) node');
-
-    const response = await abortableAxiosPost(
-      this,
-      `${this.apiUrl}/api/files/embed`,
-      {
-        collection: resolvedCollection,
-        content: contentToEmbed,
-        fileName: resolvedFileName,
-        chunkSize,
-        chunkOverlap,
-        metadata: metadata ? (typeof metadata === 'string' ? JSON.parse(this.interpolateTemplate(metadata, input)) : metadata) : undefined,
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getInternalAuthHeaders(),
-        },
-        timeout: 120000,
-        validateStatus: () => true,
-      }
-    );
-
-    if (response.status >= 400) {
-      throw new Error(`File upload/embed failed: ${response.data?.error || response.statusText}`);
-    }
-
-    return {
-      collection: resolvedCollection,
-      fileName: resolvedFileName,
-      chunkCount: response.data?.chunkCount || response.data?.chunks || 0,
-      status: 'embedded',
-      ...response.data,
-    };
-  }
-
-  /**
-   * Execute text_splitter node — split documents into chunks
-   */
-  private async executeTextSplitterNode(node: WorkflowNode, input: any): Promise<any> {
-    const strategy = node.data.strategy || 'recursive';
-    const chunkSize = node.data.chunkSize || 512;
-    const chunkOverlap = node.data.chunkOverlap || 50;
-    const separators = node.data.separators || ['\n\n', '\n', '. ', ' '];
-
-    const text = typeof input === 'string' ? input : input?.content || input?.text || input?.document || JSON.stringify(input);
-    if (!text) throw new Error('Text splitter requires text input');
-
-    logger.info({ nodeId: node.id, strategy, chunkSize, textLength: text.length }, '[WorkflowEngine] Splitting text'); // metadata only — no secret interpolation
-
-    const chunks: Array<{ content: string; index: number; metadata: any }> = [];
-
-    if (strategy === 'recursive') {
-      let remaining = text;
-      let index = 0;
-      while (remaining.length > 0) {
-        let end = Math.min(remaining.length, chunkSize);
-        // Try to break at a separator
-        if (end < remaining.length) {
-          for (const sep of separators) {
-            const lastSep = remaining.lastIndexOf(sep, end);
-            if (lastSep > chunkSize * 0.5) { end = lastSep + sep.length; break; }
-          }
-        }
-        chunks.push({ content: remaining.slice(0, end).trim(), index, metadata: { strategy, chunkSize } });
-        remaining = remaining.slice(Math.max(0, end - chunkOverlap));
-        index++;
-      }
-    } else {
-      // Simple fixed-size chunking
-      for (let i = 0; i < text.length; i += chunkSize - chunkOverlap) {
-        chunks.push({ content: text.slice(i, i + chunkSize).trim(), index: chunks.length, metadata: { strategy: 'fixed', chunkSize } });
-      }
-    }
-
-    return { chunks, totalChunks: chunks.length, originalLength: text.length };
-  }
-
-  /**
-   * Execute embedding node — generate vector embeddings
-   */
-  private async executeEmbeddingNode(node: WorkflowNode, input: any): Promise<any> {
-    const model = this.interpolateTemplate(node.data.model || 'text-embedding-3-small', input);
-    const batchSize = node.data.batchSize || 100;
-
-    // Accept array of chunks or single text
-    let texts: string[];
-    if (Array.isArray(input?.chunks)) {
-      texts = input.chunks.map((c: any) => typeof c === 'string' ? c : c.content);
-    } else if (Array.isArray(input)) {
-      texts = input.map((i: any) => typeof i === 'string' ? i : i.content || JSON.stringify(i));
-    } else {
-      texts = [typeof input === 'string' ? input : input?.content || input?.text || JSON.stringify(input)];
-    }
-
-    logger.info({ nodeId: node.id, model, textCount: texts.length }, '[WorkflowEngine] Generating embeddings'); // metadata only — no secret interpolation
-
-    const response = await abortableAxiosPost(
-      this,
-      `${this.apiUrl}/api/v1/embeddings`,
-      { input: texts.slice(0, batchSize), model },
-      { headers: this.getInternalAuthHeaders(), timeout: 60000, validateStatus: () => true }
-    );
-
-    if (response.status >= 400) {
-      // Fallback: use the vector search endpoint's embedding path
-      const fallback = await abortableAxiosPost(
-        this,
-        `${this.apiUrl}/api/v1/vector/embed`,
-        { texts, model },
-        { headers: this.getInternalAuthHeaders(), timeout: 60000, validateStatus: () => true }
-      );
-      return {
-        vectors: fallback.data?.embeddings || [],
-        model,
-        count: texts.length,
-        dimensions: fallback.data?.dimensions || 0,
-        texts,
-      };
-    }
-
-    const embeddings = response.data?.data?.map((d: any) => d.embedding) || response.data?.embeddings || [];
-    return { vectors: embeddings, model, count: texts.length, dimensions: embeddings[0]?.length || 0, texts };
-  }
-
-  /**
-   * Execute vector_store node — write/upsert vectors to Milvus
-   */
-  private async executeVectorStoreNode(node: WorkflowNode, input: any): Promise<any> {
-    const operation = node.data.operation || 'upsert';
-    const collection = this.interpolateTemplate(node.data.collection || 'default', input);
-    const createIfMissing = node.data.createIfMissing !== false;
-
-    const vectors = input?.vectors || [];
-    const texts = input?.texts || [];
-    const metadata = node.data.metadata || input?.metadata || {};
-
-    logger.info({ nodeId: node.id, operation, collection, vectorCount: vectors.length }, '[WorkflowEngine] Vector store operation');
-
-    const response = await abortableAxiosPost(
-      this,
-      `${this.apiUrl}/api/v1/vector/store`,
-      { collection, operation, vectors, texts, metadata, createIfMissing },
-      { headers: this.getInternalAuthHeaders(), timeout: 120000, validateStatus: () => true }
-    );
-
-    if (response.status >= 400) {
-      // Fallback: use the files/embed endpoint
-      const content = texts.join('\n\n');
-      const fallback = await abortableAxiosPost(
-        this,
-        `${this.apiUrl}/api/files/embed`,
-        { content, collection, fileName: `flow-${this.context.executionId}`, chunkSize: 0 },
-        { headers: this.getInternalAuthHeaders(), timeout: 120000, validateStatus: () => true }
-      );
-      return { collection, operation, stored: fallback.data?.chunks || texts.length, ...fallback.data };
-    }
-
-    return { collection, operation, stored: response.data?.count || vectors.length, ...response.data };
-  }
-
-  /**
-   * Execute document_loader node — load content from URLs, files, etc.
-   */
-  private async executeDocumentLoaderNode(node: WorkflowNode, input: any): Promise<any> {
-    const sourceType = node.data.sourceType || 'url';
-    const url = this.interpolateTemplate(node.data.url || '', input) || (typeof input === 'string' ? input : input?.url || input?.source || '');
-    const parseMode = node.data.parseMode || 'auto';
-
-    logger.info({ nodeId: node.id, sourceType, url: url?.slice(0, 100) }, '[WorkflowEngine] Loading document');
-
-    if (sourceType === 'url' && url) {
-      const response = await abortableAxiosGet(this, url, {
-        timeout: 30000,
-        responseType: 'text',
-        headers: { 'Accept': 'text/html,application/json,text/plain,*/*' },
-        validateStatus: () => true,
-      });
-
-      let content = typeof response.data === 'string' ? response.data : JSON.stringify(response.data, null, 2);
-
-      // Strip HTML tags if parseMode is text
-      if (parseMode === 'text' || (parseMode === 'auto' && content.includes('<html'))) {
-        content = content.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/\s+/g, ' ').trim();
-      }
-
-      return {
-        content,
-        source: url,
-        sourceType,
-        contentLength: content.length,
-        mimeType: response.headers['content-type'] || 'text/plain',
-      };
-    }
-
-    // For non-URL sources, pass through input content
-    const content = typeof input === 'string' ? input : input?.content || input?.text || JSON.stringify(input);
-    return { content, source: sourceType, sourceType, contentLength: content.length };
-  }
-
-  /**
-   * Execute structured_output node — enforce JSON schema on LLM response
-   */
-  private async executeStructuredOutputNode(node: WorkflowNode, input: any): Promise<any> {
-    const model = this.interpolateTemplate(node.data.model || 'gpt-4.1', input);
-    const schema = node.data.schema || '{}';
-    const prompt = this.interpolateTemplate(node.data.prompt || '', input) || (typeof input === 'string' ? input : input?.content || input?.prompt || '');
-    const maxRetries = node.data.maxRetries || 2;
-
-    logger.info({ nodeId: node.id, model }, '[WorkflowEngine] Structured output generation');
-
-    const systemPrompt = `You MUST respond with valid JSON matching this schema:\n${schema}\n\nDo not include markdown code fences. Return ONLY the JSON object.`;
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      const response = await abortableAxiosPost(
-        this,
-        `${this.apiUrl}/api/v1/chat/completions`,
-        {
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: prompt },
-          ],
-          temperature: 0.1,
-          response_format: { type: 'json_object' },
-        },
-        { headers: this.getInternalAuthHeaders(), timeout: 60000, validateStatus: () => true }
-      );
-
-      const raw = response.data?.choices?.[0]?.message?.content || response.data?.content || '';
-      try {
-        const parsed = JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim());
-        return { output: parsed, model, attempts: attempt + 1, raw };
-      } catch {
-        if (attempt === maxRetries) {
-          return { output: null, error: 'Failed to parse structured output after retries', raw, model, attempts: attempt + 1 };
-        }
-      }
-    }
-  }
-
-  /**
-   * Execute guardrails node — validate content against safety rules
-   */
-  private async executeGuardrailsNode(node: WorkflowNode, input: any): Promise<any> {
-    const checks = node.data.checks || ['pii', 'toxicity', 'injection'];
-    const action = node.data.action || 'block';
-
-    const content = typeof input === 'string' ? input : input?.content || input?.text || input?.output || JSON.stringify(input);
-
-    logger.info({ nodeId: node.id, checks, contentLength: content.length }, '[WorkflowEngine] Running guardrails'); // metadata only — no secret interpolation
-
-    // Use DLP scanner via API
-    const response = await abortableAxiosPost(
-      this,
-      `${this.apiUrl}/api/v1/guardrails/check`,
-      { content, checks, action },
-      { headers: this.getInternalAuthHeaders(), timeout: 15000, validateStatus: () => true }
-    );
-
-    if (response.status >= 400) {
-      // Fallback: basic regex checks locally
-      const findings: string[] = [];
-      if (checks.includes('pii')) {
-        if (/\b\d{3}-\d{2}-\d{4}\b/.test(content)) findings.push('SSN detected');
-        if (/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(content) && content.match(/@/g)!.length > 3) findings.push('Bulk email addresses');
-      }
-      if (checks.includes('injection')) {
-        if (/ignore.*previous.*instructions|system.*prompt/i.test(content)) findings.push('Prompt injection attempt');
-      }
-
-      const passed = findings.length === 0;
-      return {
-        passed,
-        findings,
-        action: passed ? 'allow' : action,
-        content: passed ? content : (action === 'redact' ? '[REDACTED]' : content),
-        checksRun: checks,
-      };
-    }
-
-    return response.data;
-  }
-
-  /**
-   * Execute error_handler node — receives routed errors and processes them
-   */
-  private async executeErrorHandlerNode(node: WorkflowNode, input: any): Promise<any> {
-    const action = node.data.errorAction || 'log';
-    const errorData = input;
-
-    logger.info({ nodeId: node.id, action }, '[WorkflowEngine] Executing error handler node'); // metadata only — no secret interpolation
-
-    if (action === 'log') {
-      this.safeLog('warn', { errorData, nodeId: node.id }, '[WorkflowEngine] Error handler: logging error'); // errorData is user input — may contain secrets
-      return { action: 'logged', error: errorData };
-    }
-    if (action === 'transform' && node.data.transformExpression) {
-      // S0-2 / B1: was `new Function('error', 'input', ...)`. Now runs in isolate.
-      const result = await runSandboxed(`return ${node.data.transformExpression};`, {
-        globals: { error: errorData.error, input: errorData.input },
-        timeoutMs: 2000,
-      });
-      if (!result.ok) {
-        return { action: 'transform_failed', error: errorData, transformError: result.error };
-      }
-      return result.value;
-    }
-    if (action === 'notify') {
-      this.emitEvent('node_complete', {
-        nodeId: node.id, nodeType: 'error_handler',
-        output: { action: 'notify', channel: node.data.notificationChannel, error: errorData }
-      });
-      return { action: 'notified', channel: node.data.notificationChannel, error: errorData };
-    }
-    return { action, error: errorData };
-  }
-
-  /**
-   * Execute user_context node — injects user context from various sources
-   */
-  private async executeUserContextNode(node: WorkflowNode, input: any): Promise<any> {
-    logger.info({ nodeId: node.id }, '[WorkflowEngine] Executing user context node');
-    try {
-      const sources = node.data.contextSources || ['chat', 'workflow', 'memory'];
-      const query = this.interpolateTemplate(node.data.contextQuery || '', input);
-      const maxTokens = node.data.contextMaxTokens || 2000;
-
-      const headers = this.getInternalAuthHeaders();
-      const resp = await abortableAxiosGet(this, `${this.apiUrl}/api/user-context`, {
-        params: { userId: this.context.userId, sources: sources.join(','), query, maxTokens },
-        headers,
-        timeout: 10000,
-      });
-      return resp.data;
-    } catch (err) {
-      logger.warn({ err, nodeId: node.id }, '[WorkflowEngine] Failed to load user context');
-      return { context: [], error: (err as Error).message };
-    }
-  }
-
-  /**
-   * Execute code node (JavaScript in sandbox or via openagentic)
-   */
-  private async executeCodeNode(node: WorkflowNode, input: any): Promise<any> {
-    const { code, language } = node.data;
-
-    logger.info({
-      nodeId: node.id,
-      language,
-      codeLength: code?.length
-    }, '[WorkflowEngine] Executing code node');
-
-    // For JavaScript, execute in a sandboxed isolate (S0-2 / B1).
-    if (language === 'javascript' || !language) {
-      return this.executeJavaScript(code, input, node.data.timeoutMs, node.data.memoryCapMb);
-    }
-
-    // Only the in-process JavaScript V8 isolate is supported; other
-    // languages have no execution backend in the OSS edition.
-    throw new Error(`Language ${language} execution not yet implemented in workflows`);
-  }
-
-  /**
-   * Execute JavaScript code in a true V8 isolate sandbox (S0-2 / B1).
-   *
-   * Replaces the previous `new Function(...)` pattern, which let user code
-   * escape via `Function.prototype.constructor.constructor("...")`,
-   * `globalThis.process`, and similar tricks. The new sandbox runs each
-   * snippet in a fresh `isolated-vm` context with hard CPU and memory caps
-   * and zero access to host globals.
-   */
-  private async executeJavaScript(code: string, input: any, timeoutMs?: number, memoryCapMb?: number): Promise<any> {
-    const result = await runSandboxed(code, {
-      timeoutMs: timeoutMs ?? 5000,
-      memoryCapMb: memoryCapMb ?? 256,
-      input,
-    });
-    if (!result.ok) {
-      throw new Error(`Code execution error (${result.errorType}): ${result.error}`);
-    }
-    return result.value;
-  }
-
-  /**
-   * Execute condition node - routes to different branches
-   */
-  private async executeConditionNode(node: WorkflowNode, input: any): Promise<any> {
-    // Accept both 'condition' and 'expression' field names (workflows use either)
-    const condition = node.data.condition || node.data.expression;
-    const operator = node.data.operator;
-
-    logger.info({
-      nodeId: node.id,
-      condition,
-      operator
-    }, '[WorkflowEngine] Executing condition node');
-
-    // Evaluate condition - returns string or boolean for flexible edge matching
-    const result = await this.evaluateCondition(condition, operator, input);
-
-    // Store result
-    this.context.nodeResults.set(node.id, result);
-
-    // Route to appropriate branch based on edge labels
-    const outgoing = this.outgoingEdges.get(node.id) || [];
-    const resultStr = String(result).toLowerCase();
-    const isTruthy = result === true || result === 'true' || (typeof result === 'number' && result > 0);
-    const isFalsy = result === false || result === 'false' || result === 0 || result === null || result === undefined;
-
-    // Determine which edges to follow vs skip
-    const followEdges: typeof outgoing = [];
-    const skipEdges: typeof outgoing = [];
-
-    for (const edge of outgoing) {
-      const edgeLabel = (edge.label || '').toLowerCase().trim();
-      const shouldFollow =
-        edgeLabel === resultStr ||
-        (isTruthy && (edgeLabel === 'true' || edgeLabel === 'yes' || edgeLabel === '')) ||
-        (isFalsy && (edgeLabel === 'false' || edgeLabel === 'no')) ||
-        (edge.sourceHandle && edge.sourceHandle.toLowerCase() === resultStr);
-
-      if (shouldFollow || outgoing.length === 1) {
-        followEdges.push(edge);
-      } else {
-        skipEdges.push(edge);
-      }
-    }
-
-    // Fallback: if no edge matched by label, route by position
-    if (followEdges.length === 0 && outgoing.length >= 2) {
-      const targetEdge = isTruthy ? outgoing[0] : outgoing[1];
-      const skippedEdge = isTruthy ? outgoing[1] : outgoing[0];
-      logger.info({
-        nodeId: node.id,
-        result: resultStr,
-        isTruthy,
-        targetNode: targetEdge.target,
-      }, '[WorkflowEngine] Condition: no label match, routing by position');
-      followEdges.push(targetEdge);
-      // Rebuild skip list
-      skipEdges.length = 0;
-      skipEdges.push(skippedEdge);
-    }
-
-    // FIRST: notify merge gates about skipped branches BEFORE executing the matched branch
-    // This prevents merge nodes from hanging when the skipped branch never arrives
-    for (const edge of skipEdges) {
-      this.notifySkippedBranch(edge.target);
-    }
-
-    // THEN: execute the matched branch(es)
-    for (const edge of followEdges) {
-      await this.executeNode(edge.target, input);
-    }
-
-    return result;
-  }
-
-  /**
-   * Evaluate a condition expression - returns string or boolean for flexible routing
-   */
-  /**
-   * When a condition skips a branch, walk downstream from the skipped node
-   * to find any merge nodes and decrement their expected count so they don't hang.
-   */
   /**
    * When a condition skips a branch, walk downstream to find merge nodes
    * and pre-register that one fewer branch will arrive.
@@ -3452,7 +2260,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
         if (gate) {
           gate.expected = Math.max(1, gate.expected - 1);
           if (gate.arrived >= gate.expected && gate.resolve) {
-            (gate.resolve as any)();
+            gate.resolve();
           }
         }
         continue; // Don't traverse past merge
@@ -3463,367 +2271,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
         queue.push(edge.target);
       }
     }
-  }
-
-  private async evaluateCondition(condition: string, operator: string, input: any): Promise<any> {
-    // S0-2 / B1: condition expressions previously ran via `new Function`,
-    // which let user-authored workflow code escape via Function.prototype.constructor.
-    // Now evaluated inside a true V8 isolate via runSandboxed().
-    try {
-      // Resolve {{steps.X.output}} references as named variables instead of inline text.
-      // Without this, template expansion turns "{{steps.llm.output}}.includes('critical')"
-      // into "Long text about critical issues.includes('critical')" — invalid JS.
-      // The fix: replace each {{steps.X.output}} with a variable name (__step_X), then
-      // pass the resolved values as sandboxed globals.
-      const stepVars: Record<string, any> = {};
-      const varCondition = condition.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
-        const trimmedPath = path.trim();
-        if (trimmedPath.startsWith('steps.')) {
-          const parts = trimmedPath.slice(6).split('.');
-          const nameOrId = parts[0];
-          let value = this.context.nodeResults.get(nameOrId);
-          if (value === undefined) {
-            const normalized = nameOrId.toLowerCase().replace(/[-_\s]+/g, '-');
-            for (const [nId] of this.context.nodeResults.entries()) {
-              const node = this.nodeMap.get(nId);
-              const label = (node?.data?.label || '').toLowerCase().replace(/[-_\s]+/g, '-');
-              if (label === normalized || nId.toLowerCase() === normalized) {
-                value = this.context.nodeResults.get(nId);
-                break;
-              }
-            }
-          }
-          if (value !== undefined) {
-            for (const key of parts.slice(1)) {
-              if (key === 'output' && value !== undefined && (typeof value !== 'object' || value[key] === undefined)) continue;
-              if (value && typeof value === 'object' && key in value) value = value[key];
-            }
-          }
-          const strValue = typeof value === 'string' ? value
-            : typeof value === 'object' ? JSON.stringify(value)
-            : String(value ?? '');
-          const varName = `__step_${nameOrId.replace(/[^a-zA-Z0-9_]/g, '_')}`;
-          stepVars[varName] = strValue;
-          return varName;
-        }
-        return this.interpolateTemplate(match, input);
-      });
-
-      if (operator === 'expression' || !operator) {
-        // First attempt: evaluate as JS expression with step vars exposed.
-        const sandboxed = await runSandboxed(`return (${varCondition});`, {
-          input,
-          globals: stepVars,
-          timeoutMs: 2000,
-        });
-        if (sandboxed.ok) return sandboxed.value;
-
-        // Fallback 1: re-resolve raw template inline and evaluate again.
-        const resolvedCondition = this.interpolateTemplate(condition, input);
-        const sandboxed2 = await runSandboxed(`return (${resolvedCondition});`, {
-          input,
-          timeoutMs: 2000,
-        });
-        if (sandboxed2.ok) return sandboxed2.value;
-
-        // Fallback 2: pure template interpolation (legacy compat for non-JS conditions).
-        return this.interpolateTemplate(condition, input);
-      }
-
-      const resolvedCondition = this.interpolateTemplate(condition, input);
-      return !!resolvedCondition;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Execute loop node - iterates over array
-   */
-  private async executeLoopNode(node: WorkflowNode, input: any): Promise<any> {
-    const { iterateOver: _iterateOver, collection, itemVariable = 'item', indexVariable = 'index' } = node.data;
-    const iterateOver = _iterateOver || collection; // Accept both field names
-
-    // Get the array to iterate over
-    let items: any[] = input;
-    if (iterateOver) {
-      const resolved = this.interpolateTemplate(`{{${iterateOver}}}`, input);
-      if (typeof resolved === 'string') {
-        try {
-          items = JSON.parse(resolved);
-        } catch {
-          // If LLM returned plain text, try to extract JSON array from it
-          const arrayMatch = resolved.match(/\[[\s\S]*\]/);
-          if (arrayMatch) {
-            try {
-              items = JSON.parse(arrayMatch[0]);
-            } catch {
-              items = resolved.split('\n').filter((s: string) => s.trim());
-            }
-          } else {
-            items = resolved.split('\n').filter((s: string) => s.trim());
-          }
-          logger.warn({ nodeId: node.id, resolvedLength: resolved.length, itemCount: items.length },
-            '[WorkflowEngine] Loop: resolved value was not valid JSON, split into items');
-        }
-      } else {
-        items = resolved;
-      }
-    }
-
-    if (!Array.isArray(items)) {
-      items = [items];
-    }
-
-    logger.info({
-      nodeId: node.id,
-      itemCount: items.length
-    }, '[WorkflowEngine] Executing loop node');
-
-    const results: any[] = [];
-    const outgoing = this.outgoingEdges.get(node.id) || [];
-
-    for (let i = 0; i < items.length; i++) {
-      // Build loop input: pass the item directly for code nodes
-      // For primitive items (number, string), pass as-is so `return input * 2` works
-      // For object items, spread them and add item/index metadata
-      let loopInput: any;
-      const currentItem = items[i];
-      if (typeof currentItem !== 'object' || currentItem === null) {
-        // Primitive value: pass directly (code node gets `input = 10`)
-        loopInput = currentItem;
-      } else {
-        // Object value: spread it and add loop metadata
-        loopInput = {
-          ...currentItem,
-          [itemVariable]: currentItem,
-          [indexVariable]: i,
-          __loopIndex: i,
-          __loopTotal: items.length,
-        };
-      }
-
-      // Execute downstream nodes for each item
-      for (const edge of outgoing) {
-        const result = await this.executeNode(edge.target, loopInput);
-        results.push(result);
-      }
-    }
-
-    return results;
-  }
-
-  /**
-   * Execute transform node - map, filter, reduce
-   */
-  private async executeTransformNode(node: WorkflowNode, input: any): Promise<any> {
-    const { transformType, transformExpression: _txExpr, expression: _expr } = node.data;
-    const transformExpression = _txExpr || _expr; // Accept both field names
-
-    logger.info({
-      nodeId: node.id,
-      transformType
-    }, '[WorkflowEngine] Executing transform node');
-
-    // Get input array
-    const items = Array.isArray(input) ? input : [input];
-
-    // S0-2 / B1: transform expressions now run inside a V8 isolate.
-    // Each item-level call is one isolate creation, so map/filter/reduce loops
-    // pay an isolate-spawn cost per item — acceptable for typical < 100-item
-    // workloads. For very large arrays, use a code node instead.
-    switch (transformType) {
-      case 'map': {
-        const out: any[] = [];
-        for (let i = 0; i < items.length; i++) {
-          const result = await runSandboxed(`return (${transformExpression});`, {
-            input: items[i],
-            globals: { item: items[i], index: i },
-            timeoutMs: 2000,
-          });
-          if (!result.ok) throw new Error(`Transform map error (${result.errorType}): ${result.error}`);
-          out.push(result.value);
-        }
-        return out;
-      }
-
-      case 'filter': {
-        const out: any[] = [];
-        for (let i = 0; i < items.length; i++) {
-          const result = await runSandboxed(`return !!(${transformExpression});`, {
-            input: items[i],
-            globals: { item: items[i], index: i },
-            timeoutMs: 2000,
-          });
-          if (!result.ok) throw new Error(`Transform filter error (${result.errorType}): ${result.error}`);
-          if (result.value) out.push(items[i]);
-        }
-        return out;
-      }
-
-      case 'reduce': {
-        let acc: any = null;
-        for (let i = 0; i < items.length; i++) {
-          const result = await runSandboxed(`return (${transformExpression});`, {
-            input: items[i],
-            globals: { acc, item: items[i], index: i },
-            timeoutMs: 2000,
-          });
-          if (!result.ok) throw new Error(`Transform reduce error (${result.errorType}): ${result.error}`);
-          acc = result.value;
-        }
-        return acc;
-      }
-
-      case 'extract': {
-        // Extract a field from input using JS expression
-        const result = await runSandboxed(`return (${transformExpression});`, {
-          input,
-          timeoutMs: 2000,
-        });
-        if (result.ok) return result.value;
-        // Fallback: treat as dot-path accessor (legacy compat)
-        let value: any = input;
-        for (const key of (transformExpression || '').split('.')) {
-          value = value?.[key];
-        }
-        return value ?? input;
-      }
-
-      default:
-        return input;
-    }
-  }
-
-  /**
-   * Execute merge node - combines multiple inputs
-   */
-  private async executeMergeNode(node: WorkflowNode, input: any): Promise<any> {
-    const { mergeStrategy = 'object' } = node.data;
-
-    // Get all incoming node results, labeled by source node
-    const incoming = this.incomingEdges.get(node.id) || [];
-    const inputs: any[] = [];
-    const labeledInputs: Record<string, any> = {};
-
-    for (const edge of incoming) {
-      const sourceResult = this.context.nodeResults.get(edge.source);
-      if (sourceResult !== undefined) {
-        inputs.push(sourceResult);
-        // Label by source node label or id for keyed merge
-        const sourceNode = this.nodeMap.get(edge.source);
-        const label = (sourceNode?.data?.label || sourceNode?.id || edge.source)
-          .replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
-        labeledInputs[label] = sourceResult;
-      }
-    }
-
-    // If only one input, pass it through
-    if (inputs.length <= 1) {
-      return inputs[0] || input;
-    }
-
-    logger.info({
-      nodeId: node.id,
-      inputCount: inputs.length,
-      mergeStrategy
-    }, '[WorkflowEngine] Executing merge node');
-
-    switch (mergeStrategy) {
-      case 'array':
-        return inputs;
-
-      case 'object':
-        // Use labeled merge to avoid key collisions (e.g. all inputs having {success, data})
-        return labeledInputs;
-
-      case 'concat':
-        return inputs.flat();
-
-      default:
-        return inputs;
-    }
-  }
-
-  /**
-   * Execute approval node - pauses workflow for human approval
-   * This node creates an approval request and pauses execution until approved/rejected
-   */
-  private async executeApprovalNode(node: WorkflowNode, input: any): Promise<any> {
-    const config = node.data as Partial<ApprovalConfig>;
-    const {
-      approvers = [],
-      requiredCount = 1,
-      timeout = 86400, // 24 hours default
-      timeoutAction = 'reject',
-      escalateTo = [],
-      message,
-      notificationChannels = ['in_app']
-    } = config;
-
-    logger.info({
-      nodeId: node.id,
-      approvers,
-      requiredCount,
-      timeout
-    }, '[WorkflowEngine] Executing approval node - pausing workflow');
-
-    // Create approval record in database — throws on any DB error (fail-closed).
-    const approval = await createApprovalRecord(prisma, {
-      executionId: this.context.executionId,
-      nodeId: node.id,
-      approvers,
-      requiredCount,
-      timeoutSeconds: timeout,
-      timeoutAction,
-      message: message || `Approval required for workflow step: ${node.id}`,
-      contextData: {
-        input,
-        nodeResults: Object.fromEntries(this.context.nodeResults),
-        notificationChannels
-      },
-      notificationChannels
-    });
-
-    // Update execution status to 'awaiting_approval'
-    try {
-      await prisma.workflowExecution.update({
-        where: { id: this.context.executionId },
-        data: {
-          status: 'awaiting_approval',
-          current_node_id: node.id,
-          state: {
-            nodeResults: Object.fromEntries(this.context.nodeResults),
-            variables: Object.fromEntries(this.context.variables),
-            pendingApprovalId: approval?.id,
-            input
-          }
-        }
-      });
-    } catch (dbErr) {
-      logger.warn({ dbErr, nodeId: node.id }, '[WorkflowEngine] Could not update execution for approval');
-    }
-
-    // Emit approval required event
-    this.emitEvent('approval_required', {
-      approvalId: approval?.id,
-      nodeId: node.id,
-      approvers,
-      message: approval?.message || `Approval required for ${node.id}`,
-      expiresAt: approval?.timeout_at
-    });
-
-    // Send notifications via notification service
-    await this.sendApprovalNotifications(approval.id, approvers, message || `Approval required`, notificationChannels);
-
-    // Return approval info - execution is now paused
-    return {
-      status: 'awaiting_approval',
-      approvalId: approval.id,
-      message: 'Workflow paused - awaiting human approval',
-      approvers,
-      expiresAt: approval.timeout_at
-    };
   }
 
   /**
@@ -3856,355 +2303,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
   }
 
   /**
-   * Execute wait node - pauses for specified duration
-   */
-  private async executeWaitNode(node: WorkflowNode, input: any): Promise<any> {
-    const { duration = 0, unit = 'seconds' } = node.data;
-
-    // Convert to milliseconds
-    let durationMs = duration;
-    switch (unit) {
-      case 'ms':
-      case 'milliseconds': durationMs = duration; break;
-      case 'minutes': durationMs = duration * 60 * 1000; break;
-      case 'hours': durationMs = duration * 60 * 60 * 1000; break;
-      case 'days': durationMs = duration * 24 * 60 * 60 * 1000; break;
-      default: durationMs = duration * 1000; // seconds
-    }
-
-    logger.info({
-      nodeId: node.id,
-      duration,
-      unit,
-      durationMs
-    }, '[WorkflowEngine] Executing wait node');
-
-    // For short waits (< 30s), just sleep
-    if (durationMs < 30000) {
-      await new Promise(resolve => setTimeout(resolve, durationMs));
-      return { waited: true, duration: durationMs };
-    }
-
-    // For longer waits, save state and schedule resume
-    await prisma.workflowExecution.update({
-      where: { id: this.context.executionId },
-      data: {
-        status: 'waiting',
-        current_node_id: node.id,
-        resume_at: new Date(Date.now() + durationMs),
-        state: {
-          nodeResults: Object.fromEntries(this.context.nodeResults),
-          variables: Object.fromEntries(this.context.variables),
-          input
-        }
-      }
-    });
-
-    this.emitEvent('execution_paused', {
-      nodeId: node.id,
-      resumeAt: new Date(Date.now() + durationMs),
-      reason: 'wait_node'
-    });
-
-    return {
-      status: 'waiting',
-      resumeAt: new Date(Date.now() + durationMs),
-      message: `Workflow paused - will resume in ${duration} ${unit}`
-    };
-  }
-
-  /**
-   * Execute Agent Spawn node (A2A) - spawn a sub-agent for specific tasks
-   * Enables Agent-to-Agent communication patterns
-   */
-  private async executeAgentSpawnNode(node: WorkflowNode, input: any): Promise<any> {
-    const startTime = Date.now();
-    const {
-      agentType = 'general',
-      task,
-      taskDescription,        // Alias for task (templates may use either)
-      model,
-      tools = [],
-      systemPrompt,
-      maxTurns = 10,
-      timeout = 120000,
-      returnType = 'result',
-      waitForCompletion = true
-    } = node.data;
-
-    // Interpolate task description (support both field names)
-    const rawTask = task || taskDescription || '';
-    const resolvedTask = this.interpolateTemplate(rawTask, input);
-
-    if (!resolvedTask) {
-      throw new Error('Agent spawn node requires a task description');
-    }
-
-    // Resolve agent: prefer DB agentId, then map role to DB agent_type
-    const agentRole = node.data.agentRole || agentType;
-    // Legacy role mapping — maps old template roles to DB agent_type values
-    const ROLE_TO_AGENT_TYPE: Record<string, string> = {
-      'general': 'reasoning', 'researcher': 'reasoning', 'research': 'reasoning',
-      'coder': 'code_execution', 'code-generator': 'code_execution',
-      'analyst': 'data_query', 'data-analyst': 'data_query',
-      'security-scanner': 'tool_orchestration', 'investigator': 'reasoning',
-      'deployer': 'tool_orchestration', 'urgent-handler': 'reasoning',
-      'routine-handler': 'summarization', 'planner': 'planning',
-      'validator': 'validation', 'summarizer': 'summarization',
-      'synthesizer': 'synthesis', 'deep-reasoner': 'reasoning',
-      'fact-checker': 'validation',
-    };
-    const resolvedRole = ROLE_TO_AGENT_TYPE[agentRole] || ROLE_TO_AGENT_TYPE[agentType] || agentRole;
-    const openagenticProxyUrl = process.env.OPENAGENTIC_PROXY_URL || 'http://openagentic-proxy:3300';
-
-    logger.info({
-      nodeId: node.id,
-      agentType,
-      agentRole,
-      resolvedRole,
-      agentId: node.data.agentId,
-      model,
-      toolCount: tools.length,
-      maxTurns
-    }, '[WorkflowEngine] Executing Agent Spawn via openagentic-proxy (DB-resolved)');
-
-    try {
-      // Call openagentic-proxy execute-sync directly with role — openagentic-proxy resolves from DB
-      const executeResponse = await abortableAxiosPost(
-        this,
-        `${openagenticProxyUrl}/api/agents/execute-sync`,
-        {
-          agents: [{
-            role: resolvedRole,
-            task: resolvedTask,
-            model: model || undefined,
-            tools: tools.length > 0 ? tools : undefined,
-            systemPrompt: systemPrompt || undefined,
-            maxTurns: maxTurns || 10,
-            timeout: timeout || 120000,
-          }],
-          orchestration: 'parallel',
-          aggregation: 'first',
-          sessionId: this.context.executionId,
-          userId: this.context.userId,
-          userMessage: resolvedTask,
-          totalBudgetCents: 200,
-          timeoutMs: timeout || 120000,
-          flowContext: {
-            flowId: this.context.workflowId,
-            executionId: this.context.executionId,
-            nodeId: node.id,
-          },
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            ...this.getOpenAgenticProxyAuthHeaders(),
-            'X-Workflow-Execution': this.context.executionId,
-          },
-          timeout: (timeout || 120000) + 30000,
-        }
-      );
-
-      if (executeResponse.status >= 200 && executeResponse.status < 300) {
-        const agentResult = {
-          source: 'agent_spawn',
-          agentId: node.data.agentId || resolvedRole,
-          agentType: agentRole,
-          executionId: executeResponse.data?.executionId,
-          status: executeResponse.data?.results?.[0]?.status || 'completed',
-          content: executeResponse.data?.output || '',
-          output: executeResponse.data?.output || '',
-          tokenUsage: executeResponse.data?.metrics,
-        };
-        // Record to DB for observability dashboard
-        this.recordFlowAgentExecution(node.id, resolvedRole, 'completed',
-          Date.now() - startTime,
-          executeResponse.data?.metrics);
-        return agentResult;
-      }
-
-      // Agent-proxy not available — fallback to LLM completion
-      logger.warn({
-        nodeId: node.id,
-        status: executeResponse.status,
-        error: executeResponse.data?.error,
-      }, '[WorkflowEngine] Agent-proxy unavailable, falling back to LLM completion');
-
-      return this.agentSpawnFallbackLLM(node, resolvedTask, input, agentRole);
-
-    } catch (error: any) {
-      // Network error → fallback to LLM completion
-      logger.warn({
-        nodeId: node.id,
-        error: error.message,
-      }, '[WorkflowEngine] Agent-proxy call failed, falling back to LLM completion');
-
-      return this.agentSpawnFallbackLLM(node, resolvedTask, input, agentRole);
-    }
-  }
-
-  /**
-   * Record a flow-triggered agent execution to the DB for observability.
-   * Agent-proxy only records Prometheus metrics — this fills the gap so
-   * the Agent Execution Dashboard shows flow-spawned agents too.
-   */
-  private recordFlowAgentExecution(
-    nodeId: string,
-    agentType: string,
-    status: 'completed' | 'failed',
-    durationMs: number,
-    metrics?: { inputTokens?: number; outputTokens?: number; totalTokens?: number; costCents?: number },
-    error?: string,
-  ): void {
-    // Find the DB agent matching this type to get the loop_id FK
-    prisma.agent.findFirst({ where: { agent_type: agentType }, select: { id: true } })
-      .then((agent: any) => {
-        if (!agent) return; // No matching agent in DB — skip recording
-        return prisma.agentRunLog.create({
-          data: {
-            loop_id: agent.id,
-            session_id: this.context.executionId,
-            user_id: this.context.userId,
-            status,
-            model_used: 'auto', // Agent-proxy resolved the model
-            duration_ms: durationMs,
-            input_tokens: metrics?.inputTokens || 0,
-            output_tokens: metrics?.outputTokens || 0,
-            total_tokens: metrics?.totalTokens || 0,
-            estimated_cost: metrics?.costCents || 0,
-            error: error || undefined,
-            tool_calls_involved: [`flow:${this.context.workflowId}`, `node:${nodeId}`],
-          },
-        });
-      })
-      .catch((err: any) => {
-        logger.warn({ err, nodeId, agentType }, '[WorkflowEngine] Failed to record agent execution (non-fatal)');
-      });
-  }
-
-  /**
-   * Collect results from openagentic-proxy SSE stream
-   */
-  private async collectAgentSSE(
-    executionId: string,
-    timeout: number
-  ): Promise<{ status: string; content: string; tokenUsage?: any }> {
-    // Plain Promise executor (no async) so any throw in the inner async IIFE
-    // becomes a resolve() path instead of a silently-swallowed rejection.
-    return new Promise<{ status: string; content: string; tokenUsage?: any }>((resolve) => {
-      const timer = setTimeout(() => {
-        resolve({ status: 'timeout', content: 'Agent execution timed out' });
-      }, timeout);
-
-      void (async () => {
-        try {
-          const response = await abortableAxiosGet(
-            this,
-            `${this.apiUrl}/api/agents/stream/${executionId}`,
-            {
-              headers: {
-                ...this.getInternalAuthHeaders(),
-                'Accept': 'text/event-stream',
-              },
-              responseType: 'stream',
-              timeout,
-            }
-          );
-
-          let content = '';
-          let status = 'completed';
-          let tokenUsage: any;
-
-          response.data.on('data', (chunk: Buffer) => {
-            const text = chunk.toString();
-            for (const line of text.split('\n')) {
-              if (line.startsWith('data: ')) {
-                try {
-                  const event = JSON.parse(line.slice(6));
-                  if (event.type === 'agent_message' || event.type === 'content') {
-                    content += event.content || event.data?.content || '';
-                  } else if (event.type === 'agent_complete' || event.type === 'complete') {
-                    status = event.status || 'completed';
-                    content = event.result || event.content || content;
-                    tokenUsage = event.token_usage || event.tokenUsage;
-                  } else if (event.type === 'agent_error' || event.type === 'error') {
-                    status = 'error';
-                    content = event.error || event.message || 'Agent execution failed';
-                  }
-                } catch {
-                  // Skip non-JSON lines
-                }
-              }
-            }
-          });
-
-          response.data.on('end', () => {
-            clearTimeout(timer);
-            resolve({ status, content, tokenUsage });
-          });
-
-          response.data.on('error', () => {
-            clearTimeout(timer);
-            resolve({ status: 'error', content: content || 'SSE stream error' });
-          });
-
-        } catch (error: any) {
-          clearTimeout(timer);
-          resolve({ status: 'error', content: `Failed to connect to agent stream: ${error.message}` });
-        }
-      })();
-    });
-  }
-
-  /**
-   * Fallback: execute agent task via LLM completion when openagentic-proxy is unavailable
-   */
-  private async agentSpawnFallbackLLM(
-    node: WorkflowNode,
-    task: string,
-    input: any,
-    agentRole: string
-  ): Promise<any> {
-    const systemPrompt = node.data.systemPrompt
-      ? this.interpolateTemplate(node.data.systemPrompt, input)
-      : `You are a specialized ${agentRole} agent. Complete the assigned task thoroughly and return structured results.`;
-
-    const messages: Array<{ role: string; content: string }> = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: task },
-    ];
-
-    const response = await abortableAxiosPost(
-      this,
-      `${this.apiUrl}/api/v1/chat/completions`,
-      {
-        messages,
-        max_tokens: 4096,
-        stream: false,
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getInternalAuthHeaders(),
-          'X-Workflow-Execution': this.context.executionId,
-        },
-        timeout: 120000,
-      }
-    );
-
-    const content = response.data?.choices?.[0]?.message?.content || '';
-    return {
-      source: 'agent_spawn_fallback',
-      agentType: agentRole,
-      status: 'completed',
-      content,
-      output: content,
-      usage: response.data?.usage,
-    };
-  }
-
-  /**
    * Calculate token cost based on model pricing.
    * Delegates to PricingLookup which reads rates from the LLMCostRate DB table.
    * Never throws — uses fallback economy rates if the DB is unavailable or has no row.
@@ -4214,66 +2312,10 @@ export class WorkflowExecutionEngine extends EventEmitter {
   }
 
   /**
-   * Poll for agent completion status (legacy — kept for backwards compat)
-   */
-  private async pollAgentCompletion(
-    agentId: string,
-    timeout: number
-  ): Promise<{
-    status: string;
-    result: any;
-    history?: any[];
-    lastMessage?: any;
-    tokenUsage?: any;
-    turnCount?: number;
-  }> {
-    const startTime = Date.now();
-    const pollInterval = 2000;
-
-    while (Date.now() - startTime < timeout) {
-      try {
-        const response = await abortableAxiosGet(
-          this,
-          `${this.apiUrl}/api/agents/${agentId}/status`,
-          {
-            headers: {
-              ...this.getInternalAuthHeaders(),
-            },
-            timeout: 10000
-          }
-        );
-
-        const { status, result, history, token_usage, turn_count } = response.data;
-
-        if (status === 'completed' || status === 'failed' || status === 'cancelled') {
-          return {
-            status,
-            result,
-            history,
-            lastMessage: history?.[history.length - 1],
-            tokenUsage: token_usage,
-            turnCount: turn_count
-          };
-        }
-
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
-
-      } catch (error: any) {
-        logger.warn({
-          agentId,
-          error: error.message
-        }, '[WorkflowEngine] Agent poll failed, retrying...');
-      }
-    }
-
-    throw new Error(`Agent ${agentId} did not complete within timeout`);
-  }
-
-  /**
    * Resume a paused workflow execution from a checkpoint
    * Called when an approval is received or wait time elapses
    */
-  async resumeExecution(fromNodeId: string, resumeInput?: any): Promise<{ success: boolean; output: any; error?: string }> {
+  async resumeExecution(fromNodeId: string, resumeInput?: unknown): Promise<{ success: boolean; output: unknown; error?: string }> {
     logger.info({
       executionId: this.context.executionId,
       fromNodeId,
@@ -4315,18 +2357,19 @@ export class WorkflowExecutionEngine extends EventEmitter {
         n => (this.outgoingEdges.get(n.id)?.length || 0) === 0
       );
 
-      let finalOutput: any = {};
+      const finalOutputs: Record<string, unknown> = {};
       const resumeEnvelopes: OutputEnvelope[] = [];
       for (const node of terminalNodes) {
         const result = this.context.nodeResults.get(node.id);
         if (result !== undefined) {
-          finalOutput[node.id] = result;
+          finalOutputs[node.id] = result;
           resumeEnvelopes.push(this.formatOutputEnvelope(node, result));
         }
       }
 
-      if (Object.keys(finalOutput).length === 1) {
-        finalOutput = Object.values(finalOutput)[0];
+      let finalOutput: unknown = finalOutputs;
+      if (Object.keys(finalOutputs).length === 1) {
+        finalOutput = Object.values(finalOutputs)[0];
       }
 
       await this.updateExecutionRecord('completed', finalOutput);
@@ -4354,8 +2397,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
 
       return { success: true, output: finalOutput };
 
-    } catch (error: any) {
-      const errorMessage = error.message || 'Unknown error';
+    } catch (error) {
+      const errorMessage = (error as Error).message || 'Unknown error';
       try {
         await this.updateExecutionRecord('failed', null, errorMessage);
       } catch (dbErr) {
@@ -4364,552 +2407,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
       this.emitEvent('execution_error', { error: errorMessage });
       return { success: false, output: null, error: errorMessage };
     }
-  }
-
-  // ===========================================================================
-  // Unified OpenAgentic LLM Node
-  // ===========================================================================
-
-  /**
-   * Execute a knowledge ingestion node - pushes content into Milvus via the API
-   * Takes output from previous node (e.g. LLM-generated text) and ingests into shared or private collection
-   */
-  private async executeKnowledgeIngestNode(node: WorkflowNode, input: any): Promise<any> {
-    const { collection = 'shared', source = 'workflow' } = node.data || {};
-
-    // Get the content from previous node output or from node config
-    const content = input?.output?.content || input?.output || input?.content || node.data?.content || '';
-    if (!content || typeof content !== 'string' || content.length < 10) {
-      return { success: false, error: 'No content to ingest (need at least 10 chars)', chunksIngested: 0 };
-    }
-
-    const userId = this.context?.userId || 'system';
-    logger.info({ nodeId: node.id, collection, contentLength: content.length, userId }, '[WorkflowEngine] Executing knowledge ingest node'); // metadata only — no secret interpolation
-
-    try {
-      // Call the API's knowledge ingestion endpoint
-      const apiUrl = process.env.API_URL || 'http://openagentic-api:8000';
-      const response = await fetch(`${apiUrl}/api/chat/knowledge/ingest`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Request-From': 'internal',
-          'X-Internal-Secret': process.env.INTERNAL_SERVICE_SECRET || '',
-          'X-User-Id': userId,
-        },
-        body: JSON.stringify({
-          content,
-          collection,
-          metadata: { source, workflow_node: node.id, ingested_by: 'workflow_engine' }
-        })
-      });
-
-      const result = await response.json() as any;
-      this.safeLog('info', { nodeId: node.id, result }, '[WorkflowEngine] Knowledge ingestion result');
-      return result;
-    } catch (error: any) {
-      this.safeLog('error', { nodeId: node.id, error: error.message }, '[WorkflowEngine] Knowledge ingestion failed'); // error.message may contain secret-interpolated content
-      return { success: false, error: error.message, chunksIngested: 0 };
-    }
-  }
-
-  /**
-   * Execute an OpenAgentic LLM node - routes through platform's provider system
-   * Uses the intelligence slider or explicit model override
-   */
-  private async executeOpenAgenticLLMNode(node: WorkflowNode, input: any): Promise<any> {
-    const { prompt, systemPrompt, temperature, maxTokens, modelOverride, sliderOverride, enableThinking, thinkingBudget } = node.data;
-    const resolvedPrompt = this.interpolateTemplate(prompt || '', input);
-    const resolvedSystemPrompt = this.interpolateTemplate(systemPrompt || '', input);
-
-    logger.info({ nodeId: node.id, modelOverride, sliderOverride }, '[WorkflowEngine] Executing OpenAgentic LLM node');
-
-    const messages: Array<{ role: string; content: string }> = [];
-    if (resolvedSystemPrompt) {
-      messages.push({ role: 'system', content: resolvedSystemPrompt });
-    }
-
-    // Auto-append input context when prompt doesn't reference template variables
-    // (mirrors executeLLMNode behavior — ensures LLM always sees workflow data)
-    let userContent = resolvedPrompt;
-    const hadTemplateVars = (prompt || '').includes('{{');
-    if (!hadTemplateVars && input != null) {
-      const inputStr = typeof input === 'string' ? input
-        : typeof input === 'object' ? JSON.stringify(input, null, 2)
-        : String(input);
-      if (inputStr && inputStr !== '{}' && inputStr !== 'null') {
-        userContent = `${resolvedPrompt}\n\n--- Input Data ---\n${inputStr}`;
-      }
-    }
-
-    messages.push({ role: 'user', content: userContent });
-
-    const requestBody: any = {
-      model: 'auto',  // Smart Router selects based on task complexity + slider position
-      messages,
-      temperature: temperature ?? 0.7,
-      max_tokens: maxTokens || 4096,
-      stream: false,
-    };
-
-    // Allow explicit model override, otherwise Smart Router handles it
-    if (modelOverride) {
-      requestBody.model = modelOverride;
-    }
-    if (sliderOverride !== null && sliderOverride !== undefined) {
-      requestBody.sliderPosition = sliderOverride;
-    }
-    if (enableThinking) {
-      requestBody.enableThinking = true;
-      requestBody.thinkingBudget = thinkingBudget || 8000;
-    }
-
-    const response = await abortableAxiosPost(
-      this,
-      `${this.apiUrl}/api/v1/chat/completions`,
-      requestBody,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getInternalAuthHeaders(),
-          'X-Workflow-Execution': this.context.executionId
-        },
-        timeout: 120000
-      }
-    );
-
-    return {
-      content: response.data?.choices?.[0]?.message?.content || '',
-      model: response.data?.model,
-      usage: response.data?.usage,
-      provider: 'openagentic',
-    };
-  }
-
-  // ===========================================================================
-  // Multi-Agent Orchestrator Node
-  // ===========================================================================
-
-  /**
-   * Execute a Multi-Agent node - spawns multiple concurrent agents and aggregates results
-   */
-  private async executeMultiAgentNode(node: WorkflowNode, input: any): Promise<any> {
-    const { agents = [], maxConcurrency = 5, aggregationStrategy = 'merge', sharedContext = true, timeoutMs = 120000 } = node.data;
-    const openagenticProxyUrl = process.env.OPENAGENTIC_PROXY_URL || 'http://openagentic-proxy:3300';
-
-    logger.info({ nodeId: node.id, agentCount: agents.length, maxConcurrency }, '[WorkflowEngine] Executing Multi-Agent via openagentic-proxy');
-
-    if (!agents.length) {
-      return { content: 'No agents configured', agents: [] };
-    }
-
-    // Build agent specs for openagentic-proxy — each agent resolved from DB by role
-    const agentSpecs = agents.map((agent: any, idx: number) => {
-      const resolvedTask = this.interpolateTemplate(agent.taskDescription || agent.prompt || '', input);
-      const taskWithContext = sharedContext && input
-        ? `Context: ${JSON.stringify(input)}\n\nTask: ${resolvedTask}`
-        : resolvedTask;
-
-      return {
-        agentId: agent.agentId || undefined,
-        role: agent.role || 'custom',
-        task: taskWithContext,
-        model: agent.model || undefined,
-        tools: agent.tools || [],
-        systemPrompt: agent.systemPrompt || undefined,
-        maxTurns: agent.maxTurns || 5,
-        costBudget: agent.costBudget || 50,
-        timeout: timeoutMs,
-      };
-    });
-
-    try {
-      // Route through openagentic-proxy — agents resolved from DB with composable prompts
-      const response = await abortableAxiosPost(
-        this,
-        `${openagenticProxyUrl}/api/agents/execute-sync`,
-        {
-          agents: agentSpecs,
-          orchestration: 'parallel',
-          aggregation: aggregationStrategy === 'first' ? 'first' : aggregationStrategy === 'vote' ? 'vote' : 'merge',
-          sessionId: this.context.executionId,
-          userId: this.context.userId,
-          userMessage: typeof input === 'string' ? input : (input?.message || JSON.stringify(input)),
-          totalBudgetCents: 200,
-          timeoutMs,
-          maxConcurrency,
-          flowContext: {
-            flowId: this.context.workflowId,
-            executionId: this.context.executionId,
-            nodeId: node.id,
-          },
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            ...this.getOpenAgenticProxyAuthHeaders(),
-            'X-Workflow-Execution': this.context.executionId,
-          },
-          timeout: timeoutMs + 30000,
-        }
-      );
-
-      return {
-        content: response.data?.output || '',
-        agents: response.data?.results || [],
-        agentCount: response.data?.results?.length || agentSpecs.length,
-        strategy: aggregationStrategy,
-        metrics: response.data?.metrics || {},
-      };
-    } catch (error: any) {
-      // Fallback: direct LLM calls if openagentic-proxy is unavailable
-      this.safeLog('warn', { nodeId: node.id, error: error.message }, '[WorkflowEngine] Agent-proxy unavailable for multi_agent, falling back to direct LLM'); // error.message may contain secret-interpolated content
-
-      const results: any[] = [];
-      for (let i = 0; i < agentSpecs.length; i += maxConcurrency) {
-        const batch = agentSpecs.slice(i, i + maxConcurrency);
-        const batchResults = await Promise.allSettled(
-          batch.map(async (spec: any) => {
-            const messages: Array<{ role: string; content: string }> = [];
-            if (spec.systemPrompt) messages.push({ role: 'system', content: spec.systemPrompt });
-            messages.push({ role: 'user', content: spec.task });
-
-            const res = await abortableAxiosPost(
-              this,
-              `${this.apiUrl}/api/v1/chat/completions`,
-              { model: 'auto', messages, max_tokens: 4096, stream: false },
-              {
-                headers: { 'Content-Type': 'application/json', ...this.getInternalAuthHeaders() },
-                timeout: timeoutMs,
-              }
-            );
-            return {
-              agentId: spec.agentId || spec.role,
-              role: spec.role,
-              content: res.data?.choices?.[0]?.message?.content || '',
-              usage: res.data?.usage,
-            };
-          })
-        );
-
-        for (const result of batchResults) {
-          results.push(result.status === 'fulfilled' ? result.value : { error: (result as any).reason?.message || 'Agent failed' });
-        }
-      }
-
-      const aggregated = results.map(r => r.content || '').filter(Boolean).join('\n\n---\n\n');
-      return { content: aggregated, agents: results, agentCount: results.length, strategy: aggregationStrategy };
-    }
-  }
-
-  // ===========================================================================
-  // Cloud AI Provider Nodes (Legacy - kept for backwards compatibility)
-  // ===========================================================================
-
-  /**
-   * Execute a Bedrock node -- sends a prompt to AWS Bedrock via the API's LLM completion endpoint
-   */
-  private async executeBedrockNode(node: WorkflowNode, input: any): Promise<any> {
-    const { model, prompt, systemPrompt, temperature, maxTokens } = node.data;
-    const resolvedPrompt = this.interpolateTemplate(prompt || '', input);
-    const resolvedSystemPrompt = this.interpolateTemplate(systemPrompt || '', input);
-
-    logger.info({ nodeId: node.id, model }, '[WorkflowEngine] Executing Bedrock node');
-
-    const messages: Array<{ role: string; content: string }> = [];
-    if (resolvedSystemPrompt) {
-      messages.push({ role: 'system', content: resolvedSystemPrompt });
-    }
-    messages.push({ role: 'user', content: resolvedPrompt });
-
-    const response = await abortableAxiosPost(
-      this,
-      `${this.apiUrl}/api/v1/chat/completions`,
-      {
-        model: model || process.env.AWS_BEDROCK_CHAT_MODEL || process.env.DEFAULT_MODEL,
-        messages,
-        temperature: temperature ?? 0.7,
-        max_tokens: maxTokens || 4096,
-        stream: false,
-        provider: 'bedrock'
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getInternalAuthHeaders(),
-          'X-Workflow-Execution': this.context.executionId
-        },
-        timeout: 120000
-      }
-    );
-
-    return {
-      content: response.data?.choices?.[0]?.message?.content || '',
-      model: response.data?.model,
-      usage: response.data?.usage,
-      provider: 'bedrock'
-    };
-  }
-
-  /**
-   * Execute a Vertex AI node -- sends a prompt to Google Vertex AI via the API's LLM completion endpoint
-   */
-  private async executeVertexNode(node: WorkflowNode, input: any): Promise<any> {
-    const { model, prompt, systemPrompt, temperature, maxTokens } = node.data;
-    const resolvedPrompt = this.interpolateTemplate(prompt || '', input);
-    const resolvedSystemPrompt = this.interpolateTemplate(systemPrompt || '', input);
-
-    logger.info({ nodeId: node.id, model }, '[WorkflowEngine] Executing Vertex AI node');
-
-    const messages: Array<{ role: string; content: string }> = [];
-    if (resolvedSystemPrompt) {
-      messages.push({ role: 'system', content: resolvedSystemPrompt });
-    }
-    messages.push({ role: 'user', content: resolvedPrompt });
-
-    const response = await abortableAxiosPost(
-      this,
-      `${this.apiUrl}/api/v1/chat/completions`,
-      {
-        model: model || MODELS.vertexChat,
-        messages,
-        temperature: temperature ?? 0.7,
-        max_tokens: maxTokens || 4096,
-        stream: false,
-        provider: 'vertex'
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getInternalAuthHeaders(),
-          'X-Workflow-Execution': this.context.executionId
-        },
-        timeout: 120000
-      }
-    );
-
-    return {
-      content: response.data?.choices?.[0]?.message?.content || '',
-      model: response.data?.model,
-      usage: response.data?.usage,
-      provider: 'vertex'
-    };
-  }
-
-  /**
-   * Execute an Azure AI node -- sends a prompt to Azure OpenAI via the API's LLM completion endpoint
-   */
-  private async executeAzureAINode(node: WorkflowNode, input: any): Promise<any> {
-    const { model, prompt, systemPrompt, temperature, maxTokens, deploymentName } = node.data;
-    const resolvedPrompt = this.interpolateTemplate(prompt || '', input);
-    const resolvedSystemPrompt = this.interpolateTemplate(systemPrompt || '', input);
-
-    logger.info({ nodeId: node.id, model, deploymentName }, '[WorkflowEngine] Executing Azure AI node');
-
-    const messages: Array<{ role: string; content: string }> = [];
-    if (resolvedSystemPrompt) {
-      messages.push({ role: 'system', content: resolvedSystemPrompt });
-    }
-    messages.push({ role: 'user', content: resolvedPrompt });
-
-    const response = await abortableAxiosPost(
-      this,
-      `${this.apiUrl}/api/v1/chat/completions`,
-      {
-        model: model || deploymentName || MODELS.azureOpenai,
-        messages,
-        temperature: temperature ?? 0.7,
-        max_tokens: maxTokens || 4096,
-        stream: false,
-        provider: 'azure_openai'
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getInternalAuthHeaders(),
-          'X-Workflow-Execution': this.context.executionId
-        },
-        timeout: 120000
-      }
-    );
-
-    return {
-      content: response.data?.choices?.[0]?.message?.content || '',
-      model: response.data?.model,
-      usage: response.data?.usage,
-      provider: 'azure_openai'
-    };
-  }
-
-  /**
-   * Execute an Agent-Proxy node -- delegates to openagentic-proxy service for orchestrated agent execution
-   */
-  private async executeOpenAgenticProxyNode(
-    node: WorkflowNode,
-    input: any,
-    orchestration: 'parallel' | 'sequential' | 'supervisor'
-  ): Promise<any> {
-    const startTime = Date.now();
-    const openagenticProxyUrl = process.env.OPENAGENTIC_PROXY_URL || 'http://openagentic-proxy:3300';
-    const nodeData = node.data || {};
-
-    logger.info({
-      nodeId: node.id,
-      nodeType: node.type,
-      orchestration,
-      agentId: nodeData.agentId
-    }, '[WorkflowEngine] Executing openagentic-proxy node');
-
-    // Build agent specs based on node type
-    let agents: any[] = [];
-
-    if (node.type === 'agent_single') {
-      agents = [{
-        agentId: nodeData.agentId || undefined,
-        role: nodeData.role || 'custom',
-        task: this.interpolateTemplate(nodeData.prompt || nodeData.task || '{{input.message}}', input),
-        model: nodeData.model || undefined,
-        tools: nodeData.tools || [],
-        systemPrompt: nodeData.systemPrompt || undefined,
-        maxTurns: nodeData.maxTurns || 5,
-        costBudget: nodeData.costBudget || 50,
-        timeout: nodeData.timeout || 60000,
-      }];
-    } else if (node.type === 'agent_pool') {
-      const agentList = nodeData.agents || [];
-      agents = agentList.map((a: any) => ({
-        agentId: a.agentId || undefined,
-        role: a.role || 'custom',
-        task: this.interpolateTemplate(a.task || '{{input.message}}', input),
-        model: a.model || undefined,
-        tools: a.tools || [],
-        maxTurns: a.maxTurns || 5,
-        costBudget: a.costBudget || 50,
-        timeout: a.timeout || 60000,
-      }));
-      if (agents.length === 0) {
-        return { error: 'Agent pool has no agents configured', output: '' };
-      }
-    } else if (node.type === 'agent_supervisor') {
-      const workers = nodeData.workers || [];
-      agents = [{
-        role: 'supervisor',
-        task: this.interpolateTemplate(nodeData.supervisorPrompt || '{{input.message}}', input),
-        model: nodeData.supervisorModel || undefined,
-        maxTurns: nodeData.maxTurns || 10,
-      }];
-      // Workers are passed alongside for the supervisor strategy
-      for (const w of workers) {
-        agents.push({
-          agentId: w.agentId || undefined,
-          role: w.role || 'custom',
-          task: '{{delegated}}', // Supervisor assigns tasks dynamically
-          model: w.model || undefined,
-          tools: w.tools || [],
-          maxTurns: w.maxTurns || 5,
-        });
-      }
-    }
-
-    try {
-      const response = await abortableAxiosPost(
-        this,
-        `${openagenticProxyUrl}/api/agents/execute-sync`,
-        {
-          agents,
-          orchestration,
-          aggregation: nodeData.aggregation || 'merge',
-          sessionId: this.context.executionId,
-          userId: this.context.userId,
-          userMessage: typeof input === 'string' ? input : (input?.message || JSON.stringify(input)),
-          totalBudgetCents: nodeData.totalBudget || 200,
-          timeoutMs: nodeData.timeout || 120000,
-          maxConcurrency: nodeData.concurrency || 5,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            ...this.getOpenAgenticProxyAuthHeaders(),
-            'X-Workflow-Execution': this.context.executionId,
-          },
-          timeout: (nodeData.timeout || 120000) + 30000,
-        }
-      );
-
-      const result = {
-        output: response.data?.output || response.data?.results || '',
-        agents: response.data?.results || [],
-        metrics: response.data?.metrics || {},
-        orchestration,
-        status: response.data?.status || 'completed',
-      };
-      // Record each agent in the pool to DB for observability
-      const agentTypes = agents.map((a: any) => a.role || 'custom');
-      for (const role of agentTypes) {
-        this.recordFlowAgentExecution(node.id, role, 'completed',
-          Date.now() - startTime, response.data?.metrics);
-      }
-      return result;
-    } catch (error: any) {
-      // Record failure
-      const agentTypes = agents.map((a: any) => a.role || 'custom');
-      for (const role of agentTypes) {
-        this.recordFlowAgentExecution(node.id, role, 'failed',
-          Date.now() - startTime, undefined, (error as Error).message);
-      }
-      if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-        throw new Error(`Agent-proxy service is not reachable at ${openagenticProxyUrl}. Ensure the openagentic-proxy deployment is running.`);
-      }
-      throw new Error(`Agent-proxy execution failed: ${error.response?.data?.error || error.message}`);
-    }
-  }
-
-  /**
-   * Execute a data source query node.
-   * Supports raw mode (direct SQL/API) and NL mode (LLM translates natural language).
-   */
-  private async executeDataSourceQueryNode(node: WorkflowNode, input: any): Promise<any> {
-    const { dataSourceId, mode = 'raw', query, question } = node.data;
-
-    if (!dataSourceId) {
-      throw new Error('Data source query node requires a dataSourceId');
-    }
-
-    const queryText = mode === 'nl'
-      ? this.interpolateTemplate(question || '{{input.message}}', input)
-      : this.interpolateTemplate(query || '', input);
-
-    if (!queryText) {
-      throw new Error(`Data source query node requires a ${mode === 'nl' ? 'question' : 'query'}`);
-    }
-
-    const endpoint = mode === 'nl'
-      ? `${this.apiUrl}/api/data-sources/${dataSourceId}/nl-query`
-      : `${this.apiUrl}/api/data-sources/${dataSourceId}/query`;
-
-    const body = mode === 'nl' ? { question: queryText } : { query: queryText };
-
-    logger.info({ nodeId: node.id, dataSourceId, mode, queryLength: queryText.length },
-      '[WorkflowEngine] Executing data source query');
-
-    const response = await abortableAxiosPost(this, endpoint, body, {
-      headers: { ...this.getInternalAuthHeaders(), 'Content-Type': 'application/json' },
-      timeout: 35000,
-    });
-
-    const result = response.data;
-    if (!result.success) {
-      throw new Error(result.error || 'Data source query failed');
-    }
-
-    return {
-      rows: result.rows,
-      columns: result.columns,
-      rowCount: result.rowCount,
-      executionTimeMs: result.executionTimeMs,
-      generatedQuery: result.generatedQuery,
-      content: JSON.stringify(result.rows?.slice(0, 50), null, 2),
-    };
   }
 
   // ===========================================================================
@@ -4939,16 +2436,17 @@ export class WorkflowExecutionEngine extends EventEmitter {
    * prefer an explicit `output`, else fall back to the next most likely
    * primary-output field (LLM → .content, rag_query → nested .result.results).
    */
-  private canonicalNodeOutput(r: any): any {
+  private canonicalNodeOutput(r: unknown): unknown {
     if (r === null || r === undefined) return r;
     if (typeof r !== 'object') return r;
-    if (r.output !== undefined) return r.output;
-    if (r.content !== undefined) return r.content;
-    if (r.text !== undefined) return r.text;
-    if (r.answer !== undefined) return r.answer;
-    if (r.result !== undefined) return this.canonicalNodeOutput(r.result);
-    if (r.results !== undefined) return r.results;
-    if (r.data !== undefined) return r.data;
+    const obj = r as Record<string, unknown>;
+    if (obj.output !== undefined) return obj.output;
+    if (obj.content !== undefined) return obj.content;
+    if (obj.text !== undefined) return obj.text;
+    if (obj.answer !== undefined) return obj.answer;
+    if (obj.result !== undefined) return this.canonicalNodeOutput(obj.result);
+    if (obj.results !== undefined) return obj.results;
+    if (obj.data !== undefined) return obj.data;
     return r;
   }
 
@@ -4958,20 +2456,20 @@ export class WorkflowExecutionEngine extends EventEmitter {
    *   2. else the SOURCE node TYPE's declared schema.primary if present;
    *   3. else the canonicalNodeOutput heuristic.
    */
-  private resolvePrimaryOutput(value: any, nodeType: string | undefined): any {
-    if (value !== null && typeof value === 'object' && value.output !== undefined) {
-      return value.output;
+  private resolvePrimaryOutput(value: unknown, nodeType: string | undefined): unknown {
+    if (value !== null && typeof value === 'object' && (value as Record<string, unknown>).output !== undefined) {
+      return (value as Record<string, unknown>).output;
     }
     if (value !== null && typeof value === 'object' && nodeType) {
       const primary = this.nodePrimaryOf(nodeType);
       if (primary && Object.prototype.hasOwnProperty.call(value, primary)) {
-        return value[primary];
+        return (value as Record<string, unknown>)[primary];
       }
     }
     return this.canonicalNodeOutput(value);
   }
 
-  private interpolateTemplate(template: string, context: any): string {
+  private interpolateTemplate(template: string, context: unknown): string {
     if (!template) return template;
 
     return template.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
@@ -5021,7 +2519,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
           const normalized = nameOrId.toLowerCase().replace(/[-_\s]+/g, '-');
           for (const [nId, nResult] of this.context.nodeResults.entries()) {
             const node = this.nodeMap.get(nId);
-            const label = (node?.data?.label || '').toLowerCase().replace(/[-_\s]+/g, '-');
+            const label = ((node?.data?.label as string | undefined) || '').toLowerCase().replace(/[-_\s]+/g, '-');
             if (label === normalized || nId.toLowerCase() === normalized) {
               value = nResult;
               resolvedSrcId = nId;
@@ -5038,12 +2536,12 @@ export class WorkflowExecutionEngine extends EventEmitter {
             // else explicit .output; else the canonicalNodeOutput heuristic (LLM →
             // .content, rag_query → nested .result.results). An explicit .output
             // key is left untouched by resolvePrimaryOutput.
-            if (key === 'output' && value !== undefined && (value as any)[key] === undefined) {
+            if (key === 'output' && value !== undefined && (value as Record<string, unknown>)[key] === undefined) {
               const srcType = resolvedSrcId ? this.nodeMap.get(resolvedSrcId)?.type : undefined;
               value = this.resolvePrimaryOutput(value, srcType);
               continue;
             }
-            value = value?.[key];
+            value = (value as Record<string, unknown> | undefined)?.[key];
           }
           // If path traversal ended with undefined, try common content extraction patterns
           // MCP tools normalize to { content: string } but some return nested structures
@@ -5053,7 +2551,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
               // Try extracting from common result shapes
               const lastKey = rest[rest.length - 1];
               if (lastKey === 'content' || lastKey === 'text') {
-                value = nodeResult?.content || nodeResult?.text || nodeResult?.result || nodeResult?.data;
+                const nr = nodeResult as Record<string, unknown> | undefined;
+                value = nr?.content || nr?.text || nr?.result || nr?.data;
                 if (typeof value === 'object') value = JSON.stringify(value);
               }
             }
@@ -5135,12 +2634,12 @@ export class WorkflowExecutionEngine extends EventEmitter {
         const subPath = trimmedPath.slice(8); // Remove 'trigger.' prefix
         const parts = subPath.split('.');
 
-        const resolveNestedPath = (obj: any, keys: string[]): any => {
-          let v = obj;
-          for (const k of keys) { v = v?.[k]; }
+        const resolveNestedPath = (obj: unknown, keys: string[]): unknown => {
+          let v: unknown = obj;
+          for (const k of keys) { v = (v as Record<string, unknown> | undefined)?.[k]; }
           return v;
         };
-        const formatValue = (v: any): string =>
+        const formatValue = (v: unknown): string =>
           v === undefined ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
 
         // Strategy 1: Direct path on stored trigger data (handles trigger.body.X and trigger.X)
@@ -5179,7 +2678,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
           // Fallback: match by node label
           const normalized = nameOrId.toLowerCase().replace(/[-_\s]+/g, '-');
           for (const [nId, node] of this.nodeMap.entries()) {
-            const label = (node.data?.label || '').toLowerCase().replace(/[-_\s]+/g, '-');
+            const label = ((node.data?.label as string | undefined) || '').toLowerCase().replace(/[-_\s]+/g, '-');
             if (label === normalized) {
               resolvedNodeId = nId;
               break;
@@ -5189,7 +2688,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
         if (resolvedNodeId) {
           let value = this.context.nodeResults.get(resolvedNodeId);
           for (const key of rest) {
-            value = value?.[key];
+            value = (value as Record<string, unknown> | undefined)?.[key];
           }
           if (value !== undefined) {
             return typeof value === 'object' ? JSON.stringify(value) : String(value);
@@ -5215,17 +2714,17 @@ export class WorkflowExecutionEngine extends EventEmitter {
 
       // Navigate the path in context (for {{input.field}}, {{item.field}}, etc.)
       const pathParts = trimmedPath.split('.');
-      let value: any = context;
+      let value: unknown = context;
       // If path starts with 'input', the context IS the input -- skip the 'input' prefix
-      if (pathParts[0] === 'input' && pathParts.length > 1 && context?.[pathParts[1]] !== undefined) {
+      if (pathParts[0] === 'input' && pathParts.length > 1 && (context as Record<string, unknown> | undefined)?.[pathParts[1]] !== undefined) {
         // Direct field access: {{input.name}} -> context.name (context IS the input)
         for (let i = 1; i < pathParts.length; i++) {
-          value = value?.[pathParts[i]];
+          value = (value as Record<string, unknown> | undefined)?.[pathParts[i]];
         }
       } else {
         // Standard path traversal
         for (const key of pathParts) {
-          value = value?.[key];
+          value = (value as Record<string, unknown> | undefined)?.[key];
         }
       }
 
@@ -5253,9 +2752,9 @@ export class WorkflowExecutionEngine extends EventEmitter {
    * Wrap a node's output in a structured OutputEnvelope for rich rendering.
    * AI/LLM nodes produce markdown; MCP/HTTP nodes get auto-formatted from JSON.
    */
-  private formatOutputEnvelope(node: WorkflowNode, rawOutput: any): OutputEnvelope {
-    const nodeLabel = node.data?.label || node.id;
-    const outputFormat: OutputFormat = node.data?.outputFormat || this.inferOutputFormat(node.type, rawOutput);
+  private formatOutputEnvelope(node: WorkflowNode, rawOutput: unknown): OutputEnvelope {
+    const nodeLabel = (node.data?.label as string | undefined) || node.id;
+    const outputFormat: OutputFormat = (node.data?.outputFormat as OutputFormat | undefined) || this.inferOutputFormat(node.type, rawOutput);
     // Auto-persist: explicit opt-in OR substantial AI/agent outputs (reports, deliverables)
     const autoArtifactTypes = new Set([
       'llm_completion', 'openagentic_llm', 'openagentic_chat',
@@ -5299,63 +2798,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
     };
   }
 
-  // ===========================================================================
-  // Sub-Workflow Node -- execute a saved workflow by ID
-  // ===========================================================================
-
-  private async executeSubWorkflowNode(node: WorkflowNode, input: any): Promise<any> {
-    const { workflowId, timeout = 120000, passInput = true } = node.data;
-
-    if (!workflowId) {
-      throw new Error('Sub-workflow node requires a workflowId');
-    }
-
-    logger.info({ nodeId: node.id, subWorkflowId: workflowId, timeout },
-      '[WorkflowEngine] Executing sub-workflow node');
-
-    // Step 1: Fetch the sub-workflow definition directly from the database
-    const subWorkflow = await prisma.workflow.findUnique({
-      where: { id: workflowId },
-      select: { id: true, name: true, definition: true },
-    });
-
-    if (!subWorkflow || !subWorkflow.definition) {
-      throw new Error(`Sub-workflow ${workflowId} not found or has no definition`);
-    }
-
-    const subDef = typeof subWorkflow.definition === 'string'
-      ? JSON.parse(subWorkflow.definition)
-      : subWorkflow.definition;
-
-    logger.info({ nodeId: node.id, subWorkflowName: subWorkflow.name, nodeCount: subDef?.nodes?.length },
-      '[WorkflowEngine] Sub-workflow definition loaded');
-    const subInput = passInput ? (typeof input === 'object' ? input : { data: input }) : {};
-
-    // Step 2: Execute the sub-workflow inline using a new engine instance
-    const subExecId = `sub-${this.context.executionId}-${node.id}`;
-    const { executeWorkflow: execSubWf } = await import('./WorkflowExecutionEngine.js');
-
-    const result = await execSubWf(
-      workflowId,
-      subExecId,
-      subDef,
-      subInput,
-      this.context.userId,
-      this.context.authToken,
-      undefined, // no event handler for sub-workflow
-      { userEmail: this.context.userEmail, idToken: this.context.idToken }
-    );
-
-    if (!result.success) {
-      throw new Error(`Sub-workflow failed: ${result.error || 'unknown error'}`);
-    }
-
-    logger.info({ nodeId: node.id, subWorkflowId: workflowId, success: result.success },
-      '[WorkflowEngine] Sub-workflow completed');
-
-    return result.output;
-  }
-
   /**
    * Generate a semantic, human-readable title for artifacts stored in Milvus.
    * Format: "[Workflow] Node Label - Content Summary"
@@ -5364,16 +2806,17 @@ export class WorkflowExecutionEngine extends EventEmitter {
    *   "Final Report - Key Findings on Remote Work Productivity"
    *   "Code Analysis - 15 security vulnerabilities found"
    */
-  private buildSemanticTitle(node: WorkflowNode, rawOutput: any, content: string): string {
-    const nodeLabel = node.data?.label || node.id;
+  private buildSemanticTitle(node: WorkflowNode, rawOutput: unknown, content: string): string {
+    const nodeLabel = (node.data?.label as string | undefined) || node.id;
     const workflowName = this.context.workflowId && this.context.workflowId !== 'test-node'
       ? this.context.workflowId.substring(0, 30) : '';
 
     // Extract a content summary from the output
     let summary = '';
-    const textContent = typeof rawOutput === 'string'
+    const ro = rawOutput as Record<string, unknown> | undefined;
+    const textContent: unknown = typeof rawOutput === 'string'
       ? rawOutput
-      : rawOutput?.content || rawOutput?.text || rawOutput?.result || '';
+      : ro?.content || ro?.text || ro?.result || '';
 
     if (typeof textContent === 'string' && textContent.length > 0) {
       // Look for a heading or first meaningful line
@@ -5401,7 +2844,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
   /**
    * Infer the best output format based on node type and output content.
    */
-  private inferOutputFormat(nodeType: string, output: any): OutputFormat {
+  private inferOutputFormat(nodeType: string, output: unknown): OutputFormat {
     // AI/LLM nodes naturally produce text — treat as markdown
     const llmTypes = new Set([
       'llm_completion', 'openagentic_llm', 'openagentic_chat',
@@ -5414,7 +2857,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     if (typeof output === 'string') return 'markdown';
 
     // If output is an object with a 'content' field that's a string, markdown
-    if (output && typeof output === 'object' && typeof output.content === 'string') return 'markdown';
+    if (output && typeof output === 'object' && typeof (output as Record<string, unknown>).content === 'string') return 'markdown';
 
     // Arrays → table format for readability
     if (Array.isArray(output)) return 'table';
@@ -5426,32 +2869,34 @@ export class WorkflowExecutionEngine extends EventEmitter {
   /**
    * Convert node output to readable markdown based on node type.
    */
-  private toMarkdown(nodeType: string, output: any, title: string): string {
+  private toMarkdown(nodeType: string, output: unknown, title: string): string {
     // If output is already a string, return as-is (LLM text, etc.)
     if (typeof output === 'string') return output;
 
     // Extract content from common response shapes
     if (output && typeof output === 'object') {
+      const obj = output as Record<string, unknown>;
       // LLM response: { content: string, model: string, ... }
-      if (typeof output.content === 'string') {
+      if (typeof obj.content === 'string') {
         const meta: string[] = [];
-        if (output.model) meta.push(`**Model:** ${output.model}`);
-        if (output.usage?.total_tokens) meta.push(`**Tokens:** ${output.usage.total_tokens}`);
+        if (obj.model) meta.push(`**Model:** ${String(obj.model)}`);
+        const totalTokens = (obj.usage as { total_tokens?: number } | undefined)?.total_tokens;
+        if (totalTokens) meta.push(`**Tokens:** ${totalTokens}`);
         return meta.length > 0
-          ? `${output.content}\n\n---\n_${meta.join(' | ')}_`
-          : output.content;
+          ? `${obj.content}\n\n---\n_${meta.join(' | ')}_`
+          : obj.content;
       }
 
-      // MCP tool result: { result: any, toolName: string, ... }
-      if (output.result !== undefined) {
-        const resultStr = typeof output.result === 'string'
-          ? output.result
-          : JSON.stringify(output.result, null, 2);
-        return `### ${output.toolName || title}\n\n\`\`\`json\n${resultStr}\n\`\`\``;
+      // MCP tool result: { result: unknown, toolName: string, ... }
+      if (obj.result !== undefined) {
+        const resultStr = typeof obj.result === 'string'
+          ? obj.result
+          : JSON.stringify(obj.result, null, 2);
+        return `### ${(obj.toolName as string | undefined) || title}\n\n\`\`\`json\n${resultStr}\n\`\`\``;
       }
 
       // Generic object: format as sections
-      return this.objectToMarkdownSections(output);
+      return this.objectToMarkdownSections(obj);
     }
 
     return String(output ?? '');
@@ -5460,7 +2905,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
   /**
    * Convert a generic object into markdown sections.
    */
-  private objectToMarkdownSections(obj: Record<string, any>): string {
+  private objectToMarkdownSections(obj: Record<string, unknown>): string {
     const sections: string[] = [];
     for (const [key, value] of Object.entries(obj)) {
       if (value === null || value === undefined) continue;
@@ -5472,7 +2917,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       } else if (typeof value === 'object') {
         sections.push(`### ${heading}\n\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``);
       } else {
-        sections.push(`**${heading}:** ${value}`);
+        sections.push(`**${heading}:** ${String(value)}`);
       }
     }
     return sections.join('\n\n');
@@ -5481,7 +2926,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
   /**
    * Convert array data into a markdown table.
    */
-  private toMarkdownTable(data: any): string {
+  private toMarkdownTable(data: unknown): string {
     if (!Array.isArray(data) || data.length === 0) {
       return typeof data === 'string' ? data : JSON.stringify(data, null, 2);
     }
@@ -5517,13 +2962,13 @@ export class WorkflowExecutionEngine extends EventEmitter {
     logger[level](safeMeta, msg);
   }
 
-  private emitEvent(type: ExecutionEvent['type'], data?: any): void {
+  private emitEvent(type: ExecutionEvent['type'], data?: unknown): void {
     const safeData = redactSecrets(data, this.context);
     const event: ExecutionEvent = {
       type,
       executionId: this.context.executionId,
       timestamp: new Date().toISOString(),
-      ...safeData
+      ...(safeData as Record<string, unknown>)
     };
 
     this.emit('event', event);
@@ -5536,10 +2981,10 @@ export class WorkflowExecutionEngine extends EventEmitter {
     nodeId: string,
     nodeType: string,
     status: 'completed' | 'failed' | 'failed_with_fallback',
-    output: any,
+    output: unknown,
     executionTimeMs: number,
     error?: string,
-    input?: any,
+    input?: unknown,
   ): Promise<void> {
     try {
       const safeOutput = redactSecrets(output ? JSON.parse(JSON.stringify(output)) : null, this.context);
@@ -5610,13 +3055,13 @@ export class WorkflowExecutionEngine extends EventEmitter {
   private async flushNodeOutputs(): Promise<void> {
     if (this.pendingNodeOutputs.size === 0) return;
     try {
-      const nodeOutputs: Record<string, any> = {};
+      const nodeOutputs: Record<string, unknown> = {};
       for (const [nodeId, data] of this.pendingNodeOutputs) {
         nodeOutputs[nodeId] = data;
       }
       await prisma.workflowExecution.update({
         where: { id: this.context.executionId },
-        data: { node_outputs: nodeOutputs }
+        data: { node_outputs: nodeOutputs as unknown as Prisma.InputJsonValue }
       });
     } catch (err) {
       logger.error({ err }, '[WorkflowEngine] Failed to flush node_outputs');
@@ -5628,14 +3073,14 @@ export class WorkflowExecutionEngine extends EventEmitter {
    */
   private async updateExecutionRecord(
     status: 'completed' | 'failed',
-    output: any,
+    output: unknown,
     error?: string
   ): Promise<void> {
     const executionTimeMs = Date.now() - this.context.startTime;
     const completedNodes = Array.from(this.context.nodeResults.keys()).length;
 
     // Build node_outputs from accumulated pending results
-    const nodeOutputs: Record<string, any> = {};
+    const nodeOutputs: Record<string, unknown> = {};
     for (const [nodeId, data] of this.pendingNodeOutputs) {
       nodeOutputs[nodeId] = data;
     }
@@ -5643,8 +3088,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
     try {
       const safeOutput = redactSecrets(output ? JSON.parse(JSON.stringify(output)) : null, this.context);
       const safeNodeOutputs = redactSecrets(nodeOutputs, this.context);
-      const totalCost = (this as any).totalCost || 0;
-      const updateData: any = {
+      const totalCost = this.totalCost || 0;
+      const updateData: Record<string, unknown> = {
         status,
         output: safeOutput,
         node_outputs: Object.keys(safeNodeOutputs).length > 0 ? safeNodeOutputs : undefined,
@@ -5659,7 +3104,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       // may not have been created yet (e.g., if initial create failed)
       await prisma.workflowExecution.upsert({
         where: { id: this.context.executionId },
-        update: updateData,
+        update: updateData as Parameters<typeof prisma.workflowExecution.upsert>[0]['update'],
         create: {
           id: this.context.executionId,
           workflow_id: this.context.workflowId,
@@ -5667,7 +3112,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
           trigger_type: 'manual',
           input: this.context.input ? JSON.parse(JSON.stringify(this.context.input)) : {},
           ...updateData,
-        },
+        } as Parameters<typeof prisma.workflowExecution.upsert>[0]['create'],
       });
     } catch (err) {
       logger.error({ err }, '[WorkflowEngine] Failed to update execution record');
@@ -5699,217 +3144,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
     return this.abortController.signal;
   }
 
-  // ===========================================================================
-  // Data Query Node
-  // ===========================================================================
-
-  private async executeDataQueryNode(node: WorkflowNode, input: any): Promise<any> {
-    const { collection, collectionName, query, filters, limit: queryLimit } = node.data;
-    const resolvedCollection = this.interpolateTemplate(collection || collectionName || 'default', input);
-    const resolvedQuery = query ? this.interpolateTemplate(query, input) : undefined;
-
-    logger.info({ nodeId: node.id, collection: resolvedCollection }, '[WorkflowEngine] Executing data query node');
-
-    const response = await abortableAxiosPost(
-      this,
-      `${this.apiUrl}/api/v1/vector/search`,
-      {
-        collection: resolvedCollection,
-        query: resolvedQuery || (typeof input === 'string' ? input : input?.message || input?.query || JSON.stringify(input)),
-        topK: queryLimit || 10,
-        filters: filters ? (typeof filters === 'string' ? JSON.parse(this.interpolateTemplate(filters, input)) : filters) : undefined,
-      },
-      {
-        headers: { 'Content-Type': 'application/json', ...this.getInternalAuthHeaders() },
-        timeout: 30000,
-        validateStatus: () => true,
-      }
-    );
-
-    if (response.status >= 400) {
-      throw new Error(`Data query failed: ${response.data?.error || response.statusText}`);
-    }
-
-    return {
-      collection: resolvedCollection,
-      results: response.data?.results || response.data || [],
-      resultCount: (response.data?.results || response.data || []).length,
-    };
-  }
-
-  // ===========================================================================
-  // Reasoning Node — Extended Chain-of-Thought
-  // ===========================================================================
-
-  private async executeReasoningNode(node: WorkflowNode, input: any): Promise<any> {
-    const { prompt, systemPrompt, thinkingBudget, maxTokens, modelOverride } = node.data;
-    const resolvedPrompt = this.interpolateTemplate(prompt || '', input);
-    const resolvedSystemPrompt = this.interpolateTemplate(systemPrompt || '', input);
-
-    logger.info({ nodeId: node.id, thinkingBudget }, '[WorkflowEngine] Executing reasoning node');
-
-    const messages: Array<{ role: string; content: string }> = [];
-    if (resolvedSystemPrompt) messages.push({ role: 'system', content: resolvedSystemPrompt });
-    messages.push({ role: 'user', content: resolvedPrompt });
-
-    const response = await abortableAxiosPost(
-      this,
-      `${this.apiUrl}/api/v1/chat/completions`,
-      {
-        model: modelOverride || 'auto',
-        messages,
-        max_tokens: maxTokens || 8192,
-        stream: false,
-        enableThinking: true,
-        thinkingBudget: thinkingBudget || 10000,
-        sliderPosition: 100, // Max quality for reasoning
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getInternalAuthHeaders(),
-          'X-Workflow-Execution': this.context.executionId,
-        },
-        timeout: 180000, // 3min for extended reasoning
-      }
-    );
-
-    return {
-      content: response.data?.choices?.[0]?.message?.content || '',
-      thinking: response.data?.choices?.[0]?.message?.thinking || '',
-      model: response.data?.model,
-      usage: response.data?.usage,
-      provider: 'openagentic',
-    };
-  }
-
-  // ===========================================================================
-  // Webhook Response Node
-  // ===========================================================================
-
-  private async executeWebhookResponseNode(node: WorkflowNode, input: any): Promise<any> {
-    const { statusCode, headers, bodyTemplate } = node.data;
-    const resolvedBody = bodyTemplate ? this.interpolateTemplate(bodyTemplate, input) : input;
-    const resolvedHeaders = headers ? JSON.parse(this.interpolateTemplate(typeof headers === 'string' ? headers : JSON.stringify(headers), input)) : {};
-
-    logger.info({ nodeId: node.id, statusCode: statusCode || 200 }, '[WorkflowEngine] Executing webhook response node');
-
-    // Store the response in execution context for the webhook handler to pick up
-    this.context.webhookResponse = {
-      statusCode: statusCode || 200,
-      headers: resolvedHeaders,
-      body: resolvedBody,
-    };
-
-    return {
-      statusCode: statusCode || 200,
-      body: resolvedBody,
-      delivered: true,
-    };
-  }
-
-  // ===========================================================================
-  // Switch Node — Multi-way Branching
-  // ===========================================================================
-
-  private async executeSwitchNode(node: WorkflowNode, input: any): Promise<any> {
-    const { expression, cases = [] } = node.data;
-    const resolvedExpr = this.interpolateTemplate(expression || '', input);
-
-    logger.info({ nodeId: node.id, expression: resolvedExpr, caseCount: cases.length }, '[WorkflowEngine] Executing switch node');
-
-    // Evaluate the expression in a V8 isolate (S0-2 / B1).
-    let switchValue: any;
-    const switchResult = await runSandboxed(`return (${resolvedExpr});`, {
-      input,
-      timeoutMs: 2000,
-    });
-    if (switchResult.ok) {
-      switchValue = switchResult.value;
-    } else {
-      switchValue = resolvedExpr;
-    }
-
-    // Find matching case
-    const matchedCase = cases.find((c: any) => String(c.value) === String(switchValue));
-    const defaultCase = cases.find((c: any) => c.value === 'default');
-    const selectedCase = matchedCase || defaultCase;
-
-    // Route to the correct output edge
-    const edges = this.definition.edges || [];
-    const outEdges = edges.filter(e => e.source === node.id);
-
-    if (outEdges.length > 0) {
-      // Find edge matching the case output handle
-      const targetEdge = selectedCase
-        ? (outEdges.find(e =>
-            e.sourceHandle === selectedCase.value || e.sourceHandle === selectedCase.label
-          ) || outEdges[0])
-        : outEdges[0];
-
-      // W1: Notify merge gates about all UNCHOSEN edges so they decrement their
-      // expected count and don't hang. Mirror the condition node pattern.
-      const skippedEdges = outEdges.filter(e => e !== targetEdge);
-      for (const edge of skippedEdges) {
-        this.notifySkippedBranch(edge.target);
-      }
-
-      // Execute only the matched branch
-      if (targetEdge) {
-        await this.executeNode(targetEdge.target, input);
-      }
-    }
-
-    return {
-      switchValue: String(switchValue),
-      matchedCase: selectedCase?.label || selectedCase?.value || 'none',
-      input,
-    };
-  }
-
-  // ===========================================================================
-  // Parallel Node — Fan-out / Fan-in
-  // ===========================================================================
-
-  private async executeParallelNode(node: WorkflowNode, input: any): Promise<any> {
-    const { mode, waitForAll, timeoutMs } = node.data;
-    const edges = this.definition.edges || [];
-    const outEdges = edges.filter(e => e.source === node.id);
-
-    logger.info({ nodeId: node.id, mode, branchCount: outEdges.length, waitForAll }, '[WorkflowEngine] Executing parallel node');
-
-    if (outEdges.length === 0) {
-      return input;
-    }
-
-    // Fan-out: execute all downstream nodes in parallel
-    const promises = outEdges.map(edge =>
-      Promise.race([
-        this.executeNode(edge.target, input),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`Parallel branch timeout: ${edge.target}`)), timeoutMs || 60000)
-        ),
-      ])
-    );
-
-    if (waitForAll !== false) {
-      // Wait for all branches
-      const results = await Promise.allSettled(promises);
-      return {
-        branches: results.map((r, i) => ({
-          nodeId: outEdges[i].target,
-          status: r.status,
-          result: r.status === 'fulfilled' ? r.value : undefined,
-          error: r.status === 'rejected' ? (r.reason as Error).message : undefined,
-        })),
-        allSucceeded: results.every(r => r.status === 'fulfilled'),
-      };
-    } else {
-      // Race: return first completed
-      const result = await Promise.race(promises);
-      return { result, mode: 'race' };
-    }
-  }
 }
 
 // =============================================================================
@@ -5937,7 +3171,7 @@ export async function executeWorkflow(
   workflowId: string,
   executionId: string,
   definition: WorkflowDefinition,
-  input: Record<string, any>,
+  input: Record<string, unknown>,
   userId: string,
   authToken?: string,
   onEvent?: (event: ExecutionEvent) => void,
@@ -5959,7 +3193,7 @@ export async function executeWorkflow(
      *  to enforce a hard cap on nesting. Gap-analysis 2026-05-14 P0 #3. */
     subFlowDepth?: number;
   }
-): Promise<{ success: boolean; output: any; error?: string }> {
+): Promise<{ success: boolean; output: unknown; error?: string }> {
   const context: ExecutionContext = {
     executionId,
     workflowId,
