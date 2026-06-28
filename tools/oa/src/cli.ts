@@ -232,6 +232,32 @@ export function buildProgram(io: Io): Command {
       await cmdDo(ctx(options), text.join(" "), { yes: options.yes, sessionId: options.session });
     });
 
+  common(program.command("tui"))
+    .description("Launch the interactive terminal UI")
+    /* c8 ignore start — dynamic-imports + renders the Ink app; exercised live */
+    .action(async (options: GlobalOpts) => {
+      // Lazy import keeps src/cli.ts top-level React/Ink-free for scripting.
+      const { runTui } = await import("./tui/run.tsx");
+      await runTui({ profile: options.profile, instance: options.instance });
+    })
+    /* c8 ignore stop */;
+
+  // No subcommand: on a real TTY, launch the TUI; otherwise print help (so pipes
+  // and scripts stay deterministic). `normalizeArgv` has already rewritten any
+  // unknown leading positional to `do`, so reaching here means a genuinely empty
+  // invocation.
+  common(program)
+    /* c8 ignore start — interactive default action; exercised live not in unit tests */
+    .action(async (options: GlobalOpts) => {
+      if (process.stdout.isTTY && process.stdin.isTTY) {
+        const { runTui } = await import("./tui/run.tsx");
+        await runTui({ profile: options.profile, instance: options.instance });
+      } else {
+        program.help();
+      }
+    })
+    /* c8 ignore stop */;
+
   return program;
 }
 

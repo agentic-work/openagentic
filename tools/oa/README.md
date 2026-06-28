@@ -18,11 +18,11 @@ Foundation (#117) — in progress. Implemented and tested:
 | `oa agent list \| run <id> <task…>` | List / run registered agents. |
 | `oa chat <message…> [--session <id>]` | Send one chat turn and stream the reply. |
 | `oa do <text…>` / `oa "<english>"` | Natural-language layer (#120) — route plain English through the chat pipeline; concrete platform actions, with mutating-tool approvals handled in your terminal. |
+| `oa tui` / bare `oa` on a TTY | Interactive terminal UI (#121) — login, home dashboard, chat, flows, agents, and key management as an Ink app. |
 
 Global flags: `-p/--profile <name>`, `--instance <url>`, `--json`.
 
-Planned next (same epic): the Ink TUI (#121) and the autonomous agent
-runtime (#122).
+Planned next (same epic): the autonomous agent runtime (#122).
 
 ## Natural language — `oa do`
 
@@ -65,6 +65,35 @@ On timeout the server itself fails safe (deny). Approvals go to
 `POST /api/chat/approvals/:id` with your user-bound key — the same gate the web
 UI uses, driven from the terminal.
 
+## Interactive TUI — `oa tui`
+
+`oa tui` (or just `oa` when run in an interactive terminal) launches an Ink
+terminal UI over the same client and profile store as the scripting commands:
+
+```bash
+oa tui                       # explicit
+oa                           # bare, on a TTY → launches the TUI
+oa tui --profile prod        # pick a stored profile / instance
+oa flow list --json          # scripting fast path — never loads the TUI
+```
+
+Screens: **Login** (pick a saved profile, or an inline form that mints a
+user-bound api key and stores only the key), **Home** (identity + health badge +
+menu), **Chat** (live token streaming, thinking omitted), **Flows** (list and
+run, with optional JSON input), **Agents** (list and run on a task), and **Keys**
+(list, create — shown once — and revoke with confirmation). `esc` backs out of a
+screen; `q` / Ctrl-C quit from Home.
+
+The TUI is **lazily loaded**: `oa tui` / a bare TTY launch dynamically import the
+Ink subtree, so the scripting fast path (`oa flow list --json`, any subcommand)
+never pays the React/Ink import cost. A bare `oa` in a **non-interactive** shell
+(pipe / CI) prints help instead of launching the UI, and any unknown leading
+positional is still rewritten to `oa do "<english>"`.
+
+> The TUI's brand palette (`src/tui/theme.tsx`) is an intentional local copy of
+> the install wizard's (`tools/setup/src/ui/Theme.tsx`) — they are separate npm
+> packages. A brand-color change must be made in **both** places.
+
 ## Auth model
 
 `oa` only ever uses **api-issued, user-bound, revocable** keys
@@ -77,10 +106,12 @@ No env-static system tokens.
 ```bash
 cd tools/oa
 npm install
-npm test            # vitest (config store, API client, commands, CLI)
+npm test            # vitest (config store, API client, commands, CLI, Ink TUI screens)
 npm run typecheck   # tsc --noEmit
-npm run build       # esbuild → dist/cli.js (runnable bin)
+npm run build       # esbuild → dist/cli.js + dist/tui/run.js (lazy TUI chunk)
 npm start -- --help # run from source via tsx
+npm start -- tui    # run the TUI from source via tsx
 ```
 
-Tests run against an in-process fake API server (no live instance, no mocks).
+Tests run against an in-process fake API server (no live instance, no mocks);
+the TUI screens are driven with `ink-testing-library` over that same fake API.
