@@ -39,6 +39,7 @@ Other install paths: `… | bash -s -- --helm` (Kubernetes via Helm), `… | bas
 | 11 | **[API Reference](11-api-reference.md)** | The base URL, Swagger/OpenAPI, auth headers, chat streaming (NDJSON), the OpenAI-compatible endpoints, workflows, system config, and the admin API surface. |
 | 12 | **[Operations & Troubleshooting](12-operations.md)** | Health checks, updates and rollbacks, secret rotation, the first-boot landmines and their fixes, backups, scaling, and logs. |
 | 13 | **[The `oa` CLI](13-oa-cli.md)** | The headless control plane: what `oa` is, installing it, every command (chat, flows, agents, keys), the headless (no-UI-container) install, profiles, and scripting/CI use cases. |
+| 14 | **[The `oa` Agent Gateway](14-oa-agent-gateway.md)** | Driving OpenAgentic from CI/CD and scripts: `oa` + the native API (with the command↔endpoint map), GitHub Actions / GitLab examples, autonomous Flow creation, the autonomous-dev loop with HITL at PR/code-review, and the governance (approval gate + immutable audit + revocable keys). |
 
 ---
 
@@ -47,6 +48,7 @@ Other install paths: `… | bash -s -- --helm` (Kubernetes via Helm), `… | bas
 - **New here?** Start with **[Overview](01-overview.md)**, then **[Installation](03-installation.md)**.
 - **Standing up a deployment?** **[Installation](03-installation.md)** → **[Configuration](04-configuration.md)** → **[Operations](12-operations.md)**.
 - **No UI, terminal-only, or automating it?** Run it **headless** and drive it with **[the `oa` CLI](13-oa-cli.md)**.
+- **Wiring it into CI/CD, GitOps, or another agent?** **[The `oa` Agent Gateway](14-oa-agent-gateway.md)** — `oa` + the native API, GitHub Actions / GitLab, and the HITL-gated autonomous-dev loop.
 - **Evaluating capability?** **[MCP Servers](06-mcp-servers.md)**, **[Chat & Artifacts](07-chat-and-artifacts.md)**, and **[Flows & Workflows](08-flows.md)**.
 - **Security review?** **[Security & Compliance Posture](10-security.md)** and the [zero-telemetry proof](../zero-telemetry.md).
 - **Integrating?** **[API Reference](11-api-reference.md)** and **[LLM Providers & Models](05-providers-and-models.md)**.
