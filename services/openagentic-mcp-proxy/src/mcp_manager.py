@@ -637,6 +637,48 @@ class MCPManager:
             ))
             logger.info("OpenAgentic GCP MCP server configured (Platform-level GCP management)")
 
+        # OpenAgentic Entra (Microsoft 365) MCP — Mail + Calendar over Microsoft Graph
+        # via an Azure AD app registration (app-only client secret; reuses the AZURE_*
+        # trio). No OBO: the target mailbox resolves from the proxy-injected
+        # meta.userEmail (SERVERS_NEEDING_USER_CONTEXT) else GRAPH_DEFAULT_MAILBOX.
+        # Teams chat/channel tools are gated OFF unless ENTRA_TEAMS_TOOLS_ENABLED=true
+        # (they need application Graph permissions most tenants don't grant).
+        if not os.getenv("OpenAgentic_ENTRA_MCP_DISABLED", "false").lower() == "true":
+            openagentic_entra_env = {
+                "AZURE_TENANT_ID": os.getenv("AZURE_TENANT_ID", ""),
+                "AZURE_CLIENT_ID": os.getenv("AZURE_CLIENT_ID", ""),
+                "AZURE_CLIENT_SECRET": os.getenv("AZURE_CLIENT_SECRET", ""),
+                "GRAPH_API_URL": os.getenv("GRAPH_API_URL", ""),
+                "GRAPH_DEFAULT_MAILBOX": os.getenv("GRAPH_DEFAULT_MAILBOX", ""),
+                "ENTRA_TEAMS_TOOLS_ENABLED": os.getenv("ENTRA_TEAMS_TOOLS_ENABLED", ""),
+                "LOG_LEVEL": "info"
+            }
+            self.servers["openagentic_entra"] = MCPServer(MCPServerConfig(
+                name="openagentic_entra",
+                command=["fastmcp", "run", "-t", "stdio", "/app/mcp-servers/oap-entra-mcp/src/server.py"],
+                env=openagentic_entra_env,
+                supports_obo=False  # app-only service principal (no per-user OBO)
+            ))
+            logger.info("OpenAgentic Entra (M365) MCP server configured (Mail + Calendar, app-only Graph)")
+
+        # OpenAgentic Google Workspace MCP — Gmail via a domain-wide-delegated service
+        # account. No OBO: the impersonated subject resolves from the proxy-injected
+        # meta.userEmail (SERVERS_NEEDING_USER_CONTEXT) else GOOGLE_WORKSPACE_SUBJECT.
+        if not os.getenv("OpenAgentic_GOOGLE_MCP_DISABLED", "false").lower() == "true":
+            openagentic_google_env = {
+                "GOOGLE_WORKSPACE_SA_JSON": os.getenv("GOOGLE_WORKSPACE_SA_JSON", ""),
+                "GOOGLE_WORKSPACE_SUBJECT": os.getenv("GOOGLE_WORKSPACE_SUBJECT", ""),
+                "GMAIL_API_URL": os.getenv("GMAIL_API_URL", ""),
+                "LOG_LEVEL": "info"
+            }
+            self.servers["openagentic_google"] = MCPServer(MCPServerConfig(
+                name="openagentic_google",
+                command=["fastmcp", "run", "-t", "stdio", "/app/mcp-servers/oap-google-mcp/src/server.py"],
+                env=openagentic_google_env,
+                supports_obo=False  # domain-wide-delegated service account (no per-user OBO)
+            ))
+            logger.info("OpenAgentic Google Workspace MCP server configured (Gmail, domain-wide delegation)")
+
         # OpenAgentic AWS MCP Server - AWS Operations via static keypair credentials
         # Uses AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (boto3 default chain)
         if not os.getenv("OpenAgentic_AWS_MCP_DISABLED", "false").lower() == "true":
@@ -932,7 +974,9 @@ class MCPManager:
         # - openagentic_openagentic: needs userEmail for session isolation
         # - openagentic_github: needs GitHub PAT for GitHub API calls
         # Do NOT inject for: openagentic_web, openagentic_memory, openagentic_diagram, etc. (causes FastMCP validation errors)
-        SERVERS_NEEDING_USER_CONTEXT = {"openagentic_azure", "openagentic_aws", "openagentic_openagentic", "openagentic_gcp", "openagentic_github"}
+        # entra/google resolve the target mailbox/subject from the injected
+        # meta.userEmail (else their GRAPH_DEFAULT_MAILBOX / GOOGLE_WORKSPACE_SUBJECT env).
+        SERVERS_NEEDING_USER_CONTEXT = {"openagentic_azure", "openagentic_aws", "openagentic_openagentic", "openagentic_gcp", "openagentic_github", "openagentic_entra", "openagentic_google"}
 
         if request.get("method") == "tools/call" and server_name in SERVERS_NEEDING_USER_CONTEXT:
             # Check if we have any user context to inject

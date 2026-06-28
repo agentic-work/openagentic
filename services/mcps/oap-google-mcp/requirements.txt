@@ -1,0 +1,11 @@
+# OpenAgentic Google Workspace / Gmail MCP Server — unattended mail via a
+# domain-wide-delegated (DWD) service account that impersonates a Workspace user.
+# Thin httpx wrapper over the Gmail REST API (gmail.googleapis.com/gmail/v1);
+# google-auth only mints the short-lived DWD access token (subject impersonation).
+# No googleapiclient/discovery dependency: the REST calls go through httpx.
+
+fastmcp>=3.2.0,<4.0.0
+httpx>=0.27.0
+# google-auth provides service_account.Credentials.with_subject(...) — the DWD
+# impersonation leg that mints the per-user access token from the SA key.
+google-auth>=2.30.0

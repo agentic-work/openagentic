@@ -88,6 +88,23 @@ spec:
             - name: GCP_REGION
               value: {{ .Values.mcps.gcp.region | default "us-central1" | quote }}
             {{- end }}
+            # Entra (M365) + Google Workspace MCPs — app-only (entra reuses the
+            # AZURE_* SP from the secret; google reads GOOGLE_WORKSPACE_SA_JSON).
+            # Per-credential values flow via the secret / mcpProxyExtraEnv escape hatch.
+            - name: OpenAgentic_ENTRA_MCP_DISABLED
+              value: {{ not (and .Values.mcps.entra .Values.mcps.entra.enabled) | quote }}
+            {{- if (and .Values.mcps.entra .Values.mcps.entra.enabled) }}
+            - name: GRAPH_DEFAULT_MAILBOX
+              value: {{ .Values.mcps.entra.defaultMailbox | default "" | quote }}
+            - name: ENTRA_TEAMS_TOOLS_ENABLED
+              value: {{ .Values.mcps.entra.teamsTools | default false | quote }}
+            {{- end }}
+            - name: OpenAgentic_GOOGLE_MCP_DISABLED
+              value: {{ not (and .Values.mcps.google .Values.mcps.google.enabled) | quote }}
+            {{- if (and .Values.mcps.google .Values.mcps.google.enabled) }}
+            - name: GOOGLE_WORKSPACE_SUBJECT
+              value: {{ .Values.mcps.google.subject | default "" | quote }}
+            {{- end }}
             # In-cluster ops MCPs — ON by default for the ops ICP (no external
             # creds: k8s uses the pod SA token + read RBAC, prometheus queries
             # the in-cluster prometheus service). Toggle via .Values.mcps.*.

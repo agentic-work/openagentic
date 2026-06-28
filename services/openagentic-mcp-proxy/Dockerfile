@@ -114,6 +114,12 @@ RUN cd /app/mcp-servers/oap-azure-mcp && pip install --no-cache-dir -r requireme
 # Install OpenAgentic GCP MCP server dependencies (Platform-level GCP management via Service Account)
 RUN cd /app/mcp-servers/oap-gcp-mcp && pip install --no-cache-dir -r requirements.txt
 
+# Install OpenAgentic Entra (M365) MCP server dependencies (Mail + Calendar via app-only Microsoft Graph)
+RUN cd /app/mcp-servers/oap-entra-mcp && pip install --no-cache-dir -r requirements.txt
+
+# Install OpenAgentic Google Workspace MCP server dependencies (Gmail via domain-wide-delegated SA)
+RUN cd /app/mcp-servers/oap-google-mcp && pip install --no-cache-dir -r requirements.txt
+
 # Install OpenAgentic AWS MCP server dependencies (AWS via static keypair credentials)
 RUN cd /app/mcp-servers/oap-aws-mcp && pip install --no-cache-dir -r requirements.txt
 
