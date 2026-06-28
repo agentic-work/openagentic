@@ -51,6 +51,7 @@ export interface HelmValues {
     signingSecret: string;
     internalApiKey: string;
     frontendSecret: string;
+    localEncryptionKey: string;
     adminEmail: string;
     adminPassword: string;
     awsAccessKeyId?: string;
@@ -120,6 +121,7 @@ export interface PersistedSecrets {
   signingSecret: string;
   internalApiKey: string;
   frontendSecret: string;
+  localEncryptionKey: string;
 }
 
 const rand = (bytes = 32): string => crypto.randomBytes(bytes).toString('hex');
@@ -148,6 +150,7 @@ export function loadOrCreateSecrets(): PersistedSecrets {
           signingSecret: parsed.signingSecret || rand(),
           internalApiKey: parsed.internalApiKey || rand(),
           frontendSecret: parsed.frontendSecret || rand(16),
+          localEncryptionKey: parsed.localEncryptionKey || rand(),
         };
       }
     }
@@ -159,6 +162,7 @@ export function loadOrCreateSecrets(): PersistedSecrets {
     signingSecret: rand(),
     internalApiKey: rand(),
     frontendSecret: rand(16),
+    localEncryptionKey: rand(),
   };
   try {
     fs.mkdirSync(path.dirname(p), { recursive: true });
@@ -203,6 +207,7 @@ export function configToHelmValues(cfg: WizardConfig, magicToken: string): MapRe
     signingSecret: secrets.signingSecret,
     internalApiKey: secrets.internalApiKey,
     frontendSecret: secrets.frontendSecret,
+    localEncryptionKey: secrets.localEncryptionKey,
     adminEmail: cfg.admin.email || 'admin@openagentic.local',
     adminPassword: cfg.admin.password,
   };
