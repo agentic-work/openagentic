@@ -84,6 +84,46 @@ export interface Agent {
   [key: string]: unknown;
 }
 
+/** A cron schedule attached to a flow — the "autonomous agent" record (#122). */
+export interface Schedule {
+  id: string;
+  workflow_id: string;
+  name: string;
+  cron_expression: string;
+  timezone: string;
+  input_template: unknown;
+  is_active: boolean;
+  next_run_at: string | null;
+  last_run_at: string | null;
+  last_run_status: string | null;
+  total_runs: number;
+  [key: string]: unknown;
+}
+
+/** Body for creating a schedule. cron_expression is required; the rest optional. */
+export interface CreateScheduleInput {
+  cron_expression: string;
+  name?: string;
+  timezone?: string;
+  input_template?: Record<string, unknown>;
+  is_active?: boolean;
+}
+
+/** Partial patch for updating a schedule (e.g. pause/resume via is_active). */
+export type UpdateScheduleInput = Partial<CreateScheduleInput>;
+
+/** A workflow execution / run (the report payload lives in its output). */
+export interface Execution {
+  id: string;
+  status?: string;
+  output?: unknown;
+  result?: unknown;
+  node_outputs?: unknown;
+  started_at?: string;
+  completed_at?: string;
+  [key: string]: unknown;
+}
+
 interface RequestOptions {
   body?: unknown;
   /** Attach the Authorization header (default true). */
@@ -173,6 +213,63 @@ export class OaClient {
     return this.request("POST", `/api/workflows/${encodeURIComponent(id)}/execute`, {
       body: { input: input ?? {}, trigger_type: "manual" },
     });
+  }
+
+  // ---- schedules (autonomous agents = flow + cron) -------------------------
+
+  async createSchedule(workflowId: string, input: CreateScheduleInput): Promise<Schedule> {
+    const res = await this.request<{ schedule: Schedule }>(
+      "POST",
+      `/api/workflows/${encodeURIComponent(workflowId)}/schedules`,
+      { body: input },
+    );
+    return res.schedule;
+  }
+
+  async listSchedules(workflowId: string): Promise<Schedule[]> {
+    const res = await this.request<{ schedules: Schedule[] }>(
+      "GET",
+      `/api/workflows/${encodeURIComponent(workflowId)}/schedules`,
+    );
+    return res.schedules;
+  }
+
+  async updateSchedule(
+    workflowId: string,
+    scheduleId: string,
+    patch: UpdateScheduleInput,
+  ): Promise<Schedule> {
+    const res = await this.request<{ schedule: Schedule }>(
+      "PATCH",
+      `/api/workflows/${encodeURIComponent(workflowId)}/schedules/${encodeURIComponent(scheduleId)}`,
+      { body: patch },
+    );
+    return res.schedule;
+  }
+
+  async deleteSchedule(workflowId: string, scheduleId: string): Promise<void> {
+    await this.request(
+      "DELETE",
+      `/api/workflows/${encodeURIComponent(workflowId)}/schedules/${encodeURIComponent(scheduleId)}`,
+    );
+  }
+
+  /** List a workflow's executions, most recent first (server orders by started_at desc). */
+  async listExecutions(workflowId: string): Promise<Execution[]> {
+    const res = await this.request<{ executions: Execution[] }>(
+      "GET",
+      `/api/workflows/${encodeURIComponent(workflowId)}/executions`,
+    );
+    return res.executions;
+  }
+
+  /** Fetch a single execution's full trace/output (the run's report payload).
+   *  The server route is workflow-scoped: GET /api/workflows/:id/executions/:execId. */
+  getExecution(workflowId: string, executionId: string): Promise<Execution> {
+    return this.request<Execution>(
+      "GET",
+      `/api/workflows/${encodeURIComponent(workflowId)}/executions/${encodeURIComponent(executionId)}`,
+    );
   }
 
   async listAgents(): Promise<Agent[]> {

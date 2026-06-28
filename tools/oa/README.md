@@ -15,14 +15,60 @@ Foundation (#117) — in progress. Implemented and tested:
 | `oa health` | Check instance health. |
 | `oa key list \| create <name> \| revoke <id>` | Manage user-bound api keys. |
 | `oa flow list \| run <id> [--input <json>]` | List / run flows (workflows). |
-| `oa agent list \| run <id> <task…>` | List / run registered agents. |
+| `oa agent list \| run <id> <task…>` | List / run registered platform agents. |
+| `oa agent create \| schedules \| status \| logs \| start \| stop \| delete` | Autonomous agents (#122) — turn a flow into a scheduled, unattended agent and manage it. |
 | `oa chat <message…> [--session <id>]` | Send one chat turn and stream the reply. |
 | `oa do <text…>` / `oa "<english>"` | Natural-language layer (#120) — route plain English through the chat pipeline; concrete platform actions, with mutating-tool approvals handled in your terminal. |
 | `oa tui` / bare `oa` on a TTY | Interactive terminal UI (#121) — login, home dashboard, chat, flows, agents, and key management as an Ink app. |
 
 Global flags: `-p/--profile <name>`, `--instance <url>`, `--json`.
 
-Planned next (same epic): the autonomous agent runtime (#122).
+## Autonomous agents — `oa agent <schedule cmd>` (#122)
+
+An **autonomous agent** is just an existing **flow + a cron schedule** that runs
+it unattended. `oa agent` is a thin façade over the schedule CRUD API plus the
+existing workflow/execution endpoints — there is no new runtime. The agent's
+report-out is the flow's own terminal node (e.g. a `send_email` / Slack node);
+`oa agent logs` surfaces each run's output regardless.
+
+These scheduling commands live in the same `oa agent` group as the platform-agent
+`list` / `run` commands. Because the bare `oa agent list` already lists the
+platform agent registry, the **scheduled-agent listing is `oa agent schedules`**.
+
+```bash
+# turn flow w_abc into a 9am-daily autonomous agent (prints the plan, then asks)
+oa agent create --flow w_abc --schedule "0 9 * * *" --name "morning triage"
+oa agent create --flow w_abc --schedule "0 9 * * *" -y        # skip the prompt
+oa agent create --flow w_abc --schedule "*/15 * * * *" --timezone America/New_York
+
+# list your autonomous agents (flows that have a schedule)
+oa agent schedules
+
+# a single agent's schedule + recent runs, and the latest run's report payload
+oa agent status w_abc
+oa agent logs w_abc
+
+# pause / resume (toggles the schedule's is_active)
+oa agent stop  w_abc sc_123
+oa agent start w_abc sc_123
+
+# remove a schedule (asks unless -y)
+oa agent delete w_abc sc_123 -y
+```
+
+`oa agent create` prints the resolved plan (flow id + cron), then **asks for
+confirmation** unless you pass `-y` or `--json` (both signal explicit intent and
+proceed). After creating, it prints the schedule id and `next_run_at`.
+
+### `--report-to` is advisory
+
+`oa agent create --report-to <email>` is accepted but **advisory for v1**. `oa`
+is a thin client and cannot verify SMTP or rewrite your flow, so it prints a note
+that email report-out requires the flow to contain a `send_email` node **and**
+server SMTP config — and reminds you that `oa agent logs <flowId>` shows each
+run's output either way. It does **not** fabricate flow nodes.
+
+Planned next (same epic): richer run history + report formatting.
 
 ## Natural language — `oa do`
 

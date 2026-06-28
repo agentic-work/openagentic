@@ -91,6 +91,30 @@ describe("buildProgram", () => {
     expect(doCmd!.opts().yes).toBe(true);
   });
 
+  it("registers the agent scheduling subcommands alongside the existing list/run", () => {
+    const program = buildProgram({ out: () => {}, err: () => {} });
+    const agentCmd = program.commands.find((c) => c.name() === "agent");
+    expect(agentCmd).toBeDefined();
+    const names = agentCmd!.commands.map((c) => c.name());
+    for (const n of ["list", "run", "create", "schedules", "status", "logs", "start", "stop", "delete"]) {
+      expect(names).toContain(n);
+    }
+  });
+
+  it("parses `agent create --flow <id> --schedule <cron> -y`", async () => {
+    const program = buildProgram({ out: () => {}, err: () => {} });
+    const agentCmd = program.commands.find((c) => c.name() === "agent");
+    const createCmd = agentCmd!.commands.find((c) => c.name() === "create");
+    expect(createCmd).toBeDefined();
+    // Stub the action so we assert parsing without hitting the network.
+    (createCmd as unknown as { _actionHandler: (() => void) | null })._actionHandler = () => {};
+    await program.parseAsync(["node", "oa", "agent", "create", "--flow", "w1", "--schedule", "0 9 * * *", "-y"]);
+    const opts = createCmd!.opts();
+    expect(opts.flow).toBe("w1");
+    expect(opts.schedule).toBe("0 9 * * *");
+    expect(opts.yes).toBe(true);
+  });
+
   it("reports a version", async () => {
     const lines: string[] = [];
     const program = buildProgram({ out: (s) => lines.push(s), err: (s) => lines.push(s) });

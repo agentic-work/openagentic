@@ -35,6 +35,7 @@ import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
 import { loggers } from '../utils/logger.js';
 import { workflowRoutes } from '../routes/workflows.js';
+import { workflowScheduleRoutes } from '../routes/workflows-schedules.js';
 import { workflowApprovalRoutes } from '../routes/workflow-approvals.js';
 import { workflowMarketplaceRoutes } from '../routes/workflow-marketplace.js';
 import userContextRoutes from '../routes/user-context.js';
@@ -86,6 +87,15 @@ const workflowsRoutesPluginImpl: FastifyPluginAsync<WorkflowsRoutesPluginOptions
       loggers.routes.info('Workflow routes registered at /api/workflows/* (CRUD, execute, versions)');
     } catch (error) {
       loggers.routes.error({ err: error }, 'Failed to register workflow routes');
+    }
+
+    // ── 1b. Workflow Schedule routes ───────────────────────────────────────
+    // Cron schedule CRUD (#122) — the WRITER for the durable WorkflowScheduler.
+    try {
+      await gated.register(workflowScheduleRoutes, { prefix: '/api/workflows' });
+      loggers.routes.info('Workflow schedule routes registered at /api/workflows/:workflowId/schedules/*');
+    } catch (error) {
+      loggers.routes.error({ err: error }, 'Failed to register workflow schedule routes');
     }
 
     // ── 2. Workflow Approval routes ────────────────────────────────────────
