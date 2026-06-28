@@ -18,7 +18,7 @@ import * as promClient from 'prom-client';
 import { loggers } from './utils/logger.js';
 import { prisma } from './utils/prisma.js';
 import { getRedis, closeRedis } from './utils/redis.js';
-import { executeWorkflow, ExecutionEvent } from './services/WorkflowExecutionEngine.js';
+import { executeWorkflow, ExecutionEvent, type WorkflowDefinition } from './services/WorkflowExecutionEngine.js';
 import { WorkflowCompiler } from './services/WorkflowCompiler.js';
 import { startWorkflowScheduler } from './services/WorkflowScheduler.js';
 import { getAllSchemas, generateAiPromptFragment } from './nodes/registry.js';
@@ -26,7 +26,7 @@ import { findIdempotencyKey, storeIdempotencyKey } from './services/IdempotencyS
 import { requireInternalKey } from './middleware/requireInternalKey.js';
 import { validateTenantId } from './middleware/validateTenantId.js';
 import { resumeExecutionHandler, type ResumeExecutionInput } from './services/resumeExecutionHandler.js';
-import { submitDataRequest, isDataRequestSubmission } from './services/dataRequestSubmissionHandler.js';
+import { submitDataRequest, isDataRequestSubmission, type DataRequestPrisma, type DataRequestSubmission } from './services/dataRequestSubmissionHandler.js';
 import { seedTemplatesOnBoot } from './services/templateSeeder.js';
 import { withTenant } from './utils/tenantPrismaExtension.js';
 
@@ -125,8 +125,8 @@ async function start() {
     Body: {
       workflowId: string;
       executionId: string;
-      definition: { nodes: any[]; edges: any[] };
-      input: Record<string, any>;
+      definition: WorkflowDefinition;
+      input: Record<string, unknown>;
       userId: string;
       authToken?: string;
       idToken?: string;
@@ -206,8 +206,8 @@ async function start() {
         if (!reply.raw.writableEnded) {
           reply.raw.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
           // Flush immediately so events stream in real-time
-          if (typeof (reply.raw as any).flush === 'function') {
-            (reply.raw as any).flush();
+          if (typeof (reply.raw as { flush?: () => void }).flush === 'function') {
+            (reply.raw as { flush?: () => void }).flush!();
           }
         }
       };
@@ -228,11 +228,12 @@ async function start() {
           (event) => {
             sendSSE(event);
             // Track node-level metrics from events
-            if (event.type === 'node_complete' && event.data?.executionTimeMs) {
-              workflowNodeDuration.observe({ node_type: event.data.nodeType || 'unknown' }, event.data.executionTimeMs / 1000);
+            const d = event.data as { executionTimeMs?: number; nodeType?: string } | undefined;
+            if (event.type === 'node_complete' && d?.executionTimeMs) {
+              workflowNodeDuration.observe({ node_type: d.nodeType || 'unknown' }, d.executionTimeMs / 1000);
             }
             if (event.type === 'node_error') {
-              workflowNodeErrors.inc({ node_type: event.data?.nodeType || 'unknown', error_code: 'execution_failed' });
+              workflowNodeErrors.inc({ node_type: d?.nodeType || 'unknown', error_code: 'execution_failed' });
             }
           },
           { userEmail, idToken, triggerType, userPermissions, testMocks: mocks }
@@ -256,8 +257,8 @@ async function start() {
               failed_executions: !result.success ? { increment: 1 } : undefined,
             },
           });
-        } catch (dbErr: any) {
-          logger.warn({ error: dbErr.message }, 'Failed to update workflow stats');
+        } catch (dbErr: unknown) {
+          logger.warn({ error: (dbErr as Error).message }, 'Failed to update workflow stats');
         }
 
         // Store idempotency key after SSE execution completes (I2)
@@ -265,16 +266,16 @@ async function start() {
           await storeIdempotencyKey(idempotencyKey, executionId, { success: result.success, output: result.output });
         }
 
-      } catch (execError: any) {
+      } catch (execError: unknown) {
         metrics.failedExecutions++;
         workflowExecutionsTotal.inc({ status: 'error' });
-        logger.error({ error: execError.message, workflowId, executionId }, 'Workflow execution failed');
+        logger.error({ error: (execError as Error).message, workflowId, executionId }, 'Workflow execution failed');
 
         sendSSE({
           type: 'execution_error',
           executionId,
           timestamp: new Date().toISOString(),
-          data: { error: execError.message },
+          data: { error: (execError as Error).message },
         });
 
         // Update failure stats
@@ -305,8 +306,8 @@ async function start() {
     Body: {
       workflowId: string;
       executionId: string;
-      definition: { nodes: any[]; edges: any[] };
-      input: Record<string, any>;
+      definition: WorkflowDefinition;
+      input: Record<string, unknown>;
       userId: string;
       authToken?: string;
       idToken?: string;
@@ -382,9 +383,9 @@ async function start() {
         }
 
         return responseBody;
-      } catch (err: any) {
+      } catch (err: unknown) {
         metrics.failedExecutions++;
-        return reply.code(500).send({ error: err.message, events });
+        return reply.code(500).send({ error: (err as Error).message, events });
       } finally {
         metrics.activeExecutions--;
       }
@@ -433,9 +434,9 @@ async function start() {
     // `kind:'data_request'` or by `requestId` with no inline state/definition.
     // The approval path below is left untouched (kind:'approval' or no kind +
     // definition/state present).
-    if (isDataRequestSubmission(request.body as any)) {
+    if (isDataRequestSubmission(request.body)) {
       return withTenant({ tenantId }, async () => {
-        const body = request.body as any;
+        const body = request.body as unknown as DataRequestSubmission;
         // SSE streaming — same envelope as the approval path so api-side
         // resumeViaWorkflowsService can replay events[] uniformly.
         reply.hijack();
@@ -452,7 +453,7 @@ async function start() {
         const sendDR = (event: ExecutionEvent) => {
           if (!reply.raw.writableEnded) {
             reply.raw.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
-            if (typeof (reply.raw as any).flush === 'function') (reply.raw as any).flush();
+            if (typeof (reply.raw as { flush?: () => void }).flush === 'function') (reply.raw as { flush?: () => void }).flush!();
           }
         };
 
@@ -467,7 +468,7 @@ async function start() {
               providedBy: body.providedBy,
               providedAt: body.providedAt,
             },
-            { prisma: prisma as any },
+            { prisma: prisma as unknown as DataRequestPrisma },
             sendDR,
           );
           sendDR({
@@ -482,13 +483,13 @@ async function start() {
               invalid: result.invalid,
             },
           } as ExecutionEvent);
-        } catch (err: any) {
-          logger.error({ err: err.message, requestId: body.requestId }, 'Data-request resume failed unexpectedly');
+        } catch (err: unknown) {
+          logger.error({ err: (err as Error).message, requestId: body.requestId }, 'Data-request resume failed unexpectedly');
           sendDR({
             type: 'execution_error',
             executionId: body.executionId || '',
             timestamp: new Date().toISOString(),
-            data: { error: err.message },
+            data: { error: (err as Error).message },
           } as ExecutionEvent);
         } finally {
           metrics.activeExecutions--;
@@ -533,8 +534,8 @@ async function start() {
       const sendSSE = (event: ExecutionEvent) => {
         if (!reply.raw.writableEnded) {
           reply.raw.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
-          if (typeof (reply.raw as any).flush === 'function') {
-            (reply.raw as any).flush();
+          if (typeof (reply.raw as { flush?: () => void }).flush === 'function') {
+            (reply.raw as { flush?: () => void }).flush!();
           }
         }
       };
@@ -551,13 +552,13 @@ async function start() {
           timestamp: new Date().toISOString(),
           data: { success: result.success, output: result.output, error: result.error },
         });
-      } catch (err: any) {
-        logger.error({ err: err.message, executionId: payload.executionId }, 'Resume failed unexpectedly');
+      } catch (err: unknown) {
+        logger.error({ err: (err as Error).message, executionId: payload.executionId }, 'Resume failed unexpectedly');
         sendSSE({
           type: 'execution_error',
           executionId: payload.executionId,
           timestamp: new Date().toISOString(),
-          data: { error: err.message },
+          data: { error: (err as Error).message },
         });
       } finally {
         metrics.activeExecutions--;
@@ -574,7 +575,7 @@ async function start() {
   // =========================================================================
   fastify.post<{
     Body: {
-      definition: { nodes: any[]; edges: any[] };
+      definition: WorkflowDefinition;
     };
   }>('/compile', async (request, reply) => {
     const auth = await requireInternalKey(request, reply);
@@ -630,8 +631,8 @@ async function start() {
   try {
     await prisma.$queryRaw`SELECT 1`;
     logger.info('Database connection verified');
-  } catch (err: any) {
-    logger.error({ error: err.message }, 'Database connection failed');
+  } catch (err: unknown) {
+    logger.error({ error: (err as Error).message }, 'Database connection failed');
     process.exit(1);
   }
 
@@ -641,16 +642,16 @@ async function start() {
     await redis.connect();
     await redis.ping();
     logger.info('Redis connection verified');
-  } catch (err: any) {
-    logger.warn({ error: err.message }, 'Redis connection failed — continuing without Redis');
+  } catch (err: unknown) {
+    logger.warn({ error: (err as Error).message }, 'Redis connection failed — continuing without Redis');
   }
 
   // Start workflow scheduler
   try {
     await startWorkflowScheduler();
     logger.info('Workflow scheduler started');
-  } catch (err: any) {
-    logger.warn({ error: err.message }, 'Workflow scheduler failed to start');
+  } catch (err: unknown) {
+    logger.warn({ error: (err as Error).message }, 'Workflow scheduler failed to start');
   }
 
   // Permanent template seeding (idempotent upsert from /app/templates/*.json).
@@ -668,8 +669,8 @@ async function start() {
       },
       'Permanent template seeding complete',
     );
-  } catch (err: any) {
-    logger.warn({ error: err.message }, 'Template seeder failed — continuing without templates');
+  } catch (err: unknown) {
+    logger.warn({ error: (err as Error).message }, 'Template seeder failed — continuing without templates');
   }
 
   await fastify.listen({ port: PORT, host: HOST });
