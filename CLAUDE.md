@@ -15,7 +15,7 @@ The open-source OpenAgentic platform — services for building, orchestrating, a
 | `services/openagentic-workflows` | Workflow engine (Flowise-derived) |
 | `services/openagentic-mcp-proxy` | MCP server proxy (spawns built-in MCPs as subprocesses) |
 | `services/openagentic-proxy` | Egress proxy for agent tool calls |
-| `services/mcps/*` | 9 built-in MCP servers (aws, azure, gcp, kubernetes, prometheus, loki, github, admin, web) — these are what the proxy actually wires (see `services/openagentic-mcp-proxy/src/mcp_manager.py` `initialize_servers`). |
+| `services/mcps/*` | 11 built-in MCP servers (aws, azure, gcp, entra/M365, google/Workspace, kubernetes, prometheus, loki, github, admin, web) — these are what the proxy actually wires (see `services/openagentic-mcp-proxy/src/mcp_manager.py` `initialize_servers`). |
 | `services/openagentic-ollama` | Optional custom Ollama image with model pre-pull |
 | `services/shared` | Cross-service types / utilities |
 

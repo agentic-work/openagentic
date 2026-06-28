@@ -1,0 +1,13 @@
+# OpenAgentic Entra / M365 MCP Server — app-only Microsoft 365 over Microsoft Graph.
+# Thin httpx wrapper over graph.microsoft.com/v1.0/users/{id}/... using an
+# app-only (service-principal) Graph token minted via azure-identity's
+# ClientSecretCredential. No OBO / user-token passthrough.
+
+# fastmcp carries the _meta + annotations on the tools/list wire format.
+fastmcp>=3.2.0,<4.0.0
+
+# HTTP client for the Microsoft Graph REST calls.
+httpx>=0.27.0
+
+# App-only Graph token minting (ClientSecretCredential).
+azure-identity>=1.19.0

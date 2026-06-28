@@ -531,6 +531,9 @@ services:
         required: false
       - path: ${HOME}/.openagentic/cloud-secrets/gcp.env
         required: false
+      # Google Workspace MCP (Gmail) — put GOOGLE_WORKSPACE_SA_JSON here. Optional.
+      - path: ${HOME}/.openagentic/cloud-secrets/google.env
+        required: false
     volumes:
       - ${HOME}/.azure:/home/mcpuser/.azure:ro
       - ${HOME}/.aws:/home/mcpuser/.aws:ro
@@ -616,6 +619,22 @@ services:
       # in the sidecar). Left ON by default it would spawn a shim with no REST to
       # adopt, so it stays disabled unless you opt in.
       OPENAGENTIC_BRAINBOW_MCP_DISABLED: ${OPENAGENTIC_BRAINBOW_MCP_DISABLED:-true}
+      # OpenAgentic Entra (M365) MCP — Mail + Calendar via app-only Microsoft Graph.
+      # Reuses the AZURE_* service-principal creds (from cloud-secrets/azure.env).
+      # Set GRAPH_DEFAULT_MAILBOX for headless single-mailbox runs; opt into the
+      # Teams tools with ENTRA_TEAMS_TOOLS_ENABLED=true (they need application Graph
+      # permissions most tenants don't grant).
+      OpenAgentic_ENTRA_MCP_DISABLED: ${OpenAgentic_ENTRA_MCP_DISABLED:-false}
+      GRAPH_API_URL: ${GRAPH_API_URL:-}
+      GRAPH_DEFAULT_MAILBOX: ${GRAPH_DEFAULT_MAILBOX:-}
+      ENTRA_TEAMS_TOOLS_ENABLED: ${ENTRA_TEAMS_TOOLS_ENABLED:-}
+      # OpenAgentic Google Workspace MCP — Gmail via a domain-wide-delegated service
+      # account. Put the SA key JSON in cloud-secrets/google.env as
+      # GOOGLE_WORKSPACE_SA_JSON; GOOGLE_WORKSPACE_SUBJECT sets a default subject.
+      OpenAgentic_GOOGLE_MCP_DISABLED: ${OpenAgentic_GOOGLE_MCP_DISABLED:-false}
+      GOOGLE_WORKSPACE_SA_JSON: ${GOOGLE_WORKSPACE_SA_JSON:-}
+      GOOGLE_WORKSPACE_SUBJECT: ${GOOGLE_WORKSPACE_SUBJECT:-}
+      GMAIL_API_URL: ${GMAIL_API_URL:-}
       BRAINBOW_URL: ${BRAINBOW_URL:-http://brainbow:4444}
     # brainbow is NOT in depends_on — it's an opt-in profile service; the shim adopts
     # its REST lazily on the first browser tool call once the profile is up.
