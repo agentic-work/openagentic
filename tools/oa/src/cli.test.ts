@@ -1,5 +1,46 @@
 import { describe, expect, it } from "vitest";
-import { buildContext, buildProgram, type Prompter, resolveLoginInput } from "./cli.ts";
+import { buildContext, buildProgram, normalizeArgv, type Prompter, resolveLoginInput } from "./cli.ts";
+
+const KNOWN = ["login", "logout", "whoami", "health", "key", "flow", "agent", "chat", "do"];
+
+describe("normalizeArgv", () => {
+  it("splices `do` before an unknown leading positional (bare oa \"<english>\")", () => {
+    expect(normalizeArgv(["node", "oa", "create an agent that triages incidents"], KNOWN)).toEqual([
+      "node",
+      "oa",
+      "do",
+      "create an agent that triages incidents",
+    ]);
+  });
+
+  it("splices `do` for an unknown multi-token positional", () => {
+    expect(normalizeArgv(["node", "oa", "delete", "the", "stuck", "pod"], KNOWN)).toEqual([
+      "node",
+      "oa",
+      "do",
+      "delete",
+      "the",
+      "stuck",
+      "pod",
+    ]);
+  });
+
+  it("leaves a real subcommand untouched", () => {
+    const argv = ["node", "oa", "chat", "hello world"];
+    expect(normalizeArgv(argv, KNOWN)).toEqual(argv);
+  });
+
+  it("leaves an explicit `do` untouched (no double-splice)", () => {
+    const argv = ["node", "oa", "do", "--yes", "make a thing"];
+    expect(normalizeArgv(argv, KNOWN)).toEqual(argv);
+  });
+
+  it("leaves a pure-flag invocation untouched (--help / --version / bare)", () => {
+    expect(normalizeArgv(["node", "oa", "--help"], KNOWN)).toEqual(["node", "oa", "--help"]);
+    expect(normalizeArgv(["node", "oa", "--version"], KNOWN)).toEqual(["node", "oa", "--version"]);
+    expect(normalizeArgv(["node", "oa"], KNOWN)).toEqual(["node", "oa"]);
+  });
+});
 
 describe("buildContext", () => {
   it("maps global flags onto the command context", () => {
@@ -32,9 +73,22 @@ describe("buildProgram", () => {
       // commander throws on --help under exitOverride; the help text is captured above.
     }
     const help = lines.join("\n");
-    for (const cmd of ["login", "logout", "whoami", "health", "key", "flow", "agent", "chat"]) {
+    for (const cmd of ["login", "logout", "whoami", "health", "key", "flow", "agent", "chat", "do"]) {
       expect(help).toContain(cmd);
     }
+  });
+
+  it("parses `do --yes <text...>` into text + the yes flag", async () => {
+    const program = buildProgram({ out: () => {}, err: () => {} });
+    const doCmd = program.commands.find((c) => c.name() === "do");
+    expect(doCmd).toBeDefined();
+    // Stub the action to a no-op so we assert parsing without hitting the network;
+    // commander still populates processedArgs + opts on the command beforehand.
+    (doCmd as unknown as { _actionHandler: (() => void) | null })._actionHandler = () => {};
+    await program.parseAsync(["node", "oa", "do", "--yes", "make", "a", "thing"]);
+    const processed = (doCmd as unknown as { processedArgs: unknown[] }).processedArgs;
+    expect(processed[0]).toEqual(["make", "a", "thing"]);
+    expect(doCmd!.opts().yes).toBe(true);
   });
 
   it("reports a version", async () => {

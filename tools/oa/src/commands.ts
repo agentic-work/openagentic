@@ -13,6 +13,9 @@ export interface CommandContext {
   err: (line: string) => void;
   /** Optional raw writer (no trailing newline) for live token streaming. */
   write?: (chunk: string) => void;
+  /** Interactive yes/no prompt for client-side HITL approvals. Absent (e.g.
+   * under --json or a non-TTY) means "cannot ask" → cmdDo fails safe and denies. */
+  confirm?: (question: string) => Promise<boolean>;
   makeClient: (opts: ClientOptions) => OaClient;
 }
 
@@ -227,6 +230,95 @@ export async function cmdChat(
   } else if (live) {
     ctx.out(""); // terminating newline after the streamed tokens
   } else {
+    ctx.out(full); // no raw writer (e.g. tests) — print the whole reply at once
+  }
+}
+
+// ---- do (natural language) --------------------------------------------------
+
+/** A pending mutating-tool approval the server is blocked on (requestId === auditId). */
+interface ApprovalRequest {
+  requestId: string;
+  toolName: string;
+  serverName?: string;
+  args?: unknown;
+  preview?: string;
+  classification?: string;
+}
+
+function asApprovalRequest(event: unknown): ApprovalRequest | undefined {
+  if (!event || typeof event !== "object") return undefined;
+  const e = event as Record<string, unknown>;
+  if (e.type !== "approval_required") return undefined;
+  // requestId === auditId on the wire; tolerate either being the carrier.
+  const id = e.requestId ?? e.auditId;
+  if (typeof id !== "string" || !id) return undefined;
+  return {
+    requestId: id,
+    toolName: typeof e.toolName === "string" ? e.toolName : "(unknown tool)",
+    serverName: typeof e.serverName === "string" ? e.serverName : undefined,
+    args: e.args,
+    preview: typeof e.preview === "string" ? e.preview : undefined,
+    classification: typeof e.classification === "string" ? e.classification : undefined,
+  };
+}
+
+/** Route natural language through the chat pipeline, handling mutating-tool
+ * approvals client-side. The server BLOCKS on each approval_required frame until
+ * we POST a decision (or it times out and fails safe = deny); because chatStream
+ * awaits onEvent, prompting here pauses the stream cleanly. */
+export async function cmdDo(
+  ctx: CommandContext,
+  text: string,
+  opts: { yes?: boolean; sessionId?: string } = {},
+): Promise<void> {
+  const client = resolveClient(ctx);
+  const sessionId = opts.sessionId ?? (await client.createSession()).id;
+  const live = !ctx.json && typeof ctx.write === "function";
+  const approvals: Array<{ toolName: string; approved: boolean }> = [];
+  let full = "";
+
+  await client.chatStream({ sessionId, message: text }, async (event) => {
+    const approval = asApprovalRequest(event);
+    if (approval) {
+      if (!ctx.json) {
+        ctx.out(`\nApproval required: ${approval.toolName}${approval.serverName ? ` (${approval.serverName})` : ""}`);
+        if (approval.preview) ctx.out(`  ${approval.preview}`);
+        if (approval.args !== undefined) ctx.out(`  args: ${JSON.stringify(approval.args)}`);
+      }
+
+      // Decide. --yes approves; otherwise prompt; but never prompt under --json
+      // or when no prompter is wired (non-TTY) — fail safe = deny.
+      let approved: boolean;
+      if (opts.yes) {
+        approved = true;
+      } else if (ctx.json || !ctx.confirm) {
+        approved = false;
+      } else {
+        approved = await ctx.confirm(`Approve tool ${approval.toolName}?`);
+      }
+
+      await client.approveChatToolCall(approval.requestId, approved);
+      approvals.push({ toolName: approval.toolName, approved });
+      if (!ctx.json) {
+        ctx.out(approved ? `Approved: ${approval.toolName}` : `Denied: ${approval.toolName}`);
+      }
+      return;
+    }
+
+    // approval_resolved is the server's acknowledgement; nothing more to do
+    // (we already surfaced the local decision above), so just continue.
+    const t = eventText(event);
+    if (!t) return;
+    full += t;
+    if (live) ctx.write!(t);
+  });
+
+  if (ctx.json) {
+    ctx.out(JSON.stringify({ sessionId, text: full, approvals }));
+  } else if (live) {
+    ctx.out(""); // terminating newline after the streamed tokens
+  } else if (full) {
     ctx.out(full); // no raw writer (e.g. tests) — print the whole reply at once
   }
 }

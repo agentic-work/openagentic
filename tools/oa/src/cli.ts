@@ -9,6 +9,7 @@ import {
   cmdAgentList,
   cmdAgentRun,
   cmdChat,
+  cmdDo,
   cmdFlowList,
   cmdFlowRun,
   cmdHealth,
@@ -39,7 +40,23 @@ export interface Prompter {
   password(question: string): Promise<string>;
 }
 
+/* c8 ignore start — interactive terminal IO, exercised live not in unit tests */
+/** One-shot interactive y/N prompt for client-side HITL approvals. */
+async function promptYesNo(question: string): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+  try {
+    const ans = (await rl.question(`${question} [y/N]: `)).trim().toLowerCase();
+    return ans === "y" || ans === "yes";
+  } finally {
+    rl.close();
+  }
+}
+/* c8 ignore stop */
+
 export function buildContext(global: GlobalOpts, io: Io): CommandContext {
+  // Only offer an interactive approval prompt when we can actually ask: a real
+  // TTY and not --json. Otherwise leave confirm undefined so cmdDo fails safe (deny).
+  const canPrompt = !(global.json ?? false) && Boolean(process.stdin.isTTY);
   return {
     configDir: configDir(),
     profileName: global.profile,
@@ -48,8 +65,22 @@ export function buildContext(global: GlobalOpts, io: Io): CommandContext {
     out: io.out,
     err: io.err,
     write: (chunk) => process.stdout.write(chunk),
+    confirm: canPrompt ? (q) => promptYesNo(q) : undefined,
     makeClient: (opts) => new OaClient(opts),
   };
+}
+
+/** Make bare `oa "<english>"` work: when the first non-flag positional is NOT a
+ * known subcommand, splice `do` in before it. Real subcommands, an explicit
+ * `do`, and pure-flag invocations (`--help`, `--version`, bare `oa`) pass
+ * through untouched. */
+export function normalizeArgv(argv: string[], knownCommands: string[]): string[] {
+  const head = argv.slice(0, 2); // [node, oa]
+  const rest = argv.slice(2);
+  const firstPositional = rest.findIndex((a) => !a.startsWith("-"));
+  if (firstPositional === -1) return argv; // all flags / empty → leave alone
+  if (knownCommands.includes(rest[firstPositional])) return argv; // real subcommand
+  return [...head, ...rest.slice(0, firstPositional), "do", ...rest.slice(firstPositional)];
 }
 
 /** Resolve login inputs from flags, env, then interactive prompts (in that order). */
@@ -193,6 +224,14 @@ export function buildProgram(io: Io): Command {
       await cmdChat(ctx(options), message.join(" "), { sessionId: options.session });
     });
 
+  common(program.command("do <text...>"))
+    .description("Run a plain-English request through chat (approves mutating tools interactively)")
+    .option("-y, --yes", "auto-approve all tool calls (non-interactive)")
+    .option("--session <id>", "reuse an existing chat session")
+    .action(async (text: string[], options: { yes?: boolean; session?: string } & GlobalOpts) => {
+      await cmdDo(ctx(options), text.join(" "), { yes: options.yes, sessionId: options.session });
+    });
+
   return program;
 }
 
@@ -211,8 +250,10 @@ function invokedAsMain(): boolean {
 }
 if (invokedAsMain()) {
   const io: Io = { out: (s) => console.log(s), err: (s) => console.error(s) };
-  buildProgram(io)
-    .parseAsync(process.argv)
+  const program = buildProgram(io);
+  const known = program.commands.map((c) => c.name());
+  program
+    .parseAsync(normalizeArgv(process.argv, known))
     .catch((err: unknown) => {
       io.err(err instanceof Error ? err.message : String(err));
       process.exit(1);
