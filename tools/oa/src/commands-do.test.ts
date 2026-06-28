@@ -47,7 +47,7 @@ function ctxFor(url: string | undefined, overrides: Partial<CommandContext> = {}
  * of the stream server-side until the approval POST lands (mirrors the server). */
 function streamServer(opts: {
   withApproval?: { requestId: string; toolName: string };
-  onApproval?: (body: unknown) => void;
+  onApproval?: (info: { url: string; body: unknown }) => void;
 }) {
   return async () => {
     let release: (() => void) | undefined;
@@ -60,8 +60,11 @@ function streamServer(opts: {
         res.end(JSON.stringify({ session: { id: "s1" } }));
         return;
       }
-      if (req.url?.startsWith("/api/chat/approvals/")) {
-        opts.onApproval?.(body);
+      // Real gate-release endpoint: POST /api/approvals/:auditId/{approve,deny}
+      // (verb in path, no body). The legacy /api/chat/approvals/:id does NOT
+      // release auditAndGate, so the client must hit this one.
+      if (req.url?.startsWith("/api/approvals/")) {
+        opts.onApproval?.({ url: req.url, body });
         release?.();
         res.writeHead(200, { "content-type": "application/json" });
         res.end("{}");
@@ -112,11 +115,11 @@ describe("cmdDo — natural language → chat", () => {
   });
 
   it("--yes auto-approves a gated tool call and the stream continues", async () => {
-    let approvalBody: unknown;
+    let approval: { url: string; body: unknown } | undefined;
     const url = await streamServer({
       withApproval: { requestId: "req-9", toolName: "k8s_delete_pod" },
-      onApproval: (b) => {
-        approvalBody = b;
+      onApproval: (info) => {
+        approval = info;
       },
     })();
     const { ctx, out } = ctxFor(url);
@@ -124,19 +127,20 @@ describe("cmdDo — natural language → chat", () => {
     await cmdDo(ctx, "delete the stuck pod", { yes: true });
 
     const printed = out.join("\n");
-    expect(approvalBody).toEqual({ approved: true }); // approveChatToolCall(requestId, true)
+    expect(approval?.url).toBe("/api/approvals/req-9/approve"); // verb-in-path, releases the gate
+    expect(approval?.body).toBeUndefined(); // no body on the wire
     expect(printed).toContain("k8s_delete_pod"); // tool name surfaced
     expect(printed).toContain("k8s_delete_pod prod/api"); // preview surfaced
     expect(printed).toContain("all done"); // stream continued past the gate
   });
 
   it("interactive confirm → false denies the tool call and reports it", async () => {
-    let approvalBody: unknown;
+    let approval: { url: string; body: unknown } | undefined;
     const asked: string[] = [];
     const url = await streamServer({
       withApproval: { requestId: "req-deny", toolName: "aws_terminate_instance" },
-      onApproval: (b) => {
-        approvalBody = b;
+      onApproval: (info) => {
+        approval = info;
       },
     })();
     const { ctx, out } = ctxFor(url, {
@@ -150,16 +154,16 @@ describe("cmdDo — natural language → chat", () => {
 
     expect(asked.length).toBe(1);
     expect(asked[0]).toContain("aws_terminate_instance");
-    expect(approvalBody).toEqual({ approved: false }); // POST {approved:false}
+    expect(approval?.url).toBe("/api/approvals/req-deny/deny"); // POSTs the /deny verb
     expect(out.join("\n").toLowerCase()).toContain("denied");
   });
 
   it("--json emits {sessionId, text, approvals}; defaults to DENY under --json with no --yes", async () => {
-    let approvalBody: unknown;
+    let approval: { url: string; body: unknown } | undefined;
     const url = await streamServer({
       withApproval: { requestId: "req-json", toolName: "gcp_delete_bucket" },
-      onApproval: (b) => {
-        approvalBody = b;
+      onApproval: (info) => {
+        approval = info;
       },
     })();
     // confirm present, but --json must fail safe (never prompt) → deny
@@ -167,7 +171,7 @@ describe("cmdDo — natural language → chat", () => {
 
     await cmdDo(ctx, "nuke the bucket", {});
 
-    expect(approvalBody).toEqual({ approved: false }); // json + no --yes → fail-safe deny
+    expect(approval?.url).toBe("/api/approvals/req-json/deny"); // json + no --yes → fail-safe deny
     const parsed = JSON.parse(out.join("\n"));
     expect(parsed.sessionId).toBe("s1");
     expect(parsed.text).toContain("all done");

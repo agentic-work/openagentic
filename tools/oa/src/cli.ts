@@ -233,7 +233,7 @@ export function buildProgram(io: Io): Command {
     .option("--schedule <cron>", 'cron expression, e.g. "0 9 * * *"')
     .option("--name <name>", "human-readable name for the schedule")
     .option("--timezone <tz>", "IANA timezone, e.g. America/New_York")
-    .option("--report-to <email>", "advisory: email for run reports (requires a send_email node + SMTP)")
+    .option("--report-to <email>", "email passed to the flow as {{report_to}} (needs a send_email node + server SMTP)")
     .option("-y, --yes", "skip the confirmation prompt")
     .action(
       async (

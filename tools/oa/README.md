@@ -60,13 +60,25 @@ oa agent delete w_abc sc_123 -y
 confirmation** unless you pass `-y` or `--json` (both signal explicit intent and
 proceed). After creating, it prints the schedule id and `next_run_at`.
 
-### `--report-to` is advisory
+### Unattended runs + the approval gate (honest v1 limitation)
 
-`oa agent create --report-to <email>` is accepted but **advisory for v1**. `oa`
-is a thin client and cannot verify SMTP or rewrite your flow, so it prints a note
-that email report-out requires the flow to contain a `send_email` node **and**
-server SMTP config — and reminds you that `oa agent logs <flowId>` shows each
-run's output either way. It does **not** fabricate flow nodes.
+`oa agent create` prints a warning (on stderr, and in a `warnings` array under
+`--json`): with the **human-approval gate ON** (the default), an unattended
+scheduled run has no human to approve **mutating** tool calls, so the gate
+**denies them after its policy timeout** (the engine suspend-on-gate path is
+deferred). **Autonomous agents are reliable for READ / report-only flows in
+v1.** Don't schedule a flow whose value depends on a mutating step unless you
+have explicitly relaxed the gate policy server-side.
+
+### `--report-to` wiring
+
+`oa agent create --report-to <email>` is **wired** into the schedule's
+`input_template` as `{ "report_to": "<email>" }`, so a `send_email` node in your
+flow can template `{{report_to}}`. It is also echoed in the `--json` output.
+Delivery still requires the flow to contain that `send_email` node **and** server
+SMTP config — `oa` is a thin client and cannot verify either, nor will it
+fabricate flow nodes, so it prints an honest advisory and reminds you that
+`oa agent logs <flowId>` shows each run's output regardless.
 
 Planned next (same epic): richer run history + report formatting.
 
@@ -108,8 +120,10 @@ the arguments, then asks you to approve:
   mutating runs unless you explicitly approved it.
 
 On timeout the server itself fails safe (deny). Approvals go to
-`POST /api/chat/approvals/:id` with your user-bound key — the same gate the web
-UI uses, driven from the terminal.
+`POST /api/approvals/:auditId/{approve,deny}` (verb in the path, no body) with
+your user-bound key — this is the endpoint that actually releases the chat
+mutating-tool gate (`auditAndGate` → `ApprovalRegistry.waitFor`), the same gate
+the web UI uses, driven from the terminal.
 
 ## Interactive TUI — `oa tui`
 
@@ -125,8 +139,11 @@ oa flow list --json          # scripting fast path — never loads the TUI
 
 Screens: **Login** (pick a saved profile, or an inline form that mints a
 user-bound api key and stores only the key), **Home** (identity + health badge +
-menu), **Chat** (live token streaming, thinking omitted), **Flows** (list and
-run, with optional JSON input), **Agents** (list and run on a task), and **Keys**
+menu — an invalid/revoked key shows an explicit "not authenticated" prompt
+rather than spinning), **Chat** (live token streaming, thinking omitted, with an
+inline **Approve/Deny** card for mutating tool calls — `y`/`n` decides and the
+stream resumes), **Flows** (list and run, with optional JSON input), **Agents**
+(list and run on a task), and **Keys**
 (list, create — shown once — and revoke with confirmation). `esc` backs out of a
 screen; `q` / Ctrl-C quit from Home.
 

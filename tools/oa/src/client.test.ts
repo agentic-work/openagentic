@@ -136,16 +136,19 @@ describe("OaClient", () => {
     expect(flows[0].name).toBe("triage");
   });
 
-  it("executeWorkflow POSTs input to the :id/execute path", async () => {
+  it("executeWorkflow POSTs input to the :id/execute?async=true path (single JSON, not the NDJSON stream)", async () => {
+    // The default execute path STREAMS NDJSON; ?async=true makes the server
+    // return a single JSON {executionId, status:'running'} (workflows.ts:1558).
     const api = await fakeApi(() => ({ json: { executionId: "e1", status: "running" } }));
     const client = new OaClient({ instanceUrl: api.url, token: "t" });
 
     const res = await client.executeWorkflow("w1", { foo: "bar" });
 
     expect(api.requests[0].method).toBe("POST");
-    expect(api.requests[0].url).toBe("/api/workflows/w1/execute");
+    expect(api.requests[0].url).toBe("/api/workflows/w1/execute?async=true");
     expect(api.requests[0].body).toMatchObject({ input: { foo: "bar" } });
     expect(res.executionId).toBe("e1");
+    expect(res.status).toBe("running");
   });
 
   it("listAgents returns the agents array", async () => {

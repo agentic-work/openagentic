@@ -451,7 +451,12 @@ describe('GET /api/admin/integrations/:platform/oauth-callback', () => {
     const integArg = p.integration.create.mock.calls[0][0];
     expect(integArg.data.platform).toBe('slack');
     expect(integArg.data.status).toBe('active');
-    expect(integArg.data.config.botToken).toBe('xoxb-fake');
+    // SC-28 (#3): the secret botToken is envelope-ENCRYPTED at rest, NOT plaintext.
+    expect(integArg.data.config.botToken).not.toBe('xoxb-fake');
+    expect(integArg.data.config.botToken).toMatch(/^local2:/);
+    const { decryptIntegrationConfig } = await import('../../../services/IntegrationConfigService.js');
+    expect(decryptIntegrationConfig(integArg.data.config).botToken).toBe('xoxb-fake');
+    // Non-secret metadata stays plaintext.
     expect(integArg.data.config.teamId).toBe('T1');
     // Two adminAuditLog.create calls expected — one is from writeAudit on
     // success-path. (oauth-start was NOT called in this test; only callback.)
@@ -496,8 +501,57 @@ describe('GET /api/admin/integrations/:platform/oauth-callback', () => {
     expect(p.integration.create).toHaveBeenCalledTimes(1);
     const integArg = p.integration.create.mock.calls[0][0];
     expect(integArg.data.platform).toBe('teams'); // schema uses 'teams', not 'ms-teams'
-    expect(integArg.data.config.accessToken).toBe('eyJ-msft-token');
-    expect(integArg.data.config.refreshToken).toBe('eyJ-refresh');
+    // SC-28 (#3): delegated tokens are envelope-ENCRYPTED at rest, NOT plaintext.
+    expect(integArg.data.config.accessToken).not.toBe('eyJ-msft-token');
+    expect(integArg.data.config.accessToken).toMatch(/^local2:/);
+    expect(integArg.data.config.refreshToken).toMatch(/^local2:/);
+    const { decryptIntegrationConfig } = await import('../../../services/IntegrationConfigService.js');
+    const decryptedTeams = decryptIntegrationConfig(integArg.data.config);
+    expect(decryptedTeams.accessToken).toBe('eyJ-msft-token');
+    expect(decryptedTeams.refreshToken).toBe('eyJ-refresh');
+    await app.close();
+  });
+
+  // #3 HIGH — SC-28 at-rest encryption regression. Before the fix the OAuth
+  // callback persisted Integration.config in PLAINTEXT, bypassing #119's
+  // encryptIntegrationConfig() envelope used by the manual admin POST path.
+  it('SC-28 (#3): persists the OAuth-issued secret ENCRYPTED — never plaintext — and round-trips', async () => {
+    const SECRET = 'xoxb-super-secret-oauth-token';
+    p.adminAuditLog.findFirst
+      .mockResolvedValueOnce({
+        id: 'state-row',
+        created_at: new Date(),
+        details: { platform: 'slack', expires_at: futureExpiry(), redirect_uri: '/admin/integrations/oauth-callback' },
+      })
+      .mockResolvedValueOnce(null);
+    p.adminAuditLog.create.mockResolvedValue({ id: 'audit-callback' });
+    p.integration.create.mockResolvedValue({ id: 'integ-3', platform: 'slack', status: 'active' });
+    mockFetchOnce({
+      ok: true,
+      access_token: SECRET,
+      team: { id: 'T9', name: 'SecureTeam' },
+      bot_user_id: 'U-bot',
+      scope: 'channels:read,chat:write',
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/admin/integrations/slack/oauth-callback?code=auth-code&state=nonce-sc28',
+    });
+    expect(res.statusCode).toBe(200);
+    expect(p.integration.create).toHaveBeenCalledTimes(1);
+
+    const storedConfig = p.integration.create.mock.calls[0][0].data.config;
+    // The raw secret must NOT appear anywhere in the persisted config payload.
+    expect(JSON.stringify(storedConfig)).not.toContain(SECRET);
+    // It carries the vault envelope prefix produced by encryptIntegrationConfig.
+    expect(storedConfig.botToken).toMatch(/^local2:/);
+
+    // The stored config is exactly the encryptIntegrationConfig output: it
+    // round-trips back to the original secret via decryptIntegrationConfig.
+    const { decryptIntegrationConfig } = await import('../../../services/IntegrationConfigService.js');
+    expect(decryptIntegrationConfig(storedConfig).botToken).toBe(SECRET);
     await app.close();
   });
 

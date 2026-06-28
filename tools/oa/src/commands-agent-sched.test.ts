@@ -142,6 +142,63 @@ describe("agent create — schedule a flow", () => {
     expect(reqs.some((r) => r.method === "POST" && r.url === "/api/workflows/w1/schedules")).toBe(true);
   });
 
+  // #9 — honesty: unattended scheduled runs cannot satisfy the human-approval
+  // gate, so a flow with mutating steps is denied after the policy timeout.
+  it("warns that unattended runs cannot approve mutating tool calls (human mode → stderr)", async () => {
+    const { url } = await fakeApi((_r, res) => sendJson(res, { schedule: schedule() }, 201));
+    const { ctx, err } = ctxFor(url);
+
+    await cmdScheduledAgentCreate(ctx, { flowId: "w1", cron: "0 9 * * *" }, { yes: true });
+
+    const warning = err.join("\n").toLowerCase();
+    expect(warning).toContain("approval gate");
+    expect(warning).toContain("denied");
+    expect(warning).toContain("read");
+  });
+
+  it("--json surfaces the approval-gate warning in a warnings array", async () => {
+    const { url } = await fakeApi((_r, res) => sendJson(res, { schedule: schedule() }, 201));
+    const { ctx, out } = ctxFor(url, { json: true });
+
+    await cmdScheduledAgentCreate(ctx, { flowId: "w1", cron: "0 9 * * *" }, {});
+
+    const parsed = JSON.parse(out.join("\n"));
+    expect(Array.isArray(parsed.warnings)).toBe(true);
+    expect(parsed.warnings.join(" ").toLowerCase()).toContain("approval gate");
+  });
+
+  // #14 — wire --report-to into input_template so a send_email node can read
+  // {{report_to}}; still honest that delivery needs the node + SMTP.
+  it("--report-to wires report_to into the schedule's input_template", async () => {
+    const { url, reqs } = await fakeApi((_r, res) => sendJson(res, { schedule: schedule() }, 201));
+    const { ctx } = ctxFor(url);
+
+    await cmdScheduledAgentCreate(ctx, { flowId: "w1", cron: "0 9 * * *", reportTo: "ops@x.com" }, { yes: true });
+
+    const post = reqs.find((r) => r.method === "POST" && r.url === "/api/workflows/w1/schedules");
+    expect((post?.body as { input_template?: unknown })?.input_template).toEqual({ report_to: "ops@x.com" });
+  });
+
+  it("--json echoes report_to in the output", async () => {
+    const { url } = await fakeApi((_r, res) => sendJson(res, { schedule: schedule() }, 201));
+    const { ctx, out } = ctxFor(url, { json: true });
+
+    await cmdScheduledAgentCreate(ctx, { flowId: "w1", cron: "0 9 * * *", reportTo: "ops@x.com" }, {});
+
+    const parsed = JSON.parse(out.join("\n"));
+    expect(parsed.report_to).toBe("ops@x.com");
+  });
+
+  it("omits input_template when no --report-to is given", async () => {
+    const { url, reqs } = await fakeApi((_r, res) => sendJson(res, { schedule: schedule() }, 201));
+    const { ctx } = ctxFor(url);
+
+    await cmdScheduledAgentCreate(ctx, { flowId: "w1", cron: "0 9 * * *" }, { yes: true });
+
+    const post = reqs.find((r) => r.method === "POST" && r.url === "/api/workflows/w1/schedules");
+    expect((post?.body as { input_template?: unknown })?.input_template).toBeUndefined();
+  });
+
   it("throws the `oa login` hint when no profile is configured", async () => {
     const { ctx } = ctxFor(undefined);
     await expect(cmdScheduledAgentCreate(ctx, { flowId: "w1", cron: "0 9 * * *" }, { yes: true })).rejects.toThrow(
@@ -228,7 +285,12 @@ describe("agent status / logs", () => {
   it("logs fetches and prints the most recent execution's output", async () => {
     const { url, reqs } = await fakeApi((r, res) => {
       if (r.url === "/api/workflows/w1/executions/e2") {
-        sendJson(res, { id: "e2", status: "completed", output: { report: "emailed ops@x" } });
+        // server wraps the row in {execution, logs, nodeSummary}
+        sendJson(res, {
+          execution: { id: "e2", status: "completed", output: { report: "emailed ops@x" } },
+          logs: [],
+          nodeSummary: {},
+        });
         return;
       }
       if (r.url?.startsWith("/api/workflows/w1/executions")) {

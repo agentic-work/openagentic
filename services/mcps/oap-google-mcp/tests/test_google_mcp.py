@@ -35,6 +35,7 @@ import json
 import sys
 from pathlib import Path
 
+import httpx
 import pytest
 
 # Make THIS package's `src/` the import root regardless of CWD.
@@ -287,6 +288,41 @@ def test_send_requires_recipient(auth):
     out = run(server.google_gmail_send(to="", subject="S", body="B", meta=GOOD_META))
     assert out["success"] is False
     assert "recipient" in out["error"].lower()
+
+
+# ===========================================================================
+# PATH-TRAVERSAL CONTAINMENT — a user-controlled message id interpolated into the
+# Gmail URL PATH must NOT escape /users/me/ via RFC-3986 dot-segment normalization
+# (httpx normalizes "../" CLIENT-SIDE before sending). Defensive hardening: even
+# though the DWD token is subject-scoped, the message id is percent-encoded so it
+# can never form a new path segment.
+# ===========================================================================
+def test_httpx_normalizes_raw_dot_segments_proving_the_threat():
+    """Documents the attack vector: a RAW "../../" in the id escapes /users/me/."""
+    raw_unsafe = "https://gmail.googleapis.com/gmail/v1/users/me/messages/../../victim@corp.com"
+    assert httpx.URL(raw_unsafe).raw_path == b"/gmail/v1/users/victim@corp.com"
+
+
+def test_seg_encodes_path_separators_but_not_dots():
+    assert server._seg("../../victim@corp.com") == "..%2F..%2Fvictim%40corp.com"
+    assert server._seg("18f0c") == "18f0c"  # legit gmail id unchanged
+
+
+def test_get_message_id_traversal_cannot_escape_users_me(wire, auth):
+    wire.respond(status_code=200, json_body={"id": "x", "payload": {"headers": []}})
+    run(server.google_gmail_get_message(id="../../victim@corp.com", meta=GOOD_META))
+    raw = httpx.URL(wire.sent["url"]).raw_path.decode()
+    # The pinned /users/me/ survives RFC-3986 normalization ...
+    assert raw.startswith("/gmail/v1/users/me/messages/"), raw
+    assert "/users/victim" not in raw
+    # ... because the "/" separators in the id are percent-encoded to one segment.
+    assert "%2F" in raw
+
+
+def test_get_message_legit_id_no_regression(wire, auth):
+    wire.respond(status_code=200, json_body={"id": "m9", "payload": {"headers": []}})
+    run(server.google_gmail_get_message(id="m9", meta=GOOD_META))
+    assert httpx.URL(wire.sent["url"]).raw_path.decode() == "/gmail/v1/users/me/messages/m9"
 
 
 # ===========================================================================

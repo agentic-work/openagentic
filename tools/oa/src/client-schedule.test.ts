@@ -124,15 +124,25 @@ describe("OaClient — schedules", () => {
     expect(ex[0].id).toBe("e2");
   });
 
-  it("getExecution GETs the execution detail path", async () => {
-    const api = await fakeApi(() => ({ json: { id: "e2", status: "completed", output: { sent: true } } }));
+  it("getExecution GETs the execution detail path and unwraps the {execution} envelope", async () => {
+    // The server wraps the row: GET /:id/executions/:execId returns
+    // { execution, logs, nodeSummary } (workflows.ts:2491) — not a bare row.
+    const api = await fakeApi(() => ({
+      json: {
+        execution: { id: "e2", status: "completed", output: { sent: true } },
+        logs: [],
+        nodeSummary: {},
+      },
+    }));
     const client = new OaClient({ instanceUrl: api.url, token: "t" });
 
     const e = await client.getExecution("w1", "e2");
 
     expect(api.requests[0].method).toBe("GET");
     expect(api.requests[0].url).toBe("/api/workflows/w1/executions/e2");
+    expect(e.id).toBe("e2");
     expect(e.status).toBe("completed");
+    expect((e.output as { sent: boolean }).sent).toBe(true);
   });
 
   it("url-encodes ids in schedule paths", async () => {

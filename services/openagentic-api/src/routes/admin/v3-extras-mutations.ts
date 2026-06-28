@@ -23,18 +23,51 @@
  * against accidental mounts in test rigs (mirrors the v3-extras.ts pattern).
  */
 
-import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyPluginAsync, FastifyRequest, FastifyReply, FastifyInstance } from 'fastify';
+import { Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { prisma } from '../../utils/prisma.js';
 import { loggers } from '../../utils/logger.js';
 import { createChainedAdminAudit } from '../../services/audit/adminAuditChain.js';
+import { encryptIntegrationConfig } from '../../services/IntegrationConfigService.js';
+import type { ProviderManager } from '../../services/llm-providers/ProviderManager.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Auth principal attached to the request by adminMiddleware upstream. */
+interface RequestUser {
+  id?: string;
+  email?: string;
+  isAdmin?: boolean;
+  role?: string;
+}
+
+/** Read the authenticated principal without resorting to `any`. */
+function reqUser(req: FastifyRequest): RequestUser | undefined {
+  return (req as FastifyRequest & { user?: RequestUser }).user;
+}
+
+/**
+ * Loosely-typed shape of the Slack / Microsoft OAuth token-exchange response.
+ * All fields optional — provider responses are validated before use.
+ */
+interface OAuthExchangeResponse {
+  ok?: boolean;
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  token_type?: string;
+  scope?: string;
+  bot_user_id?: string;
+  team?: { id?: string; name?: string };
+  error?: string;
+  error_description?: string;
+}
+
 function isAdminUser(req: FastifyRequest): boolean {
-  const user = (req as any).user;
+  const user = reqUser(req);
   return Boolean(user?.isAdmin || user?.role === 'admin');
 }
 
@@ -43,7 +76,7 @@ function adminUserMeta(req: FastifyRequest): {
   admin_email: string | null;
   ip_address: string | null;
 } {
-  const user = (req as any).user ?? {};
+  const user: RequestUser = reqUser(req) ?? {};
   return {
     admin_user_id: typeof user.id === 'string' ? user.id : null,
     admin_email: typeof user.email === 'string' ? user.email : null,
@@ -56,7 +89,7 @@ async function writeAudit(opts: {
   action: string;
   resource_type: string;
   resource_id: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }): Promise<void> {
   const meta = adminUserMeta(opts.req);
   try {
@@ -69,7 +102,7 @@ async function writeAudit(opts: {
         details: opts.details ?? {},
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     // Audit-log writes must never block the user-visible mutation.
     loggers.services.warn(
       { err: err?.message, action: opts.action },
@@ -80,7 +113,7 @@ async function writeAudit(opts: {
 
 // system_configuration helpers — self-contained JSON get/set used by the
 // workflow-governance settings endpoints below.
-async function getSysConfig<T = any>(key: string): Promise<T | null> {
+async function getSysConfig<T = unknown>(key: string): Promise<T | null> {
   const row = await prisma.systemConfiguration.findUnique({ where: { key } });
   if (!row) return null;
   try {
@@ -90,12 +123,12 @@ async function getSysConfig<T = any>(key: string): Promise<T | null> {
   }
 }
 
-async function setSysConfig(key: string, value: any): Promise<void> {
+async function setSysConfig(key: string, value: unknown): Promise<void> {
   const serialized = typeof value === 'string' ? value : JSON.stringify(value);
   await prisma.systemConfiguration.upsert({
     where: { key },
-    update: { value: serialized as any, updated_at: new Date() },
-    create: { key, value: serialized as any },
+    update: { value: serialized as unknown as Prisma.InputJsonValue, updated_at: new Date() },
+    create: { key, value: serialized as unknown as Prisma.InputJsonValue },
   });
 }
 
@@ -391,17 +424,17 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     // (2) Look up the state nonce and confirm it was issued for THIS platform.
-    let stateRow: { id: string; created_at: Date; details: any } | null = null;
+    let stateRow: { id: string; created_at: Date; details: unknown } | null = null;
     try {
       stateRow = (await prisma.adminAuditLog.findFirst({
         where: {
           action: 'admin.integrations.oauth-start',
           resource_id: state,
-          details: { path: ['platform'], equals: platform } as any,
+          details: { path: ['platform'], equals: platform } as unknown as Prisma.JsonNullableFilter,
         },
         orderBy: { created_at: 'desc' },
-      })) as any;
-    } catch (err: any) {
+      })) as unknown as { id: string; created_at: Date; details: unknown } | null;
+    } catch (err) {
       loggers.services.error(
         { err: err?.message, platform },
         '[admin.integrations.oauth-callback] state lookup failed',
@@ -413,7 +446,7 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     // (3) Expiry check
-    const expiresAtRaw = (stateRow.details as any)?.expires_at;
+    const expiresAtRaw = (stateRow.details as { expires_at?: string } | null)?.expires_at;
     const expiresAt = typeof expiresAtRaw === 'string' ? Date.parse(expiresAtRaw) : Number.NaN;
     if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
       return reply.code(400).send({ success: false, error: 'state expired' });
@@ -427,8 +460,8 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
           action: 'admin.integrations.oauth-callback',
           resource_id: state,
         },
-      })) as any;
-    } catch (err: any) {
+      })) as unknown as { id: string } | null;
+    } catch (err) {
       loggers.services.warn(
         { err: err?.message, platform },
         '[admin.integrations.oauth-callback] replay-check lookup failed; proceeding',
@@ -452,9 +485,9 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
 
-    const redirectUri = (stateRow.details as any)?.redirect_uri ?? '/admin/integrations/oauth-callback';
+    const redirectUri = (stateRow.details as { redirect_uri?: string } | null)?.redirect_uri ?? '/admin/integrations/oauth-callback';
 
-    let exchangeJson: any = null;
+    let exchangeJson: OAuthExchangeResponse | null = null;
     let exchangeOk = false;
     try {
       if (isSlack) {
@@ -491,7 +524,7 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
         exchangeJson = await resp.json().catch(() => null);
         exchangeOk = resp.ok && typeof exchangeJson?.access_token === 'string';
       }
-    } catch (err: any) {
+    } catch (err) {
       loggers.services.error(
         { err: err?.message, platform },
         '[admin.integrations.oauth-callback] token exchange threw',
@@ -533,7 +566,7 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const webhookId = randomBytes(24).toString('hex');
       let name: string;
-      let config: Record<string, any>;
+      let config: Record<string, unknown>;
       if (isSlack) {
         const teamName = exchangeJson?.team?.name ?? 'Slack';
         name = `Slack — ${teamName}`;
@@ -565,15 +598,19 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
           name,
           platform: dbPlatform,
           status: 'active',
-          config,
+          // SC-28 (#119): envelope-encrypt the secret fields at rest. The OAuth
+          // callback lands live credentials (Slack botToken; Teams
+          // accessToken/refreshToken) — encrypt before persisting, mirroring
+          // admin-integrations.ts so they are never stored plaintext.
+          config: encryptIntegrationConfig(config) as unknown as Prisma.InputJsonValue,
           webhook_id: webhookId,
           allowed_channels: [],
           allowed_workflows: [],
-          created_by: (request as any).user?.id ?? null,
+          created_by: reqUser(request)?.id ?? null,
         },
       });
       integrationId = created.id;
-    } catch (err: any) {
+    } catch (err) {
       loggers.services.error(
         { err: err?.message, platform },
         '[admin.integrations.oauth-callback] integration persist failed',
@@ -662,7 +699,7 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
         where: { id },
         select: { id: true, status: true },
       })) as { id: string; status: string } | null;
-    } catch (err: any) {
+    } catch (err) {
       loggers.services.error({ err: err?.message, id }, '[admin.chargeback.report.status-advance] lookup failed');
       return reply.code(500).send({ success: false, error: 'Failed to read report' });
     }
@@ -690,7 +727,7 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
         where: { id },
         data: { status: nextStatus },
       });
-    } catch (err: any) {
+    } catch (err) {
       loggers.services.error({ err: err?.message, id }, '[admin.chargeback.report.status-advance] update failed');
       return reply.code(500).send({ success: false, error: 'Failed to update report' });
     }
@@ -743,11 +780,11 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
 
     let providers: Array<{ id: string; name: string; enabled: boolean }> = [];
     try {
-      providers = (await prisma.lLMProvider.findMany({
+      providers = await prisma.lLMProvider.findMany({
         where: { enabled: true, deleted_at: null },
         select: { id: true, name: true, enabled: true },
-      })) as any;
-    } catch (err: any) {
+      });
+    } catch (err) {
       loggers.services.error(
         { err: err?.message },
         '[admin.llm-providers.registry.refresh-all] provider lookup failed',
@@ -763,8 +800,8 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
       const before = await prisma.modelRoleAssignment.findMany({
         select: { provider: true, model: true },
       });
-      beforeIds = new Set(before.map((r: any) => `${r.provider}::${r.model}`));
-    } catch (err: any) {
+      beforeIds = new Set(before.map((r) => `${r.provider}::${r.model}`));
+    } catch (err) {
       // If even the snapshot fails we still try the refresh and just report
       // both adds + updates as 0 — the run isn't fatal.
       loggers.services.warn(
@@ -774,19 +811,23 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
       beforeIds = new Set();
     }
 
-    const appCtx: any = (fastify as any).appContext ?? (request as any).server?.appContext;
+    type AppCtxWithProviderManager = { providerManager?: ProviderManager };
+    const appCtx =
+      (fastify as FastifyInstance & { appContext?: AppCtxWithProviderManager }).appContext ??
+      (request as FastifyRequest & { server?: { appContext?: AppCtxWithProviderManager } }).server
+        ?.appContext;
     const providerManager = appCtx?.providerManager;
     if (providerManager) {
       try {
         const { RefreshModelDetailsJob } = await import('../../jobs/RefreshModelDetailsJob.js');
-        const job = new RefreshModelDetailsJob(prisma as any, providerManager, loggers.services as any);
+        const job = new RefreshModelDetailsJob(prisma, providerManager, loggers.services);
         const jobResult = await job.run();
         summary.modelsUpdated = jobResult.refreshed;
         // failed providers map onto error entries
         if (jobResult.failed > 0) {
           summary.errors.push({ provider: 'multiple', error: `${jobResult.failed} per-row failures (see job logs)` });
         }
-      } catch (err: any) {
+      } catch (err) {
         loggers.services.error(
           { err: err?.message },
           '[admin.llm-providers.registry.refresh-all] RefreshModelDetailsJob threw',
@@ -806,7 +847,7 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
       const after = await prisma.modelRoleAssignment.findMany({
         select: { provider: true, model: true },
       });
-      const afterIds = new Set(after.map((r: any) => `${r.provider}::${r.model}`));
+      const afterIds = new Set(after.map((r) => `${r.provider}::${r.model}`));
       let added = 0;
       for (const id of afterIds) if (!beforeIds.has(id)) added += 1;
       summary.modelsAdded = added;
@@ -819,7 +860,7 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
         // Cap at preexisting count so we don't double-count adds as updates
         summary.modelsUpdated = Math.min(updated, beforeIds.size);
       }
-    } catch (err: any) {
+    } catch (err) {
       loggers.services.warn(
         { err: err?.message },
         '[admin.llm-providers.registry.refresh-all] post-snapshot failed; deltas may be 0',
@@ -925,7 +966,7 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
   // SECURITY: fail CLOSED — these are MUTATING routes, so a missing
   // `request.user` is rejected (401), never silently allowed through.
   fastify.addHook('preHandler', async (request, reply): Promise<void> => {
-    const user = (request as any).user;
+    const user = reqUser(request);
     if (!user) {
       reply.code(401).send({ success: false, error: 'Authentication required' });
       return;

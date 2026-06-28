@@ -16,8 +16,22 @@ import { prisma } from './utils/prisma.js';
 import { getSecrets, logSecrets } from './config/secrets.config.js';
 import { isTrustedInternalRequest } from './middleware/security.js';
 
-import Fastify from 'fastify';
+import Fastify, { FastifyRequest, FastifyPluginAsync, FastifyPluginOptions } from 'fastify';
+import type { RedisClientType } from 'redis';
+import type { RepositoryContainer } from './repositories/RepositoryContainer.js';
+import type { DocumentIndexingService } from './services/DocumentIndexingService.js';
+import type { EmbeddingProvider } from './services/UniversalEmbeddingService.js';
+import type { ToolSearchService } from './routes/internal/tool-search.js';
 import { randomBytes as cryptoRandomBytes } from 'node:crypto';
+
+/** Auth principal shape read off FastifyRequest in rate-limit callbacks. */
+type ReqUser = {
+  isAdmin?: boolean;
+  role?: string;
+  rateLimitTier?: string;
+  userId?: string;
+  id?: string;
+};
 import fastifyCookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
@@ -92,10 +106,10 @@ let modelHealthCheck: ModelHealthCheckService;
 let milvusClient;
 let ragService;
 let milvusVectorService;
-let documentIndexingService: any = null;
+let documentIndexingService: DocumentIndexingService | null = null;
 let toolSemanticCache: ToolSemanticCacheService;
 let toolSemanticCacheInitialized = false;
-let repositoryContainer: any = null;
+let repositoryContainer: RepositoryContainer | null = null;
 let jobCompletionWatcher: JobCompletionWatcher;
 
 /**
@@ -202,7 +216,14 @@ async function initializeServices() {
       loggers.services.info('JobCompletionWatcher started - AI will auto-detect completed jobs');
 
       // Wire watcher events to SSE broadcasts for real-time notifications
-      jobCompletionWatcher.on('job:completed', async (statusChange: any) => {
+      jobCompletionWatcher.on('job:completed', async (statusChange: {
+        jobId: string;
+        sessionId?: string;
+        newStatus: string;
+        userId?: string;
+        result?: string;
+        error?: string;
+      }) => {
         loggers.services.info({
           jobId: statusChange.jobId,
           sessionId: statusChange.sessionId,
@@ -253,7 +274,7 @@ async function initializeServices() {
     const initService = new InitializationService(prisma, loggers.services);
 
     // Vault already initialized at startup - just verify it's available
-    const vaultService = (global as any).vaultService;
+    const vaultService = (globalThis as Record<string, unknown>).vaultService;
     if (vaultService) {
       loggers.services.info('Using Vault service initialized at startup');
     } else {
@@ -298,11 +319,11 @@ async function initializeServices() {
       const { initUserProfileService } = await import('./services/UserProfileService.js');
       const { initFeedbackLearningService } = await import('./services/FeedbackLearningService.js');
 
-      const milvusClient = (global as any).milvusClient || null;
-      const embeddingService = (global as any).universalEmbeddingService || null;
+      const milvusClient = (globalThis as Record<string, unknown>).milvusClient || null;
+      const embeddingService = (globalThis as Record<string, unknown>).universalEmbeddingService || null;
 
-      initUserMemoryService(prisma, redisClient.isConnected() ? redisClient as any : null, loggers.services, milvusClient, embeddingService);
-      initUserProfileService(prisma, redisClient.isConnected() ? redisClient as any : null, loggers.services);
+      initUserMemoryService(prisma, redisClient.isConnected() ? (redisClient as unknown as RedisClientType) : null, loggers.services, milvusClient, embeddingService);
+      initUserProfileService(prisma, redisClient.isConnected() ? (redisClient as unknown as RedisClientType) : null, loggers.services);
       initFeedbackLearningService(prisma, loggers.services);
 
       loggers.services.info('Adaptive Memory services initialized (UserMemory, UserProfile, FeedbackLearning)');
@@ -404,7 +425,7 @@ async function initializeServices() {
       try {
         await promptService.ensureDefaultTemplates();
         promptValidation = await promptService.validateSystemPrompts();
-      } catch (seedErr: any) {
+      } catch (seedErr) {
         loggers.services.error({ err: seedErr?.message }, 'Seeding default prompt templates failed');
       }
       if (!promptValidation.healthy) {
@@ -440,7 +461,7 @@ async function initializeServices() {
           milvusClient = await connectToMilvus();
           loggers.services.info(`Milvus connected (attempt ${milvusConnectAttempt})`);
           break;
-        } catch (error: any) {
+        } catch (error) {
           if (milvusConnectAttempt >= 10) {
             loggers.services.fatal({ error: error.message }, 'FATAL: Cannot connect to Milvus after 10 attempts (set MILVUS_ENABLED=false for pgvector-only mode)');
             process.exit(1);
@@ -457,7 +478,7 @@ async function initializeServices() {
       if (initResult.success) {
         // syncAllTemplates was removed in the OSS edition — templates index
         // via the per-template upsert path on first read instead.
-        const syncFn = (ragService as any).syncAllTemplates;
+        const syncFn = (ragService as unknown as { syncAllTemplates?: () => Promise<{ synced?: number }> }).syncAllTemplates;
         if (typeof syncFn === 'function') {
           const syncResult = await syncFn.call(ragService);
           loggers.services.info(`RAG collection initialized, ${syncResult.synced || 0} templates synced`);
@@ -492,7 +513,7 @@ async function initializeServices() {
       documentIndexingService = new DocumentIndexingService(milvusClient, prisma, loggers.services);
       await documentIndexingService.initializeCollection();
       loggers.services.info('Document Indexing Service initialized');
-    } catch (error: any) {
+    } catch (error) {
       loggers.services.warn({ error: error.message }, 'Document Indexing Service init failed (non-critical)');
       documentIndexingService = null;
     }
@@ -505,7 +526,7 @@ async function initializeServices() {
         cache: { defaultTTL: 3600, keyPrefix: 'repo', enableCaching: true }
       });
       loggers.services.info('Repository Container initialized');
-    } catch (error: any) {
+    } catch (error) {
       loggers.services.warn({ error: error.message }, 'Repository Container init failed');
       repositoryContainer = null;
     }
@@ -526,7 +547,7 @@ async function initializeServices() {
       await compactionWorker.start();
       global.compactionWorker = compactionWorker;
       loggers.services.info('Conversation Compaction Worker started');
-    } catch (error: any) {
+    } catch (error) {
       loggers.services.warn({ error: error.message }, 'Compaction Worker init failed (non-critical)');
       global.compactionWorker = null;
     }
@@ -547,7 +568,7 @@ async function initializeServices() {
       try {
         const { ModuleEmbeddingService } = await import('./services/prompt/ModuleEmbeddingService.js');
         await ModuleEmbeddingService.ensureTable();
-        const embeddingCount = await prisma.$queryRawUnsafe<any[]>('SELECT count(*) as c FROM prompt_module_embeddings').then(r => Number(r[0]?.c || 0)).catch(() => 0);
+        const embeddingCount = await prisma.$queryRawUnsafe<Array<{ c: number | bigint | string }>>('SELECT count(*) as c FROM prompt_module_embeddings').then(r => Number(r[0]?.c || 0)).catch(() => 0);
         const moduleCount = countAfter;
         if (embeddingCount < moduleCount) {
           const modules = await prisma.promptModule.findMany({ select: { id: true, name: true, description: true } });
@@ -556,10 +577,10 @@ async function initializeServices() {
         } else {
           loggers.services.info({ embeddingCount, moduleCount }, '[INIT] Prompt module embeddings up to date');
         }
-      } catch (embErr: any) {
+      } catch (embErr) {
         loggers.services.warn({ error: embErr.message }, '[INIT] Module embedding generation failed (non-fatal)');
       }
-    } catch (seedErr: any) {
+    } catch (seedErr) {
       loggers.services.warn({ error: seedErr.message }, '[INIT] Prompt module seeding failed (non-fatal)');
     }
 
@@ -567,10 +588,10 @@ async function initializeServices() {
     // DatabaseService.ensureEmbeddingDimensions can size the halfvec column.
     try {
       const { getSharedKBService } = await import('./services/SharedKBService.js');
-      const svc = getSharedKBService(loggers.services as any);
+      const svc = getSharedKBService(loggers.services);
       await svc.ensureChunksTable();
       loggers.services.info('[INIT] SharedKB chunks table ready');
-    } catch (sharedKbErr: any) {
+    } catch (sharedKbErr) {
       loggers.services.warn({ error: sharedKbErr.message }, '[INIT] SharedKB table init failed (non-fatal)');
     }
 
@@ -594,7 +615,7 @@ const server = Fastify({
   logger: {
     level: process.env.LOG_LEVEL || 'info',
     serializers: {
-      req: (req: any) => {
+      req: (req: { url?: string; method?: string; hostname?: string; ip?: string; socket?: { remotePort?: number } }) => {
         // Skip serialization for health and metrics endpoints
         if (req.url === '/health' || req.url === '/api/health' ||
             req.url?.startsWith('/health/') ||
@@ -609,14 +630,14 @@ const server = Fastify({
           remotePort: req.socket?.remotePort
         };
       },
-      res: (res: any) => ({
+      res: (res: { statusCode?: number }) => ({
         statusCode: res.statusCode
       })
     },
     // Ignore noisy endpoints in request logging to reduce log spam
     hooks: {
-      logMethod(inputArgs: any[], method: any) {
-        const url = inputArgs[0]?.req?.url;
+      logMethod(inputArgs: unknown[], method: (...args: unknown[]) => unknown) {
+        const url = (inputArgs[0] as { req?: { url?: string } } | undefined)?.req?.url;
 
         // Skip ALL logging for health checks and metrics endpoints
         if (url === '/health' || url === '/api/health' ||
@@ -644,7 +665,7 @@ server.addContentTypeParser('application/json', { parseAs: 'string' }, (req, bod
     }
     const json = JSON.parse(body);
     done(null, json);
-  } catch (err: any) {
+  } catch (err) {
     err.statusCode = 400;
     done(err, undefined);
   }
@@ -722,7 +743,7 @@ await server.register(fastifyCookie, {
   parseOptions: {}
 });
 
-await server.register(cors as any, {
+await server.register(cors as unknown as FastifyPluginAsync<FastifyPluginOptions>, {
   origin: (origin, cb) => {
     // Allow requests with no origin (mobile apps, curl, server-to-server)
     if (!origin) return cb(null, true);
@@ -757,7 +778,7 @@ try {
   await server.register(rateLimit, {
     // Dynamic max: read from Redis (set by admin console at platform:rate_limits)
     // Admin can update live without restart via Admin > Platform Settings
-    max: async (request: any) => {
+    max: async (request: FastifyRequest & { user?: ReqUser }) => {
       try {
         const { getRedisClient } = await import('./utils/redis-client.js');
         const redis = getRedisClient();
@@ -774,10 +795,10 @@ try {
       }
     },
     timeWindow: '1 minute',
-    keyGenerator: (request: any) => {
+    keyGenerator: (request: FastifyRequest & { user?: ReqUser }) => {
       return request.user?.userId || request.user?.id || request.ip;
     },
-    allowList: (request: any) => {
+    allowList: (request: FastifyRequest & { user?: ReqUser }) => {
       // SECURITY: internal-service exemption requires a valid X-Internal-Secret,
       // not just the x-request-from header (which any client can spoof). Mirrors
       // middleware/unifiedAuth — fails closed.
@@ -788,14 +809,14 @@ try {
       const isWebSocket = request.url?.includes('/ws/') || request.headers?.upgrade === 'websocket';
       return isInternal || isHealth || isWebSocket;
     },
-    errorResponseBuilder: (_request: any, context: any) => ({
+    errorResponseBuilder: (_request: FastifyRequest, context: { max: number; after: string }) => ({
       statusCode: 429,
       error: 'Too Many Requests',
       message: `Rate limit exceeded. Max ${context.max} requests per ${context.after}. Try again later.`,
     }),
   });
   loggers.server.info('Rate limiting enabled (admin-configurable via admin_settings.rate_limits)');
-} catch (err: any) {
+} catch (err) {
   loggers.server.warn({ error: err.message }, 'Rate limiting not available -- continuing without');
 }
 
@@ -844,7 +865,7 @@ const completionService = new ChatCompletionService(server.log, cacheService);
 // WebSocket support removed - using HTTP POST + SSE instead
 
 // Register multipart for file uploads
-await server.register(import('@fastify/multipart') as any, {
+await server.register(import('@fastify/multipart') as unknown as FastifyPluginAsync<FastifyPluginOptions>, {
   limits: {
     fileSize: 100 * 1024 * 1024, // 100MB limit - supports large image uploads
     files: 10 // Max 10 files per request
@@ -852,7 +873,7 @@ await server.register(import('@fastify/multipart') as any, {
 });
 
 // Register WebSocket support for real-time MCP monitoring
-await server.register(import('@fastify/websocket') as any);
+await server.register(import('@fastify/websocket') as unknown as FastifyPluginAsync<FastifyPluginOptions>);
 
 // Basic health check for Kubernetes liveness/readiness probes
 server.get('/health', async () => {
@@ -980,11 +1001,11 @@ async function registerAllRoutes() {
     await server.register(chatPlugin, {
       prefix: '/api/chat',
       chatStorage,
-      redis: redisClient as any,
+      redis: redisClient,
       // Pass both milvus and getMilvus for ValidationStage MemoryContextService initialization
       milvus: milvusClient,
       getMilvus: () => global.milvusVectorService || milvusVectorService || milvusClient,
-      providerManager: providerManager as any, // Pass ProviderManager for multi-provider LLM support
+      providerManager: providerManager, // Pass ProviderManager for multi-provider LLM support
       config: {
         enableMCP: true,
         enablePromptEngineering: true,
@@ -1087,6 +1108,20 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register workflow routes');
   }
 
+  // Register Workflow Schedule CRUD routes (#122 — autonomous agent runtime).
+  // server.ts registers workflow routes DIRECTLY (it does NOT load
+  // workflows.plugin.ts), so the schedule routes must be mounted here too —
+  // otherwise all four /api/workflows/:id/schedules endpoints 404. The route
+  // module applies its own authMiddleware preHandler, so direct registration
+  // is authenticated.
+  try {
+    const { workflowScheduleRoutes } = await import('./routes/workflows-schedules.js');
+    await server.register(workflowScheduleRoutes, { prefix: '/api/workflows' });
+    loggers.routes.info('Workflow schedule routes registered at /api/workflows/:id/schedules (CRUD)');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register workflow schedule routes');
+  }
+
   // Register Embed routes (embeddable workflow widgets)
   try {
     const { embedRoutes } = await import('./routes/embed.js');
@@ -1155,7 +1190,7 @@ async function registerAllRoutes() {
         return authMiddleware(request, reply);
       });
       await instance.register(openaiCompatibleRoutes, {
-        providerManager: providerManager as any,
+        providerManager: providerManager,
         logger: loggers.routes
       });
     }, { prefix: '/api' });
@@ -1519,7 +1554,7 @@ async function registerAllRoutes() {
     registerInternalToolSearchRoute(server, {
       internalSecret: process.env.INTERNAL_SERVICE_SECRET ?? '',
       getSearchService: () => {
-        const milvusCache = (global as any).toolSemanticCache;
+        const milvusCache = (globalThis as { toolSemanticCache?: ToolSearchService }).toolSemanticCache;
         if (milvusCache) return milvusCache;
         // pgvector-only fallback. The route's ToolSearchService contract is
         // searchToolsAsOpenAIFunctions(query, topK?, serverFilter?: string,
@@ -1557,19 +1592,19 @@ async function registerAllRoutes() {
         try {
           const resp = await fetch(`${proxyUrl}/servers`);
           if (!resp.ok) return [];
-          const data: any = await resp.json().catch(() => ({}));
+          const data = await resp.json().catch(() => ({}));
           // The proxy /servers endpoint returns a DICT keyed by server name
           // ({"openagentic_web":{"status":"running",...}, ...}) — verified
           // live on openagentic 2026-06-01. Also tolerate the legacy
           // {servers:[{name,status}]} array shape defensively.
           if (Array.isArray(data?.servers)) {
-            return (data.servers as any[])
+            return data.servers
               .filter((s) => isUp(s?.status))
               .map((s) => (typeof s?.name === 'string' ? s.name : s?.id))
-              .filter((n: any): n is string => typeof n === 'string' && n.length > 0);
+              .filter((n): n is string => typeof n === 'string' && n.length > 0);
           }
           if (data && typeof data === 'object') {
-            return Object.entries(data as Record<string, any>)
+            return Object.entries(data as Record<string, { status?: unknown }>)
               .filter(([, v]) => isUp(v?.status))
               .map(([name]) => name)
               .filter((n) => typeof n === 'string' && n.length > 0);
@@ -1620,7 +1655,7 @@ async function registerAllRoutes() {
     const { aiMlServicesPlugin } = await import('./routes/ai-ml-services/index.js');
     await server.register(aiMlServicesPlugin, {
       prefix: '/api',
-      providerManager: providerManager as any
+      providerManager: providerManager
     });
     loggers.routes.info('AI/ML Services routes registered at /api/models/*');
   } catch (error) {
@@ -1771,7 +1806,7 @@ async function registerAllRoutes() {
     const { default: dataSourceRoutes } = await import('./routes/data-sources.js');
     await server.register(dataSourceRoutes, { prefix: '/api' });
     loggers.routes.info('Data Source routes registered');
-  } catch (error: any) {
+  } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register data source routes');
   }
 
@@ -1937,7 +1972,7 @@ const start = async () => {
     logSecrets(secrets, loggers.services);
 
     // Store secrets globally for other services to use
-    (global as any).appSecrets = secrets;
+    (globalThis as Record<string, unknown>).appSecrets = secrets;
     loggers.services.info('Secrets configuration loaded and validated');
   } catch (error) {
     loggers.services.warn({ err: error }, 'Secrets configuration partially loaded — some secrets may use runtime-generated values. Server will continue starting.');
@@ -1950,7 +1985,7 @@ const start = async () => {
     const vaultService = new VaultInitService(loggers.services);
     await vaultService.initialize();
     // Store vault service globally for other services to use
-    (global as any).vaultService = vaultService;
+    (globalThis as Record<string, unknown>).vaultService = vaultService;
     loggers.services.info('Vault service initialized for secret rotation');
   } catch (error) {
     loggers.services.warn({ err: error }, 'Vault initialization failed - using static secrets only');
@@ -1976,7 +2011,7 @@ const start = async () => {
     await providerManager.initialize();
 
     // Set global reference for route handlers (v1/models, etc.)
-    (global as any).providerManager = providerManager;
+    (globalThis as Record<string, unknown>).providerManager = providerManager;
 
     // Set singleton accessor for ModelCapabilityGate and other services
     const { setProviderManager, subscribeProviderReload } = await import('./services/llm-providers/ProviderManager.js');
@@ -2050,7 +2085,7 @@ const start = async () => {
         } else {
           loggers.services.info('Model pre-warm skipped — no default chat model configured yet');
         }
-      } catch (warmErr: any) {
+      } catch (warmErr) {
         loggers.services.warn({ error: warmErr?.message }, 'Model warm-up failed (non-fatal) — first request will be slower');
       }
 
@@ -2110,7 +2145,7 @@ const start = async () => {
   try {
     const { initializeDLPScanner } = await import('./services/DLPScannerService.js');
     const dlpScanner = await initializeDLPScanner(loggers.services);
-    (global as any).dlpScanner = dlpScanner;
+    (globalThis as Record<string, unknown>).dlpScanner = dlpScanner;
     const rules = dlpScanner.getRules();
     const enabled = rules.filter(r => r.enabled).length;
     loggers.services.info({ totalRules: rules.length, enabledRules: enabled }, 'DLP Scanner initialized with persisted config');
@@ -2140,7 +2175,7 @@ const start = async () => {
         milvusConnected = true;
         loggers.services.info(`Tool Semantic Cache connected to Milvus (attempt ${attempt})`);
         break;
-      } catch (error: any) {
+      } catch (error) {
         loggers.services.warn({ error: error.message, attempt },
           `⚠️ Milvus connection attempt ${attempt}/10 failed — retrying in ${attempt * 3}s`);
         await new Promise(resolve => setTimeout(resolve, attempt * 3000));
@@ -2171,7 +2206,7 @@ const start = async () => {
       try {
         await toolSemanticCache!.autoIndexToolsWhenReady();
         loggers.services.info('MCP tools indexed in Milvus (background)');
-      } catch (error: any) {
+      } catch (error) {
         loggers.services.warn({ error: error?.message }, 'background Milvus tool indexing incomplete (non-fatal)');
       }
       try {
@@ -2179,14 +2214,14 @@ const start = async () => {
         if (!testResults || testResults.length === 0) {
           loggers.services.warn('Post-indexing verification: 0 tools found — will reindex on first chat request');
         } else {
-          const stats = await toolSemanticCache!.getCacheStats?.() || {} as any;
+          const stats = await toolSemanticCache!.getCacheStats?.() || {} as Record<string, unknown>;
           loggers.services.info({
             verificationResults: testResults.length,
-            sampleTools: testResults.slice(0, 3).map((t: any) => t.function?.name || t.name),
-            totalIndexed: (stats as any).totalTools || 'unknown'
+            sampleTools: testResults.slice(0, 3).map((t: { function?: { name?: string }; name?: string }) => t.function?.name || t.name),
+            totalIndexed: (stats as Record<string, unknown>).totalTools || 'unknown'
           }, '✅ POST-INDEX VERIFICATION: Semantic search returning results');
         }
-      } catch (verifyError: any) {
+      } catch (verifyError) {
         loggers.services.warn({ error: verifyError?.message }, 'Post-indexing verification failed (non-fatal)');
       }
       try {
@@ -2196,12 +2231,12 @@ const start = async () => {
           `${process.env.MILVUS_HOST || 'milvus'}:${process.env.MILVUS_PORT || '19530'}`;
         const milvus = new MilvusClient({ address: milvusAddress });
         const redis = getRedisClient();
-        const pgIndexingService = new MCPToolIndexingService(loggers.services as any, milvus, redis, prisma);
+        const pgIndexingService = new MCPToolIndexingService(loggers.services, milvus, redis, prisma);
         await pgIndexingService.indexAllMCPTools(false);
         loggers.services.info('MCP tools synced to PostgreSQL with pgvector embeddings (background)');
         pgIndexingService.startPeriodicIndexing?.();
         loggers.services.info('Periodic MCP tool re-indexing started (30-min interval)');
-      } catch (pgError: any) {
+      } catch (pgError) {
         loggers.services.warn({ error: pgError?.message }, 'background PostgreSQL tool indexing failed (Milvus primary is OK)');
       }
     })();
@@ -2222,7 +2257,7 @@ const start = async () => {
         const redis = getRedisClient();
         // null Milvus client → indexAllMCPTools writes pgvector only (the
         // Milvus sink no-ops when this.milvusClient is falsy).
-        const pgIndexingService = new MCPToolIndexingService(loggers.services as any, null, redis, prisma);
+        const pgIndexingService = new MCPToolIndexingService(loggers.services, null, redis, prisma);
         await pgIndexingService.indexAllMCPTools(false);
         loggers.services.info('MCP tools indexed into PostgreSQL pgvector (background, pgvector-only mode)');
         pgIndexingService.startPeriodicIndexing?.();
@@ -2232,7 +2267,7 @@ const start = async () => {
           await pgSearch.refreshReadiness();
           loggers.services.info({ ready: pgSearch.isReady() }, 'pgvector tool search readiness refreshed after indexing');
         }
-      } catch (pgError: any) {
+      } catch (pgError) {
         loggers.services.warn({ error: pgError?.message }, 'background pgvector-only tool indexing failed (will retry on next periodic cycle / first chat)');
       }
     })();
@@ -2242,12 +2277,12 @@ const start = async () => {
   try {
     const { UniversalEmbeddingService } = await import('./services/UniversalEmbeddingService.js');
     const embeddingService = new UniversalEmbeddingService(loggers.services);
-    const toolPgvectorSearch = new ToolPgvectorSearchService(prisma, embeddingService, loggers.services as any);
+    const toolPgvectorSearch = new ToolPgvectorSearchService(prisma, embeddingService, loggers.services);
     await toolPgvectorSearch.initialize();
     setToolPgvectorSearchService(toolPgvectorSearch);
     loggers.services.info({ ready: toolPgvectorSearch.isReady() },
       '✅ ToolPgvectorSearchService initialized — pgvector-first tool search enabled');
-  } catch (pgSearchError: any) {
+  } catch (pgSearchError) {
     loggers.services.warn({ error: pgSearchError.message },
       '⚠️ ToolPgvectorSearchService init failed (Milvus fallback active)');
   }
@@ -2482,8 +2517,8 @@ const start = async () => {
         orderBy: { priority: 'asc' },
       });
       const embeddingCapable = candidates.filter(p => {
-        const caps = (p.capabilities as Record<string, any>) || {};
-        const mc = (p.model_config as Record<string, any>) || {};
+        const caps = (p.capabilities as Record<string, unknown>) || {};
+        const mc = (p.model_config as Record<string, unknown>) || {};
         return caps.embeddings === true && mc.embeddingModel;
       });
 
@@ -2496,11 +2531,11 @@ const start = async () => {
       const embeddingProvider = envMatch || nonOllama || embeddingCapable[0];
 
       if (embeddingProvider) {
-        const mc = (embeddingProvider.model_config as Record<string, any>) || {};
-        const pc = (embeddingProvider.provider_config as Record<string, any>) || {};
+        const mc = (embeddingProvider.model_config as Record<string, string | undefined>) || {};
+        const pc = (embeddingProvider.provider_config as Record<string, string | undefined>) || {};
         const embProvider = providerMap[embeddingProvider.provider_type] || 'openai-compatible';
         setDbEmbeddingConfig({
-          provider: embProvider as any,
+          provider: embProvider as EmbeddingProvider,
           ollamaBaseUrl: pc.baseUrl,
           ollamaModel: mc.embeddingModel,
           gcpProjectId: pc.projectId,
@@ -2600,7 +2635,7 @@ const start = async () => {
         // Acquire Redis lock to prevent concurrent runs across replicas
         if (redis?.isConnected?.()) {
           try {
-            const locked = await (redis as any).set(MEMORY_COMPACTION_LOCK_KEY, process.pid.toString(), { EX: MEMORY_COMPACTION_LOCK_TTL, NX: true });
+            const locked = await (redis as unknown as { set(key: string, value: string, opts: { EX: number; NX: boolean }): Promise<unknown> }).set(MEMORY_COMPACTION_LOCK_KEY, process.pid.toString(), { EX: MEMORY_COMPACTION_LOCK_TTL, NX: true });
             if (!locked) {
               compactionLogger.info('Memory compaction skipped — another instance holds the lock');
               return;
@@ -2641,7 +2676,7 @@ const start = async () => {
               await memoryService.compactUserMemories(user_id);
               compacted++;
               compactionLogger.debug({ userId: user_id, entries: Number(count) }, 'User memories compacted');
-            } catch (err: any) {
+            } catch (err) {
               failed++;
               compactionLogger.warn({ userId: user_id, error: err.message }, 'User memory compaction failed');
             }
@@ -2654,12 +2689,12 @@ const start = async () => {
             durationMs: Date.now() - startTime,
           }, 'Memory compaction finished');
 
-        } catch (err: any) {
+        } catch (err) {
           compactionLogger.error({ error: err.message, durationMs: Date.now() - startTime }, 'Memory compaction failed');
         } finally {
           // Release Redis lock
           if (redis?.isConnected?.()) {
-            (redis as any).del(MEMORY_COMPACTION_LOCK_KEY).catch(() => {});
+            (redis as unknown as { del(key: string): Promise<unknown> }).del(MEMORY_COMPACTION_LOCK_KEY).catch(() => {});
           }
         }
       };

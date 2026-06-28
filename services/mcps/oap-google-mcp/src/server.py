@@ -49,6 +49,7 @@ import base64
 import logging
 from email.message import EmailMessage
 from typing import Optional, Any, Dict, List
+from urllib.parse import quote
 
 import httpx
 from fastmcp import FastMCP
@@ -184,6 +185,21 @@ def require_google_auth(
     subject = _resolve_subject(meta)   # raises if no subject
     token = _mint_access_token(sa_info, subject, scopes)
     return token, subject
+
+
+# ---------------------------------------------------------------------------
+# PATH-SEGMENT HARDENING (defensive) — any user-controlled value interpolated
+# into the Gmail URL PATH (the message id) is percent-encoded so it cannot form a
+# new path segment. httpx performs RFC-3986 dot-segment normalization CLIENT-SIDE,
+# so a raw id like "../../{evil}" would escape /users/me/ BEFORE the request is
+# sent. Encoding "/" -> %2F keeps a quoted "../../X" a SINGLE literal segment so
+# normalization can no longer pop the impersonated /users/me/ mailbox.
+# ---------------------------------------------------------------------------
+def _seg(v: Any) -> str:
+    """Percent-encode a value for safe use as ONE URL path segment (safe="" so
+    the "/" and "\\" path separators are encoded; "." is left intact but a quoted
+    ".." can no longer act as a dot-segment)."""
+    return quote(str(v), safe="")
 
 
 def _gmail_headers(token: str) -> Dict[str, str]:
@@ -352,7 +368,7 @@ async def google_gmail_get_message(id: str, meta: Optional[dict] = None) -> dict
             "format": "metadata",
             "metadataHeaders": ["Subject", "From", "To", "Cc", "Date"],
         }
-        m = await gmail_request("GET", f"/users/me/messages/{id}", token, params=params)
+        m = await gmail_request("GET", f"/users/me/messages/{_seg(id)}", token, params=params)
         headers = (m.get("payload") or {}).get("headers", [])
         return {
             "success": True,

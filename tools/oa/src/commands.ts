@@ -1,3 +1,4 @@
+import { asApprovalRequest } from "./approvals.ts";
 import { eventText } from "./chat-text.ts";
 import { type ClientOptions, type Execution, OaClient } from "./client.ts";
 import { getProfile, loadConfig, removeProfile, saveProfile } from "./config.ts";
@@ -216,33 +217,6 @@ export async function cmdChat(
 
 // ---- do (natural language) --------------------------------------------------
 
-/** A pending mutating-tool approval the server is blocked on (requestId === auditId). */
-interface ApprovalRequest {
-  requestId: string;
-  toolName: string;
-  serverName?: string;
-  args?: unknown;
-  preview?: string;
-  classification?: string;
-}
-
-function asApprovalRequest(event: unknown): ApprovalRequest | undefined {
-  if (!event || typeof event !== "object") return undefined;
-  const e = event as Record<string, unknown>;
-  if (e.type !== "approval_required") return undefined;
-  // requestId === auditId on the wire; tolerate either being the carrier.
-  const id = e.requestId ?? e.auditId;
-  if (typeof id !== "string" || !id) return undefined;
-  return {
-    requestId: id,
-    toolName: typeof e.toolName === "string" ? e.toolName : "(unknown tool)",
-    serverName: typeof e.serverName === "string" ? e.serverName : undefined,
-    args: e.args,
-    preview: typeof e.preview === "string" ? e.preview : undefined,
-    classification: typeof e.classification === "string" ? e.classification : undefined,
-  };
-}
-
 /** Route natural language through the chat pipeline, handling mutating-tool
  * approvals client-side. The server BLOCKS on each approval_required frame until
  * we POST a decision (or it times out and fails safe = deny); because chatStream
@@ -339,6 +313,17 @@ async function shouldProceed(
   return false;
 }
 
+/** Honest v1 limitation: the autonomous scheduler runs flows unattended, but the
+ * human-approval gate (ON by default) blocks every MUTATING tool call until a
+ * human approves — and there is no human in an unattended run, so the gate denies
+ * after its policy timeout. The engine suspend-on-gate path is deferred. So
+ * scheduled agents are only reliable for READ / report-only flows in v1. */
+const UNATTENDED_GATE_WARNING =
+  "Heads-up: with the human-approval gate ON (the default), unattended scheduled runs " +
+  "cannot approve mutating tool calls — those are DENIED after the policy timeout (the " +
+  "engine suspend-on-gate path is deferred). Autonomous agents are reliable for READ / " +
+  "report-only flows in v1.";
+
 /** Turn a flow into a scheduled, unattended agent. */
 export async function cmdScheduledAgentCreate(
   ctx: CommandContext,
@@ -350,14 +335,21 @@ export async function cmdScheduledAgentCreate(
 
   const client = resolveClient(ctx);
 
-  // Honest report-out note: we cannot verify a send_email node or SMTP from here.
-  if (input.reportTo && !ctx.json) {
-    ctx.err(
-      `Note: --report-to is advisory. Email report-out requires the flow to contain a ` +
-        `send_email node and server SMTP config; oa cannot verify either from here. ` +
+  // Collect the honest advisories. They go to stderr in human mode, and into a
+  // `warnings` array under --json so machine callers see them too.
+  const warnings: string[] = [UNATTENDED_GATE_WARNING];
+  if (input.reportTo) {
+    // #14: --report-to is wired into the schedule's input_template below so a
+    // send_email node can read {{report_to}} — but delivery still depends on the
+    // node existing and on server SMTP, neither of which oa can verify.
+    warnings.push(
+      `--report-to wires {{report_to}}=${input.reportTo} into the schedule's input_template, ` +
+        `but delivery still requires the flow to contain a send_email node and server SMTP ` +
+        `config; oa cannot verify either from here. ` +
         `Use \`oa agent logs ${input.flowId}\` to see each run's output regardless.`,
     );
   }
+  if (!ctx.json) for (const w of warnings) ctx.err(w);
 
   // Print the resolved plan before asking for confirmation.
   if (!ctx.json) {
@@ -368,7 +360,7 @@ export async function cmdScheduledAgentCreate(
 
   const proceed = await shouldProceed(ctx, opts.yes, `Create scheduled agent for flow ${input.flowId}?`);
   if (!proceed) {
-    ctx.out(ctx.json ? JSON.stringify({ created: false }) : "Aborted; no schedule created.");
+    ctx.out(ctx.json ? JSON.stringify({ created: false, warnings }) : "Aborted; no schedule created.");
     return;
   }
 
@@ -376,10 +368,18 @@ export async function cmdScheduledAgentCreate(
     cron_expression: input.cron,
     name: input.name,
     timezone: input.timezone,
+    // #14: pass report_to so a send_email node can template {{report_to}}.
+    input_template: input.reportTo ? { report_to: input.reportTo } : undefined,
   });
 
   if (ctx.json) {
-    ctx.out(JSON.stringify(schedule, null, 2));
+    ctx.out(
+      JSON.stringify(
+        { ...schedule, ...(input.reportTo ? { report_to: input.reportTo } : {}), warnings },
+        null,
+        2,
+      ),
+    );
     return;
   }
   ctx.out(`Created schedule ${schedule.id} for flow ${schedule.workflow_id}.`);
