@@ -3,6 +3,7 @@ import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
 import type { OaClient } from "../../client.ts";
+import { type ApprovalRequest, asApprovalRequest } from "../../approvals.ts";
 import { eventText } from "../../chat-text.ts";
 import { COLORS, Frame, Hint } from "../theme.tsx";
 
@@ -19,15 +20,33 @@ interface Turn {
 
 /** Interactive chat. A session is created lazily on the first send; each turn
  * streams text_delta tokens (thinking_delta omitted by eventText) into a live
- * transcript held in state. */
+ * transcript held in state.
+ *
+ * When the model calls a MUTATING tool the server pauses and emits an
+ * `approval_required` frame. Because chatStream awaits onEvent, we can render an
+ * inline Approve/Deny card and hold the stream until the user chooses — then POST
+ * the decision (the same gate `oa do` and the web UI use) and let it resume. */
 export const Chat: React.FC<Props> = ({ client, onBack, onError }) => {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<ApprovalRequest | undefined>(undefined);
   const sessionRef = useRef<string | undefined>(undefined);
+  // Resolver for the in-flight approval promise the stream loop is awaiting.
+  const decideRef = useRef<((approved: boolean) => void) | undefined>(undefined);
 
-  // esc backs out (works even while the TextInput is focused — it ignores esc).
-  useInput((_input, key) => {
+  // While an approval is pending, y/n decide it (and swallow other keys). esc
+  // backs out otherwise (works even while the TextInput is focused — it ignores esc).
+  useInput((char, key) => {
+    const decide = decideRef.current;
+    if (decide) {
+      const ch = char.toLowerCase();
+      if (ch === "y" || ch === "n") {
+        decideRef.current = undefined;
+        decide(ch === "y");
+      }
+      return;
+    }
     if (key.escape && !busy) onBack();
   });
 
@@ -40,7 +59,27 @@ export const Chat: React.FC<Props> = ({ client, onBack, onError }) => {
     try {
       const sessionId = sessionRef.current ?? (await client.createSession()).id;
       sessionRef.current = sessionId;
-      await client.chatStream({ sessionId, message }, (event) => {
+      await client.chatStream({ sessionId, message }, async (event) => {
+        // Mutating-tool gate: surface a card and pause the stream until the user
+        // chooses, then POST the decision so the awaited onEvent resolves.
+        const approval = asApprovalRequest(event);
+        if (approval) {
+          const approved = await new Promise<boolean>((resolve) => {
+            decideRef.current = resolve;
+            setPending(approval);
+          });
+          decideRef.current = undefined;
+          setPending(undefined);
+          await client.approveChatToolCall(approval.requestId, approved);
+          setTurns((t) => {
+            const copy = t.slice();
+            const last = copy[copy.length - 1];
+            const note = `[${approved ? "approved" : "denied"} ${approval.toolName}] `;
+            copy[copy.length - 1] = { ...last, text: last.text + note };
+            return copy;
+          });
+          return;
+        }
         const tok = eventText(event);
         if (!tok) return;
         setTurns((t) => {
@@ -53,6 +92,8 @@ export const Chat: React.FC<Props> = ({ client, onBack, onError }) => {
     } catch (err) {
       onError(err);
     } finally {
+      decideRef.current = undefined;
+      setPending(undefined);
       setBusy(false);
     }
   }
@@ -70,7 +111,9 @@ export const Chat: React.FC<Props> = ({ client, onBack, onError }) => {
           </Box>
         ))}
         <Box marginTop={1}>
-          {busy ? (
+          {pending ? (
+            <ApprovalCard approval={pending} />
+          ) : busy ? (
             <Text color={COLORS.muted}>
               <Spinner type="dots" /> thinking…
             </Text>
@@ -85,3 +128,19 @@ export const Chat: React.FC<Props> = ({ client, onBack, onError }) => {
     </Frame>
   );
 };
+
+/** Inline HITL card for a mutating tool call — tool, server, args, preview, and
+ * the y/n choice. Rendered while the stream is paused on the approval gate. */
+const ApprovalCard: React.FC<{ approval: ApprovalRequest }> = ({ approval }) => (
+  <Box flexDirection="column">
+    <Text color={COLORS.warn}>
+      Approval required: {approval.toolName}
+      {approval.serverName ? ` (${approval.serverName})` : ""}
+    </Text>
+    {approval.preview ? <Text color={COLORS.muted}>{approval.preview}</Text> : null}
+    {approval.args !== undefined ? (
+      <Text color={COLORS.faint}>args: {JSON.stringify(approval.args)}</Text>
+    ) : null}
+    <Text color={COLORS.accent}>[y] approve   [n] deny</Text>
+  </Box>
+);

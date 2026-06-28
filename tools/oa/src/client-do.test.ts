@@ -26,7 +26,11 @@ afterEach(() => {
 });
 
 describe("OaClient.approveChatToolCall", () => {
-  it("POSTs /api/chat/approvals/:id with Bearer auth and the {approved} body", async () => {
+  // The authoritative chat mutating gate is auditAndGate.ts (waitFor(auditId)),
+  // released ONLY by POST /api/approvals/:auditId/{approve,deny} (verb in PATH,
+  // NO body) — NOT the legacy POST /api/chat/approvals/:id {approved} endpoint,
+  // which resolves the other (PendingApprovalStore/PermissionService) mechanisms.
+  it("POSTs /api/approvals/:id/approve with Bearer auth and no body", async () => {
     let seen: { method?: string; url?: string; auth?: string; body: unknown } | undefined;
     const url = await fakeApi((req, body, res) => {
       seen = { method: req.method, url: req.url, auth: req.headers.authorization, body };
@@ -38,12 +42,12 @@ describe("OaClient.approveChatToolCall", () => {
     await client.approveChatToolCall("req-123", true);
 
     expect(seen?.method).toBe("POST");
-    expect(seen?.url).toBe("/api/chat/approvals/req-123");
+    expect(seen?.url).toBe("/api/approvals/req-123/approve");
     expect(seen?.auth).toBe("Bearer oa_secret");
-    expect(seen?.body).toEqual({ approved: true });
+    expect(seen?.body).toBeUndefined();
   });
 
-  it("url-encodes the id and forwards a deny decision", async () => {
+  it("url-encodes the id and routes a deny decision to /deny with no body", async () => {
     let seen: { url?: string; body: unknown } | undefined;
     const url = await fakeApi((req, body, res) => {
       seen = { url: req.url, body };
@@ -54,8 +58,8 @@ describe("OaClient.approveChatToolCall", () => {
 
     await client.approveChatToolCall("a/b#c", false);
 
-    expect(seen?.url).toBe(`/api/chat/approvals/${encodeURIComponent("a/b#c")}`);
-    expect(seen?.body).toEqual({ approved: false });
+    expect(seen?.url).toBe(`/api/approvals/${encodeURIComponent("a/b#c")}/deny`);
+    expect(seen?.body).toBeUndefined();
   });
 });
 
@@ -65,11 +69,11 @@ describe("OaClient.chatStream awaits an async onEvent", () => {
     const gate = new Promise<void>((r) => {
       releaseStream = r;
     });
-    let approvalBody: unknown;
+    let approvalUrl: string | undefined;
 
-    const url = await fakeApi((req, body, res) => {
-      if (req.url?.startsWith("/api/chat/approvals/")) {
-        approvalBody = body;
+    const url = await fakeApi((req, _body, res) => {
+      if (req.url?.startsWith("/api/approvals/")) {
+        approvalUrl = req.url;
         releaseStream?.(); // unblock the still-open stream only once the POST lands
         res.writeHead(200, { "content-type": "application/json" });
         res.end("{}");
@@ -98,7 +102,7 @@ describe("OaClient.chatStream awaits an async onEvent", () => {
 
     // If chatStream did not await onEvent, "next-frame" could never arrive at all
     // (the server is gated on the approval POST) — and the order proves the pause.
-    expect(approvalBody).toEqual({ approved: true });
+    expect(approvalUrl).toBe("/api/approvals/r1/approve");
     expect(order).toEqual(["approved", "next-frame"]);
   });
 });

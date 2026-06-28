@@ -15,6 +15,7 @@
  */
 
 import { FastifyInstance, FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
+import crypto from 'crypto';
 import { loggers } from '../../utils/logger.js';
 import { prisma } from '../../utils/prisma.js';
 // Phase B (#15): webhook-triggered workflow execution goes through the
@@ -99,6 +100,83 @@ function errMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/**
+ * Outcome of a Slack inbound signature check (fail-closed by default).
+ * Flat (non-discriminated) shape so it narrows under the service's
+ * `strict: false` tsconfig — `statusCode`/`error` are always present.
+ */
+interface SlackVerifyResult {
+  ok: boolean;
+  statusCode: number;
+  error: string;
+}
+
+/**
+ * Mirror of the /slack handler's HMAC-SHA256 gate, factored out so the
+ * slash-command (#2) and capability-URL integration (#11) dispatch paths
+ * enforce the SAME fail-closed verification before any work runs.
+ *
+ * Fail closed: every missing/invalid condition → 403.
+ *   - signing secret is decrypted at rest (SC-28) before use
+ *   - raw request body must have been captured by the scoped content-type
+ *     parser (rawSlackBody) so the HMAC is computed over the exact bytes
+ *   - both x-slack-request-timestamp and x-slack-signature must be present
+ *   - slackIntegrationService.verifySignature enforces the constant-time
+ *     compare + the 5-minute replay window
+ */
+function verifySlackSignature(
+  request: FastifyRequest,
+  integration: { config: unknown },
+): SlackVerifyResult {
+  const config = decryptIntegrationConfig(integration.config as unknown as IntegrationConfig);
+  const signingSecret = config?.signingSecret;
+  if (!signingSecret) {
+    return { ok: false, statusCode: 403, error: 'integration_misconfigured' };
+  }
+
+  const rawBody = (request as { rawSlackBody?: string }).rawSlackBody;
+  if (!rawBody) {
+    return { ok: false, statusCode: 403, error: 'raw_body_unavailable' };
+  }
+
+  const timestamp = request.headers['x-slack-request-timestamp'] as string | undefined;
+  const signature = request.headers['x-slack-signature'] as string | undefined;
+  if (!timestamp || !signature) {
+    return { ok: false, statusCode: 403, error: 'missing_signature_headers' };
+  }
+
+  if (!slackIntegrationService.verifySignature(signingSecret, timestamp, rawBody, signature)) {
+    return { ok: false, statusCode: 403, error: 'invalid_signature' };
+  }
+
+  return { ok: true, statusCode: 200, error: '' };
+}
+
+/**
+ * SSRF guard for the slash-command response_url: Slack only ever issues
+ * response_urls under https://hooks.slack.com/. Restricting the host closes
+ * the leg where a forged slash command could make the api POST to an
+ * attacker-controlled URL.
+ */
+function isAllowedSlackResponseUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && u.hostname === 'hooks.slack.com';
+  } catch {
+    return false;
+  }
+}
+
+/** Constant-time string comparison (length-guarded to avoid throwing). */
+function constantTimeEqual(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a, 'utf8');
+  const bBuf = Buffer.from(b, 'utf8');
+  if (aBuf.length !== bBuf.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
 export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   logger.info('Initializing webhook trigger routes...');
 
@@ -127,6 +205,27 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
       done(err as Error, undefined);
     }
   });
+
+  // Slack slash commands arrive as application/x-www-form-urlencoded (#2).
+  // Capture the EXACT raw bytes for signature verification (Slack signs the
+  // raw form body) AND parse the form fields so handlers read request.body.
+  // Guarded: only add if not already inherited, to avoid FST_ERR_CTP_ALREADY_PRESENT.
+  if (!scope.hasContentTypeParser('application/x-www-form-urlencoded')) {
+    scope.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, function(_req: FastifyRequest, body: string | Buffer, done: (err: Error | null, body?: unknown) => void) {
+      const rawStr = typeof body === 'string' ? body : body.toString('utf8');
+      (_req as { rawSlackBody?: string }).rawSlackBody = rawStr;
+      try {
+        const params = new URLSearchParams(rawStr);
+        const parsed: Record<string, string> = {};
+        for (const [k, v] of params.entries()) {
+          parsed[k] = v;
+        }
+        done(null, parsed);
+      } catch (err) {
+        done(err as Error, undefined);
+      }
+    });
+  }
 
   // ─── Slack Events API ───────────────────────────────────────────────
   // Public endpoint — no auth required. Slack verifies via signing secret.
@@ -204,6 +303,26 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
   // ─────────────────────────────────────────────────────────────────────
 
   scope.post('/slack-command', async (request: FastifyRequest, reply: FastifyReply) => {
+    // ── HMAC gate (#2) — verify BEFORE any work. handleEvent can resolve+run
+    //    a workflow and POST to an attacker-supplied response_url, so an
+    //    unsigned slash command must never reach it. Fail closed → 403.
+    const integration = await prisma.integration.findFirst({
+      where: { platform: 'slack', status: 'active', deleted_at: null },
+    });
+
+    if (!integration) {
+      logger.warn('[Slack] No active Slack integration found for slash command');
+      reply.code(403).send({ error: 'integration_misconfigured' });
+      return;
+    }
+
+    const verdict = verifySlackSignature(request, integration);
+    if (!verdict.ok) {
+      logger.warn({ error: verdict.error }, '[Slack] Slash command signature verification failed');
+      reply.code(verdict.statusCode).send({ error: verdict.error });
+      return;
+    }
+
     const body = (request.body ?? {}) as SlackSlashCommandBody;
 
     // Slash commands come as form-encoded: command, text, user_id, channel_id, response_url
@@ -221,41 +340,38 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
       text: `Processing: \`${command} ${text}\`...`,
     });
 
-    // Process asynchronously via response_url
-    if (responseUrl) {
-      const integration = await prisma.integration.findFirst({
-        where: { platform: 'slack', status: 'active', deleted_at: null },
-      });
+    // Process asynchronously via response_url. SSRF guard: only POST back to
+    // Slack's own response_url host.
+    if (responseUrl && isAllowedSlackResponseUrl(responseUrl)) {
+      // Build a synthetic event for the integration service
+      const syntheticEvent = {
+        type: 'event_callback',
+        event: {
+          type: 'app_mention',
+          text: `${command} ${text}`,
+          user: userId,
+          channel: channelId,
+          ts: String(Date.now() / 1000),
+        },
+      };
 
-      if (integration) {
-        // Build a synthetic event for the integration service
-        const syntheticEvent = {
-          type: 'event_callback',
-          event: {
-            type: 'app_mention',
-            text: `${command} ${text}`,
-            user: userId,
-            channel: channelId,
-            ts: String(Date.now() / 1000),
-          },
-        };
+      const result = await slackIntegrationService.handleEvent(integration.id, syntheticEvent as unknown as SlackEventArg);
 
-        const result = await slackIntegrationService.handleEvent(integration.id, syntheticEvent as unknown as SlackEventArg);
-
-        // Post result back to Slack via response_url
-        try {
-          await fetch(responseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              response_type: 'in_channel',
-              text: JSON.stringify(result.body, null, 2),
-            }),
-          });
-        } catch (err: unknown) {
-          logger.error({ err: errMessage(err) }, '[Slack] Failed to post slash command response');
-        }
+      // Post result back to Slack via response_url
+      try {
+        await fetch(responseUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            response_type: 'in_channel',
+            text: JSON.stringify(result.body, null, 2),
+          }),
+        });
+      } catch (err: unknown) {
+        logger.error({ err: errMessage(err) }, '[Slack] Failed to post slash command response');
       }
+    } else if (responseUrl) {
+      logger.warn('[Slack] Rejected slash command response_url with disallowed host');
     }
   });
 
@@ -283,6 +399,13 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
     }
 
     if (integration.platform === 'slack') {
+      // HMAC gate (#11) — the capability URL alone is not auth. Enforce the
+      // same decrypt+verifySignature check before dispatching. Fail closed → 403.
+      const verdict = verifySlackSignature(request, integration);
+      if (!verdict.ok) {
+        logger.warn({ error: verdict.error }, '[Slack] /integration signature verification failed');
+        return reply.code(verdict.statusCode).send({ error: verdict.error });
+      }
       const result = await slackIntegrationService.handleEvent(integration.id, body as unknown as SlackEventArg);
       return reply.code(result.statusCode).send(result.body);
     } else if (integration.platform === 'teams') {
@@ -672,6 +795,27 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
   // ─────────────────────────────────────────────────────────────────────
 
   fastify.post('/alertmanager', async (request: FastifyRequest, reply: FastifyReply) => {
+    // ── Shared-secret auth gate (#7) — this endpoint triggers workflows with
+    //    attacker-controllable input, so it must authenticate BEFORE any DB
+    //    lookup or execution. Configure AlertManager with:
+    //      http_config:
+    //        authorization:
+    //          type: Bearer
+    //          credentials: <ALERTMANAGER_WEBHOOK_SECRET>
+    //    Fail closed: if no secret is configured, reject (403) rather than open.
+    const configuredSecret = process.env.ALERTMANAGER_WEBHOOK_SECRET || '';
+    if (!configuredSecret) {
+      logger.warn('[AlertManager] ALERTMANAGER_WEBHOOK_SECRET unset — rejecting (fail closed)');
+      return reply.code(403).send({ error: 'alertmanager_webhook_secret_unset' });
+    }
+
+    const authHeader = (request.headers['authorization'] as string | undefined) || '';
+    const provided = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : '';
+    if (!provided || !constantTimeEqual(provided, configuredSecret)) {
+      logger.warn('[AlertManager] Missing or invalid bearer secret — rejecting');
+      return reply.code(403).send({ error: 'unauthorized' });
+    }
+
     const body = (request.body ?? {}) as AlertmanagerBody;
 
     // AlertManager sends: { version, groupKey, status, receiver, alerts: [...] }

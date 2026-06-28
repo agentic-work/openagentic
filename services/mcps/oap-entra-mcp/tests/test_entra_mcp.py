@@ -29,6 +29,7 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import httpx
 import pytest
 
 from conftest import SP_MINTED_TOKEN
@@ -190,7 +191,8 @@ def test_list_mail_hits_users_endpoint_with_meta_email(wire):
     wire.respond(status_code=200, json_body={"value": [{"id": "m1", "subject": "hi"}]})
     out = run(server.entra_list_mail(top=5, importance="high", meta=USER_META))
     assert wire.sent["method"] == "GET"
-    assert wire.sent["url"].endswith("/users/alice@example.com/mailFolders/inbox/messages")
+    # user_id is percent-encoded (@ -> %40) by the path-segment hardening (_seg).
+    assert wire.sent["url"].endswith("/users/alice%40example.com/mailFolders/inbox/messages")
     assert ME_PREFIX not in wire.sent["url"]
     assert wire.sent["params"]["$top"] == 5
     assert "importance eq 'high'" in wire.sent["params"]["$filter"]
@@ -202,13 +204,13 @@ def test_list_mail_uses_default_mailbox_when_meta_absent(wire, monkeypatch):
     monkeypatch.setattr(server, "GRAPH_DEFAULT_MAILBOX", "ops@example.com")
     wire.respond(status_code=200, json_body={"value": []})
     run(server.entra_list_mail(meta={}))
-    assert wire.sent["url"].endswith("/users/ops@example.com/mailFolders/inbox/messages")
+    assert wire.sent["url"].endswith("/users/ops%40example.com/mailFolders/inbox/messages")
 
 
 def test_read_mail_hits_users_message_by_id(wire):
     wire.respond(status_code=200, json_body={"id": "m9", "subject": "deep"})
     run(server.entra_read_mail(message_id="m9", meta=USER_META))
-    assert wire.sent["url"].endswith("/users/alice@example.com/messages/m9")
+    assert wire.sent["url"].endswith("/users/alice%40example.com/messages/m9")
     assert ME_PREFIX not in wire.sent["url"]
 
 
@@ -216,7 +218,7 @@ def test_send_mail_posts_users_sendmail(wire):
     wire.respond(status_code=202, content=b"")
     out = run(server.entra_send_mail(to=["a@b.com"], subject="S", body="B", meta=USER_META))
     assert wire.sent["method"] == "POST"
-    assert wire.sent["url"].endswith("/users/alice@example.com/sendMail")
+    assert wire.sent["url"].endswith("/users/alice%40example.com/sendMail")
     assert wire.sent["json"]["message"]["toRecipients"][0]["emailAddress"]["address"] == "a@b.com"
     assert out["sent"] is True
 
@@ -224,14 +226,14 @@ def test_send_mail_posts_users_sendmail(wire):
 def test_reply_mail_posts_users_reply(wire):
     wire.respond(status_code=202, content=b"")
     run(server.entra_reply_mail(message_id="m3", comment="thanks", meta=USER_META))
-    assert wire.sent["url"].endswith("/users/alice@example.com/messages/m3/reply")
+    assert wire.sent["url"].endswith("/users/alice%40example.com/messages/m3/reply")
     assert wire.sent["json"]["comment"] == "thanks"
 
 
 def test_list_calendar_hits_users_calendarview(wire):
     wire.respond(status_code=200, json_body={"value": [{"id": "e1", "subject": "Standup"}]})
     out = run(server.entra_list_calendar(window="today", meta=USER_META))
-    assert wire.sent["url"].endswith("/users/alice@example.com/calendarView")
+    assert wire.sent["url"].endswith("/users/alice%40example.com/calendarView")
     assert "startDateTime" in wire.sent["params"]
     assert out["events"][0]["subject"] == "Standup"
 
@@ -240,7 +242,7 @@ def test_create_meeting_posts_users_onlinemeetings(wire):
     wire.respond(status_code=201, json_body={"id": "mtg1", "joinWebUrl": "https://teams/x"})
     out = run(server.entra_create_meeting(subject="Sync", meta=USER_META))
     assert wire.sent["method"] == "POST"
-    assert wire.sent["url"].endswith("/users/alice@example.com/onlineMeetings")
+    assert wire.sent["url"].endswith("/users/alice%40example.com/onlineMeetings")
     assert out["meeting"]["join_url"] == "https://teams/x"
 
 
@@ -248,7 +250,7 @@ def test_create_calendar_event_posts_users_events(wire):
     wire.respond(status_code=201, json_body={"id": "ev1", "subject": "Plan"})
     out = run(server.entra_create_calendar_event(subject="Plan", meta=USER_META))
     assert wire.sent["method"] == "POST"
-    assert wire.sent["url"].endswith("/users/alice@example.com/events")
+    assert wire.sent["url"].endswith("/users/alice%40example.com/events")
     assert out["created"] is True
 
 
@@ -355,6 +357,95 @@ def test_teams_tools_present_when_enabled():
     assert GATED_TOOLS.issubset(names), f"missing when enabled: {GATED_TOOLS - names}"
     # The ungated surface is still there too.
     assert UNGATED_TOOLS.issubset(names)
+
+
+# ===========================================================================
+# (e) PATH-TRAVERSAL CONTAINMENT (CVE) — user-controlled tool arguments that are
+#     interpolated into the Graph URL PATH must NOT be able to escape the
+#     proxy-pinned /users/{userEmail}/ mailbox via RFC-3986 dot-segment
+#     normalization (httpx normalizes "../" CLIENT-SIDE before sending).
+#     The pinned mailbox is the ONLY isolation boundary for this app-only,
+#     tenant-wide Graph token, so a break here = read/reply AS any mailbox.
+# ===========================================================================
+# meta.userEmail, percent-encoded the same way the hardened path builder encodes it.
+PINNED_USER_PATH = "/v1.0/users/alice%40example.com/"
+
+
+def test_httpx_normalizes_raw_dot_segments_proving_the_threat():
+    """Documents WHY the _seg hardening is required: with a RAW (unencoded)
+    "../../" the http client dot-segment-normalizes the path and RETARGETS the
+    mailbox BEFORE the request is sent. This is the confirmed attack vector."""
+    raw_unsafe = (
+        "https://graph.microsoft.com/v1.0/users/alice@example.com/"
+        "mailFolders/../../victim@corp.com/messages"
+    )
+    # The pinned alice mailbox is gone — the path now targets victim's mailbox.
+    assert httpx.URL(raw_unsafe).raw_path == b"/v1.0/users/victim@corp.com/messages"
+
+
+def test_seg_encodes_path_separators_but_not_dots():
+    # "/" and "\" -> percent-encoded so a value can never form a NEW path segment;
+    # a quoted "../../victim" therefore stays a SINGLE literal segment.
+    assert server._seg("../../victim@corp.com") == "..%2F..%2Fvictim%40corp.com"
+    assert server._seg("inbox") == "inbox"  # legit name unchanged
+
+
+def test_safe_folder_rejects_traversal_keeps_wellknown():
+    assert server._safe_folder("inbox") == "inbox"
+    assert server._safe_folder("sentitems") == "sentitems"
+    for evil in ("../../victim@corp.com", "foo/bar", "..\\x", ".."):
+        with pytest.raises(ValueError):
+            server._safe_folder(evil)
+
+
+def test_list_mail_folder_traversal_cannot_retarget_mailbox(wire):
+    # folder="../../victim@corp.com" must NOT resolve to /users/victim@corp.com.
+    wire.respond(status_code=200, json_body={"value": []})
+    out = run(server.entra_list_mail(folder="../../victim@corp.com", meta=USER_META))
+    # Belt: rejected outright with a clear error (the folder allow-list/guard) ...
+    if out["success"] is False:
+        assert "folder" in out["error"].lower()
+        return
+    # ... suspenders: if a URL was built, the pinned user survives normalization.
+    raw = httpx.URL(wire.sent["url"]).raw_path.decode()
+    assert raw.startswith(PINNED_USER_PATH), raw
+    assert "/users/victim" not in raw
+
+
+def test_read_mail_message_id_traversal_cannot_retarget_mailbox(wire):
+    # message_id has NO allow-list — _seg encoding alone must neutralize traversal.
+    wire.respond(status_code=200, json_body={"id": "x"})
+    run(server.entra_read_mail(message_id="../../victim@corp.com/messages/AAA", meta=USER_META))
+    raw = httpx.URL(wire.sent["url"]).raw_path.decode()
+    # The pinned mailbox segment survives RFC-3986 normalization ...
+    assert raw.startswith(PINNED_USER_PATH + "messages/"), raw
+    assert "/users/victim" not in raw
+    # ... because the attacker's "/" separators are percent-encoded into ONE segment.
+    assert "%2F" in raw
+
+
+def test_reply_mail_message_id_traversal_cannot_retarget_mailbox(wire):
+    wire.respond(status_code=202, content=b"")
+    run(server.entra_reply_mail(
+        message_id="../../victim@corp.com/messages/AAA", comment="x", meta=USER_META))
+    raw = httpx.URL(wire.sent["url"]).raw_path.decode()
+    assert raw.startswith(PINNED_USER_PATH + "messages/"), raw
+    assert "/users/victim" not in raw
+    assert raw.endswith("/reply")
+
+
+def test_legit_folder_and_message_id_build_expected_path_no_regression(wire):
+    # No regression: a well-known folder + a normal message id build the correct URL.
+    wire.respond(status_code=200, json_body={"value": []})
+    run(server.entra_list_mail(folder="inbox", meta=USER_META))
+    assert httpx.URL(wire.sent["url"]).raw_path.decode() == (
+        PINNED_USER_PATH + "mailFolders/inbox/messages"
+    )
+    wire.respond(status_code=200, json_body={"id": "m9"})
+    run(server.entra_read_mail(message_id="m9", meta=USER_META))
+    assert httpx.URL(wire.sent["url"]).raw_path.decode() == (
+        PINNED_USER_PATH + "messages/m9"
+    )
 
 
 def test_no_me_endpoints_anywhere_in_source():

@@ -57,7 +57,7 @@ export const App: React.FC<Props> = ({ initialClient, configDir, defaultInstance
   return (
     <Box flexDirection="column">
       {screen === "home" && (
-        <Home client={client} onNavigate={(to: Destination) => setScreen(to)} onQuit={onExit} />
+        <Home client={client} onNavigate={(to: Destination) => setScreen(to)} onQuit={onExit} onError={onError} />
       )}
       {screen === "chat" && <Chat client={client} onBack={back} onError={onError} />}
       {screen === "flows" && <Flows client={client} onBack={back} onError={onError} />}

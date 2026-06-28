@@ -387,6 +387,44 @@ describe('workflowScheduleRoutes — CRUD + ownership', () => {
   });
 
   // =========================================================================
+  // (#12 LOW) 500 responses must NOT leak the raw internal error message
+  // =========================================================================
+  it('#12: a thrown handler error returns the static code only — no `message` leaked', async () => {
+    workflowFindFirst.mockResolvedValue(ownedWorkflow());
+    // Force an internal failure whose message carries a sensitive internal detail.
+    scheduleCreate.mockRejectedValueOnce(new Error('connect ECONNREFUSED postgres://user:pass@10.0.0.5:5432/db'));
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/${WORKFLOW_ID}/schedules`,
+      headers: { 'x-test-user': OWNER },
+      payload: { cron_expression: '*/5 * * * *' },
+    });
+
+    expect(res.statusCode).toBe(500);
+    const body = res.json();
+    // Static code only — the raw error text is logged server-side, never returned.
+    expect(body).toEqual({ error: 'create_failed' });
+    expect(body.message).toBeUndefined();
+    expect(JSON.stringify(body)).not.toContain('postgres://');
+  });
+
+  it('#12: a list failure also returns only { error: "list_failed" } with no message', async () => {
+    workflowFindFirst.mockResolvedValue(ownedWorkflow());
+    scheduleFindMany.mockRejectedValueOnce(new Error('internal pool exhausted at host db-internal'));
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/${WORKFLOW_ID}/schedules`,
+      headers: { 'x-test-user': OWNER },
+    });
+
+    expect(res.statusCode).toBe(500);
+    expect(res.json()).toEqual({ error: 'list_failed' });
+    expect(res.json().message).toBeUndefined();
+  });
+
+  // =========================================================================
   // (8) auth preHandler gates every handler
   // =========================================================================
   it('unauthenticated request -> 401; handler logic never runs', async () => {

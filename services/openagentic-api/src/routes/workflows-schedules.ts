@@ -150,7 +150,8 @@ export const workflowScheduleRoutes: FastifyPluginAsync = async (fastify: Fastif
       } catch (error) {
         const message = error instanceof Error ? error.message : 'unknown error';
         logger.error({ error: message }, '[WorkflowSchedules] Failed to create schedule');
-        return reply.code(500).send({ error: 'create_failed', message });
+        // Don't leak raw internal error text to the client — static code only.
+        return reply.code(500).send({ error: 'create_failed' });
       }
     },
   );
@@ -177,7 +178,8 @@ export const workflowScheduleRoutes: FastifyPluginAsync = async (fastify: Fastif
       } catch (error) {
         const message = error instanceof Error ? error.message : 'unknown error';
         logger.error({ error: message }, '[WorkflowSchedules] Failed to list schedules');
-        return reply.code(500).send({ error: 'list_failed', message });
+        // Don't leak raw internal error text to the client — static code only.
+        return reply.code(500).send({ error: 'list_failed' });
       }
     },
   );
@@ -231,7 +233,8 @@ export const workflowScheduleRoutes: FastifyPluginAsync = async (fastify: Fastif
       } catch (error) {
         const message = error instanceof Error ? error.message : 'unknown error';
         logger.error({ error: message }, '[WorkflowSchedules] Failed to update schedule');
-        return reply.code(500).send({ error: 'update_failed', message });
+        // Don't leak raw internal error text to the client — static code only.
+        return reply.code(500).send({ error: 'update_failed' });
       }
     },
   );
@@ -261,7 +264,8 @@ export const workflowScheduleRoutes: FastifyPluginAsync = async (fastify: Fastif
       } catch (error) {
         const message = error instanceof Error ? error.message : 'unknown error';
         logger.error({ error: message }, '[WorkflowSchedules] Failed to delete schedule');
-        return reply.code(500).send({ error: 'delete_failed', message });
+        // Don't leak raw internal error text to the client — static code only.
+        return reply.code(500).send({ error: 'delete_failed' });
       }
     },
   );

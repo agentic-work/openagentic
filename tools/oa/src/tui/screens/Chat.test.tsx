@@ -63,4 +63,63 @@ describe("Chat screen", () => {
     expect(seen).toContain("POST /api/chat/stream");
     expect(lastFrame()).toContain("Hello world");
   });
+
+  it("renders an approval card for a gated tool and approves on 'y' (releasing the stream)", async () => {
+    let approveUrl: string | undefined;
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const url = await fakeApi((req, res) => {
+      if (req.url === "/api/chat/sessions" && req.method === "POST") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ session: { id: "s1" } }));
+      } else if (req.url?.startsWith("/api/approvals/") && req.method === "POST") {
+        approveUrl = req.url;
+        release?.(); // unblock the still-open stream only once the decision lands
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end("{}");
+      } else if (req.url === "/api/chat/stream" && req.method === "POST") {
+        res.writeHead(200, { "content-type": "text/event-stream" });
+        res.write(
+          `${JSON.stringify({
+            type: "approval_required",
+            requestId: "r1",
+            auditId: "r1",
+            toolName: "k8s_delete_pod",
+            serverName: "kubernetes",
+            args: { namespace: "prod", name: "api" },
+            preview: "k8s_delete_pod prod/api",
+          })}\n`,
+        );
+        gate.then(() => {
+          res.write('{"type":"content_block_delta","delta":{"type":"text_delta","text":"done"}}\n');
+          res.end();
+        });
+      } else {
+        res.writeHead(404);
+        res.end();
+      }
+    });
+    const client = new OaClient({ instanceUrl: url, token: "t" });
+
+    const { lastFrame, stdin } = render(<Chat client={client} onBack={() => {}} onError={() => {}} />);
+    await delay();
+    stdin.write("delete the stuck pod");
+    await delay();
+    stdin.write("\r"); // submit
+    await delay(150);
+
+    // The approval card is visible and the stream is paused on it.
+    const card = lastFrame() ?? "";
+    expect(card).toContain("k8s_delete_pod");
+    expect(card).toContain("kubernetes");
+    expect(card.toLowerCase()).toContain("approve");
+
+    stdin.write("y"); // approve
+    await delay(150);
+
+    expect(approveUrl).toBe("/api/approvals/r1/approve");
+    expect(lastFrame()).toContain("done"); // stream continued past the gate
+  });
 });

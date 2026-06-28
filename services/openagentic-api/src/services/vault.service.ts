@@ -21,7 +21,18 @@ interface VaultConfig {
 }
 
 interface SecretData {
-  [key: string]: any;
+  [key: string]: unknown;
+}
+
+/**
+ * Decrypted secret as returned by getSecret(). Secrets in this codebase are
+ * commonly persisted under a nested `data` envelope (see storeSecret callers),
+ * whose leaf values are string credentials — model that so consumers can read
+ * `secret.data.<field>` without `any`, while arbitrary top-level keys stay
+ * `unknown`.
+ */
+interface StoredSecret extends SecretData {
+  data?: Record<string, string | undefined>;
 }
 
 interface TokenData {
@@ -30,6 +41,19 @@ interface TokenData {
   expires_at: number;
   token_type: string;
   scope?: string;
+}
+
+/**
+ * Shape of a persisted token record (Vault KV payload or DB fallback row).
+ * `encrypted` marks whether access_token/refresh_token are local-cipher blobs.
+ */
+interface StoredTokenRecord {
+  access_token: string;
+  refresh_token?: string;
+  expires_at: number;
+  token_type: string;
+  scope?: string;
+  encrypted?: boolean;
 }
 
 export class VaultService {
@@ -57,8 +81,20 @@ export class VaultService {
       }
     });
 
-    // Initialize local encryption key for additional security layer
-    const key = process.env.LOCAL_ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+    // Initialize local encryption key for additional security layer.
+    // SECURITY (#13): fail FAST on a malformed LOCAL_ENCRYPTION_KEY rather than
+    // silently degrading to a wrong-length key (Buffer.from(<bad>, 'hex') quietly
+    // truncates), which would weaken/garble every at-rest secret. When SET, the
+    // key MUST be exactly 64 hex chars (32 bytes). When unset/empty we
+    // auto-generate a valid 32-byte key — that fallback is always valid.
+    const envKey = process.env.LOCAL_ENCRYPTION_KEY;
+    if (envKey && !/^[0-9a-fA-F]{64}$/.test(envKey)) {
+      throw new Error(
+        'LOCAL_ENCRYPTION_KEY is set but malformed: it must be exactly 64 hex ' +
+          'characters (32 bytes). Refusing to start with a degraded at-rest encryption key.',
+      );
+    }
+    const key = envKey && envKey.length > 0 ? envKey : crypto.randomBytes(32).toString('hex');
     this.encryptionKey = Buffer.from(key, 'hex');
 
     // Auth init runs lazily on first use (see ensureInitialized) — no async
@@ -188,14 +224,14 @@ export class VaultService {
   async getUserToken(userId: string): Promise<TokenData | null> {
     try {
       await this.ensureInitialized();
-      let data: any;
+      let data: StoredTokenRecord | null;
 
       if (this.token) {
         const response = await this.client.get(`/v1/secret/data/tokens/users/${userId}`);
         data = response.data.data.data;
       } else {
         // Fallback to database
-        data = await this.getFromDatabase(userId);
+        data = (await this.getFromDatabase(userId)) as unknown as StoredTokenRecord | null;
       }
 
       if (!data) return null;
@@ -275,10 +311,10 @@ export class VaultService {
   /**
    * Retrieve secrets
    */
-  async getSecret(path: string): Promise<SecretData | null> {
+  async getSecret(path: string): Promise<StoredSecret | null> {
     try {
       await this.ensureInitialized();
-      let data: any;
+      let data: Record<string, unknown> | null;
 
       if (this.token) {
         const response = await this.client.get(`/v1/secret/data/${path}`);
@@ -301,7 +337,7 @@ export class VaultService {
         }
       }
 
-      return decryptedData;
+      return decryptedData as StoredSecret;
     } catch (error) {
       if (error.response?.status === 404) {
         return null;
@@ -314,7 +350,9 @@ export class VaultService {
   /**
    * Get database credentials with automatic rotation
    */
-  async getDatabaseCredentials(role: string = 'readwrite'): Promise<any> {
+  async getDatabaseCredentials(
+    role: string = 'readwrite',
+  ): Promise<{ username?: string; password?: string; lease_duration?: number }> {
     try {
       await this.ensureInitialized();
       if (!this.token) {
@@ -471,7 +509,7 @@ export class VaultService {
   /**
    * Database fallback methods (using existing database)
    */
-  private async storeInDatabase(key: string, data: any): Promise<void> {
+  private async storeInDatabase(key: string, data: unknown): Promise<void> {
     // This would use your existing Prisma client
     // Store encrypted data in a dedicated secrets table
     const { prisma } = await import('../utils/prisma.js');
@@ -492,7 +530,7 @@ export class VaultService {
     });
   }
 
-  private async getFromDatabase(key: string): Promise<any> {
+  private async getFromDatabase(key: string): Promise<Record<string, unknown> | null> {
     const { prisma } = await import('../utils/prisma.js');
     
     const record = await prisma.secureStorage.findUnique({

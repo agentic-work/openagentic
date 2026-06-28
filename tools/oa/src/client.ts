@@ -206,11 +206,17 @@ export class OaClient {
     return res.workflows;
   }
 
+  /** Kick off a workflow run and return immediately with `{executionId, status}`.
+   *  The DEFAULT execute path STREAMS NDJSON; `?async=true` makes the server run
+   *  the workflow in the background and reply with a single JSON
+   *  `{ executionId, status: 'running' }` (routes/workflows.ts `/:id/execute`,
+   *  `if (isAsync) reply.send({ executionId: execution.id, status: 'running' })`).
+   *  Use `oa agent logs <flowId>` to fetch the finished run's output. */
   executeWorkflow(
     id: string,
     input?: Record<string, unknown>,
   ): Promise<{ executionId?: string; status?: string; [key: string]: unknown }> {
-    return this.request("POST", `/api/workflows/${encodeURIComponent(id)}/execute`, {
+    return this.request("POST", `/api/workflows/${encodeURIComponent(id)}/execute?async=true`, {
       body: { input: input ?? {}, trigger_type: "manual" },
     });
   }
@@ -264,12 +270,15 @@ export class OaClient {
   }
 
   /** Fetch a single execution's full trace/output (the run's report payload).
-   *  The server route is workflow-scoped: GET /api/workflows/:id/executions/:execId. */
-  getExecution(workflowId: string, executionId: string): Promise<Execution> {
-    return this.request<Execution>(
+   *  The server route is workflow-scoped: GET /api/workflows/:id/executions/:execId,
+   *  and it WRAPS the row in an envelope: `{ execution, logs, nodeSummary }`
+   *  (routes/workflows.ts `/:id/executions/:execId`). We unwrap `execution`. */
+  async getExecution(workflowId: string, executionId: string): Promise<Execution> {
+    const res = await this.request<{ execution: Execution; logs?: unknown; nodeSummary?: unknown }>(
       "GET",
       `/api/workflows/${encodeURIComponent(workflowId)}/executions/${encodeURIComponent(executionId)}`,
     );
+    return res.execution;
   }
 
   async listAgents(): Promise<Agent[]> {
@@ -296,13 +305,19 @@ export class OaClient {
     return res.session;
   }
 
-  /** Resolve a server-side pending tool-call approval (id = the approval's requestId).
-   * The chat stream blocks server-side until this POST lands (or it times out and
-   * fails safe = deny). */
+  /** Resolve a server-side pending mutating-tool approval (id === auditId, which
+   * the `approval_required` frame carries as `requestId`). The authoritative chat
+   * gate (`auditAndGate` → `ApprovalRegistry.waitFor(auditId)`) is released ONLY by
+   * POST /api/approvals/:auditId/{approve,deny} (verb in PATH, NO body). The legacy
+   * POST /api/chat/approvals/:id {approved} endpoint resolves the OTHER mechanisms
+   * (PendingApprovalStore / PermissionService / Redis) and does NOT release this
+   * gate — so the chat stream would hang until it times out and fails safe (deny).
+   * The stream blocks server-side until this POST lands. */
   async approveChatToolCall(id: string, approved: boolean): Promise<void> {
-    await this.request("POST", `/api/chat/approvals/${encodeURIComponent(id)}`, {
-      body: { approved },
-    });
+    await this.request(
+      "POST",
+      `/api/approvals/${encodeURIComponent(id)}/${approved ? "approve" : "deny"}`,
+    );
   }
 
   /** Stream a chat turn; invokes onEvent for each parsed SSE `data:` frame.

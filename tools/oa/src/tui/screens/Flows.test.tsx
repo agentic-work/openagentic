@@ -60,7 +60,7 @@ describe("Flows screen", () => {
     stdin.write("\r"); // Enter on the highlighted (first) flow
     await delay();
 
-    expect(seen.some((r) => r.method === "POST" && r.url === "/api/workflows/w1/execute")).toBe(true);
+    expect(seen.some((r) => r.method === "POST" && r.url === "/api/workflows/w1/execute?async=true")).toBe(true);
     expect(lastFrame()).toContain("exec-123");
   });
 });

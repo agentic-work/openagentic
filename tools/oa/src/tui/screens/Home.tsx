@@ -11,23 +11,34 @@ interface Props {
   client: OaClient;
   onNavigate: (to: Destination) => void;
   onQuit: () => void;
+  onError: (err: unknown) => void;
 }
 
 const QUIT = "__quit";
 
 /** Landing screen: identity + health badge, then the main menu. */
-export const Home: React.FC<Props> = ({ client, onNavigate, onQuit }) => {
+export const Home: React.FC<Props> = ({ client, onNavigate, onQuit, onError }) => {
   const [who, setWho] = useState<WhoAmI | undefined>();
   const [health, setHealth] = useState<Health | undefined>();
+  // Distinguish "still loading" from "the key is invalid/revoked" so an auth
+  // failure shows a clear re-login prompt instead of an eternal "…".
+  const [authFailed, setAuthFailed] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    client.whoami().then((w) => alive && setWho(w)).catch(() => {});
+    client
+      .whoami()
+      .then((w) => alive && setWho(w))
+      .catch((err) => {
+        if (!alive) return;
+        setAuthFailed(true);
+        onError(err);
+      });
     client.health().then((h) => alive && setHealth(h)).catch(() => {});
     return () => {
       alive = false;
     };
-  }, [client]);
+  }, [client, onError]);
 
   // `q` quits — safe here because Home has no free-text field.
   useInput((input) => {
@@ -35,11 +46,16 @@ export const Home: React.FC<Props> = ({ client, onNavigate, onQuit }) => {
   });
 
   const healthColor = health?.status === "ok" || health?.status === "healthy" ? COLORS.ok : COLORS.warn;
+  const identity = who
+    ? `${who.email} (${who.isAdmin ? "admin" : "user"})`
+    : authFailed
+      ? "not authenticated — re-run login (Switch profile)"
+      : "…";
 
   return (
     <Frame title="Home">
       <Box marginBottom={1}>
-        <Text color={COLORS.muted}>{who ? `${who.email} (${who.isAdmin ? "admin" : "user"})` : "…"}</Text>
+        <Text color={authFailed ? COLORS.err : COLORS.muted}>{identity}</Text>
         <Text color={COLORS.faint}>{"   ·   health: "}</Text>
         <Text color={healthColor}>{health?.status ?? "…"}</Text>
       </Box>

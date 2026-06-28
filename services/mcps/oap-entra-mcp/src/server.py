@@ -47,6 +47,7 @@ import os
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Any, Dict
+from urllib.parse import quote
 
 import httpx
 from fastmcp import FastMCP
@@ -202,6 +203,60 @@ def require_mailbox(meta: Optional[Dict[str, Any]]) -> str:
     return user_id
 
 
+# ---------------------------------------------------------------------------
+# PATH-SEGMENT HARDENING — the ONLY thing isolating one mailbox from another on
+# this app-only, tenant-wide Graph token is the /users/{userId}/ path segment
+# (pinned by the proxy to the JWT-authenticated user). Other tool arguments
+# (folder, message_id, meeting_id, transcript_id, chat_id, team_id, channel_id)
+# are interpolated into the Graph URL path; httpx performs RFC-3986 dot-segment
+# normalization CLIENT-SIDE, so a value like "../../victim@corp.com" would pop
+# the pinned user_id and retarget ANY mailbox in the tenant BEFORE the request
+# is sent. _seg() percent-encodes every dynamic path segment ("/" -> %2F) so an
+# attacker value can never form a new path segment; a quoted "../../victim"
+# stays a SINGLE literal segment and normalization can no longer escape.
+# ---------------------------------------------------------------------------
+def _seg(v: Any) -> str:
+    """Percent-encode a value for safe use as ONE URL path segment.
+
+    safe="" encodes the path separators ("/" and, after str(), "\\") so the value
+    cannot break out of its segment. "." is left intact (it is always-safe per
+    RFC-3986), but a quoted ".." can no longer act as a dot-segment because the
+    surrounding "/" separators are encoded.
+    """
+    return quote(str(v), safe="")
+
+
+# Graph well-known mail-folder names this MCP accepts by name. A folder may also
+# be an opaque folder id; we still _seg-encode it, and reject anything carrying a
+# path separator / dot-segment as a clear, early error (belt-and-suspenders).
+_WELL_KNOWN_FOLDERS = {
+    "inbox", "sentitems", "drafts", "deleteditems", "archive", "junkemail",
+    "outbox", "clutter", "conflicts", "conversationhistory", "localfailures",
+    "msgfolderroot", "recoverableitemsdeletions", "scheduled", "searchfolders",
+    "serverfailures", "syncissues",
+}
+
+
+def _safe_folder(folder: str) -> str:
+    """Validate a mail-folder selector before it is interpolated into the Graph
+    path. A Graph well-known name passes unchanged; any other value must not
+    contain a path separator ("/", "\\") or a dot-segment ("..") — those could be
+    used (together with client-side RFC-3986 normalization) to escape the pinned
+    /users/{id}/ mailbox. Raises ValueError on a rejected value.
+    """
+    f = str(folder)
+    if f.lower() in _WELL_KNOWN_FOLDERS:
+        return f
+    if "/" in f or "\\" in f or ".." in f:
+        raise ValueError(
+            f"Invalid mail folder {folder!r}: use a well-known folder name "
+            "(e.g. inbox, sentitems, drafts, deleteditems, archive, junkemail) "
+            "or a folder id without path separators. Path-traversal characters "
+            "('/', '\\', '..') are not allowed."
+        )
+    return f
+
+
 def _graph_headers(token: str, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     if extra:
@@ -329,10 +384,11 @@ async def entra_list_mail(
             params["$filter"] = " and ".join(filters)
         else:
             params["$orderby"] = "receivedDateTime desc"
-        path = (
-            f"/users/{user_id}/mailFolders/{folder}/messages"
-            if folder else f"/users/{user_id}/messages"
-        )
+        if folder:
+            folder = _safe_folder(folder)
+            path = f"/users/{_seg(user_id)}/mailFolders/{_seg(folder)}/messages"
+        else:
+            path = f"/users/{_seg(user_id)}/messages"
         data = await graph_request("GET", path, token, params=params)
         messages = [
             {
@@ -382,7 +438,7 @@ async def entra_read_mail(message_id: str, meta: Optional[dict] = None) -> dict:
         user_id = require_mailbox(meta)
         user_info = {**user_info, "mailbox": user_id}
         params = {"$select": "id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,importance,isRead,webLink"}
-        m = await graph_request("GET", f"/users/{user_id}/messages/{message_id}", token, params=params)
+        m = await graph_request("GET", f"/users/{_seg(user_id)}/messages/{_seg(message_id)}", token, params=params)
         return {
             "success": True,
             "message": {
@@ -454,7 +510,7 @@ async def entra_send_mail(
         if cc:
             payload["message"]["ccRecipients"] = [{"emailAddress": {"address": a}} for a in cc]
         # sendMail returns 202 Accepted with empty body on success.
-        await graph_request("POST", f"/users/{user_id}/sendMail", token, json_body=payload)
+        await graph_request("POST", f"/users/{_seg(user_id)}/sendMail", token, json_body=payload)
         return {"success": True, "sent": True, "to": to, "subject": subject, "executed_as": user_info}
     except ValueError as e:
         return _error(e)
@@ -492,7 +548,7 @@ async def entra_reply_mail(
         user_info = {**user_info, "mailbox": user_id}
         # /reply returns 202 Accepted with empty body on success.
         await graph_request(
-            "POST", f"/users/{user_id}/messages/{message_id}/reply", token, json_body={"comment": comment}
+            "POST", f"/users/{_seg(user_id)}/messages/{_seg(message_id)}/reply", token, json_body={"comment": comment}
         )
         return {"success": True, "replied": True, "message_id": message_id, "executed_as": user_info}
     except ValueError as e:
@@ -555,7 +611,7 @@ async def entra_list_calendar(
             "$orderby": "start/dateTime",
             "$top": top,
         }
-        data = await graph_request("GET", f"/users/{user_id}/calendarView", token, params=params)
+        data = await graph_request("GET", f"/users/{_seg(user_id)}/calendarView", token, params=params)
         events = [
             {
                 "id": e.get("id"),
@@ -629,7 +685,7 @@ async def entra_create_meeting(
                 base = now
             end = (base + timedelta(minutes=30)).isoformat()
         payload = {"subject": subject, "startDateTime": start, "endDateTime": end}
-        m = await graph_request("POST", f"/users/{user_id}/onlineMeetings", token, json_body=payload)
+        m = await graph_request("POST", f"/users/{_seg(user_id)}/onlineMeetings", token, json_body=payload)
         return {
             "success": True,
             "created": True,
@@ -734,7 +790,7 @@ async def entra_create_calendar_event(
         if is_online_meeting:
             payload["isOnlineMeeting"] = True
             payload["onlineMeetingProvider"] = "teamsForBusiness"
-        e = await graph_request("POST", f"/users/{user_id}/events", token, json_body=payload)
+        e = await graph_request("POST", f"/users/{_seg(user_id)}/events", token, json_body=payload)
         return {
             "success": True,
             "created": True,
@@ -794,7 +850,7 @@ if TEAMS_TOOLS_ENABLED:
             user_info = {**user_info, "mailbox": user_id}
             top = max(1, min(int(top), 50))
             params = {"$top": top, "$orderby": "lastMessagePreview/createdDateTime desc", "$expand": "members"}
-            data = await graph_request("GET", f"/users/{user_id}/chats", token, params=params)
+            data = await graph_request("GET", f"/users/{_seg(user_id)}/chats", token, params=params)
             chats = [
                 {
                     "id": c.get("id"),
@@ -848,7 +904,7 @@ if TEAMS_TOOLS_ENABLED:
             token, user_info = require_graph_token(meta)
             ct = "html" if str(content_type).lower() == "html" else "text"
             payload = {"body": {"contentType": ct, "content": content}}
-            msg = await graph_request("POST", f"/chats/{chat_id}/messages", token, json_body=payload)
+            msg = await graph_request("POST", f"/chats/{_seg(chat_id)}/messages", token, json_body=payload)
             return {
                 "success": True,
                 "sent": True,
@@ -892,7 +948,7 @@ if TEAMS_TOOLS_ENABLED:
             token, user_info = require_graph_token(meta)
             top = max(1, min(int(top), 50))
             params = {"$top": top, "$orderby": "createdDateTime desc"}
-            data = await graph_request("GET", f"/chats/{chat_id}/messages", token, params=params)
+            data = await graph_request("GET", f"/chats/{_seg(chat_id)}/messages", token, params=params)
             messages = [
                 {
                     "id": m.get("id"),
@@ -938,7 +994,7 @@ if TEAMS_TOOLS_ENABLED:
             token, user_info = require_graph_token(meta)
             user_id = require_mailbox(meta)
             user_info = {**user_info, "mailbox": user_id}
-            data = await graph_request("GET", f"/users/{user_id}/joinedTeams", token,
+            data = await graph_request("GET", f"/users/{_seg(user_id)}/joinedTeams", token,
                                        params={"$select": "id,displayName,description"})
             teams = [
                 {"id": t.get("id"), "name": t.get("displayName"), "description": t.get("description")}
@@ -973,7 +1029,7 @@ if TEAMS_TOOLS_ENABLED:
         """
         try:
             token, user_info = require_graph_token(meta)
-            data = await graph_request("GET", f"/teams/{team_id}/channels", token,
+            data = await graph_request("GET", f"/teams/{_seg(team_id)}/channels", token,
                                        params={"$select": "id,displayName,description,membershipType"})
             channels = [
                 {"id": c.get("id"), "name": c.get("displayName"),
@@ -1026,7 +1082,7 @@ if TEAMS_TOOLS_ENABLED:
             if subject:
                 payload["subject"] = subject
             msg = await graph_request(
-                "POST", f"/teams/{team_id}/channels/{channel_id}/messages", token, json_body=payload
+                "POST", f"/teams/{_seg(team_id)}/channels/{_seg(channel_id)}/messages", token, json_body=payload
             )
             return {
                 "success": True,
@@ -1080,7 +1136,7 @@ if TEAMS_TOOLS_ENABLED:
             tid = transcript_id
             if not tid:
                 listing = await graph_request(
-                    "GET", f"/users/{user_id}/onlineMeetings/{meeting_id}/transcripts", token
+                    "GET", f"/users/{_seg(user_id)}/onlineMeetings/{_seg(meeting_id)}/transcripts", token
                 )
                 items = listing.get("value", [])
                 if not items:
@@ -1096,7 +1152,7 @@ if TEAMS_TOOLS_ENABLED:
             # The /content endpoint returns the transcript body (VTT by default).
             text = await graph_request(
                 "GET",
-                f"/users/{user_id}/onlineMeetings/{meeting_id}/transcripts/{tid}/content",
+                f"/users/{_seg(user_id)}/onlineMeetings/{_seg(meeting_id)}/transcripts/{_seg(tid)}/content",
                 token,
                 params={"$format": "text/vtt"},
                 raw_text=True,
