@@ -730,8 +730,11 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
       // Reloading from API would overwrite the local state with stale data
     },
     onToolExecution: (event) => {
-      // Update unified agent state
-      agentHandlers.onToolExecution(event);
+      // `event` is the broad stream firehose (typed `unknown` on the hook
+      // contract because useChatStream emits tool/stream event shapes that
+      // are a superset of ToolExecutionEvent). Narrow to the handler's
+      // expected param at the boundary — type-only, no runtime effect.
+      agentHandlers.onToolExecution(event as Parameters<typeof agentHandlers.onToolExecution>[0]);
       // Also call the MCP tools handler for backwards compatibility
       handleToolExecution(event);
     },

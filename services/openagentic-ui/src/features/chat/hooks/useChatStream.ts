@@ -50,7 +50,6 @@ import { deriveFlatMessage } from './streamReducer/deriveFlatMessage';
 // place. The legacy interface is kept as a wrapper for back-compat with
 // the ~30 callsites that import `ContentBlock` from this module — they
 // transitively see the SDK shape with zero source changes.
-import type { UIContentBlock } from '@agentic-work/llm-sdk';
 // Sev-0 #924/#925/#926 — pure helper that builds the final onMessage
 // payload at done time, preserving the FULL content_blocks chronology
 // (every type — thinking, text, tool_use, viz_render, app_render,
@@ -59,1447 +58,68 @@ import type { UIContentBlock } from '@agentic-work/llm-sdk';
 // non-tool_use blocks and lost artifact + text chronology on finalize.
 import { buildDoneMessagePayload } from './buildDoneMessagePayload';
 
-// Pipeline stages from ChatPipeline backend
-export type PipelineStage = 'auth' | 'validation' | 'prompt' | 'mcp' | 'completion' | 'response';
-
-// Pipeline state to track current processing phase
-export interface PipelineState {
-  currentStage: PipelineStage | null;
-  stageStartTime: number | null;
-  stageTiming: Record<string, number>;
-  isToolExecutionPhase: boolean;
-  activeToolRound: number;
-  maxToolRounds: number;
-  bufferedContent: string;
-  shouldSuppressContent: boolean;
-}
-
-// Animation modes for streaming - simplified
-export type AnimationMode = 'smooth' | 'none';
-
-/**
- * Content block for interleaved thinking. F1 (2026-05-18) — this is now a
- * strict re-export of `UIContentBlock` from `@agentic-work/llm-sdk`. The
- * SDK owns the SoT shape; the alias here keeps the ~30 existing call sites
- * importing `ContentBlock` from `useChatStream` working with zero source
- * changes. New code should import `UIContentBlock` directly from
- * `@agentic-work/llm-sdk`.
- *
- * The SDK shape is a structural superset of the legacy local interface —
- * every previously-typed field exists on `UIContentBlock` with identical
- * semantics. See:
- *   - SDK SoT:   openagentic-sdk/src/lib/ui-stream/types.ts (UIContentBlock)
- *   - Follow-up: the design notes
- *                §"Follow-up tickets" (F1+F2 deeper rip)
- */
-export type ContentBlock = UIContentBlock;
-
-/**
- * Wire-in D (#82) — tool_round container block. The chat pipeline wraps
- * a batch of parallel tool_executing / tool_complete frames with a
- * tool_round_start / tool_round_end envelope so the UI can render them
- * as children of a single .tool-parallel card (mock 01-cloud-ops).
- */
-export interface ToolRoundBlock extends ContentBlock {
-  type: 'tool_round';
-  roundId: string;
-  toolIds: string[];
-  children: ContentBlock[];
-  isComplete: boolean;
-  startTime?: number;
-  durationMs?: number;
-  succeeded?: number;
-  failed?: number;
-}
-
-/**
- * Minimal structural type for the frames applyRoundFrame consumes. The
- * real NDJSON payloads carry more fields (timestamp, toolNames, _seq,
- * etc.) but only these are load-bearing for the correlation reducer.
- */
-export type RoundFrame =
-  | {
-      type: 'tool_round_start';
-      roundId: string;
-      toolCount?: number;
-      toolIds?: string[];
-      toolNames?: string[];
-      timestamp?: string;
-    }
-  | {
-      type: 'tool_round_end';
-      roundId: string;
-      succeeded?: number;
-      failed?: number;
-      durationMs?: number;
-      timestamp?: string;
-    }
-  | {
-      type: 'tool_executing';
-      roundId?: string;
-      toolCallId?: string;
-      name?: string;
-      arguments?: unknown;
-    }
-  | {
-      type: 'tool_complete' | 'tool_result' | 'tool_error';
-      roundId?: string;
-      toolCallId?: string;
-      name?: string;
-      result?: unknown;
-      error?: string;
-      durationMs?: number;
-      /**
-       * Phase 4 — two-channel envelope UI side. Carries outputTemplate
-       * + size / elapsed / cost / artifactHandle so the reducer can
-       * stamp the slug onto the matching ContentBlock for downstream
-       * FrameRendererRegistry lookup.
-       */
-      _meta?: {
-        outputTemplate?: string;
-        size?: number;
-        elapsed?: number;
-        cost?: number;
-        artifactHandle?: string;
-      };
-    };
-
-/**
- * Pure reducer that folds a round-aware stream frame onto the current
- * contentBlocks list.
- *
- *   tool_round_start      → push a new tool_round block with empty children
- *   tool_executing (w/ roundId matching open round) → append to children
- *   tool_executing (no match / unknown roundId)     → append as sibling
- *   tool_complete / tool_result / tool_error (w/ roundId match)
- *                         → update the matching child in place
- *   tool_round_end        → mark round isComplete + stamp durationMs /
- *                           succeeded / failed
- *
- * Non-matching frames fall through untouched. All outputs are new arrays
- * so downstream React state setters see a fresh reference.
- */
-export function applyRoundFrame(
-  blocks: ContentBlock[],
-  frame: RoundFrame,
-): ContentBlock[] {
-  // ── tool_round_start ────────────────────────────────────────────
-  if (frame.type === 'tool_round_start') {
-    // Dedupe: if a tool_round block already exists for this roundId, the
-    // second tool_round_start is a no-op (defensive against duplicate
-    // envelopes from the sequencer).
-    if (
-      blocks.some(
-        (b) => b.type === 'tool_round' && b.roundId === frame.roundId,
-      )
-    ) {
-      return blocks;
-    }
-    const round: ToolRoundBlock = {
-      id: `tool-round-${frame.roundId}`,
-      index: blocks.length,
-      type: 'tool_round',
-      content: '',
-      roundId: frame.roundId,
-      toolIds: Array.isArray(frame.toolIds) ? [...frame.toolIds] : [],
-      children: [],
-      isComplete: false,
-      startTime: Date.now(),
-    };
-    return [...blocks, round];
-  }
-
-  // ── tool_round_end ──────────────────────────────────────────────
-  if (frame.type === 'tool_round_end') {
-    return blocks.map((b) => {
-      if (b.type !== 'tool_round' || b.roundId !== frame.roundId) return b;
-      return {
-        ...b,
-        isComplete: true,
-        durationMs: typeof frame.durationMs === 'number' ? frame.durationMs : b.durationMs,
-        succeeded: typeof frame.succeeded === 'number' ? frame.succeeded : b.succeeded,
-        failed: typeof frame.failed === 'number' ? frame.failed : b.failed,
-      };
-    });
-  }
-
-  // ── tool_executing ──────────────────────────────────────────────
-  if (frame.type === 'tool_executing') {
-    const targetRoundIdx =
-      frame.roundId
-        ? blocks.findIndex(
-            (b) => b.type === 'tool_round' && b.roundId === frame.roundId,
-          )
-        : -1;
-
-    const child: ContentBlock = {
-      id: `tool-exec-${frame.toolCallId || frame.name || Math.random().toString(36).slice(2)}`,
-      index: targetRoundIdx >= 0
-        ? (blocks[targetRoundIdx].children?.length ?? 0)
-        : blocks.length,
-      type: 'tool_use',
-      content: JSON.stringify(frame.arguments ?? {}),
-      isComplete: false,
-      toolName: frame.name,
-      toolId: frame.toolCallId,
-      startTime: Date.now(),
-    };
-
-    if (targetRoundIdx < 0) {
-      // No matching round — graceful fallback, render as top-level sibling.
-      return [...blocks, child];
-    }
-
-    return blocks.map((b, i) => {
-      if (i !== targetRoundIdx) return b;
-      return {
-        ...b,
-        children: [...(b.children ?? []), child],
-      };
-    });
-  }
-
-  // ── tool_complete / tool_result / tool_error ─────────────────────
-  if (
-    frame.type === 'tool_complete' ||
-    frame.type === 'tool_result' ||
-    frame.type === 'tool_error'
-  ) {
-    if (!frame.roundId) return blocks;
-    const roundIdx = blocks.findIndex(
-      (b) => b.type === 'tool_round' && b.roundId === frame.roundId,
-    );
-    if (roundIdx < 0) return blocks;
-
-    const round = blocks[roundIdx];
-    const children = round.children ?? [];
-    const childIdx = children.findIndex(
-      (c) =>
-        (frame.toolCallId && c.toolId === frame.toolCallId) ||
-        (frame.name && c.toolName === frame.name && !c.isComplete),
-    );
-    if (childIdx < 0) return blocks;
-
-    const prevChild = children[childIdx];
-    // Phase 4 — forward `_meta.outputTemplate` from the tool_result frame
-    // onto the matching ContentBlock so render-time can resolve the
-    // FrameRendererRegistry component. Only stamps on success-path frames
-    // (tool_result / tool_complete); tool_error keeps the existing error
-    // shape unchanged.
-    const frameMeta =
-      frame.type === 'tool_result' || frame.type === 'tool_complete'
-        ? (frame as any)?._meta
-        : undefined;
-    const outputTemplate: string | undefined = frameMeta?.outputTemplate;
-    const nextChild: ContentBlock = {
-      ...prevChild,
-      isComplete: true,
-      ...(frame.type === 'tool_error'
-        ? { error: frame.error }
-        : { result: frame.result }),
-      ...(outputTemplate ? { outputTemplate } : {}),
-      duration:
-        typeof frame.durationMs === 'number'
-          ? frame.durationMs
-          : Date.now() - (prevChild.startTime || Date.now()),
-    };
-
-    const nextChildren = children.slice();
-    nextChildren[childIdx] = nextChild;
-    return blocks.map((b, i) =>
-      i === roundIdx ? { ...b, children: nextChildren } : b,
-    );
-  }
-
-  return blocks;
-}
-
-// Pipeline-aware event types that match backend ChatPipeline
-interface PipelineEvents {
-  'pipeline:start': { messageId: string; stage: PipelineStage };
-  'pipeline:stage': { stage: PipelineStage; data: any };
-  'pipeline:tool_round': { round: number; maxRounds: number };
-  'pipeline:content_suppressed': { stage: PipelineStage; reason: string };
-  'pipeline:complete': { metrics: any };
-}
-
-// Create initial pipeline state
-const createInitialPipelineState = (): PipelineState => ({
-  currentStage: null,
-  stageStartTime: null,
-  stageTiming: {},
-  isToolExecutionPhase: false,
-  activeToolRound: 0,
-  maxToolRounds: 5, // Match backend maxToolCallRounds
-  bufferedContent: '',
-  shouldSuppressContent: false
-});
-
-// Determine if content should be suppressed based on pipeline stage
-const shouldSuppressContentForStage = (stage: PipelineStage | null, toolRound: number): boolean => {
-  if (!stage) return false;
-  
-  // Suppress content during tool execution phases
-  if (stage === 'mcp' && toolRound > 0) return true;
-  
-  // Allow content during final completion phase
-  if (stage === 'completion' || stage === 'response') return false;
-  
-  // Suppress during early stages
-  if (stage === 'auth' || stage === 'validation' || stage === 'prompt') return true;
-  
-  return false;
-};
-
-// Map backend stage names to our pipeline stages
-const mapBackendStage = (eventType: string): PipelineStage | null => {
-  switch (eventType) {
-    case 'auth_start':
-    case 'auth_complete':
-      return 'auth';
-    case 'validation_start':
-    case 'validation_complete':
-      return 'validation';
-    case 'prompt_start':
-    case 'prompt_complete':
-    case 'prompt_engineering':
-      return 'prompt';
-    case 'mcp_start':
-    case 'mcp_complete':
-    case 'tool_execution_start':
-    case 'tool_execution_complete':
-    case 'completion_restart':
-    case 'tool_executing':
-    case 'tool_result':
-    case 'tool_call_delta':
-      return 'mcp';
-    case 'completion_start':
-    case 'completion_complete':
-      return 'completion';
-    case 'response_start':
-    case 'stream_complete':
-    case 'done':
-      return 'response';
-    default:
-      return null;
-  }
-};
-
-// Get animation mode from user preferences
-const getAnimationMode = (): AnimationMode => {
-  if (typeof window === 'undefined') return 'none';
-  
-  const saved = localStorage.getItem('chat-animation-mode');
-  if (saved === 'smooth' || saved === 'none') return saved;
-  
-  // Default to smooth for better UX now that we have proper pipeline awareness
-  return 'smooth';
-};
-
-// Extract thinking blocks and return both cleaned content and thinking
-function extractAndCleanThinkingBlocks(content: string): { cleaned: string; thinking: string } {
-  // Fast path: skip expensive regex if no thinking tags present
-  if (!content.includes('<thinking>') && !content.includes('<reasoning>') && !content.includes('<tool_code>')) {
-    return { cleaned: content, thinking: '' };
-  }
-
-  let cleanContent = content;
-  const thinkingParts: string[] = [];
-
-  // Extract and remove <thinking> blocks
-  let match;
-  const thinkingRegex = /<thinking>([\s\S]*?)<\/thinking>/g;
-  while ((match = thinkingRegex.exec(content)) !== null) {
-    thinkingParts.push(match[1].trim());
-  }
-  cleanContent = cleanContent.replace(thinkingRegex, '');
-
-  // Extract and remove <reasoning> blocks
-  const reasoningRegex = /<reasoning>([\s\S]*?)<\/reasoning>/g;
-  while ((match = reasoningRegex.exec(content)) !== null) {
-    thinkingParts.push(match[1].trim());
-  }
-  cleanContent = cleanContent.replace(reasoningRegex, '');
-
-  // Extract and remove <tool_code> blocks
-  const toolCodeRegex = /<tool_code>([\s\S]*?)<\/tool_code>/g;
-  while ((match = toolCodeRegex.exec(content)) !== null) {
-    thinkingParts.push(match[1].trim());
-  }
-  cleanContent = cleanContent.replace(toolCodeRegex, '');
-
-  // Clean up any extra whitespace
-  cleanContent = cleanContent.trim().replace(/\n{3,}/g, '\n\n');
-
-  return {
-    cleaned: cleanContent,
-    thinking: thinkingParts.join('\n\n---\n\n')
-  };
-}
-
-// Backward compatibility wrapper
-function cleanThinkingBlocks(content: string): string {
-  return extractAndCleanThinkingBlocks(content).cleaned;
-}
-
-/**
- * Model identifier split for the assistant message header pill.
- *
- * Mock 01 (mocks/UX/01-cloud-ops.html:206-212) shows the model in two
- * halves — the family `tag` in accent color, the rest in muted color:
- *
- *   <span class="model"><span class="tag">claude</span>3.5 sonnet</span>
- *
- * The wire frame `message_received` carries a single string like
- * `claude-opus-4-7`; we split on the FIRST hyphen so the family stays
- * a single word. Returns null for empty / whitespace / leading-hyphen
- * inputs so the consumer can suppress the badge entirely.
- */
-export interface ModelIdentifier {
-  tag: string;
-  id: string;
-}
-
-export function splitModelIdentifier(
-  raw: string | null | undefined,
-): ModelIdentifier | null {
-  if (raw == null) return null;
-  const s = raw.trim();
-  if (s.length === 0) return null;
-  // A leading hyphen is malformed wire data — suppress.
-  if (s.startsWith('-')) return null;
-  const i = s.indexOf('-');
-  if (i < 0) {
-    // Single-word identifier ("qwen", "phi"). Show as the family tag.
-    return { tag: s, id: '' };
-  }
-  let tag = s.slice(0, i);
-  // Bedrock ARN-style ids carry dotted vendor prefixes — `global.anthropic.claude-...`,
-  // `us.amazon.nova-...`, `anthropic.claude-3-...`. Mock 01:206-212 expects
-  // a short family tag. Strip everything up to the LAST dot in the pre-hyphen
-  // segment, leaving only the family name. Single-segment tags pass through.
-  const lastDot = tag.lastIndexOf('.');
-  if (lastDot >= 0) {
-    tag = tag.slice(lastDot + 1);
-  }
-  return { tag, id: s.slice(i + 1) };
-}
-
-/**
- * P1-5 of chatmode UX parity — suppress orphan / trivial artifact slide-outs.
- *
- * The server fires `artifact_open` for any structured response, but plain
- * prose with no fences / SVG / Mermaid / chart syntax should NEVER pop the
- * slide-out. Called at `artifact_close` time with the accumulated final
- * content; returns true only when the content has real substance.
- *
- * - Always false for empty / whitespace-only (any kind).
- * - For `markdown`: true if the content is ≥200 chars OR contains a fence
- *   / `<svg>` / Mermaid keyword (graph|sequenceDiagram|flowchart) / a
- *   markdown table (≥2 pipes per line for ≥2 lines).
- * - For all other kinds (`code`, `mermaid`, `chart`, `csv`): true once
- *   non-whitespace content exists. Those kinds never confuse with prose.
- */
-export function isArtifactWorthShowing(content: string, kind: string): boolean {
-  const c = (content || '').trim();
-  if (c.length === 0) return false;
-  if (kind !== 'markdown') return true;
-  if (c.length >= 200) return true;
-  if (/```/.test(c)) return true;
-  if (/<svg[\s>]/i.test(c)) return true;
-  if (/\b(?:graph|sequenceDiagram|flowchart|gantt|classDiagram|stateDiagram|erDiagram|journey|pie|gitGraph)\b/i.test(c)) {
-    return true;
-  }
-  // Markdown table: at least two consecutive lines each containing 2+ pipes.
-  const lines = c.split('\n');
-  let pipedRun = 0;
-  for (const line of lines) {
-    const pipeCount = (line.match(/\|/g) || []).length;
-    if (pipeCount >= 2) {
-      pipedRun += 1;
-      if (pipedRun >= 2) return true;
-    } else {
-      pipedRun = 0;
-    }
-  }
-  return false;
-}
-
-/**
- * Sev-0 2026-05-08 — empty-completion fallback contract.
- *
- * When `done` / `stream_complete` arrives with no assistant text AND no
- * tool calls AND no tool_use blocks (model emitted zero tokens after a
- * tool-use chain or after thinking), the historical condition skipped
- * the message-creation branch entirely → the UI hung on
- * "waiting for first token" forever.
- *
- * Pure decision function. The render branch consults this to know:
- *  - whether to create a message at all (always, now)
- *  - what content to seed the message with (original, empty for tool-only,
- *    or italic placeholder for the truly-empty case)
- */
-export interface EmptyCompletionInputs {
-  assistantMessage: string;
-  mcpCallsLength: number;
-  hasToolUseBlocks: boolean;
-}
-
-export interface EmptyCompletionResolution {
-  shouldRender: boolean;
-  content: string;
-  usedFallback: boolean;
-}
-
-export function resolveEmptyCompletionFallback(
-  inputs: EmptyCompletionInputs,
-): EmptyCompletionResolution {
-  const trimmed = (inputs.assistantMessage || '').trim();
-  if (trimmed.length > 0) {
-    return { shouldRender: true, content: inputs.assistantMessage, usedFallback: false };
-  }
-  if (inputs.mcpCallsLength > 0 || inputs.hasToolUseBlocks) {
-    return { shouldRender: true, content: '', usedFallback: false };
-  }
-  return {
-    shouldRender: true,
-    content: '_Model finished without producing an answer. Try rephrasing or check the activity stream above._',
-    usedFallback: true,
-  };
-}
-
-/**
- * E1.5 (2026-05-12) — wire-shape normalizers for tool_executing / tool_result.
- *
- * The V2 chat pipeline canonical payload (see api/.../pipeline/chat/builders.ts
- * `buildToolExecuting`, `buildToolResult`) is:
- *
- *   tool_executing: { name, tool_use_id, input }
- *   tool_result:    { name, tool_use_id, content, is_error, _meta }
- *
- * Legacy OpenAI-shape callers (Gemini, V1 paths) used `arguments` /
- * `toolCallId` / `result` instead. The UI reducer was reading the legacy
- * names, so every panel showed `INPUT {}` and `RESULT undefined` because
- * the canonical wire frame's `input` / `content` were never read.
- *
- * The normalizer prefers the canonical names but falls through to legacy
- * so older sub-agent / Gemini / mock paths keep working. RED test:
- * useChatStream.e15WireShapeNormalizer.test.ts.
- */
-export function extractToolExecutingArgs(safeData: any): unknown {
-  if (safeData == null || typeof safeData !== 'object') return undefined;
-  if ('input' in safeData && safeData.input !== undefined) return safeData.input;
-  if ('arguments' in safeData && safeData.arguments !== undefined) return safeData.arguments;
-  return undefined;
-}
-
-export function extractToolExecutingToolUseId(safeData: any): string | undefined {
-  if (safeData == null || typeof safeData !== 'object') return undefined;
-  if (typeof safeData.tool_use_id === 'string') return safeData.tool_use_id;
-  if (typeof safeData.toolCallId === 'string') return safeData.toolCallId;
-  return undefined;
-}
-
-export function extractToolResultContent(safeData: any): unknown {
-  if (safeData == null || typeof safeData !== 'object') return undefined;
-  if ('content' in safeData && safeData.content !== undefined) return safeData.content;
-  if ('result' in safeData && safeData.result !== undefined) return safeData.result;
-  return undefined;
-}
-
-/**
- * P1-6 — streaming-table primitive (mock 01:385-462).
- *
- * Server emits one `streaming_table` frame per table; the UI keys by
- * `artifact_id` (hot-swap on re-emit) and renders inline. Mirrors the
- * compose_visual / compose_app append-or-hot-swap pattern.
- */
-export type SevSeverity = 'ok' | 'warn' | 'err';
-
-export interface SevCell {
-  kind: 'sev';
-  value: string;
-  severity: SevSeverity;
-}
-
-export type StreamingTableCell = string | SevCell;
-
-export interface StreamingTableColumn {
-  key: string;
-  label: string;
-  align?: 'left' | 'right';
-  cellClass?: 'mono' | 'tnum';
-  /**
-   * Mock-07 (tri-cloud cost spikes) — when a numeric column carries
-   * `colorize: 'delta-currency'`, the renderer applies cm-red / cm-amber /
-   * cm-green class to each cell based on the absolute-value threshold:
-   *   |v| >= 5000 → red
-   *   |v| >= 2000 → amber
-   *   otherwise   → green
-   * Backwards-compat: absent flag → no coloring (existing behavior).
-   */
-  colorize?: 'delta-currency';
-  /**
-   * Mock-07 line 110 — when a column has `dim:true`, its cells render in
-   * the dim-fg colour (cm-fg-3). Used for "root cause" / inline annotation
-   * columns. Optional.
-   */
-  dim?: boolean;
-}
-
-export interface StreamingTableFilter {
-  /** Column key the filter pill selects on. */
-  column: string;
-  /** Default option label (e.g. "all clouds"). Defaults to "all". */
-  default?: string;
-}
-
-export interface StreamingTable {
-  artifactId: string;
-  title: string;
-  countText?: string;
-  columns: StreamingTableColumn[];
-  rows: Array<Record<string, StreamingTableCell>>;
-  /** Optional filter pill (mock-07 line 219). */
-  filter?: StreamingTableFilter;
-}
-
-export interface StreamingTableFrame {
-  type: 'streaming_table';
-  artifact_id: string;
-  title: string;
-  count_text?: string;
-  columns: Array<{
-    key: string;
-    label: string;
-    align?: 'left' | 'right';
-    cell_class?: 'mono' | 'tnum';
-    /** Mock-07 — numeric column coloring (currently 'delta-currency'). */
-    colorize?: 'delta-currency';
-    /** Mock-07 — dim-styled column. */
-    dim?: boolean;
-  }>;
-  rows: Array<Record<string, StreamingTableCell>>;
-  /** Mock-07 — optional filter pill spec. */
-  filter?: {
-    column: string;
-    default?: string;
-  };
-}
-
-/**
- * Pure reducer: fold a `streaming_table` wire frame into the per-message
- * map. Drops malformed payloads silently (empty messageId, empty
- * artifact_id, or empty columns — there is nothing useful to render).
- * Hot-swaps in place when the artifact_id matches an existing entry under
- * the same messageId; appends otherwise.
- */
-export function applyStreamingTableFrame(
-  map: Record<string, StreamingTable[]>,
-  messageId: string,
-  frame: StreamingTableFrame,
-): Record<string, StreamingTable[]> {
-  if (!messageId) return map;
-  const artifactId = typeof frame.artifact_id === 'string' ? frame.artifact_id.trim() : '';
-  if (!artifactId) return map;
-  const cols = Array.isArray(frame.columns) ? frame.columns : [];
-  if (cols.length === 0) return map;
-  const next: StreamingTable = {
-    artifactId,
-    title: typeof frame.title === 'string' ? frame.title : '',
-    countText: typeof frame.count_text === 'string' && frame.count_text.length > 0
-      ? frame.count_text
-      : undefined,
-    columns: cols.map((c) => ({
-      key: typeof c.key === 'string' ? c.key : '',
-      label: typeof c.label === 'string' ? c.label : '',
-      align: c.align === 'right' ? 'right' : c.align === 'left' ? 'left' : undefined,
-      cellClass:
-        c.cell_class === 'mono' || c.cell_class === 'tnum' ? c.cell_class : undefined,
-      colorize: c.colorize === 'delta-currency' ? 'delta-currency' : undefined,
-      dim: c.dim === true ? true : undefined,
-    })),
-    rows: Array.isArray(frame.rows) ? frame.rows : [],
-    filter:
-      frame.filter && typeof frame.filter.column === 'string' && frame.filter.column.length > 0
-        ? {
-            column: frame.filter.column,
-            default:
-              typeof frame.filter.default === 'string' && frame.filter.default.length > 0
-                ? frame.filter.default
-                : undefined,
-          }
-        : undefined,
-  };
-  const existing = map[messageId] ?? [];
-  const idx = existing.findIndex((t) => t.artifactId === artifactId);
-  if (idx >= 0) {
-    const replaced = [...existing];
-    replaced[idx] = next;
-    return { ...map, [messageId]: replaced };
-  }
-  return { ...map, [messageId]: [...existing, next] };
-}
-
-/**
- * Phase 27 — findings_emit NDJSON frame. Severity-tagged audit/review
- * lists rendered inline by v2/Findings (mocks 03, 07, 08, 09).
- */
-export type FindingSeverityWire =
-  | 'critical' | 'high' | 'med' | 'low' | 'info' | 'ok';
-
-export interface FindingsItem {
-  id: string;
-  title: string;
-  severity: FindingSeverityWire;
-  body?: string;
-}
-
-export interface FindingsArtifact {
-  artifactId: string;
-  title?: string;
-  items: FindingsItem[];
-}
-
-export interface FindingsFrame {
-  type: 'findings_emit';
-  artifact_id: string;
-  title?: string;
-  items: Array<{
-    id: string;
-    title: string;
-    severity: FindingSeverityWire;
-    body?: string;
-  }>;
-}
-
-const VALID_SEVERITIES = new Set<FindingSeverityWire>([
-  'critical', 'high', 'med', 'low', 'info', 'ok',
-]);
-
-/**
- * Pure reducer: fold a `findings_emit` wire frame into the per-message
- * map. Drops malformed payloads silently. Hot-swaps in place when the
- * artifact_id matches an existing entry under the same messageId;
- * appends otherwise.
- */
-export function applyFindingsFrame(
-  map: Record<string, FindingsArtifact[]>,
-  messageId: string,
-  frame: FindingsFrame,
-): Record<string, FindingsArtifact[]> {
-  if (!messageId) return map;
-  const artifactId = typeof frame.artifact_id === 'string' ? frame.artifact_id.trim() : '';
-  if (!artifactId) return map;
-  const items = Array.isArray(frame.items) ? frame.items : [];
-  if (items.length === 0) return map;
-  const sanitized: FindingsItem[] = items
-    .filter((it) => it && typeof it.id === 'string' && typeof it.title === 'string')
-    .map((it) => ({
-      id: it.id,
-      title: it.title,
-      severity: VALID_SEVERITIES.has(it.severity) ? it.severity : 'info',
-      ...(typeof it.body === 'string' ? { body: it.body } : {}),
-    }));
-  if (sanitized.length === 0) return map;
-  const next: FindingsArtifact = {
-    artifactId,
-    ...(typeof frame.title === 'string' ? { title: frame.title } : {}),
-    items: sanitized,
-  };
-  const existing = map[messageId] ?? [];
-  const idx = existing.findIndex((a) => a.artifactId === artifactId);
-  if (idx >= 0) {
-    const replaced = [...existing];
-    replaced[idx] = next;
-    return { ...map, [messageId]: replaced };
-  }
-  return { ...map, [messageId]: [...existing, next] };
-}
-
-/**
- * #502 unified inline-widget primitive — one NDJSON frame carries the
- * v2 primitives that don't already have a dedicated wire (KpiGrid,
- * SavingsCard, StagesStrip, WaveTimeline, Runbook, StackGrid,
- * AnnotatedCode). The model emits these via the `compose_widget`
- * meta-tool; the API forwards `inline_widget` frames keyed by
- * `artifact_id`.
- *
- * Each `data` payload mirrors the corresponding v2 primitive's prop
- * shape one-to-one, so renderers can pass `data` straight through.
- */
-export type InlineWidgetKind =
-  | 'kpi_grid'
-  | 'savings_card'
-  | 'stages_strip'
-  | 'wave_timeline'
-  | 'runbook'
-  | 'stack_grid'
-  | 'annotated_code';
-
-const INLINE_WIDGET_KINDS = new Set<InlineWidgetKind>([
-  'kpi_grid',
-  'savings_card',
-  'stages_strip',
-  'wave_timeline',
-  'runbook',
-  'stack_grid',
-  'annotated_code',
-]);
-
-export interface InlineWidgetFrame {
-  type: 'inline_widget';
-  artifact_id: string;
-  kind: InlineWidgetKind;
-  title?: string;
-  data: unknown;
-}
-
-export interface InlineWidget {
-  artifactId: string;
-  kind: InlineWidgetKind;
-  title?: string;
-  data: unknown;
-}
-
-/**
- * Validate a payload against the kind's required-shape contract.
- * Returns false for malformed shapes so the reducer can drop silently.
- */
-function isValidInlineWidgetData(kind: InlineWidgetKind, data: unknown): boolean {
-  if (!data || typeof data !== 'object') return false;
-  const d = data as Record<string, unknown>;
-  switch (kind) {
-    case 'kpi_grid':
-      return Array.isArray(d.tiles) && d.tiles.length > 0;
-    case 'savings_card':
-      return Array.isArray(d.cells) && d.cells.length > 0;
-    case 'stages_strip':
-      return Array.isArray(d.stages) && d.stages.length > 0;
-    case 'wave_timeline':
-      return Array.isArray(d.rows) && d.rows.length > 0;
-    case 'runbook':
-      return Array.isArray(d.steps) && d.steps.length > 0;
-    case 'stack_grid':
-      return Array.isArray(d.layers) && d.layers.length > 0;
-    case 'annotated_code':
-      return Array.isArray(d.lines) && d.lines.length > 0;
-    default:
-      return false;
-  }
-}
-
-/**
- * Pure reducer: fold one `inline_widget` wire frame into the
- * per-message map. Drops malformed payloads silently. Hot-swaps in
- * place when `artifact_id` matches an existing entry under the same
- * messageId; appends otherwise.
- */
-export function applyInlineWidgetFrame(
-  map: Record<string, InlineWidget[]>,
-  messageId: string,
-  frame: InlineWidgetFrame,
-): Record<string, InlineWidget[]> {
-  if (!messageId) return map;
-  const artifactId = typeof frame.artifact_id === 'string' ? frame.artifact_id.trim() : '';
-  if (!artifactId) return map;
-  if (!INLINE_WIDGET_KINDS.has(frame.kind)) return map;
-  if (!isValidInlineWidgetData(frame.kind, frame.data)) return map;
-  const next: InlineWidget = {
-    artifactId,
-    kind: frame.kind,
-    ...(typeof frame.title === 'string' ? { title: frame.title } : {}),
-    data: frame.data,
-  };
-  const existing = map[messageId] ?? [];
-  const idx = existing.findIndex((w) => w.artifactId === artifactId);
-  if (idx >= 0) {
-    const replaced = [...existing];
-    replaced[idx] = next;
-    return { ...map, [messageId]: replaced };
-  }
-  return { ...map, [messageId]: [...existing, next] };
-}
-/**
- * AC-D1 — artifact_emit. Server emits this when a tool finishes writing
- * bytes to UserStorageService. The UI renders one <DownloadTile> per
- * entry, click → presigned MinIO URL.
- */
-export interface ArtifactEmit {
-  artifactId: string;
-  filename: string;
-  contentType: string;
-  sizeBytes: number;
-  downloadUrl: string;
-  producedBy?: string;
-}
-
-export interface ArtifactEmitFrame {
-  type: 'artifact_emit';
-  artifact_id: string;
-  filename: string;
-  content_type: string;
-  size_bytes: number;
-  download_url: string;
-  produced_by?: string;
-}
-
-/**
- * Pure reducer: fold one `artifact_emit` frame into the per-message
- * map. Drops malformed payloads silently. Hot-swaps in place when the
- * artifact_id matches an existing entry under the same messageId;
- * appends otherwise.
- */
-export function applyArtifactEmitFrame(
-  map: Record<string, ArtifactEmit[]>,
-  messageId: string,
-  frame: ArtifactEmitFrame,
-): Record<string, ArtifactEmit[]> {
-  if (!messageId) return map;
-  const artifactId = typeof frame.artifact_id === 'string' ? frame.artifact_id.trim() : '';
-  if (!artifactId) return map;
-  const filename = typeof frame.filename === 'string' ? frame.filename : '';
-  if (!filename) return map;
-  const downloadUrl = typeof frame.download_url === 'string' ? frame.download_url : '';
-  if (!downloadUrl) return map;
-
-  const next: ArtifactEmit = {
-    artifactId,
-    filename,
-    contentType: typeof frame.content_type === 'string' ? frame.content_type : 'application/octet-stream',
-    sizeBytes: typeof frame.size_bytes === 'number' ? frame.size_bytes : 0,
-    downloadUrl,
-    ...(typeof frame.produced_by === 'string' ? { producedBy: frame.produced_by } : {}),
-  };
-  const existing = map[messageId] ?? [];
-  const idx = existing.findIndex((a) => a.artifactId === artifactId);
-  if (idx >= 0) {
-    const replaced = [...existing];
-    replaced[idx] = next;
-    return { ...map, [messageId]: replaced };
-  }
-  return { ...map, [messageId]: [...existing, next] };
-}
-
-/**
- * P0-2 — stamp wire `model` onto a (partial) ChatMessage as `model` +
- * `modelTag` + `modelId` so MessageHeader can render the assistant pill
- * without re-parsing on every render. Mirrors mock 01:206-212 pill anatomy.
- *
- * Returns the input unchanged when `model` is missing or malformed
- * (splitModelIdentifier returned null) — half-stamped pills confuse users.
- */
-export function attachModelIdentifier<M extends object>(
-  message: M,
-  model: string | null | undefined,
-): M & { model?: string; modelTag?: string; modelId?: string } {
-  const split = splitModelIdentifier(model);
-  if (!split) return message as M & { model?: string; modelTag?: string; modelId?: string };
-  return {
-    ...message,
-    model: typeof model === 'string' ? model.trim() : model ?? undefined,
-    modelTag: split.tag,
-    modelId: split.id.length > 0 ? split.id : undefined,
-  };
-}
-
-// Legacy AppRender / ArtifactRender shapes + applyAppRenderFrame /
-// applyArtifactRenderFrame reducers were ripped. The `app_render` and
-// `artifact_render` wire frames now fold into the canonical
-// contentBlocks[] array via streamReducer/applyCanonicalFrame and render
-// inline through AgenticActivityStream's typed-block path.
-
-// ════════════════════════════════════════════════════════════════════
-// Wave 3 (#525) — intent_classified + tool_shortlist NDJSON consumers.
-//
-// Server emits these ONCE per assistant turn from prompt.stage (Wave 2):
-//   intent_classified: { intent, confidence, ms, classifierCacheHit }
-//   tool_shortlist:    { total_available, count, intent, kept[] }
-//
-// Both frames emit BEFORE the assistant's message_saved arrives
-// (#473 ordering — frame fires from prompt.stage, message_saved from
-// response.stage). The buffer-then-flush pattern below keys the maps
-// by the React placeholder id (NOT the DB CUID — same gotcha #473
-// fixed earlier).
-// ════════════════════════════════════════════════════════════════════
-
-/** IntentClassified state — one entry per assistant message. */
-export interface IntentClassification {
-  intent: string;
-  confidence: number;
-  ms: number;
-  classifierCacheHit: boolean;
-}
-
-/** ToolShortlist state — one entry per assistant message. */
-export interface ToolShortlist {
-  totalAvailable: number;
-  count: number;
-  intent: string;
-  kept: string[];
-}
-
-/** Wire shape for `intent_classified` (camelCase per Wave 2 spec). */
-export type IntentClassifiedFrame = {
-  type: 'intent_classified';
-  intent: string;
-  confidence: number;
-  ms: number;
-  classifierCacheHit: boolean;
-};
-
-/** Wire shape for `tool_shortlist` (snake_case per Wave 2 spec). */
-export type ToolShortlistFrame = {
-  type: 'tool_shortlist';
-  total_available: number;
-  count: number;
-  intent: string;
-  kept: string[];
-};
-
-/**
- * Pure reducer: coerce + buffer-or-apply an `intent_classified` frame.
- * When `assistantMessageId` is empty (frame fired before assistant's
- * message_saved), the entry stashes in the pending slot for later flush.
- */
-export function bufferOrApplyIntentClassified(
-  safeData: any,
-  assistantMessageId: string,
-  prevMap: Record<string, IntentClassification>,
-  prevPending: IntentClassification | null,
-): {
-  intentClassifications: Record<string, IntentClassification>;
-  pending: IntentClassification | null;
-} {
-  const intent = typeof safeData?.intent === 'string' ? safeData.intent : '';
-  const confidence =
-    typeof safeData?.confidence === 'number' && Number.isFinite(safeData.confidence)
-      ? safeData.confidence
-      : 0;
-  const ms =
-    typeof safeData?.ms === 'number' && Number.isFinite(safeData.ms)
-      ? safeData.ms
-      : 0;
-  const classifierCacheHit = safeData?.classifierCacheHit === true;
-  if (!intent) {
-    // Defensive — drop malformed frames silently.
-    return { intentClassifications: prevMap, pending: prevPending };
-  }
-  const entry: IntentClassification = { intent, confidence, ms, classifierCacheHit };
-  if (!assistantMessageId) {
-    return { intentClassifications: prevMap, pending: entry };
-  }
-  return {
-    intentClassifications: { ...prevMap, [assistantMessageId]: entry },
-    pending: prevPending,
-  };
-}
-
-/** Flush buffered intent classification into the keyed map on assistant message_saved. */
-export function flushPendingIntentClassified(
-  assistantMessageId: string,
-  prevMap: Record<string, IntentClassification>,
-  prevPending: IntentClassification | null,
-): {
-  intentClassifications: Record<string, IntentClassification>;
-  pending: IntentClassification | null;
-} {
-  if (!prevPending) return { intentClassifications: prevMap, pending: null };
-  if (!assistantMessageId) {
-    return { intentClassifications: prevMap, pending: prevPending };
-  }
-  return {
-    intentClassifications: { ...prevMap, [assistantMessageId]: prevPending },
-    pending: null,
-  };
-}
-
-/**
- * Pure reducer: coerce + buffer-or-apply a `tool_shortlist` frame.
- *
- * Buffer-or-apply: when no assistant messageId is known yet (the frame
- * fires from prompt.stage before the assistant's message_saved arrives),
- * stash in a session-level pending slot; the case 'message_saved' arm
- * flushes it on assistant role.
- */
-export function bufferOrApplyToolShortlist(
-  safeData: any,
-  assistantMessageId: string,
-  prevMap: Record<string, ToolShortlist>,
-  prevPending: ToolShortlist | null,
-): {
-  toolShortlists: Record<string, ToolShortlist>;
-  pending: ToolShortlist | null;
-} {
-  const totalAvailable =
-    typeof safeData?.total_available === 'number' &&
-    Number.isFinite(safeData.total_available)
-      ? safeData.total_available
-      : 0;
-  const count =
-    typeof safeData?.count === 'number' && Number.isFinite(safeData.count)
-      ? safeData.count
-      : 0;
-  const intent = typeof safeData?.intent === 'string' ? safeData.intent : '';
-  const kept = Array.isArray(safeData?.kept)
-    ? safeData.kept.filter((s: any) => typeof s === 'string')
-    : [];
-  if (totalAvailable <= 0) {
-    // Defensive — backend skips emit when pool is empty; same here.
-    return { toolShortlists: prevMap, pending: prevPending };
-  }
-  const entry: ToolShortlist = { totalAvailable, count, intent, kept };
-  if (!assistantMessageId) {
-    return { toolShortlists: prevMap, pending: entry };
-  }
-  return {
-    toolShortlists: { ...prevMap, [assistantMessageId]: entry },
-    pending: prevPending,
-  };
-}
-
-/** Flush buffered tool-shortlist into the keyed map on assistant message_saved. */
-export function flushPendingToolShortlist(
-  assistantMessageId: string,
-  prevMap: Record<string, ToolShortlist>,
-  prevPending: ToolShortlist | null,
-): {
-  toolShortlists: Record<string, ToolShortlist>;
-  pending: ToolShortlist | null;
-} {
-  if (!prevPending) return { toolShortlists: prevMap, pending: null };
-  if (!assistantMessageId) {
-    return { toolShortlists: prevMap, pending: prevPending };
-  }
-  return {
-    toolShortlists: { ...prevMap, [assistantMessageId]: prevPending },
-    pending: null,
-  };
-}
-
-// ════════════════════════════════════════════════════════════════════
-// #502 — sub_agent_started / sub_agent_completed NDJSON consumers.
-//
-// Server emits these from services/openagentic-api/src/services/TaskTool.ts
-// (Phase E2). Each Task tool dispatch produces:
-//   sub_agent_started:   { role, description, model, session_id }
-//   sub_agent_completed: { role, ok, error, turns, tokens, durationMs, toolsUsed }
-//
-// The pure reducers below convert to camelCase for in-state storage and
-// expose a flat `subAgents` array consumed by ChatMessages -> SubAgentCard.
-// Reference UX: mocks/UX/01-cloud-ops.html lines 1083-1133.
-// ════════════════════════════════════════════════════════════════════
-
-export interface SubAgentStats {
-  turns: number;
-  tokens: number;
-  wallMs: number;
-  toolsUsed?: string[];
-}
-
-export interface SubAgentEntry {
-  role: string;
-  description?: string;
-  model: string | null;
-  status: 'running' | 'ok' | 'error';
-  stats?: SubAgentStats;
-  error?: string | null;
-  sessionId?: string;
-  /**
-   * Phase 16 — the sub-agent's actual return content from
-   * `SubagentRunResult.output`. Written by sub_agent_completed when ok.
-   * Drives the SubAgentCard's cm-sa-return strip text. When absent, the
-   * card falls back to the legacy stats-string so older api versions
-   * keep working.
-   */
-  output?: string;
-}
-
-/** Wire shape (snake_case) for `sub_agent_started`. */
-export type SubAgentStartedFrame = {
-  type: 'sub_agent_started';
-  role: string;
-  description?: string;
-  model?: string | null;
-  session_id?: string | null;
-};
-
-/** Wire shape (snake_case) for `sub_agent_completed`. */
-export type SubAgentCompletedFrame = {
-  type: 'sub_agent_completed';
-  role: string;
-  ok: boolean;
-  error?: string | null;
-  turns: number;
-  tokens: number;
-  durationMs: number;
-  toolsUsed?: string[];
-  /**
-   * Phase 16 — the sub-agent's full return content (from
-   * SubagentRunResult.output on the api side). Optional; older api
-   * versions don't emit this and the UI degrades to stats-only render.
-   */
-  output?: string;
-};
-
-/**
- * Variant mapping for SubAgentCard. Drives the left-border colour +
- * avatar gradient. Both hyphen and underscore separators are accepted
- * — the api emits hyphens, but some paths use underscores.
- */
-export function subAgentVariantFor(role: string): 'c' | 'g' | 's' | 'k' {
-  const r = (role || '').toLowerCase();
-  if (r === 'cost-analysis' || r === 'cost_analysis') return 'c';
-  if (r === 'growth-analysis' || r === 'growth_analysis') return 'g';
-  if (r === 'security-analysis' || r === 'security_analysis') return 's';
-  if (r === 'kubernetes' || r === 'k8s') return 'k';
-  return 'c';
-}
-
-/**
- * Pure reducer: append a new running sub-agent entry. Drops malformed
- * frames (missing role) silently and returns the input list by reference
- * so setState short-circuits on no-op.
- */
-export function applySubAgentStarted(
-  prev: SubAgentEntry[],
-  frame: SubAgentStartedFrame,
-): SubAgentEntry[] {
-  const role = typeof frame.role === 'string' ? frame.role : '';
-  if (!role) return prev;
-  const description =
-    typeof frame.description === 'string' ? frame.description : undefined;
-  const model = typeof frame.model === 'string' ? frame.model : null;
-  const sessionId =
-    typeof frame.session_id === 'string' ? frame.session_id : undefined;
-  return [
-    ...prev,
-    {
-      role,
-      description,
-      model,
-      status: 'running',
-      sessionId,
-    },
-  ];
-}
-
-/**
- * Pure reducer: complete the FIRST running sub-agent entry whose role
- * matches. Merges stats + error/ok status. If no matching running entry
- * exists, returns the input list by reference (defensive — server should
- * never emit completed without started).
- */
-export function applySubAgentCompleted(
-  prev: SubAgentEntry[],
-  frame: SubAgentCompletedFrame,
-): SubAgentEntry[] {
-  const role = typeof frame.role === 'string' ? frame.role : '';
-  if (!role) return prev;
-  const idx = prev.findIndex(
-    (e) => e.role === role && e.status === 'running',
-  );
-  if (idx < 0) return prev;
-  const out = [...prev];
-  out[idx] = {
-    ...out[idx],
-    status: frame.ok ? 'ok' : 'error',
-    stats: {
-      turns: typeof frame.turns === 'number' ? frame.turns : 0,
-      tokens: typeof frame.tokens === 'number' ? frame.tokens : 0,
-      wallMs: typeof frame.durationMs === 'number' ? frame.durationMs : 0,
-      toolsUsed: Array.isArray(frame.toolsUsed) ? frame.toolsUsed : undefined,
-    },
-    error: typeof frame.error === 'string' ? frame.error : null,
-    output: typeof frame.output === 'string' ? frame.output : undefined,
-  };
-  return out;
-}
-
-/**
- * P0-1 part 2 — per-message-scoped sub_agent_started reducer.
- *
- * Per-message map keyed by active assistant messageId so older message
- * bubbles re-render with their OWN sub-agent cards instead of the latest
- * session-global snapshot.
- *
- * Drops malformed payloads (empty messageId or empty role) silently.
- */
-export function applySubAgentStartedScoped(
-  map: Record<string, SubAgentEntry[]>,
-  messageId: string,
-  frame: SubAgentStartedFrame,
-): Record<string, SubAgentEntry[]> {
-  if (!messageId) return map;
-  const role = typeof frame.role === 'string' ? frame.role : '';
-  if (!role) return map;
-  const entry: SubAgentEntry = {
-    role,
-    description: typeof frame.description === 'string' ? frame.description : null,
-    model: typeof frame.model === 'string' ? frame.model : null,
-    status: 'running',
-  };
-  const existing = map[messageId] ?? [];
-  return {
-    ...map,
-    [messageId]: [...existing, entry],
-  };
-}
-
-/**
- * P0-1 part 2 — per-message-scoped sub_agent_completed reducer. Flips the
- * matching running entry to ok|err with stats. Returns input unchanged on
- * empty messageId, no map entry, or no matching running entry by role.
- */
-export function applySubAgentCompletedScoped(
-  map: Record<string, SubAgentEntry[]>,
-  messageId: string,
-  frame: SubAgentCompletedFrame,
-): Record<string, SubAgentEntry[]> {
-  if (!messageId) return map;
-  const role = typeof frame.role === 'string' ? frame.role : '';
-  if (!role) return map;
-  const list = map[messageId];
-  if (!list || list.length === 0) return map;
-  const idx = list.findIndex((e) => e.role === role && e.status === 'running');
-  if (idx < 0) return map;
-  const next = [...list];
-  next[idx] = {
-    ...next[idx],
-    status: frame.ok ? 'ok' : 'error',
-    stats: {
-      turns: typeof frame.turns === 'number' ? frame.turns : 0,
-      tokens: typeof frame.tokens === 'number' ? frame.tokens : 0,
-      wallMs: typeof frame.durationMs === 'number' ? frame.durationMs : 0,
-      toolsUsed: Array.isArray(frame.toolsUsed) ? frame.toolsUsed : undefined,
-    },
-    error: typeof frame.error === 'string' ? frame.error : null,
-    output: typeof frame.output === 'string' ? frame.output : undefined,
-  };
-  return { ...map, [messageId]: next };
-}
-
-/**
- * #502 case-statement glue extracted as a pure dispatcher so the
- * "type-label + safeData coercion" wire-up gets unit-test coverage
- * without renderHook'ing the full SSE / fetch / auth stack.
- */
-export function dispatchSubAgentFrame(
-  frameType: string,
-  safeData: any,
-  prev: SubAgentEntry[],
-): { subAgents: SubAgentEntry[] } {
-  if (frameType === 'sub_agent_started') {
-    return {
-      subAgents: applySubAgentStarted(prev, {
-        type: 'sub_agent_started',
-        role: typeof safeData?.role === 'string' ? safeData.role : '',
-        description:
-          typeof safeData?.description === 'string'
-            ? safeData.description
-            : undefined,
-        model: typeof safeData?.model === 'string' ? safeData.model : null,
-        session_id:
-          typeof safeData?.session_id === 'string'
-            ? safeData.session_id
-            : undefined,
-      }),
-    };
-  }
-  if (frameType === 'sub_agent_completed') {
-    return {
-      subAgents: applySubAgentCompleted(prev, {
-        type: 'sub_agent_completed',
-        role: typeof safeData?.role === 'string' ? safeData.role : '',
-        ok: safeData?.ok === true,
-        error: typeof safeData?.error === 'string' ? safeData.error : null,
-        turns: typeof safeData?.turns === 'number' ? safeData.turns : 0,
-        tokens: typeof safeData?.tokens === 'number' ? safeData.tokens : 0,
-        durationMs:
-          typeof safeData?.durationMs === 'number' ? safeData.durationMs : 0,
-        toolsUsed: Array.isArray(safeData?.toolsUsed)
-          ? safeData.toolsUsed
-          : undefined,
-        // Phase 16 wire-unwrap fix — forward the sub-agent's actual return
-        // content. Without this, the reducer would receive `output:
-        // undefined` and SubAgentCard falls back to "X turns Y tok".
-        output: typeof safeData?.output === 'string' ? safeData.output : undefined,
-      }),
-    };
-  }
-  // Unknown frame type — return inputs by reference.
-  return { subAgents: prev };
-}
-
-export interface McpApprovalRequest {
-  requestId: string;
-  toolName: string;
-  serverName?: string;
-  arguments: Record<string, unknown>;
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
-  reason: string;
-  timeoutMs: number;
-}
-
-// Mutating-tool approval gate (backend commit 7e6637539). Distinct from
-// McpApprovalRequest — keyed by an append-only `auditId`, resolved via
-// POST /api/approvals/:auditId/{approve,deny}. OSS-only audit surface.
-export interface AuditApprovalRequest {
-  auditId: string;
-  toolName: string;
-  serverName?: string;
-  args?: Record<string, unknown> | string;
-  preview?: string;
-}
-
-// Multi-model orchestration event - flexible type for various event shapes
-export interface MultiModelEvent {
-  type: string;
-  orchestrationId?: string;
-  executionPlan?: string[];
-  fromModel?: string;
-  toModel?: string;
-  role?: string;
-  rolesExecuted?: string[];
-  totalCost?: number;
-  model?: string;
-  content?: string;
-  fromRole?: string;
-  toRole?: string;
-  handoffCount?: number;
-  totalDuration?: number;
-  error?: string;
-  agents?: any[];
-  strategy?: string;
-  metrics?: any;
-  [key: string]: any; // Allow additional properties for extensibility
-}
-
-export interface UseSSEChatOptions {
-  sessionId: string;
-  onMessage?: (message: ChatMessage) => void;
-  onToolExecution?: (tool: any) => void;
-  onToolApprovalRequest?: (data: { tools: any[]; toolCallRound: number; messageId: string }) => void;
-  onMcpApprovalRequest?: (data: McpApprovalRequest) => void;
-  onAuditApprovalRequired?: (data: AuditApprovalRequest) => void;  // OSS-only mutating-tool gate
-  onError?: (error: Error) => void;
-  onThinking?: (status: string) => void;
-  onThinkingContent?: (content: string, tokens?: number) => void;  // For actual thinking content
-  onThinkingComplete?: () => void;  // When thinking finishes
-  onMultiModel?: (event: MultiModelEvent) => void;  // Multi-model orchestration events
-  onStream?: (content: string) => void;
-  onPipelineStage?: (stage: PipelineStage, data?: any) => void;
-  onToolRound?: (round: number, maxRounds: number) => void;
-  onSessionTitleUpdated?: (sessionId: string, title: string) => void;  // AI-generated session title
-  autoApproveTools?: boolean;
-  // #473 — caller (ChatContainer) supplies the client-side placeholder id
-  // for the in-flight assistant message. Wave 3 (#525) intent_classified
-  // / tool_shortlist frames flush into per-message maps under this id so
-  // ChatMessages can find them via message.id (which is the placeholder,
-  // NOT the DB CUID from message_saved). Optional for back-compat — when
-  // absent, flush falls back to the wire messageId (legacy behavior).
-  getAssistantPlaceholderId?: () => string | null;
-}
+// ── Pure region decomposition (behaviour-preserving) ───────────────
+// The pure stream TYPE definitions, NDJSON frame reducers, and
+// parsers/normalizers were extracted to three leaf modules so this hook
+// file shrinks to the stateful engine. They are imported back here for
+// the hook body AND re-exported so every existing
+// `import { … } from '…/useChatStream'` keeps working unchanged.
+export * from './streamTypes';
+export * from './streamFrames';
+export {
+  splitModelIdentifier,
+  isArtifactWorthShowing,
+  resolveEmptyCompletionFallback,
+  extractToolExecutingArgs,
+  extractToolExecutingToolUseId,
+  extractToolResultContent,
+  attachModelIdentifier,
+} from './streamParsers';
+
+import type {
+  ContentBlock,
+  UseSSEChatOptions,
+  PipelineState,
+  AnimationMode,
+  SubAgentEntry,
+  ToolShortlist,
+  IntentClassification,
+  StreamingTable,
+  StreamingTableFrame,
+  FindingsArtifact,
+  FindingsFrame,
+  InlineWidget,
+  InlineWidgetFrame,
+  ArtifactEmit,
+  ArtifactEmitFrame,
+} from './streamTypes';
+import {
+  applyRoundFrame,
+  applyStreamingTableFrame,
+  applyFindingsFrame,
+  applyInlineWidgetFrame,
+  applyArtifactEmitFrame,
+  bufferOrApplyIntentClassified,
+  flushPendingIntentClassified,
+  bufferOrApplyToolShortlist,
+  flushPendingToolShortlist,
+  applySubAgentStartedScoped,
+  applySubAgentCompletedScoped,
+  dispatchSubAgentFrame,
+} from './streamFrames';
+import {
+  createInitialPipelineState,
+  shouldSuppressContentForStage,
+  mapBackendStage,
+  getAnimationMode,
+  extractAndCleanThinkingBlocks,
+  resolveEmptyCompletionFallback,
+  attachModelIdentifier,
+  isArtifactWorthShowing,
+  extractToolExecutingArgs,
+  extractToolExecutingToolUseId,
+  extractToolResultContent,
+} from './streamParsers';
 
 export const useChatStream = ({
   sessionId,
@@ -1937,8 +557,8 @@ export const useChatStream = ({
     status: 'pending' | 'in_progress' | 'completed' | 'error';
     startTime?: number;
     endTime?: number;
-    request?: any;
-    response?: any;
+    request?: unknown;
+    response?: unknown;
     error?: string;
   }>>([]);
   // Ref to capture cotSteps at message completion time (for closure access)
@@ -2142,10 +762,10 @@ export const useChatStream = ({
     options?: {
       model?: string;
       enabledTools?: string[];
-      files?: any[];
+      files?: unknown[];
       promptTechniques?: string[];
       enableExtendedThinking?: boolean;
-      flowContext?: any;
+      flowContext?: unknown;
       artifactContext?: { content: string; title: string; type: string };
     }
   ) => {
@@ -2433,7 +1053,7 @@ export const useChatStream = ({
       // legacy flat-string view for callers that still need it (title-gen,
       // copy-to-clipboard, durable-tail-resume `done` payload, etc.).
       let messageId = '';
-      let mcpCalls: any[] = [];
+      let mcpCalls: unknown[] = [];
       let chunkCount = 0;
       let currentPipelineState = createInitialPipelineState();
       let hasCompletedStream = false; // Guard against duplicate done events
@@ -2485,7 +1105,7 @@ export const useChatStream = ({
 
           for (const line of lines) {
             if (!line.trim()) continue;
-            let frame: any;
+            let frame;
             try {
               frame = JSON.parse(line);
             } catch {
@@ -3227,7 +1847,7 @@ export const useChatStream = ({
                     name: safeData.name,
                     result: isFailure ? undefined : trContent,
                     error: isFailure ? failureMsg : undefined,
-                  } as any);
+                  });
 
                   // Task #131 — close the open parallel round. The NEXT
                   // tool_executing will open round N+1. Subsequent tool_result
@@ -3375,7 +1995,7 @@ export const useChatStream = ({
                   if (safeData.toolCalls && safeData.toolCalls.length > 0) {
                     // FIX: Create tool_use content blocks for non-Anthropic providers (Ollama, OpenAI)
                     // This ensures hasInterleavedContent=true and tools render inline
-                    safeData.toolCalls.forEach((tc: any) => {
+                    safeData.toolCalls.forEach((tc) => {
                       const toolId = tc.id || `tool_${Date.now()}`;
                       const toolName = tc.function?.name || tc.name || 'unknown';
                       const existingBlock = contentBlocksRef.current.find(
@@ -3402,7 +2022,7 @@ export const useChatStream = ({
 
                     onToolExecution?.({
                       type: 'tool_call_streaming',
-                      calls: safeData.toolCalls.map((tc: any) => ({
+                      calls: safeData.toolCalls.map((tc) => ({
                         id: tc.id,
                         name: tc.function?.name || tc.name,
                         tool: tc.function?.name || tc.name,
@@ -4391,7 +3011,11 @@ export const useChatStream = ({
                     const events = normalizedEventsRef.current;
                     let matchIndex: number | undefined;
                     for (let i = events.length - 1; i >= 0; i--) {
-                      const ev: any = events[i];
+                      const ev = events[i] as unknown as {
+                        type?: string;
+                        content_block?: { type?: string; name?: string };
+                        index?: number;
+                      };
                       if (
                         ev?.type === 'content_block_start' &&
                         ev?.content_block?.type === 'tool_use' &&
@@ -4401,7 +3025,8 @@ export const useChatStream = ({
                         // exists later in the buffer.
                         const idx = ev.index as number;
                         const closed = events.slice(i + 1).some(
-                          (e: any) => e?.type === 'content_block_stop' && e?.index === idx,
+                          (e: { type?: string; index?: number }) =>
+                            e?.type === 'content_block_stop' && e?.index === idx,
                         );
                         if (!closed) {
                           matchIndex = idx;
@@ -4711,7 +3336,7 @@ export const useChatStream = ({
                   // Store MCP calls for the current message AND notify for display
                   console.log('[SSE] MCP calls data received:', {
                     callsCount: safeData.calls?.length,
-                    calls: safeData.calls?.map((c: any) => ({ name: c.name, status: c.status }))
+                    calls: safeData.calls?.map((c) => ({ name: c.name, status: c.status }))
                   });
 
                   if (safeData.calls && safeData.calls.length > 0) {
@@ -4720,7 +3345,7 @@ export const useChatStream = ({
 
                     // FIX: Mark corresponding tool_use content blocks as complete
                     // This updates the visual status from "running" spinner to checkmark/error
-                    safeData.calls.forEach((call: any) => {
+                    safeData.calls.forEach((call) => {
                       const toolId = call.id || call.tool || call.name;
                       const isComplete = call.status === 'completed' || call.result !== undefined;
 
@@ -5870,7 +4495,7 @@ export const useChatStream = ({
           }
         }
       }
-    } catch (streamError: any) {
+    } catch (streamError) {
         // CRITICAL FIX: Don't report AbortError - it's expected when sending a new message
         // AbortError occurs when abortControllerRef.current.abort() is called for a new message
         if (streamError.name === 'AbortError') {
@@ -5933,7 +4558,7 @@ export const useChatStream = ({
         // Clear timeout regardless of how the stream ends
         clearTimeout(streamTimeoutId);
       }
-    } catch (error: any) {
+    } catch (error) {
       if (error.name === 'AbortError') {
         // Normal abort - silent
         return;
