@@ -47,7 +47,7 @@ azure-mgmt-consumption>=10.0.0      # Usage details, reservations, price sheets
 
 # Monitoring & Observability
 azure-mgmt-monitor>=7.0.0           # Metrics, alerts, action groups, autoscale
-azure-mgmt-loganalytics>=13.1.1     # Log Analytics workspace management (create/list/get)
+azure-mgmt-loganalytics>=14.0.0     # Log Analytics workspace management (create/list/get)
 azure-mgmt-applicationinsights>=4.1.0 # Application Insights component management
 
 # Data plane query client — used by Log Analytics query + App Insights query tools.
