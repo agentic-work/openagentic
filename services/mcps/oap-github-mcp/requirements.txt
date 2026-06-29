@@ -1,7 +1,7 @@
 # Phase 1.6 standardization (auto-bump): pin current stable for both
 # bundled mcp.server.fastmcp and standalone fastmcp. The tools/list wire
 # format only carries _meta + annotations on these versions.
-mcp>=1.27.0,<2.0.0
+mcp>=1.28.1,<2.0.0
 fastmcp>=3.2.0,<4.0.0
 httpx>=0.27.0
 structlog>=24.1.0
