@@ -13,7 +13,7 @@ azure-identity>=1.19.0              # For TokenCredential protocol (NOT DefaultA
 
 # Resource & Subscription Management
 azure-mgmt-resource>=23.2.0         # Resource groups, deployments, providers, tags
-azure-mgmt-subscription>=3.1.0      # Subscriptions, tenants
+azure-mgmt-subscription>=3.1.1      # Subscriptions, tenants
 azure-mgmt-managementgroups>=1.0.0  # Management group hierarchy
 
 # Compute
