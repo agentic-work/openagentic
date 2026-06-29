@@ -95,7 +95,7 @@ jobs:
           exit 1
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # ── Auth ──────────────────────────────────────────────────────────────────
       - name: Log in to GHCR
@@ -292,7 +292,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # ── Compose-only tarball — no source code ────────────────────────────────
       - name: Package compose bundle
@@ -376,7 +376,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
