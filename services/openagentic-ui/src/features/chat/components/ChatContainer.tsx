@@ -26,7 +26,6 @@ import { isValidChatMessage, validateChartData, ensureArray, safeArrayAccess } f
 import { useAuth } from '@/app/providers/AuthContext';
 // Removed conflicting useTheme - using settings from API as source of truth
 import { apiEndpoint } from '@/utils/api';
-import { onModelsChanged } from '@/utils/modelSync';
 import { getDocsBaseUrl } from '@/config/constants';
 import { submitFeedback, FeedbackType } from '@/services/feedbackApi';
 // Token operations handled by AuthContext - pure frontend architecture
@@ -52,6 +51,9 @@ import { useModelStore } from '@/stores/useModelStore';
 import { useChatSessions } from '../hooks/useChatSessions';
 import { useMCPTools } from '../hooks/useMCPTools';
 import { useFollowupChipListener } from '../hooks/useFollowupChipListener';
+import { useModelCatalogSync } from '../hooks/useModelCatalogSync';
+import { useGoToLatestChip } from '../hooks/useGoToLatestChip';
+import { useArtifactAutoOpen } from '../hooks/useArtifactAutoOpen';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useFirstSessionWelcome } from '../welcome/useFirstSessionWelcome';
 import { WelcomeRouteBar } from '../welcome/WelcomeRouteBar';
@@ -82,19 +84,6 @@ import ApprovalModal, { type AuditApprovalRequest } from './ApprovalModal';
 import AdminToolInspector from './AdminToolInspector';
 import type { McpApprovalRequest } from '../hooks/useChatStream';
 
-// App mode type.
-type AppMode = 'chat' | 'flows' | 'codemode';
-
-// Personality type for AI response styling
-interface Personality {
-  id: string;
-  name: string;
-  emoji: string;
-  description: string;
-  systemPrompt: string;
-  isBuiltIn: boolean;
-}
-
 // Personalities are now fetched from the pipeline config API (admin portal is SOT)
 // Built-in personalities with full system prompts are defined in the backend:
 // services/openagentic-api/src/routes/chat/pipeline/pipeline-config.schema.ts
@@ -111,71 +100,13 @@ import type {
   ChatSession, TokenStats 
 } from '@/types/index';
 
-// Additional type interfaces to replace 'any' types
-interface MCPFunction {
-  name: string;
-  description?: string;
-  parameters?: Record<string, unknown>;
-}
-
-interface MCPToolsResponse {
-  tools: {
-    functions: MCPFunction[];
-  };
-}
-
-interface SessionApiResponse {
-  sessions: Array<{
-    id: string;
-    userId: string;
-    title: string;
-    createdAt: string;
-    updatedAt: string;
-    messageCount?: number;
-    messages?: Array<{
-      id: string;
-      role: 'user' | 'assistant' | 'system';
-      content: string;
-      timestamp: string;
-    }>;
-  }>;
-  lastActiveSessionId?: string;
-}
-
-interface UsageDataPoint {
-  date: string;
-  tokens: number;
-  cost: number;
-}
-
-interface ImageAnalysisResult {
-  text?: string;
-  description?: string;
-  objects?: Array<{
-    name: string;
-    confidence: number;
-  }>;
-  tags?: string[];
-}
-
-interface FileWithPreview extends File {
-  previewUrl?: string;
-}
-
-interface ChatProps {
-  // `theme` prop removed: the parent no longer feeds a JS color palette. The
-  // app theme is the CSS SOT (theme.css flips every --color-* off [data-theme]);
-  // Chat reads settings.theme (a 'light' | 'dark' string) internally and the
-  // CSS vars do the rest. onThemeChange persists the user's light/dark choice.
-  onThemeChange?: (theme: 'light' | 'dark') => void;
-  onFunctionsReady?: (functions: {
-    createNewSession: () => void;
-    toggleMetrics: () => void;
-    openMonitor: () => void;
-    toggleSidebar: () => void;
-  }) => void;
-  showMetricsPanel?: boolean;
-}
+// Local component types (prop/state/local interfaces) extracted to a sibling
+// module. Pure type declarations — no behavior change. Unused-in-body shapes
+// (Personality / MCPFunction / MCPToolsResponse / SessionApiResponse) live there
+// too and are intentionally not re-imported here.
+import type {
+  AppMode, ChatProps, FileWithPreview, UsageDataPoint, ImageAnalysisResult,
+} from './ChatContainer.types';
 
 const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetricsPanel: propShowMetricsPanel }) => {
   // Navigation hook
@@ -382,31 +313,9 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   // Track if we've scrolled for the current session's messages (to handle initial load)
   const hasScrolledForSession = useRef<string | null>(null);
 
-  // "Go to latest" floating chip — shown when the user scrolls up away from the
-  // bottom of the chat. Click scrolls back smoothly. Mirrors the openagentic UX.
-  const [isAtBottom, setIsAtBottom] = useState(true);
-  useEffect(() => {
-    const container = document.getElementById('chat-messages-container');
-    if (!container) return;
-    const onScroll = () => {
-      // Within 120px of the bottom counts as "at bottom" — gives a comfortable
-      // dead zone so the chip doesn't flicker on and off when the user is
-      // mostly-but-not-quite at the latest message.
-      const distFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-      setIsAtBottom(distFromBottom < 120);
-    };
-    container.addEventListener('scroll', onScroll, { passive: true });
-    onScroll(); // initial state
-    return () => container.removeEventListener('scroll', onScroll);
-    // Re-bind on session/messages change so the listener attaches to the
-    // right element after re-renders.
-  }, [activeSessionId, messages.length]);
-
-  const scrollToLatest = useCallback(() => {
-    const container = document.getElementById('chat-messages-container');
-    if (!container) return;
-    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-  }, []);
+  // "Go to latest" floating chip + smooth scroll-to-bottom action
+  // (extracted to useGoToLatestChip — DOM-scroll only, no store/stream state).
+  const { isAtBottom, scrollToLatest } = useGoToLatestChip(activeSessionId, messages.length);
 
   // UI state
   // selectedModel, availableModels, isMultiModelEnabled now provided by useModelStore
@@ -592,7 +501,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     }
   }, [isAdminUser]); // Only run when admin status changes
 
-  const [currentPrompt, setCurrentPrompt] = useState<string>(''); // Current prompt being used
   const [globalTokenUsage, setGlobalTokenUsage] = useState<{
     total: number;
     sessions: number;
@@ -1415,167 +1323,12 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     }
   }, [isAuthenticated, loadMCPFunctions]);
 
-  // Fetch available models and current prompt on mount
-  useEffect(() => {
-    const fetchModelsAndPrompt = async () => {
-      try {
-        // Get auth token
-        const token = await getAccessToken();
-        const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
-        
-        // Fetch available models from API
-        // Use /chat/models endpoint which returns ALL individual models (including all Claude variants)
-        // The /models endpoint only returns one model per provider
-        const modelsResponse = await fetch(apiEndpoint('/chat/models'), {
-          headers: {
-            'Content-Type': 'application/json',
-            ...authHeaders  // FIX: Pass auth token for authenticated endpoint
-          }
-        });
-        
-        if (modelsResponse.ok) {
-          const data = await modelsResponse.json();
-          if (data.models && data.models.length > 0) {
-            // Chat dropdown only shows READY models (configured + available)
-            // Unpulled/catalog models are managed in Admin Console Model Garden only
-            const readyModels = data.models.filter((m: { id: string; isAvailable?: boolean }) => m.isAvailable !== false);
-            setAvailableModels(readyModels);
-
-            // Model selection is ADMIN ONLY
-            // Non-admins always use empty string which defaults to auto-routing on backend
-            if (isAdminUser) {
-              // Validate stored model against available models
-              const storedModel = localStorage.getItem('selectedModel');
-              const modelIds = data.models.map((m: { id: string; isAvailable?: boolean }) => m.id);
-
-              if (storedModel && modelIds.includes(storedModel)) {
-                // Stored model is valid - use it
-                console.log('[MODEL] Admin using stored model from localStorage:', storedModel);
-                setSelectedModel(storedModel);
-              } else {
-                // No valid stored model - use Smart Router (empty string)
-                // This lets the model router choose the best model based on query complexity
-                console.log('[MODEL] Admin no stored model, using Smart Router');
-                setSelectedModel('');
-              }
-            } else {
-              // Non-admin - always use default auto-routing (empty string)
-              console.log('[MODEL] Non-admin user, using default auto-routing');
-              setSelectedModel('');
-              localStorage.removeItem('selectedModel');
-            }
-          }
-        }
-
-        // Fetch current user's assigned prompt template
-        try {
-          const promptResponse = await fetch(apiEndpoint('/admin/prompts/my-template'), {
-            headers: {
-              'X-OpenAgentic-Frontend': 'true',
-              ...authHeaders
-            }
-          });
-
-          if (promptResponse.ok) {
-            const promptData = await promptResponse.json();
-            if (promptData.template?.name) {
-              setCurrentPrompt(promptData.template.name);
-            }
-          } else {
-            // Fall back to default if no specific template assigned
-            setCurrentPrompt('Default Assistant');
-          }
-        } catch (promptError) {
-          console.error('Could not fetch current prompt template:', promptError);
-          // Fall back to default - this is normal if no template is assigned
-          setCurrentPrompt('Default Assistant');
-        }
-
-        // Fetch multi-model config (admin only) to check if multi-model mode is enabled
-        if (isAdminUser) {
-          try {
-            const multiModelResponse = await fetch(apiEndpoint('/admin/multi-model/config'), {
-              headers: {
-                'X-OpenAgentic-Frontend': 'true',
-                ...authHeaders
-              }
-            });
-
-            if (multiModelResponse.ok) {
-              const multiModelData = await multiModelResponse.json();
-              const isEnabled = multiModelData.config?.enabled ?? false;
-              setMultiModelEnabled(isEnabled);
-              console.log('[MULTI-MODEL] Mode enabled:', isEnabled);
-            }
-          } catch (multiModelError) {
-            console.warn('Could not fetch multi-model config:', multiModelError);
-            setMultiModelEnabled(false);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch models:', error);
-      }
-    };
-
-    fetchModelsAndPrompt();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdminUser]); // Re-run when admin status changes (e.g., after user loads)
-
-  // Listen for multi-model config changes (dispatched from Admin Portal)
-  useEffect(() => {
-    const handleMultiModelChange = async (event: CustomEvent<{ enabled: boolean }>) => {
-      console.log('[MULTI-MODEL] Config changed via event:', event.detail);
-      setMultiModelEnabled(event.detail.enabled);
-    };
-
-    window.addEventListener('multimodel-config-changed', handleMultiModelChange as EventListener);
-    return () => {
-      window.removeEventListener('multimodel-config-changed', handleMultiModelChange as EventListener);
-    };
-  }, []);
-
-  // SEV0 FIX (2026-04-08): Keep chat model selector in sync with admin console
-  // CRUD operations. Previously /chat/models was fetched once on mount, so
-  // any add/delete/toggle/edit in Model Registry stayed invisible to open
-  // chat tabs until hard-refresh. onModelsChanged hooks a same-tab CustomEvent
-  // plus a cross-tab BroadcastChannel so admin changes propagate immediately.
-  useEffect(() => {
-    const refetchModels = async () => {
-      try {
-        const token = await getAccessToken();
-        const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await fetch(apiEndpoint('/chat/models'), {
-          headers: { 'Content-Type': 'application/json', ...authHeaders },
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.models && data.models.length > 0) {
-          const readyModels = data.models.filter((m: { id: string; isAvailable?: boolean }) => m.isAvailable !== false);
-          setAvailableModels(readyModels);
-          // If the currently selected model was deleted, fall back to Smart Router
-          const modelIds = readyModels.map((m: { id: string; isAvailable?: boolean }) => m.id);
-          if (selectedModel && !modelIds.includes(selectedModel)) {
-            console.log('[MODEL-SYNC] Selected model no longer available, reverting to Smart Router');
-            setSelectedModel('');
-          }
-          console.log('[MODEL-SYNC] Chat model list refreshed from admin signal:', readyModels.length, 'models');
-        }
-      } catch (err) {
-        console.warn('[MODEL-SYNC] Refetch failed:', err);
-      }
-    };
-    const unsubscribe = onModelsChanged((reason) => {
-      console.log('[MODEL-SYNC] Received models-changed signal, reason:', reason);
-      refetchModels();
-    });
-
-    // Polling fallback: refresh every 30s so admin changes in other tabs/windows
-    // are always picked up even if CustomEvent/BroadcastChannel fails.
-    const pollInterval = setInterval(() => refetchModels(), 30000);
-
-    return () => { unsubscribe(); clearInterval(pollInterval); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedModel]);
+  // Model catalog + prompt sync — fetch-on-mount (+ admin multi-model config),
+  // the Admin-Portal multimodel-config-changed listener, and the SEV0 admin-CRUD
+  // live-sync (onModelsChanged signal + 30s polling). Extracted to
+  // useModelCatalogSync; all model state still flows through the shared
+  // useModelStore the container renders from, so this is purely additive.
+  useModelCatalogSync({ getAccessToken, isAdminUser });
 
   // REMOVED: This useEffect was causing infinite loops
   // The theme is already managed by ThemeContext - no need to notify parent on every change
@@ -1675,69 +1428,11 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     }
   }, [isStreaming, currentMessage, contentBlocks.length]);
 
-  // Auto-open canvas panel when streaming completes and response contains an artifact
-  const wasStreamingRef = useRef(false);
-  useEffect(() => {
-    if (isStreaming) {
-      wasStreamingRef.current = true;
-    } else if (wasStreamingRef.current) {
-      wasStreamingRef.current = false;
-      // Streaming just ended — check recent messages for artifacts
-      const lastMsg = messages[messages.length - 1];
-      const lastContent = lastMsg?.content || '';
-
-      // Helper to open an artifact in the canvas panel
-      const openArtifact = (type: string, artifactContent: string, title?: string) => {
-        const lang = type === 'html' ? 'html' : type === 'react' ? 'tsx' : type === 'svg' ? 'svg' : type;
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('openagentic:open-canvas', {
-            detail: {
-              content: artifactContent,
-              type: lang,
-              title: title || `${type.charAt(0).toUpperCase() + type.slice(1)} Artifact`,
-              language: lang,
-            }
-          }));
-        }, 500);
-      };
-
-      // 1. Check direct message content for artifact fences
-      const artifactMatch = lastContent.match(/```artifact:(html|react|svg|mermaid|chart|csv|latex|canvas)\n([\s\S]*?)```/);
-      if (artifactMatch) {
-        openArtifact(artifactMatch[1], artifactMatch[2]);
-      } else {
-        // 2. Check tool results (orchestration agents may embed artifacts in their output)
-        // Scan toolResults and aggregated tool messages for artifact fences
-        const toolOutputs: string[] = [];
-        if (lastMsg?.toolResults) {
-          for (const tr of lastMsg.toolResults) {
-            const s = typeof tr === 'string' ? tr : JSON.stringify(tr);
-            toolOutputs.push(s);
-          }
-        }
-        // Also check aggregated messages for tool results
-        if (lastMsg?.toolCalls) {
-          for (const msg of messages) {
-            if (msg.role === 'tool' && msg.content) {
-              toolOutputs.push(typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content));
-            }
-          }
-        }
-        // Search all collected tool outputs for artifact fences
-        for (const output of toolOutputs) {
-          // Artifact fences may be escaped inside JSON strings — handle both raw and escaped newlines
-          const unescaped = output.replace(/\\n/g, '\n').replace(/\\"/g, '"');
-          const toolArtifactMatch = unescaped.match(/```artifact:(html|react|svg|mermaid|chart|csv|latex|canvas)\n([\s\S]*?)```/);
-          if (toolArtifactMatch) {
-            // Try to extract a title from the HTML content
-            const titleMatch = unescaped.match(/<title>([^<]+)<\/title>/i);
-            openArtifact(toolArtifactMatch[1], toolArtifactMatch[2], titleMatch?.[1]);
-            break;
-          }
-        }
-      }
-    }
-  }, [isStreaming, messages]);
+  // Auto-open canvas panel when streaming completes and the response contains an
+  // artifact fence (in the message body or a tool output). Extracted to
+  // useArtifactAutoOpen — dispatches the same openagentic:open-canvas window event
+  // the listener below already handles; no canvas/send/session state touched.
+  useArtifactAutoOpen(isStreaming, messages);
 
   // Load user usage data on mount and periodically
   useEffect(() => {
