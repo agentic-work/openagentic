@@ -23,7 +23,7 @@ google-api-python-client>=2.111.0
 httpx>=0.25.0
 
 # Environment management
-python-dotenv>=1.0.0
+python-dotenv>=1.2.2
 
 # Logging
 structlog>=24.1.0
