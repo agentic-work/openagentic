@@ -15,7 +15,7 @@ jobs:
     name: OSS sanity check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: OSS sanity check (edition flag + core install artifacts)
         run: ./tools/verify-oss-integrity.sh
