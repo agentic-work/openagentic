@@ -1,0 +1,242 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: api
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      enableServiceLinks: false
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "api") | nindent 6 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: api
+          image: {{ .Values.image.registry }}/openagentic-api:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "api") | nindent 10 }}
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: openagentic-secrets
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: REDIS_URL
+              value: redis://redis:6379
+            {{- if .Values.milvus.enabled }}
+            # In-cluster milvus is the vector backend for the tool semantic cache.
+            - name: MILVUS_HOST
+              value: milvus
+            - name: MILVUS_PORT
+              value: "19530"
+            - name: SKIP_TOOL_SEMANTIC_CACHE
+              value: "false"
+            {{- else }}
+            # No milvus — run pgvector-only; entrypoint + node skip the milvus path.
+            - name: MILVUS_ENABLED
+              value: "false"
+            - name: SKIP_TOOL_SEMANTIC_CACHE
+              value: "true"
+            {{- end }}
+            # RAG retrieval stays off on fresh boot to avoid embedding stalls when
+            # Ollama is shared between chat/tools and embeddings.
+            - name: DISABLE_RAG
+              value: "true"
+            # Documentation RAG auto-ingest — ON by default so the docs assistant's
+            # knowledge always reflects the current source. At boot the api compares
+            # the UI image's _version.json manifestHash against the stored fingerprint
+            # and re-embeds only on first boot / hash drift. Stored into the Postgres
+            # halfvec `doc_chunks` table when milvus is disabled (pgvector-only) or
+            # the platform_docs Milvus collection when enabled. No-op when RAG is
+            # skipped (no embedding provider / SKIP_TOOL_SEMANTIC_CACHE=true).
+            - name: DOCS_AUTO_INGEST
+              value: {{ .Values.docs.autoIngest | default true | quote }}
+            - name: DOCS_MANIFEST_URL
+              value: {{ .Values.docs.manifestUrl | default "http://ui/docs/generated" | quote }}
+            {{- if .Values.ollama.enabled }}
+            # Ollama is OPT-IN (ollama.enabled). It is wired ONLY when the operator
+            # chose it — the platform never defaults to / forces a provider.
+            - name: OLLAMA_ENABLED
+              value: "true"
+            # Chat host — a REMOTE Ollama (e.g. a GPU box) when ollama.chatHost
+            # is set; otherwise the in-cluster Ollama. Embeddings ALWAYS use the
+            # in-cluster Ollama (nomic-embed-text is light, runs fine CPU-only).
+            - name: OLLAMA_HOST
+              value: {{ .Values.ollama.chatHost | default "http://ollama:11434" | quote }}
+            - name: OLLAMA_BASE_URL
+              value: {{ .Values.ollama.chatHost | default "http://ollama:11434" | quote }}
+            # tool_search cold/warm budget (G19) — a cold nomic embed on a CPU
+            # in-cluster Ollama can exceed the 20s code default and abort tool_search
+            # to zero tools. Generous ceilings (no-op when the embed is fast).
+            - name: TOOL_SEARCH_TIMEOUT_MS
+              value: {{ .Values.ollama.toolSearchTimeoutMs | default 35000 | quote }}
+            - name: TOOL_SEARCH_COLD_TIMEOUT_MS
+              value: {{ .Values.ollama.toolSearchColdTimeoutMs | default 45000 | quote }}
+            - name: EMBEDDING_OLLAMA_BASE_URL
+              value: http://ollama:11434
+            - name: EMBEDDING_PROVIDER
+              value: ollama
+            - name: OLLAMA_EMBEDDING_MODEL
+              value: {{ .Values.ollama.embedModel | quote }}
+            - name: OLLAMA_EMBED_MODEL
+              value: {{ .Values.ollama.embedModel | quote }}
+            - name: EMBEDDING_MODEL
+              value: {{ .Values.ollama.embedModel | quote }}
+            {{- else }}
+            # Provider-agnostic: no Ollama unless the operator opts in.
+            - name: OLLAMA_ENABLED
+              value: "false"
+            {{- end }}
+            {{- if .Values.bootstrapProvider.enabled }}
+            # AWS Bedrock (Claude via IAM) is the SOLE chat bootstrap provider.
+            # Seeds claude-sonnet-4-6 as the default chat + flows model. CONFIG
+            # carries ONLY the region (no secrets — creds come from the AWS_*
+            # secret env / pod IAM role). Embeddings stay on the in-cluster
+            # Ollama (nomic-embed-text, 768) for a healthy first boot.
+            - name: BOOTSTRAP_PROVIDER_NAME
+              value: {{ .Values.bootstrapProvider.name | quote }}
+            - name: BOOTSTRAP_PROVIDER_DISPLAY_NAME
+              value: {{ .Values.bootstrapProvider.displayName | quote }}
+            - name: BOOTSTRAP_PROVIDER_TYPE
+              value: {{ .Values.bootstrapProvider.type | quote }}
+            - name: BOOTSTRAP_PROVIDER_CONFIG
+              value: '{"region":"{{ .Values.secrets.awsRegion | default "us-east-1" }}"}'
+            - name: BOOTSTRAP_PROVIDER_DEFAULTS
+              value: '{"chat":"{{ .Values.bootstrapProvider.chatModel }}","embedding":"{{ .Values.ollama.embedModel }}","embeddingDimension":768}'
+            - name: SEEDER_VERSION
+              value: {{ .Values.bootstrapProvider.seederVersion | quote }}
+            {{- else if .Values.ollama.enabled }}
+            # Operator chose Ollama (and no other bootstrap provider): seed a local
+            # Ollama provider so a bare install chats with zero API keys. Chat role
+            # seeds only when chatModel is set. This is NOT a default — it runs only
+            # because ollama.enabled is true.
+            - name: BOOTSTRAP_PROVIDER_NAME
+              value: ollama-local
+            - name: BOOTSTRAP_PROVIDER_DISPLAY_NAME
+              value: Ollama (local)
+            - name: BOOTSTRAP_PROVIDER_TYPE
+              value: ollama
+            - name: BOOTSTRAP_PROVIDER_CONFIG
+              value: '{"endpoint":"{{ .Values.ollama.chatHost | default "http://ollama:11434" }}"}'
+            - name: BOOTSTRAP_PROVIDER_DEFAULTS
+              value: '{"chat":"{{ .Values.ollama.chatModel }}","embedding":"{{ .Values.ollama.embedModel }}","embeddingDimension":768}'
+            {{- end }}
+            # When neither bootstrapProvider.enabled nor ollama.enabled is set, NO
+            # BOOTSTRAP_PROVIDER_* is emitted above → the seeder is a no-op and the
+            # platform stays provider-agnostic (admin UI wires a provider).
+            - name: API_HOST
+              value: api
+            - name: API_PORT
+              value: "8000"
+            - name: MCP_PROXY_HOST
+              value: mcp-proxy
+            - name: MCP_PROXY_PORT
+              value: "8080"
+            - name: WORKFLOWS_HOST
+              value: workflows
+            - name: WORKFLOWS_PORT
+              value: "3400"
+            - name: WORKFLOW_SERVICE_URL
+              value: http://workflows:3400
+            - name: OPENAGENTIC_PROXY_URL
+              value: http://proxy:3300
+            - name: OPENAGENTIC_API_INTERNAL_URL
+              value: http://api:8000
+            {{- if .Values.prometheus.enabled }}
+            # Dashboard metrics: the Prom-first admin endpoints (cluster/health,
+            # api-requests/*, perf/*) + the /api/admin/prom proxy read these.
+            - name: PROMETHEUS_HOST
+              value: prometheus
+            - name: PROMETHEUS_PORT
+              value: "9090"
+            - name: PROM_URL
+              value: http://prometheus:9090
+            {{- end }}
+            # tool_search self-call target (model-driven MCP discovery).
+            - name: INTERNAL_API_URL
+              value: http://api:8000
+            {{- if .Values.ingress.enabled }}
+            # Browser CORS: allow the UI's public origin (else login 500s with
+            # "Not allowed by CORS"). The default localhost list excludes it.
+            - name: ALLOWED_ORIGINS
+              value: "https://{{ .Values.ingress.host }}"
+            {{- end }}
+            - name: AUTH_PROVIDER
+              value: local
+            - name: ADMIN_USER_EMAIL
+              value: {{ .Values.secrets.adminEmail | quote }}
+            - name: LOCAL_ADMIN_USERNAME
+              value: Admin
+            - name: ADMIN_REQUIRE_PASSWORD_RESET
+              value: "false"
+            {{- /* Additive escape hatch for env the structured values above don't
+                   cover (the install wizard injects the one-shot MAGIC_BOOT_TOKEN +
+                   the vertex/azure-foundry provider + embedding-provider env here).
+                   Empty by default → renders nothing → default render unchanged. */}}
+            {{- range .Values.extraEnv }}
+            - name: {{ .name | quote }}
+              value: {{ .value | quote }}
+            {{- end }}
+          {{- if (and .Values.adcSecret .Values.adcSecret.enabled) }}
+          # Application Default Credentials (read-only) for the Google Vertex
+          # provider. The Node google-auth-library resolves the well-known ADC file
+          # at $HOME/.config/gcloud/application_default_credentials.json on Linux
+          # (it does NOT honor CLOUDSDK_CONFIG like the Python lib), so we mount it
+          # under the api user's HOME (uid 1000 = node → /home/node). The ADC here
+          # is a USER credential (authorized_user) — we deliberately do NOT set
+          # GOOGLE_APPLICATION_CREDENTIALS (GoogleVertexProvider validates that as a
+          # service-account JSON and would throw); the @google/genai SDK discovers
+          # this ADC automatically.
+          volumeMounts:
+            - name: gcp-adc
+              mountPath: {{ .Values.adcSecret.apiMountPath | default "/home/node/.config/gcloud" | quote }}
+              readOnly: true
+          {{- end }}
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources.api | nindent 12 }}
+      {{- if (and .Values.adcSecret .Values.adcSecret.enabled) }}
+      volumes:
+        - name: gcp-adc
+          secret:
+            secretName: {{ .Values.adcSecret.secretName | quote }}
+      {{- end }}

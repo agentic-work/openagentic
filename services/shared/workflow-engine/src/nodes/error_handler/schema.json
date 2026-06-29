@@ -1,0 +1,52 @@
+{
+  "type": "error_handler",
+  "category": "control",
+  "label": "Error Handler",
+  "description": "Receives routed errors from upstream nodes and handles them via log, notify, transform, or retry actions.",
+  "icon": "shield-alert",
+  "ports": {
+    "inputs": [
+      {
+        "name": "error",
+        "type": "json",
+        "required": true,
+        "shape": { "error": "any", "input": "any", "nodeId": "string" }
+      }
+    ],
+    "outputs": [{ "name": "result", "type": "any", "required": false }]
+  },
+  "settings": [
+    {
+      "name": "errorAction",
+      "label": "Action",
+      "type": "enum",
+      "values": ["log", "notify", "transform", "retry"],
+      "default": "log",
+      "required": false,
+      "description": "What to do when an error arrives."
+    },
+    {
+      "name": "notificationChannel",
+      "label": "Notification Channel",
+      "type": "string",
+      "required": false,
+      "placeholder": "slack",
+      "description": "Channel identifier used when action=notify."
+    },
+    {
+      "name": "transformExpression",
+      "label": "Transform Expression",
+      "type": "code",
+      "required": false,
+      "supportsTemplating": false,
+      "description": "JS expression used when action=transform. Has access to `error` (the error value) and `input` (the original node input). Return the transformed result."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Handle upstream errors — log, notify, transform, or retry.",
+    "whenToUse": "Connect to any node's error port to route failures. Use log for audit, notify for alerting, transform to reshape the error into a recovery payload, or retry to re-queue.",
+    "examplePrompt": "add an error handler that logs the error and sends a Slack notification",
+    "promptHints": "The `error` input object contains `{ error, input, nodeId }`. `transformExpression` runs sandboxed — use `error.error` and `error.input` to access parts of the error payload."
+  },
+  "outputAssertions": []
+}

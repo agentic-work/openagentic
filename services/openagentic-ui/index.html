@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/think.svg">
+    <link rel="shortcut icon" type="image/svg+xml" href="/think.svg">
+    <link rel="apple-touch-icon" href="/think.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Openagentic Platform - AI Assistant Platform" />
+    <meta name="theme-color" content="#020617" />
+    <title>Openagentic Platform</title>
+    
+    <!-- FOUC Prevention Script - MUST be inline to work -->
+    <script>
+      (function() {
+        const savedTheme = localStorage.getItem('ac-theme') || 'dark';
+        let theme = savedTheme;
+        if (savedTheme === 'system') {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.classList.remove('light', 'dark');
+        document.documentElement.classList.add(theme);
+      })();
+    </script>
+
+    <!-- Maintenance Mode Control -->
+    <script>
+      // Maintenance mode controlled by environment variable from config
+      // This runs after config.js is loaded below
+      window.addEventListener('DOMContentLoaded', () => {
+        const MAINTENANCE_MODE = window.__CONFIG__?.VITE_MAINTENANCE_MODE === 'true';
+        if (MAINTENANCE_MODE) {
+          localStorage.setItem('maintenance_mode', 'true');
+        } else {
+          localStorage.removeItem('maintenance_mode');
+        }
+      });
+    </script>
+    
+    <!-- Preload fonts for better performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- OpenAgentic brand typography — 3 families (the SOT, theme.css):
+           IBM Plex Mono 700 tight-tracked = display/headings/buttons/eyebrow markers
+           Inter 17px/1.65                 = body
+           Instrument Serif ital           = lede/tagline accents (was MISSING)
+         Measured from the live openagentics.io DOM. -->
+    <!-- SRI (integrity) is intentionally omitted: the Google Fonts css2
+         endpoint serves User-Agent-dependent CSS, so a pinned hash would break
+         font loading on browsers whose UA yields a different response body.
+         crossorigin is set so the request is made in CORS mode. -->
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" crossorigin="anonymous">
+
+    <!-- JetBrains Mono for code blocks - with ligatures support -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+    <!-- Nerd Fonts for terminal/code mode (provides powerline glyphs and icons) -->
+    <link href="https://www.nerdfonts.com/assets/css/webfont.css" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Runtime configuration - loaded before main app -->
+    <script src="/config.js"></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

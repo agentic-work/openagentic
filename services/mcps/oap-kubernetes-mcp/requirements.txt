@@ -1,0 +1,22 @@
+# Phase 1.6 standardization (auto-bump): pin current stable for both
+# bundled mcp.server.fastmcp and standalone fastmcp. The tools/list wire
+# format only carries _meta + annotations on these versions.
+mcp>=1.27.0,<2.0.0
+fastmcp>=3.2.0,<4.0.0
+# OpenAgentic Kubernetes MCP Server Dependencies
+# ADMIN-ONLY MCP for Kubernetes administration
+
+# FastMCP framework
+
+# Kubernetes client
+kubernetes>=28.0.0
+
+# Environment management
+python-dotenv>=1.0.0
+
+# Pydantic for data validation
+pydantic>=2.0.0
+
+# YAML parsing for apply/template operations
+pyyaml>=6.0.0
+structlog>=24.1.0

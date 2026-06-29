@@ -1,0 +1,19 @@
+/* Tokyo Night Storm — code mode only
+   Source: https://github.com/enkia/tokyo-night-vscode-theme */
+.code-mode[data-cm-theme="tokyo-night"] {
+  --cm-bg: #1a1b26;            /* Night bg */
+  --cm-bg-secondary: #1f2335;   /* Storm secondary */
+  --cm-bg-tertiary: #24283b;    /* Storm bg */
+  --cm-surface: #292e42;
+  --cm-text: #c0caf5;           /* Variables/Classes */
+  --cm-text-secondary: #a9b1d6; /* Foreground */
+  --cm-text-muted: #565f89;     /* Comments */
+  --cm-accent: #7aa2f7;         /* Blue */
+  --cm-success: #9ece6a;        /* Green */
+  --cm-warning: #e0af68;        /* Yellow */
+  --cm-error: #f7768e;          /* Red */
+  --cm-info: #7dcfff;           /* Light Blue */
+  --cm-muted: #565f89;          /* Comments */
+  --cm-border: #3b4261;         /* Terminal Black region */
+  --cm-prompt: #bb9af7;         /* Purple */
+}

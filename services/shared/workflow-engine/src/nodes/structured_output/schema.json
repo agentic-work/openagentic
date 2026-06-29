@@ -1,0 +1,71 @@
+{
+  "type": "structured_output",
+  "category": "ai",
+  "label": "Structured Output",
+  "description": "Force the LLM to emit valid JSON matching the supplied schema. Retries on parse failure.",
+  "icon": "code",
+  "primary": "output",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "output": "object",
+          "model": "string",
+          "attempts": "number",
+          "raw": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "schema",
+      "label": "JSON schema (string or JSON-Schema fragment)",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "description": "Goes into the system prompt verbatim — the LLM is told to match this shape exactly."
+    },
+    {
+      "name": "prompt",
+      "label": "Prompt",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "User instruction. Falls back to input.content / input.prompt / input string if blank."
+    },
+    {
+      "name": "model",
+      "label": "Model",
+      "type": "string",
+      "required": false,
+      "default": "auto",
+      "description": "Leave as 'auto' to use Smart Router. Hard-coded model IDs are discouraged."
+    },
+    {
+      "name": "maxRetries",
+      "label": "Max retries on parse failure",
+      "type": "number",
+      "required": false,
+      "default": 2,
+      "min": 0,
+      "max": 5
+    }
+  ],
+  "ai": {
+    "shortDescription": "LLM with response_format=json_object + retry on parse failure.",
+    "whenToUse": "When you need a strictly-shaped JSON result (e.g. extract entities, classify with reason).",
+    "examplePrompt": "extract { ticker, sentiment, confidence } from this earnings transcript",
+    "promptHints": "Reference the parsed object via {{steps.<id>.output.<field>}}. Leave model='auto'."
+  }
+}

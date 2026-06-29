@@ -1,0 +1,78 @@
+{
+  "domain": "platform-summary",
+  "title": "Platform Summary",
+  "description": "Canonical headline counts and version, source-derived from the repo on every build.",
+  "icon": "brain",
+  "category": "core",
+  "generatedAt": "2026-06-25T15:20:26.851Z",
+  "sourceFiles": [
+    "version.json",
+    "docker-compose.yml"
+  ],
+  "sections": [
+    {
+      "id": "summary",
+      "title": "Platform Summary",
+      "description": "Headline platform facts",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "version",
+          "name": "Platform Version",
+          "description": "OpenAgentic 1.0.0 “Open Field” (2026-06-04)",
+          "type": "summary-version",
+          "properties": {
+            "version": "1.0.0",
+            "codename": "Open Field",
+            "releaseDate": "2026-06-04"
+          },
+          "sourceFile": "version.json"
+        },
+        {
+          "id": "mcp-server-count",
+          "name": "Built-in MCP Servers",
+          "description": "9 built-in MCP servers under services/mcps/",
+          "type": "summary-count",
+          "properties": {
+            "value": 9,
+            "kind": "count"
+          },
+          "sourceFile": "services/mcps"
+        },
+        {
+          "id": "flow-template-count",
+          "name": "Seeded Flow Templates",
+          "description": "5 Flow templates seeded into the workflow engine",
+          "type": "summary-count",
+          "properties": {
+            "value": 5,
+            "kind": "count"
+          },
+          "sourceFile": "services/openagentic-workflows/seed/templates"
+        },
+        {
+          "id": "deployed-service-count",
+          "name": "Deployed Services",
+          "description": "17 services in the compose stack",
+          "type": "summary-count",
+          "properties": {
+            "value": 17,
+            "kind": "count"
+          },
+          "sourceFile": "docker-compose.yml"
+        },
+        {
+          "id": "release-count",
+          "name": "Releases",
+          "description": "9 releases recorded in version.json",
+          "type": "summary-count",
+          "properties": {
+            "value": 9,
+            "kind": "count"
+          },
+          "sourceFile": "version.json"
+        }
+      ]
+    }
+  ]
+}

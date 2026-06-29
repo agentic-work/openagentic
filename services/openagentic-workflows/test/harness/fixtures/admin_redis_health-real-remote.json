@@ -1,0 +1,14 @@
+{
+  "_comment": "REAL-shape mcp-proxy /call response for openagentic_admin.admin_system_redis_health_check captured live 2026-05-13. See admin_postgres_health-real-remote.json comment for shape rationale. This healthy-redis fixture mirrors the verbatim live response shape.",
+  "result": {
+    "result": {
+      "isError": false,
+      "content": [
+        {
+          "type": "text",
+          "text": "[\n  [\n    \"type='text' text='{\\\\n  \\\"success\\\": true,\\\\n  \\\"healthy\\\": true,\\\\n  \\\"message\\\": \\\"Redis connection is healthy\\\"\\\\n}' annotations=None meta=None\"\n  ],\n  {\n    \"result\": {\n      \"success\": true,\n      \"healthy\": true,\n      \"message\": \"Redis connection is healthy\"\n    }\n  }\n]"
+        }
+      ]
+    }
+  }
+}

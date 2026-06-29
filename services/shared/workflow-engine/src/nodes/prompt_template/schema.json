@@ -1,0 +1,74 @@
+{
+  "type": "prompt_template",
+  "category": "ai",
+  "label": "Prompt Template",
+  "description": "Build a reusable prompt with {{variable}} placeholders. Outputs either a single rendered string ('prompt' mode) or a structured chat conversation split on {{system}} / {{user}} / {{assistant}} role markers ('messages' mode).",
+  "icon": "sparkles",
+  "primary": "prompt",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "prompt": "string",
+          "messages": "array",
+          "variables": "object",
+          "outputAs": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "template",
+      "label": "Template body",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": false,
+      "placeholder": "Summarize the following text in {{style}}:\n\n{{text}}",
+      "description": "Prompt body with {{variable}} placeholders. In 'messages' mode, use {{system}} / {{user}} / {{assistant}} markers to segment a chat conversation."
+    },
+    {
+      "name": "variables",
+      "label": "Variables",
+      "type": "object",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Map of variable name → value (or {{upstream.X}} template). Values are resolved through the engine interpolation layer before substitution so nested references work."
+    },
+    {
+      "name": "outputAs",
+      "label": "Output shape",
+      "type": "enum",
+      "values": [
+        "prompt",
+        "messages"
+      ],
+      "default": "prompt",
+      "required": false,
+      "description": "'prompt' = single rendered string ({{steps.X.prompt}}). 'messages' = structured chat conversation split on role markers ({{steps.X.messages}})."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Render a reusable prompt with variables — string or structured chat output.",
+    "whenToUse": "When the same prompt body is used across flows, when you want clean separation of prompt body and per-call values, or when you need a pre-built chat conversation for an LLM/agent downstream.",
+    "examplePrompt": "build a summarization prompt with {{style}} and {{text}} variables, output as a single string",
+    "promptHints": "Output: {{steps.X.prompt}} for string mode, {{steps.X.messages}} for chat array. Pair with llm_completion for the string mode, agent_single or a multi-turn LLM node for messages mode."
+  },
+  "outputAssertions": [
+    {
+      "name": "has_render",
+      "expression": "result && (typeof result.prompt === 'string' || Array.isArray(result.messages))",
+      "errorMessage": "prompt_template produced no rendered output — template body may be empty or all role-marker sections collapsed."
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "type": "document_loader",
+  "category": "data",
+  "label": "Document Loader",
+  "description": "Fetch a document from a URL (or pass through inline input). Optional parseMode strips HTML or pretty-prints JSON.",
+  "icon": "file-text",
+  "primary": "content",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "content": "string",
+          "source": "string",
+          "sourceType": "string",
+          "contentLength": "number",
+          "mimeType": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "sourceType",
+      "label": "Source type",
+      "type": "enum",
+      "values": [
+        "url",
+        "string"
+      ],
+      "default": "url",
+      "required": false
+    },
+    {
+      "name": "url",
+      "label": "URL",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "https://example.com/doc.html",
+      "description": "Document URL. If unset and sourceType=url, falls back to upstream input string."
+    },
+    {
+      "name": "parseMode",
+      "label": "Parse mode",
+      "type": "enum",
+      "values": [
+        "auto",
+        "text",
+        "html",
+        "json"
+      ],
+      "default": "auto",
+      "required": false,
+      "description": "auto: strip HTML if response looks like HTML; text: always strip HTML; html: keep raw; json: keep stringified."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Fetch document content from a URL.",
+    "whenToUse": "When you need to load a web page, JSON document, or plaintext file before passing it to embedding/LLM nodes.",
+    "examplePrompt": "load https://example.com/release-notes.html and strip HTML for the LLM",
+    "promptHints": "Use parseMode=text to clean HTML for LLM consumption. Reference content via {{steps.<id>.result.content}}."
+  },
+  "outputAssertions": []
+}

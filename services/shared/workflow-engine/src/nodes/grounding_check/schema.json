@@ -1,0 +1,81 @@
+{
+  "type": "grounding_check",
+  "category": "ai",
+  "label": "Grounding Check",
+  "description": "Verify that an LLM-produced claim references only entities that appear in one or more upstream ground-truth sources. Extracts pod-like / component-like tokens from the claim and intersects with tokens present in the truth sources. Deterministic, no LLM round-trip. Use BEFORE notifying downstream consumers (Slack/email) when running against weak models that hallucinate cluster facts.",
+  "icon": "shield-check",
+  "primary": "valid",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "valid": "boolean",
+          "score": "number",
+          "groundedEntities": "string[]",
+          "unfoundedEntities": "string[]",
+          "claim": "string",
+          "violationSummary": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "claim",
+      "label": "Claim text to verify",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "{{steps.structured.output.summary}}",
+      "description": "The LLM-generated text (or JSON) whose entity references should be ground-checked. Accepts a string OR an object (JSON.stringify'd before scanning)."
+    },
+    {
+      "name": "groundTruth",
+      "label": "Ground-truth source(s)",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "{{steps.mcp_k8s.content}} {{steps.mcp_prom.content}} {{steps.mcp_loki.content}}",
+      "description": "Concatenated text of every authoritative upstream source. Template-interpolated. Pod names / component names that appear here are 'grounded'; anything else mentioned in the claim is flagged as unfounded."
+    },
+    {
+      "name": "strictMode",
+      "label": "Strict mode",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "When true, the node FAILS the execution if any unfounded entity is detected (use for safety-critical flows where false claims are worse than no message). When false (default), the node always completes — downstream consumers read `valid` / `unfoundedEntities` and decide how to render."
+    },
+    {
+      "name": "allowedTokens",
+      "label": "Always-allowed tokens",
+      "type": "json",
+      "required": false,
+      "description": "JSON array of additional tokens that are pre-approved (e.g. ['kubelet','etcd','controller-manager']). Skips the ground-truth check for these.",
+      "placeholder": "[\"kubelet\", \"etcd\"]"
+    }
+  ],
+  "ai": {
+    "shortDescription": "Fact-check an LLM claim against upstream ground truth (deterministic, no second LLM call).",
+    "whenToUse": "Wire BEFORE any notify_* node when running watchdog/triage flows on weak models. Catches the 'model invents a Redis crash that didn't happen' failure mode.",
+    "examplePrompt": "Verify the synthesis output only references pods that appear in the cluster health snapshot.",
+    "promptHints": "Pass the structured synthesis text as `claim` and the concatenated upstream MCP outputs as `groundTruth`. Read `result.valid` + `result.unfoundedEntities` downstream."
+  },
+  "outputAssertions": [
+    {
+      "name": "result_present",
+      "expression": "result && typeof result.valid === 'boolean'",
+      "errorMessage": "grounding_check did not produce a valid result envelope."
+    }
+  ]
+}

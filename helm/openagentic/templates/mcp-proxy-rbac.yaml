@@ -1,0 +1,74 @@
+{{- /*
+  RBAC for the in-cluster Kubernetes MCP server (spawned as a stdio subprocess
+  inside the mcp-proxy pod). The MCP reads the pod's projected ServiceAccount
+  token at /var/run/secrets/kubernetes.io/serviceaccount/token and uses it for
+  in-cluster auth (see oap-kubernetes-mcp get_k8s_client).
+
+  READ-ONLY by design (get/list/watch only) — this matches the read-first ops
+  ICP. The MCP's own write tools (scale/restart/patch/apply/delete) additionally
+  fail-closed: they are namespace-guarded against OPENAGENTIC_NAMESPACE in code,
+  and read-only RBAC blocks every write at the apiserver as defense-in-depth.
+
+  ClusterRole (not a namespaced Role) is required because several MCP tools are
+  cluster-scoped: k8s_list_namespaces (list_namespace), k8s_list_nodes
+  (list_node), k8s_cluster_health (list_pod_for_all_namespaces /
+  list_event_for_all_namespaces). A namespaced Role would 403 those.
+
+  Gated on .Values.mcps.kubernetes.enabled so a non-ops install ships nothing.
+*/}}
+{{- if .Values.mcps.kubernetes.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-proxy
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}-mcp-proxy-read
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - services
+      - endpoints
+      - namespaces
+      - nodes
+      - events
+      - configmaps
+      - secrets
+      - serviceaccounts
+      - resourcequotas
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - replicasets
+      - daemonsets
+      - statefulsets
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}-mcp-proxy-read
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}-mcp-proxy-read
+subjects:
+  - kind: ServiceAccount
+    name: mcp-proxy
+    namespace: {{ .Release.Namespace }}
+{{- end }}

@@ -1,0 +1,58 @@
+{
+  "type": "condition",
+  "category": "control",
+  "label": "Condition",
+  "description": "Evaluate a JavaScript expression and route to the matching downstream branch (true/false or custom labels).",
+  "icon": "git-branch",
+  "primary": "matched",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "true",
+        "type": "any",
+        "required": false
+      },
+      {
+        "name": "false",
+        "type": "any",
+        "required": false
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "condition",
+      "label": "Expression",
+      "type": "code",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "JS boolean expression. `input` refers to the upstream output. {{steps.X.output}} template vars are resolved before evaluation.",
+      "placeholder": "input.status === 'active'"
+    }
+  ],
+  "ai": {
+    "shortDescription": "Branch on a JS boolean expression.",
+    "whenToUse": "When you need to route the workflow to different paths based on a condition — e.g. check if a value is above a threshold, if a field equals a string, or any JS boolean expression.",
+    "examplePrompt": "add a condition that checks if the HTTP status is 200",
+    "promptHints": "Use `input.field` to access upstream data. Connect the true/false output ports to different downstream nodes. Edge labels 'true' and 'false' are matched automatically."
+  },
+  "outputAssertions": [
+    {
+      "name": "condition_branch_selected",
+      "expression": "result && typeof result.matched === 'string'",
+      "errorMessage": "Condition node did not select a branch label — the routing decision is missing."
+    },
+    {
+      "name": "condition_expression_evaluated",
+      "expression": "result && result.evaluatedExpression !== undefined",
+      "errorMessage": "Condition node's safe expression evaluator returned undefined — the expression failed to evaluate."
+    }
+  ]
+}

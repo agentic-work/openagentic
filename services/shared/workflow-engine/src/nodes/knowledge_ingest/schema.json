@@ -1,0 +1,55 @@
+{
+  "type": "knowledge_ingest",
+  "category": "data",
+  "label": "Knowledge Ingest",
+  "description": "Ingest content into a Milvus knowledge base via the platform's /api/chat/knowledge/ingest endpoint.",
+  "icon": "database",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "success": "boolean",
+          "chunksIngested": "number"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "collection",
+      "label": "Collection",
+      "type": "string",
+      "required": false,
+      "default": "shared",
+      "supportsTemplating": true,
+      "description": "Target Milvus collection name. Defaults to 'shared'."
+    },
+    {
+      "name": "source",
+      "label": "Source label",
+      "type": "string",
+      "required": false,
+      "default": "workflow",
+      "description": "Source label stored in the chunk metadata."
+    },
+    {
+      "name": "content",
+      "label": "Content",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Content to ingest. If unset, the node falls back to input.output.content / input.content."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Ingest content into the platform knowledge base.",
+    "whenToUse": "When workflow output should be searchable later via RAG — e.g. crawled web pages, extracted documents, summaries.",
+    "examplePrompt": "ingest the cleaned document text into the 'support-docs' collection",
+    "promptHints": "Content < 10 chars is rejected (returns success: false). Reference success via {{steps.<id>.result.success}}."
+  },
+  "outputAssertions": []
+}

@@ -1,0 +1,168 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-proxy
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: mcp-proxy
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-proxy
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-proxy
+  template:
+    metadata:
+      labels:
+        app: mcp-proxy
+    spec:
+      enableServiceLinks: false
+      {{- if .Values.mcps.kubernetes.enabled }}
+      # Bind the read-only RBAC SA (templates/mcp-proxy-rbac.yaml) so the
+      # in-cluster Kubernetes MCP gets a projected SA token to authenticate
+      # against the apiserver. Token automount is on by default.
+      serviceAccountName: mcp-proxy
+      automountServiceAccountToken: true
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- include "openagentic.podSecurityContext" (dict "root" . "name" "mcpProxy") | nindent 6 }}
+      containers:
+        - name: mcp-proxy
+          image: {{ .Values.image.registry }}/openagentic-mcp-proxy:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "openagentic.securityContext" (dict "root" $ "name" "mcpProxy") | nindent 10 }}
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: openagentic-secrets
+          env:
+            - name: API_HOST
+              value: api
+            - name: API_PORT
+              value: "8000"
+            - name: MCPS_ENABLED
+              value: {{ .Values.mcps.enabled | quote }}
+            - name: SEARXNG_URL
+              value: http://searxng:8080
+            - name: OpenAgentic_WEB_MCP_DISABLED
+              value: "false"
+            - name: OpenAgentic_KNOWLEDGE_MCP_DISABLED
+              value: "false"
+            - name: OpenAgentic_ADMIN_MCP_DISABLED
+              value: "false"
+            - name: SEQUENTIAL_THINKING_MCP_DISABLED
+              value: "true"
+            # Cloud MCPs need creds not present in a barebones install. Each is
+            # gated by its own .Values.mcps.<cloud>.enabled toggle (default false →
+            # disabled, so the barebones render is unchanged). GCP additionally
+            # plumbs ADC-derived auth (projectId/region) so the gcp MCP can run as
+            # the mounted ADC identity when enabled.
+            - name: OpenAgentic_AWS_MCP_DISABLED
+              value: {{ not (and .Values.mcps.aws .Values.mcps.aws.enabled) | quote }}
+            - name: OpenAgentic_AZURE_MCP_DISABLED
+              value: {{ not (and .Values.mcps.azure .Values.mcps.azure.enabled) | quote }}
+            - name: OpenAgentic_GCP_MCP_DISABLED
+              value: {{ not (and .Values.mcps.gcp .Values.mcps.gcp.enabled) | quote }}
+            {{- if (and .Values.mcps.gcp .Values.mcps.gcp.enabled) }}
+            - name: GCP_PROJECT_ID
+              value: {{ .Values.mcps.gcp.projectId | quote }}
+            - name: GCP_REGION
+              value: {{ .Values.mcps.gcp.region | default "us-central1" | quote }}
+            {{- end }}
+            # Entra (M365) + Google Workspace MCPs — app-only (entra reuses the
+            # AZURE_* SP from the secret; google reads GOOGLE_WORKSPACE_SA_JSON).
+            # Per-credential values flow via the secret / mcpProxyExtraEnv escape hatch.
+            - name: OpenAgentic_ENTRA_MCP_DISABLED
+              value: {{ not (and .Values.mcps.entra .Values.mcps.entra.enabled) | quote }}
+            {{- if (and .Values.mcps.entra .Values.mcps.entra.enabled) }}
+            - name: GRAPH_DEFAULT_MAILBOX
+              value: {{ .Values.mcps.entra.defaultMailbox | default "" | quote }}
+            - name: ENTRA_TEAMS_TOOLS_ENABLED
+              value: {{ .Values.mcps.entra.teamsTools | default false | quote }}
+            {{- end }}
+            - name: OpenAgentic_GOOGLE_MCP_DISABLED
+              value: {{ not (and .Values.mcps.google .Values.mcps.google.enabled) | quote }}
+            {{- if (and .Values.mcps.google .Values.mcps.google.enabled) }}
+            - name: GOOGLE_WORKSPACE_SUBJECT
+              value: {{ .Values.mcps.google.subject | default "" | quote }}
+            {{- end }}
+            # In-cluster ops MCPs — ON by default for the ops ICP (no external
+            # creds: k8s uses the pod SA token + read RBAC, prometheus queries
+            # the in-cluster prometheus service). Toggle via .Values.mcps.*.
+            - name: OpenAgentic_KUBERNETES_MCP_DISABLED
+              value: {{ not .Values.mcps.kubernetes.enabled | quote }}
+            - name: OPENAGENTIC_NAMESPACE
+              value: {{ .Release.Namespace | quote }}
+            - name: OpenAgentic_GITHUB_MCP_DISABLED
+              value: {{ not (and .Values.mcps.github .Values.mcps.github.enabled) | quote }}
+            - name: OpenAgentic_PROMETHEUS_MCP_DISABLED
+              value: {{ not .Values.mcps.prometheus.enabled | quote }}
+            - name: PROMETHEUS_URL
+              value: {{ .Values.mcps.prometheus.url | default "http://prometheus:9090" | quote }}
+            - name: OpenAgentic_LOKI_MCP_DISABLED
+              value: {{ not .Values.mcps.loki.enabled | quote }}
+            - name: LOKI_URL
+              value: {{ .Values.mcps.loki.url | default "http://loki:3100" | quote }}
+            - name: OpenAgentic_ALERTMANAGER_MCP_DISABLED
+              value: "true"
+            {{- /* Additive escape hatch (mirrors api extraEnv). The install path
+                   injects cloud-provider env the structured values don't model.
+                   Empty by default → renders nothing → default render unchanged. */}}
+            {{- range .Values.mcpProxyExtraEnv }}
+            - name: {{ .name | quote }}
+              value: {{ .value | quote }}
+            {{- end }}
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          # readOnlyRootFilesystem is on (values securityContext.overrides.mcpProxy);
+          # the proxy + the cloud CLIs it spawns (uv/npm/az/aws/kubectl caches under
+          # $HOME=/home/mcpuser) and /tmp are the only writable paths they need.
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: home
+              mountPath: /home/mcpuser
+            {{- if (and .Values.adcSecret .Values.adcSecret.enabled) }}
+            # Application Default Credentials (read-only). HOME is one of the few
+            # env vars the MCP subprocess sandbox forwards (mcp_manager.py
+            # _ALLOWED_BASE_ENV), so the gcp MCP's google.auth.default() resolves
+            # ADC from the well-known $HOME/.config/gcloud path. Mounted at a
+            # sub-path of the $HOME emptyDir above (deeper mount wins).
+            - name: gcp-adc
+              mountPath: /home/mcpuser/.config/gcloud
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources.mcpProxy | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: home
+          emptyDir: {}
+        {{- if (and .Values.adcSecret .Values.adcSecret.enabled) }}
+        - name: gcp-adc
+          secret:
+            secretName: {{ .Values.adcSecret.secretName | quote }}
+        {{- end }}

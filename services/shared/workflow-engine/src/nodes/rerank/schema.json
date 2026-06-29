@@ -1,0 +1,82 @@
+{
+  "type": "rerank",
+  "category": "ai",
+  "label": "Rerank Chunks",
+  "description": "Re-order a list of retrieved chunks by relevance to a query using a deterministic lexical relevance scorer (BM25-style term-overlap with IDF weighting + phrase-match boost). No model round-trip on the default path, so it is deterministic and harness-friendly. Optionally an LLM cross-encoder mode can be enabled, but the deterministic scorer is the default and is what RAG flows use to tighten the candidate set before synthesis. Wire it AFTER knowledge_search / rag_query and BEFORE llm_completion so the model sees the most relevant chunks first (and only the top-N).",
+  "icon": "sort-desc",
+  "primary": "chunks",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "query": "string",
+          "chunks": "array",
+          "inputCount": "number",
+          "outputCount": "number",
+          "reordered": "boolean",
+          "method": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "query",
+      "label": "Query",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "{{trigger.question}}",
+      "description": "The user question / search query the chunks should be ranked against. Term-overlap with this query drives the relevance score."
+    },
+    {
+      "name": "chunksPath",
+      "label": "Chunks path on input",
+      "type": "string",
+      "required": false,
+      "default": "results",
+      "description": "Dot-path into the incoming edge's input object where the chunk array lives (e.g. `results` for knowledge_search, `result.results` for the nested envelope). The executor also auto-detects common shapes (`input.results`, `input.result.results`, `input.chunks`, or `input` itself when it is already an array). Each chunk should carry a `content`/`text` field (and optionally an existing `score`)."
+    },
+    {
+      "name": "topN",
+      "label": "Top N",
+      "type": "number",
+      "required": false,
+      "default": 5,
+      "min": 1,
+      "max": 100,
+      "description": "Keep only the top-N chunks after reranking. Trims a wide candidate set down to what the synthesis step actually needs."
+    },
+    {
+      "name": "contentField",
+      "label": "Content field",
+      "type": "string",
+      "required": false,
+      "default": "content",
+      "description": "Which field on each chunk holds the text to score. Falls back to `text`, then `body`, then the chunk stringified."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Re-rank retrieved chunks by lexical relevance to the query (deterministic, no model call by default), keep top-N.",
+    "whenToUse": "In a RAG flow, between the retriever (knowledge_search / rag_query) and the synthesizer (llm_completion). Cross-encoder rerank tightens recall@k into precision@k so the model isn't drowned in marginally-relevant chunks.",
+    "examplePrompt": "rerank the retrieved chunks against the user's question and keep the top 3",
+    "promptHints": "Set `query` to the user's question (templated) and leave chunksPath default to read knowledge_search's `results`. Reference the reordered set via {{steps.<id>.result.chunks}} downstream."
+  },
+  "outputAssertions": [
+    {
+      "name": "rerank_result_shape",
+      "expression": "result && typeof result.query === 'string' && Array.isArray(result.chunks) && typeof result.outputCount === 'number'",
+      "errorMessage": "rerank result must be { query, chunks[], inputCount, outputCount, reordered, method }."
+    }
+  ]
+}

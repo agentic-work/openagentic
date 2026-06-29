@@ -1,0 +1,192 @@
+{
+  "slug": "cost-anomaly",
+  "name": "Cost Anomaly",
+  "description": "Given a lookback window + service, queries AWS Cost Explorer (openagentic_aws.aws_cost_by_service for the per-service cost driver + openagentic_aws.aws_cost_summary for the total) IN PARALLEL with Prometheus usage over the same window (openagentic_prometheus.prometheus_query_range), converges them in a labeled merge keyed by source-node label (cost/usage), pre-computes the per-service cost table + usage series summary in a single analyze transform, asks the platform LLM (Smart Router, model:auto) to identify the anomaly, name the resource/service responsible, and emit a concrete recommendation, strips any chain-of-thought preamble, and renders an HTML cost-anomaly report. No standalone 'cost anomaly' API exists — the anomaly is detected by the LLM from real cost-driver + usage evidence. Zero hardcoded model id or provider.",
+  "category": "finops",
+  "template": true,
+  "meta": {
+    "purpose": "Detect a cost anomaly over a window by correlating AWS Cost Explorer per-service spend with Prometheus usage, then attribute the driver and recommend a fix.",
+    "how_it_works": [
+      "1. Fans the trigger out to AWS Cost Explorer + Prometheus in parallel: openagentic_aws.aws_cost_by_service (per-service cost driver) and openagentic_aws.aws_cost_summary (total spend) on one branch, openagentic_prometheus.prometheus_query_range (usage over the same window) on the other.",
+      "2. A labeled merge converges the branches keyed by snake-cased source-node label (cost / total / usage).",
+      "3. A single analyze transform pre-computes the per-service cost table and a usage-series summary.",
+      "4. The platform LLM (model:auto) identifies the anomaly, names the responsible service/resource, and emits a recommendation.",
+      "5. A CoT-stripper transform removes any LLM preamble.",
+      "6. webhook_response renders the HTML cost-anomaly report. No-spend short-circuit: when Cost Explorer returns no data, the report says so instead of inventing a driver."
+    ],
+    "expected_output": "HTML report: total spend for the window, a per-service cost table, a usage summary, and an LLM verdict — the anomaly, the resource/service responsible for it, and a concrete cost-reduction recommendation.",
+    "useful_when": "A surprise cloud bill, a FinOps review, or a usage-vs-cost divergence you want attributed to a specific service with a remediation next step.",
+    "tools_used": [
+      "openagentic_aws.aws_cost_by_service",
+      "openagentic_aws.aws_cost_summary",
+      "openagentic_prometheus.prometheus_query_range",
+      "merge",
+      "transform",
+      "llm_completion",
+      "webhook_response"
+    ],
+    "version": "1.0",
+    "tags": ["finops", "aws", "cost", "anomaly", "prometheus", "demo"]
+  },
+  "defaultInputs": {
+    "days": 30,
+    "service": "the highest-growth service",
+    "usage_query": "sum(rate(container_cpu_usage_seconds_total[5m]))"
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "Cost Anomaly",
+          "input_schema": {
+            "days": "number",
+            "service": "string",
+            "usage_query": "string"
+          }
+        }
+      },
+      {
+        "id": "cost",
+        "type": "mcp_tool",
+        "data": {
+          "label": "cost",
+          "toolServer": "openagentic_aws",
+          "toolName": "aws_cost_by_service",
+          "arguments": {
+            "days": "{{trigger.days}}",
+            "granularity": "DAILY"
+          }
+        }
+      },
+      {
+        "id": "total",
+        "type": "mcp_tool",
+        "data": {
+          "label": "total",
+          "toolServer": "openagentic_aws",
+          "toolName": "aws_cost_summary",
+          "arguments": {
+            "days": "{{trigger.days}}"
+          }
+        }
+      },
+      {
+        "id": "usage",
+        "type": "mcp_tool",
+        "data": {
+          "label": "usage",
+          "toolServer": "openagentic_prometheus",
+          "toolName": "prometheus_query_range",
+          "arguments": {
+            "query": "{{trigger.usage_query}}",
+            "start": "{{ (() => { const d = (typeof input.days === 'number' && input.days > 0) ? input.days : 30; return new Date(Date.now() - d*24*60*60*1000).toISOString(); })() }}",
+            "end": "{{ new Date().toISOString() }}",
+            "step": "3600s"
+          }
+        }
+      },
+      {
+        "id": "merge_cost_usage",
+        "type": "merge",
+        "data": {
+          "label": "Merge Cost + Total + Usage",
+          "mergeStrategy": "object"
+        }
+      },
+      {
+        "id": "analyze",
+        "type": "transform",
+        "data": {
+          "label": "Analyze Cost vs Usage",
+          "operations": [
+            {
+              "op": "set",
+              "target": "cost_text",
+              "value": "{{ String((input.cost && input.cost.content) || '').slice(0, 3000) }}"
+            },
+            {
+              "op": "set",
+              "target": "total_text",
+              "value": "{{ String((input.total && input.total.content) || '').slice(0, 1000) }}"
+            },
+            {
+              "op": "set",
+              "target": "usage_text",
+              "value": "{{ String((input.usage && input.usage.content) || '').slice(0, 2000) }}"
+            },
+            {
+              "op": "set",
+              "target": "no_cost_data",
+              "value": "{{ (() => { const t = String(input.cost_text || '').trim(); return (!t || /no\\s+(cost|data|results)/i.test(t) || /Results:\\s*0/i.test(t)); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "cost_rows_html",
+              "value": "{{ (() => { const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); const t = String(input.cost_text || ''); const lines = t.split(/\\r?\\n/).map(l => l.trim()).filter(l => l && /\\$|\\d/.test(l)); if (lines.length === 0) return '<tr><td colspan=\"2\"><em>No per-service cost data returned for this window.</em></td></tr>'; return lines.slice(0, 15).map(l => `<tr><td colspan=\"2\"><pre>${esc(l)}</pre></td></tr>`).join(''); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "no_data_banner",
+              "value": "{{ (() => { return input.no_cost_data ? '<p class=\"no-data\"><strong>No cost data</strong> — AWS Cost Explorer returned no spend for this window (the AWS MCP may need cost-secrets configured, or the account has no spend). No anomaly to attribute.</p>' : ''; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "verdict",
+        "type": "llm_completion",
+        "data": {
+          "label": "Cost Anomaly Verdict",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 600,
+          "system": "You are a FinOps analyst. You receive AWS Cost Explorer per-service spend, total spend, and Prometheus usage over the same window. You identify the single biggest cost anomaly, attribute it to a specific service or resource, and give one concrete recommendation. You cite the actual numbers from the evidence; you never invent dollar figures.",
+          "prompt": "Window: last {{trigger.days}} days. Focus hint: {{trigger.service}}.\n\n=== AWS total spend ===\n{{steps.analyze.total_text}}\n\n=== AWS per-service cost (Cost Explorer, DAILY) ===\n{{steps.analyze.cost_text}}\n\n=== Prometheus usage over the same window ===\n{{steps.analyze.usage_text}}\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — NO preamble, NO thinking out loud.\n2. Bullet 1: the anomaly — which service/line item grew or dominates, with the actual dollar figure from the data.\n3. Bullet 2: the responsible resource and the likely driver, correlated with the usage series (does cost track usage, or diverge?).\n4. Bullet 3: one concrete cost-reduction recommendation (rightsizing, schedule, retention, commitment).\n5. If there is no cost data, emit one bullet stating no spend was returned and one bullet recommending the operator verify AWS cost-secrets / account scope."
+        }
+      },
+      {
+        "id": "clean_analysis",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const inlineMatch = raw.match(/([\\.\\!\\?\\:]|\\n)\\s*(-\\s+\\S)/); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx !== -1) { const fromLineIdx = lines.slice(firstBulletIdx).join('\\n').trim(); if (inlineMatch && inlineMatch.index !== undefined) { const fromInline = raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); if (fromInline.length < fromLineIdx.length || lines[firstBulletIdx].trim().length > 8 === false) { return fromInline; } } return fromLineIdx; } if (inlineMatch && inlineMatch.index !== undefined) { return raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); } return raw.trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML Cost Anomaly Report",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"cost-anomaly\"><h2>Cost Anomaly — last {{trigger.days}} days</h2><p><strong>Total spend:</strong></p><pre class=\"total\">{{steps.analyze.total_text}}</pre>{{steps.analyze.no_data_banner}}<h3>Anomaly Verdict &amp; Recommendation</h3><pre class=\"verdict\">{{steps.clean_analysis.clean_content}}</pre><h3>Per-Service Cost</h3><table class=\"cost-table\"><thead><tr><th colspan=\"2\">Cost Explorer (by service)</th></tr></thead><tbody>{{steps.analyze.cost_rows_html}}</tbody></table><h3>Usage (Prometheus)</h3><pre class=\"usage\">{{steps.analyze.usage_text}}</pre></div>",
+          "persistAsArtifact": true,
+          "artifactTitle": "Cost Anomaly: last {{trigger.days}}d",
+          "artifactMimeType": "text/html",
+          "artifactTags": ["finops", "aws", "cost"]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "cost" },
+      { "id": "e2", "source": "trigger", "target": "total" },
+      { "id": "e3", "source": "trigger", "target": "usage" },
+      { "id": "e4", "source": "cost", "target": "merge_cost_usage" },
+      { "id": "e5", "source": "total", "target": "merge_cost_usage" },
+      { "id": "e6", "source": "usage", "target": "merge_cost_usage" },
+      { "id": "e7", "source": "merge_cost_usage", "target": "analyze" },
+      { "id": "e8", "source": "analyze", "target": "verdict" },
+      { "id": "e9", "source": "verdict", "target": "clean_analysis" },
+      { "id": "e10", "source": "clean_analysis", "target": "report" }
+    ]
+  }
+}

@@ -1,0 +1,76 @@
+/* ============================================================
+   admin-v2-accents.css — now STRUCTURE ONLY (density + v3 layout sizes).
+
+   ONE-SOT collapse: every COLOR / FONT token this file used to define is
+   removed. src/styles/theme.css is the SOLE definer:
+     - Named-accent switching (gcp/green/teal/amber/violet/magenta) is owned by
+       theme.css's `html[data-accent="…"] { --color-accent: var(--cat-accent-*) }`
+       overrides; the legacy --accent / --accent-soft / --accent-line / --accent-dim
+       / --accent-glow family aliases derive from --color-accent (theme.css LAYER-3),
+       so they re-tint automatically. The stale non-brand rgba ramps that used to
+       live here are gone.
+     - The .aw-shell contrast lifts that hardcoded cold-grey --bg-* / --fg-* /
+       --line-* literals are removed; admin reads the canonical warm field-guide
+       tokens (theme.css) which already flip per [data-theme].
+     - --font-v3-body / --font-v3-mono / --font-v3-tele are defined once in
+       theme.css (aliased to the 3 brand stacks).
+   Only the NON-color sizing tokens the no-hardcoding guard does not govern remain.
+   ============================================================ */
+
+/* ============================================================
+   Density scale (compact / cozy / comfortable)
+   The admin v3 shell + primitives consume these to retune row
+   heights, paddings, and gaps without restyling each component.
+   Cozy is default; the topbar density toggle writes data-density
+   on <html> at runtime.
+   ============================================================ */
+:root,
+html:not([data-density]),
+html[data-density="cozy"] {
+  /* Tightened twice 2026-05-07: user kept reporting "rows way too far
+     apart" — dropped row-h 30→26→24, col-pad 12→8→6. Pages are now
+     scannable without operator flipping density. */
+  --row-h: 24px;
+  --col-pad: 6px;
+  --gap-sm: 4px;
+  --gap-md: 8px;
+  --gap-lg: 12px;
+}
+html[data-density="compact"] {
+  /* Compact tightened 24→22→20 / 8→6→5. */
+  --row-h: 20px;
+  --col-pad: 5px;
+  --gap-sm: 3px;
+  --gap-md: 5px;
+  --gap-lg: 8px;
+}
+html[data-density="comfortable"] {
+  --row-h: 38px;
+  --col-pad: 16px;
+  --gap-sm: 10px;
+  --gap-md: 16px;
+  --gap-lg: 24px;
+}
+
+/* ============================================================
+   Admin v3 layout sizes (NON-color; not governed by the SOT).
+   The font stacks (--font-v3-body / -mono / -tele) are defined ONCE in
+   theme.css now, aliased to the 3 brand families.
+   ============================================================ */
+:root {
+  /* Common admin v3 layout heights */
+  --v3-topbar-h: 44px;
+  --v3-ribbon-h: 28px;
+  --v3-sidebar-w: 220px;
+  --v3-sidebar-w-collapsed: 52px;
+  --v3-panel-w: 580px;
+
+  /* Type sizes (fixed; not density-sensitive) */
+  --v3-t-micro: 10px;
+  --v3-t-meta: 11px;
+  --v3-t-body: 12px;
+  --v3-t-row: 12px;
+  --v3-t-data: 13px;
+  --v3-t-head: 13px;
+  --v3-t-display: 16px;
+}

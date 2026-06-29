@@ -1,0 +1,1945 @@
+{
+  "domain": "mcp-servers",
+  "title": "MCP Servers",
+  "description": "Model Context Protocol servers and their tools",
+  "icon": "tool",
+  "category": "tools",
+  "generatedAt": "2026-06-25T15:20:26.727Z",
+  "sourceFiles": [
+    "services/mcps/oap-admin-mcp/server.py",
+    "services/mcps/oap-admin-mcp/src/admin_mcp_server/server.py",
+    "services/mcps/oap-aws-mcp/server.py",
+    "services/mcps/oap-azure-mcp/src/server.py",
+    "services/mcps/oap-gcp-mcp/src/server.py",
+    "services/mcps/oap-github-mcp/server.py",
+    "services/mcps/oap-kubernetes-mcp/server.py",
+    "services/mcps/oap-kubernetes-mcp/src/kubernetes_mcp_server/server.py",
+    "services/mcps/oap-loki-mcp/server.py",
+    "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py",
+    "services/mcps/oap-prometheus-mcp/server.py",
+    "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py",
+    "services/mcps/oap-web-mcp/server.py"
+  ],
+  "sections": [
+    {
+      "id": "oap-admin-mcp",
+      "title": "oap-admin-mcp",
+      "description": "oap-admin-mcp",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "oap-aws-mcp",
+      "title": "oap-aws-mcp",
+      "description": "oap-aws-mcp",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oap-aws-mcp--call_aws",
+          "name": "call_aws",
+          "description": "Execute AWS CLI commands with validation and proper error handling.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "cli_command: Annotated[str, Field(description='The complete AWS CLI command to execute. MUST start with \"aws\"')],\n    ctx: Context,\n    max_results: Annotated[Optional[int], Field(description='Optional limit for number of results')] = None,\n    meta: Optional[Dict[str, Any]] = None"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--suggest_aws_commands",
+          "name": "suggest_aws_commands",
+          "description": "Suggest AWS CLI commands based on a natural language query.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: Annotated[str, Field(description='A natural language description of what you want to do in AWS', max_length=2000)],\n    ctx: Context,\n    meta: Optional[Dict[str, Any]] = None"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_accounts",
+          "name": "aws_list_accounts",
+          "description": "List AWS accounts visible to the configured identity.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "meta: Optional[Dict[str, Any]] = None"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_identity",
+          "name": "aws_identity",
+          "description": "Get your current AWS identity (who am I?).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "meta: Optional[Dict[str, Any]] = None"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_cost_summary",
+          "name": "aws_cost_summary",
+          "description": "Get a summary of your AWS costs for a specified number of days.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "days: Annotated[int, Field(description='Number of days to analyze (default: 30)', default=30)] = 30,\n    meta: Optional[Dict[str, Any]] = None"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_cost_by_service",
+          "name": "aws_cost_by_service",
+          "description": "Get a breakdown of your AWS costs grouped by a dimension.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "days: Annotated[int, Field(description='Number of days to analyze (default: 30)', default=30)] = 30,\n    group_by: Annotated[str, Field(description='Group dimension: SERVICE, REGION, LINKED_ACCOUNT, USAGE_TYPE, INSTANCE_TYPE (default: SERVICE)', default='SERVICE')] = 'SERVICE',\n    granularity: Annotated[str, Field(description='Time granularity: DAILY, MONTHLY (default: MONTHLY)', default='MONTHLY')] = 'MONTHLY',\n    meta: Optional[Dict[str, Any]] = None"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_ec2",
+          "name": "aws_list_ec2",
+          "description": "List all EC2 instances in your AWS account.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_s3",
+          "name": "aws_list_s3",
+          "description": "List all S3 buckets in your AWS account.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "meta: Optional[Dict[str, Any]] = None"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_describe_ec2_instance",
+          "name": "aws_describe_ec2_instance",
+          "description": "Describe one EC2 instance in detail (state, type, IPs, tags, security groups).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "instance_id: str,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_security_groups",
+          "name": "aws_list_security_groups",
+          "description": "List all EC2 security groups in the account (or region if specified).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_volumes",
+          "name": "aws_list_volumes",
+          "description": "List all EBS volumes (state, size, attachment).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_vpcs",
+          "name": "aws_list_vpcs",
+          "description": "List all VPCs (CIDR blocks, state, default flag).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_subnets",
+          "name": "aws_list_subnets",
+          "description": "List VPC subnets. Optionally filter by vpc-id.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "vpc_id: Optional[str] = None,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_users",
+          "name": "aws_list_iam_users",
+          "description": "List IAM users in the account.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "meta: Optional[Dict[str, Any]] = None"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_roles",
+          "name": "aws_list_iam_roles",
+          "description": "List IAM roles in the account.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "meta: Optional[Dict[str, Any]] = None"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_policies",
+          "name": "aws_list_iam_policies",
+          "description": "List IAM managed policies. scope: All | AWS | Local (customer-managed).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "scope: str = \"All\",\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_groups",
+          "name": "aws_list_iam_groups",
+          "description": "List IAM groups in the account. Optional `path_prefix` filters by path (e.g. '/division-a/').",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "path_prefix: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_get_iam_user",
+          "name": "aws_get_iam_user",
+          "description": "Get details for one IAM user (path, ARN, create date, last-used, tags).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "user_name: str,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_get_iam_role",
+          "name": "aws_get_iam_role",
+          "description": "Get details for one IAM role (assume-role policy, max session, tags).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "role_name: str,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_get_iam_group",
+          "name": "aws_get_iam_group",
+          "description": "Get an IAM group + the list of users in it.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "group_name: str,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_user_groups",
+          "name": "aws_list_iam_user_groups",
+          "description": "List the IAM groups that an IAM user belongs to.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "user_name: str,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_attached_user_policies",
+          "name": "aws_list_iam_attached_user_policies",
+          "description": "List managed policies attached directly to an IAM user.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "user_name: str,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_attached_role_policies",
+          "name": "aws_list_iam_attached_role_policies",
+          "description": "List managed policies attached to an IAM role.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "role_name: str,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_attached_group_policies",
+          "name": "aws_list_iam_attached_group_policies",
+          "description": "List managed policies attached to an IAM group.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "group_name: str,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_user_policies",
+          "name": "aws_list_iam_user_policies",
+          "description": "List inline policies embedded directly on an IAM user.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "user_name: str,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_role_policies",
+          "name": "aws_list_iam_role_policies",
+          "description": "List inline policies embedded directly on an IAM role.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "role_name: str,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_group_policies",
+          "name": "aws_list_iam_group_policies",
+          "description": "List inline policies embedded directly on an IAM group.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "group_name: str,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_get_iam_policy",
+          "name": "aws_get_iam_policy",
+          "description": "Get an IAM managed policy by ARN (default version, attachment count, tags).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "policy_arn: str,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_get_iam_account_summary",
+          "name": "aws_get_iam_account_summary",
+          "description": "Account-wide IAM summary: user/group/role/policy counts, MFA, password policy state.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_get_iam_account_password_policy",
+          "name": "aws_get_iam_account_password_policy",
+          "description": "Get the IAM account password policy (min length, complexity, rotation).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_access_keys",
+          "name": "aws_list_iam_access_keys",
+          "description": "List access-key IDs (NOT secrets) for an IAM user. Includes status + create date.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "user_name: str,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_mfa_devices",
+          "name": "aws_list_iam_mfa_devices",
+          "description": "List MFA devices. Pass user_name to scope to one user; omit for all virtual MFAs.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "user_name: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_iam_instance_profiles",
+          "name": "aws_list_iam_instance_profiles",
+          "description": "List IAM instance profiles (used to attach roles to EC2).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_rds_instances",
+          "name": "aws_list_rds_instances",
+          "description": "List all RDS DB instances.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_describe_rds_instance",
+          "name": "aws_describe_rds_instance",
+          "description": "Describe one RDS DB instance by identifier.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "instance_identifier: str,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_lambdas",
+          "name": "aws_list_lambdas",
+          "description": "List all Lambda functions.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_describe_lambda",
+          "name": "aws_describe_lambda",
+          "description": "Get one Lambda function's configuration (handler, memory, timeout, env vars).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "function_name: str,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_cw_alarms",
+          "name": "aws_list_cw_alarms",
+          "description": "List CloudWatch alarms (state, metric, threshold).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_cw_metrics",
+          "name": "aws_list_cw_metrics",
+          "description": "List CloudWatch metrics; optionally filter by namespace (e.g. AWS/EC2, AWS/Lambda).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "namespace: Optional[str] = None,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_list_foundation_models",
+          "name": "aws_bedrock_list_foundation_models",
+          "description": "List Bedrock foundation models. Filter by provider",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "by_provider: Optional[str] = None,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_get_foundation_model",
+          "name": "aws_bedrock_get_foundation_model",
+          "description": "Get one Bedrock foundation model's metadata (modalities, lifecycle, customizations).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "model_identifier: str,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_list_inference_profiles",
+          "name": "aws_bedrock_list_inference_profiles",
+          "description": "List Bedrock inference profiles. Optional `type_equals`:",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "type_equals: Optional[str] = None,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_get_inference_profile",
+          "name": "aws_bedrock_get_inference_profile",
+          "description": "Get details of one Bedrock inference profile (member regions, ARN, status).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "inference_profile_identifier: str,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_list_custom_models",
+          "name": "aws_bedrock_list_custom_models",
+          "description": "List Bedrock custom (fine-tuned) models in the account.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_get_custom_model",
+          "name": "aws_bedrock_get_custom_model",
+          "description": "Get details of one Bedrock custom model (training job, base model, status).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "model_identifier: str,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_list_imported_models",
+          "name": "aws_bedrock_list_imported_models",
+          "description": "List Bedrock imported models (BYOM) in the account.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_list_provisioned_model_throughputs",
+          "name": "aws_bedrock_list_provisioned_model_throughputs",
+          "description": "List Bedrock provisioned-throughput allocations. Optional `status_equals`:",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "status_equals: Optional[str] = None,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_list_guardrails",
+          "name": "aws_bedrock_list_guardrails",
+          "description": "List Bedrock guardrails (content filters, denied topics, sensitive-info redaction).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_get_guardrail",
+          "name": "aws_bedrock_get_guardrail",
+          "description": "Get one Bedrock guardrail's full configuration (filter strengths, blocked phrases).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "guardrail_identifier: str,\n    guardrail_version: Optional[str] = None,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_list_model_invocation_jobs",
+          "name": "aws_bedrock_list_model_invocation_jobs",
+          "description": "List Bedrock batch model-invocation jobs. Optional `status_equals`:",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "status_equals: Optional[str] = None,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_get_model_invocation_logging_configuration",
+          "name": "aws_bedrock_get_model_invocation_logging_configuration",
+          "description": "Get the account-wide Bedrock model-invocation logging config (S3 / CloudWatch sinks).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_list_model_customization_jobs",
+          "name": "aws_bedrock_list_model_customization_jobs",
+          "description": "List Bedrock model-customization (fine-tune) jobs. Optional `status_equals`:",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "status_equals: Optional[str] = None,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_agent_list_agents",
+          "name": "aws_bedrock_agent_list_agents",
+          "description": "List Bedrock Agents (managed agentic workflows) in the account.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_agent_get_agent",
+          "name": "aws_bedrock_agent_get_agent",
+          "description": "Get one Bedrock Agent's full config (foundation model, instruction, action groups).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "agent_id: str,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_agent_list_knowledge_bases",
+          "name": "aws_bedrock_agent_list_knowledge_bases",
+          "description": "List Bedrock Agent knowledge bases (vector stores backing RAG retrieval).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_agent_get_knowledge_base",
+          "name": "aws_bedrock_agent_get_knowledge_base",
+          "description": "Get one Bedrock Agent knowledge base's config (embeddings model, vector store).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "knowledge_base_id: str,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_agent_list_data_sources",
+          "name": "aws_bedrock_agent_list_data_sources",
+          "description": "List data sources in a Bedrock Agent knowledge base (S3 prefixes, websites, etc.).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "knowledge_base_id: str,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_invoke_model",
+          "name": "aws_bedrock_invoke_model",
+          "description": "Synchronously invoke a Bedrock foundation model with a JSON body.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "model_id: str,\n    body: str,\n    accept: Optional[str] = \"application/json\",\n    content_type: Optional[str] = \"application/json\",\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_create_knowledge_base",
+          "name": "aws_bedrock_create_knowledge_base",
+          "description": "Create a Bedrock Agent knowledge base (vector store wrapper for RAG).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "name: str,\n    role_arn: str,\n    embedding_model_arn: str,\n    vector_store_type: str,\n    vector_store_config: str,\n    description: Optional[str] = None,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_create_agent",
+          "name": "aws_bedrock_create_agent",
+          "description": "Create a Bedrock Agent (managed agentic workflow).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "agent_name: str,\n    agent_resource_role_arn: str,\n    foundation_model: str,\n    instruction: str,\n    description: Optional[str] = None,\n    idle_session_ttl_in_seconds: Optional[int] = None,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_bedrock_invoke_agent",
+          "name": "aws_bedrock_invoke_agent",
+          "description": "Invoke a Bedrock Agent and stream its completion to a buffer.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "agent_id: str,\n    agent_alias_id: str,\n    session_id: str,\n    input_text: str,\n    enable_trace: bool = False,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_dynamodb_tables",
+          "name": "aws_list_dynamodb_tables",
+          "description": "List DynamoDB tables.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_describe_dynamodb_table",
+          "name": "aws_describe_dynamodb_table",
+          "description": "Describe a DynamoDB table (schema, GSIs, throughput, stream settings).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "table_name: str,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_eks_clusters",
+          "name": "aws_list_eks_clusters",
+          "description": "List EKS Kubernetes clusters in a region.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_describe_eks_cluster",
+          "name": "aws_describe_eks_cluster",
+          "description": "Describe one EKS cluster (version, endpoint, logging, OIDC).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "cluster_name: str,\n    region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_sns_topics",
+          "name": "aws_list_sns_topics",
+          "description": "List SNS topics.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_sqs_queues",
+          "name": "aws_list_sqs_queues",
+          "description": "List SQS queues (URLs) in a region.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_secrets",
+          "name": "aws_list_secrets",
+          "description": "List Secrets Manager secrets (names + ARNs, no values).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp--aws_list_kms_keys",
+          "name": "aws_list_kms_keys",
+          "description": "List KMS customer master keys.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "region: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-azure-mcp",
+      "title": "oap-azure-mcp",
+      "description": "oap-azure-mcp",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oap-azure-mcp--azure_help",
+          "name": "azure_help",
+          "description": "Get guidance on how to use the Azure MCP effectively.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "topic: Optional[str] = None,\n    meta: Optional[Dict[str, Any]] = None"
+          },
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-gcp-mcp",
+      "title": "oap-gcp-mcp",
+      "description": "oap-gcp-mcp",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oap-gcp-mcp--gcp_api_execute",
+          "name": "gcp_api_execute",
+          "description": "Execute ANY Google Cloud Platform API operation.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "service: str,\n    method: str,\n    path: str,\n    project_id: Optional[str] = None,\n    body: Optional[Dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_instances",
+          "name": "gcp_list_instances",
+          "description": "List Compute Engine VM instances.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None,\n    zone: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_get_instance",
+          "name": "gcp_get_instance",
+          "description": "Get details of a specific Compute Engine VM instance.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "instance_name: str,\n    zone: str,\n    project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_start_instance",
+          "name": "gcp_start_instance",
+          "description": "Start a stopped Compute Engine VM instance.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "instance_name: str,\n    zone: str,\n    project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_stop_instance",
+          "name": "gcp_stop_instance",
+          "description": "Stop a running Compute Engine VM instance.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "instance_name: str,\n    zone: str,\n    project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_buckets",
+          "name": "gcp_list_buckets",
+          "description": "List Cloud Storage buckets in a project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_bucket_objects",
+          "name": "gcp_list_bucket_objects",
+          "description": "List objects in a Cloud Storage bucket.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "bucket_name: str,\n    prefix: Optional[str] = None,\n    max_results: int = 100"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_projects",
+          "name": "gcp_list_projects",
+          "description": "List GCP projects accessible to the authenticated principal.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "filter: Optional[str] = None,\n    page_size: int = 100,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_get_project",
+          "name": "gcp_get_project",
+          "description": "Get details of a GCP project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_zones",
+          "name": "gcp_list_zones",
+          "description": "List available zones in a GCP project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_regions",
+          "name": "gcp_list_regions",
+          "description": "List available regions in a GCP project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_machine_types",
+          "name": "gcp_list_machine_types",
+          "description": "List available machine types in a zone.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "zone: str,\n    project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_disks",
+          "name": "gcp_list_disks",
+          "description": "List persistent disks in a project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "zone: Optional[str] = None,\n    project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_networks",
+          "name": "gcp_list_networks",
+          "description": "List VPC networks in a project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_firewalls",
+          "name": "gcp_list_firewalls",
+          "description": "List firewall rules in a project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_get_billing_info",
+          "name": "gcp_get_billing_info",
+          "description": "Get billing information for a GCP project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_billing_accounts",
+          "name": "gcp_list_billing_accounts",
+          "description": "List all billing accounts accessible to the service account.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_get_billing_account",
+          "name": "gcp_get_billing_account",
+          "description": "Get details of a specific billing account.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "billing_account_id: str"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_billing_account_projects",
+          "name": "gcp_list_billing_account_projects",
+          "description": "List all projects associated with a billing account.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "billing_account_id: str"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_query_cost_usage",
+          "name": "gcp_query_cost_usage",
+          "description": "Query cost and usage data from BigQuery billing export.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "billing_account_id: str,\n    start_date: str,\n    end_date: str,\n    project_id: Optional[str] = None,\n    service_filter: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--vertex_ai_list_models",
+          "name": "vertex_ai_list_models",
+          "description": "List Vertex AI models in a project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None,\n    region: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--vertex_ai_list_endpoints",
+          "name": "vertex_ai_list_endpoints",
+          "description": "List Vertex AI endpoints in a project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None,\n    region: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--vertex_ai_get_endpoint",
+          "name": "vertex_ai_get_endpoint",
+          "description": "Get details of a Vertex AI endpoint.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "endpoint_id: str,\n    project_id: Optional[str] = None,\n    region: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--vertex_ai_list_training_pipelines",
+          "name": "vertex_ai_list_training_pipelines",
+          "description": "List Vertex AI training pipelines.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None,\n    region: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--vertex_ai_list_custom_jobs",
+          "name": "vertex_ai_list_custom_jobs",
+          "description": "List Vertex AI custom training jobs.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None,\n    region: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--vertex_ai_usage_metrics",
+          "name": "vertex_ai_usage_metrics",
+          "description": "Get Vertex AI usage metrics from Cloud Monitoring.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None,\n    region: Optional[str] = None,\n    hours_ago: int = 24"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--vertex_ai_generative_models",
+          "name": "vertex_ai_generative_models",
+          "description": "List available generative AI models (Gemini, PaLM, etc.) in Vertex AI.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None,\n    region: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_vertex_create_endpoint",
+          "name": "gcp_vertex_create_endpoint",
+          "description": "Create a new Vertex AI endpoint.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "display_name: str,\n    location: Optional[str] = None,\n    project_id: Optional[str] = None,\n    description: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_vertex_delete_endpoint",
+          "name": "gcp_vertex_delete_endpoint",
+          "description": "Delete a Vertex AI endpoint.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "endpoint_id: str,\n    location: Optional[str] = None,\n    project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_vertex_deploy_model",
+          "name": "gcp_vertex_deploy_model",
+          "description": "Deploy a model to a Vertex AI endpoint.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "endpoint_id: str,\n    model_id: str,\n    location: Optional[str] = None,\n    project_id: Optional[str] = None,\n    machine_type: str = \"n1-standard-2\",\n    min_replica_count: int = 1,\n    max_replica_count: int = 1,\n    traffic_percentage: int = 100,\n    deployed_model_display_name: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_vertex_undeploy_model",
+          "name": "gcp_vertex_undeploy_model",
+          "description": "Undeploy a model from a Vertex AI endpoint.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "endpoint_id: str,\n    deployed_model_id: str,\n    location: Optional[str] = None,\n    project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_vertex_list_deployed_models",
+          "name": "gcp_vertex_list_deployed_models",
+          "description": "List models deployed on a Vertex AI endpoint.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "endpoint_id: str,\n    location: Optional[str] = None,\n    project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_vertex_get_model",
+          "name": "gcp_vertex_get_model",
+          "description": "Get one Vertex AI model's details (default version).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "model_id: str,\n    location: Optional[str] = None,\n    project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_vertex_list_model_versions",
+          "name": "gcp_vertex_list_model_versions",
+          "description": "List all versions of a Vertex AI model.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "model_id: str,\n    location: Optional[str] = None,\n    project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_vertex_get_model_version",
+          "name": "gcp_vertex_get_model_version",
+          "description": "Get one specific (model, version) pair's details.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "model_id: str,\n    version_id: str,\n    location: Optional[str] = None,\n    project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_monitoring_query",
+          "name": "gcp_monitoring_query",
+          "description": "Query Cloud Monitoring metrics.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "metric_type: str,\n    project_id: Optional[str] = None,\n    hours_ago: int = 24,\n    aggregation_minutes: int = 5"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_gke_clusters",
+          "name": "gcp_list_gke_clusters",
+          "description": "List GKE clusters. location='-' means all locations.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "location: str = \"-\",\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_describe_gke_cluster",
+          "name": "gcp_describe_gke_cluster",
+          "description": "Describe one GKE cluster (version, nodes, endpoint, networking, logging).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "cluster_name: str,\n    location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_describe_cloud_run_service",
+          "name": "gcp_describe_cloud_run_service",
+          "description": "Describe one Cloud Run service.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "service_name: str,\n    location: str = \"us-central1\",\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_cloud_functions",
+          "name": "gcp_list_cloud_functions",
+          "description": "List Cloud Functions (v2 / gen2) in a region.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "location: str = \"us-central1\",\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_bq_datasets",
+          "name": "gcp_list_bq_datasets",
+          "description": "List BigQuery datasets in the project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_bq_tables",
+          "name": "gcp_list_bq_tables",
+          "description": "List BigQuery tables inside a dataset.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "dataset_id: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_pubsub_topics",
+          "name": "gcp_list_pubsub_topics",
+          "description": "List Pub/Sub topics in the project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_pubsub_subscriptions",
+          "name": "gcp_list_pubsub_subscriptions",
+          "description": "List Pub/Sub subscriptions in the project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_cloud_sql_instances",
+          "name": "gcp_list_cloud_sql_instances",
+          "description": "List Cloud SQL instances (Postgres / MySQL / SQL Server).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_describe_cloud_sql_instance",
+          "name": "gcp_describe_cloud_sql_instance",
+          "description": "Describe a Cloud SQL instance (tier, version, IPs, backup config).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "instance_name: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_secrets",
+          "name": "gcp_list_secrets",
+          "description": "List Secret Manager secrets (names + labels, not values).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_artifact_repositories",
+          "name": "gcp_list_artifact_repositories",
+          "description": "List Artifact Registry repositories in a region.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "location: str = \"us-central1\",\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_vertex_endpoints",
+          "name": "gcp_list_vertex_endpoints",
+          "description": "List Vertex AI online prediction endpoints.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "location: str = \"us-central1\",\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_vertex_models",
+          "name": "gcp_list_vertex_models",
+          "description": "List Vertex AI custom models registered in the Model Registry.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "location: str = \"us-central1\",\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_service_accounts",
+          "name": "gcp_list_service_accounts",
+          "description": "List IAM service accounts in the project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_get_iam_policy",
+          "name": "gcp_get_iam_policy",
+          "description": "Get the IAM policy bound to the project (who has what role).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_log_entries",
+          "name": "gcp_list_log_entries",
+          "description": "Search Cloud Logging entries. filter_expr is Google's log-filter",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "filter_expr: Optional[str] = None,\n    project_id: Optional[str] = None,\n    page_size: int = 50,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_cloud_run_services",
+          "name": "gcp_list_cloud_run_services",
+          "description": "List Cloud Run services in a region (e.g. us-central1).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_get_cloud_run_service",
+          "name": "gcp_get_cloud_run_service",
+          "description": "Get one Cloud Run service (image, traffic split, env vars, scaling, IAM).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "service_name: str,\n    location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_delete_cloud_run_service",
+          "name": "gcp_delete_cloud_run_service",
+          "description": "Delete a Cloud Run service. DESTRUCTIVE — use with care.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "service_name: str,\n    location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_get_cloud_run_service_iam_policy",
+          "name": "gcp_get_cloud_run_service_iam_policy",
+          "description": "Get the IAM policy bound to a Cloud Run service (who can invoke / manage).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "service_name: str,\n    location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_cloud_run_revisions",
+          "name": "gcp_list_cloud_run_revisions",
+          "description": "List revisions for a Cloud Run service (history of deployments).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "service_name: str,\n    location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_get_cloud_run_revision",
+          "name": "gcp_get_cloud_run_revision",
+          "description": "Get one Cloud Run revision (container image, env, scaling, traffic %).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "service_name: str,\n    revision_name: str,\n    location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_delete_cloud_run_revision",
+          "name": "gcp_delete_cloud_run_revision",
+          "description": "Delete a Cloud Run revision. DESTRUCTIVE — only inactive revisions.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "service_name: str,\n    revision_name: str,\n    location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_cloud_run_jobs",
+          "name": "gcp_list_cloud_run_jobs",
+          "description": "List Cloud Run Jobs (scheduled / one-shot batch executions) in a region.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_get_cloud_run_job",
+          "name": "gcp_get_cloud_run_job",
+          "description": "Get one Cloud Run Job (template, schedule, env, parallelism, timeout).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "job_name: str,\n    location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_run_cloud_run_job",
+          "name": "gcp_run_cloud_run_job",
+          "description": "Execute a Cloud Run Job ad-hoc. `body` may carry overrides",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "job_name: str,\n    location: str,\n    project_id: Optional[str] = None,\n    body: Optional[Dict[str, Any]] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_delete_cloud_run_job",
+          "name": "gcp_delete_cloud_run_job",
+          "description": "Delete a Cloud Run Job. DESTRUCTIVE — does not stop in-flight executions.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "job_name: str,\n    location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_cloud_run_executions",
+          "name": "gcp_list_cloud_run_executions",
+          "description": "List executions of a Cloud Run Job (run history with status, duration).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "job_name: str,\n    location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_get_cloud_run_execution",
+          "name": "gcp_get_cloud_run_execution",
+          "description": "Get one Cloud Run Job execution (start/end time, succeeded/failed task count).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "job_name: str,\n    execution_name: str,\n    location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_cancel_cloud_run_execution",
+          "name": "gcp_cancel_cloud_run_execution",
+          "description": "Cancel a running Cloud Run Job execution. Tasks already complete keep their state.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "job_name: str,\n    execution_name: str,\n    location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_cloud_run_locations",
+          "name": "gcp_list_cloud_run_locations",
+          "description": "List regions where Cloud Run is available for this project.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_list_cloud_run_operations",
+          "name": "gcp_list_cloud_run_operations",
+          "description": "List in-flight + recent Cloud Run long-running operations in a region.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_get_cloud_run_operation",
+          "name": "gcp_get_cloud_run_operation",
+          "description": "Get one Cloud Run long-running operation (deploy/run progress, error).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "operation_name: str,\n    location: str,\n    project_id: Optional[str] = None,"
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "oap-gcp-mcp--gcp_api_help",
+          "name": "gcp_api_help",
+          "description": "Get help on using the GCP MCP tools.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-github-mcp",
+      "title": "oap-github-mcp",
+      "description": "oap-github-mcp",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oap-github-mcp--get_user",
+          "name": "get_user",
+          "description": "Get information about the authenticated GitHub user.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--list_repos",
+          "name": "list_repos",
+          "description": "List GitHub repositories for the authenticated user.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "type: str = \"all\",\n    sort: str = \"updated\",\n    direction: str = \"desc\",\n    per_page: int = 30,\n    page: int = 1,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--get_repo",
+          "name": "get_repo",
+          "description": "Get details about a specific repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str, repo: str, meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--search_repos",
+          "name": "search_repos",
+          "description": "Search for repositories on GitHub.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: str,\n    sort: str = \"best-match\",\n    order: str = \"desc\",\n    per_page: int = 30,\n    page: int = 1,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--list_branches",
+          "name": "list_branches",
+          "description": "List branches in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    protected: Optional[bool] = None,\n    per_page: int = 30,\n    page: int = 1,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--get_file_contents",
+          "name": "get_file_contents",
+          "description": "Get contents of a file in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    path: str,\n    ref: Optional[str] = None,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--list_issues",
+          "name": "list_issues",
+          "description": "List issues in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    state: str = \"open\",\n    sort: str = \"created\",\n    direction: str = \"desc\",\n    per_page: int = 30,\n    page: int = 1,\n    labels: Optional[str] = None,\n    assignee: Optional[str] = None,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--get_issue",
+          "name": "get_issue",
+          "description": "Get details about a specific issue.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    issue_number: int,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--create_issue",
+          "name": "create_issue",
+          "description": "Create a new issue in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    title: str,\n    body: Optional[str] = None,\n    labels: Optional[list] = None,\n    assignees: Optional[list] = None,\n    milestone: Optional[int] = None,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--update_issue",
+          "name": "update_issue",
+          "description": "Update an existing issue.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    issue_number: int,\n    title: Optional[str] = None,\n    body: Optional[str] = None,\n    state: Optional[str] = None,\n    labels: Optional[list] = None,\n    assignees: Optional[list] = None,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--list_pull_requests",
+          "name": "list_pull_requests",
+          "description": "List pull requests in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    state: str = \"open\",\n    sort: str = \"created\",\n    direction: str = \"desc\",\n    per_page: int = 30,\n    page: int = 1,\n    base: Optional[str] = None,\n    head: Optional[str] = None,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--get_pull_request",
+          "name": "get_pull_request",
+          "description": "Get details about a specific pull request.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    pull_number: int,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--create_pull_request",
+          "name": "create_pull_request",
+          "description": "Create a new pull request.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    title: str,\n    head: str,\n    base: str,\n    body: Optional[str] = None,\n    draft: bool = False,\n    maintainer_can_modify: bool = True,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--search_code",
+          "name": "search_code",
+          "description": "Search for code across GitHub repositories.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: str,\n    sort: Optional[str] = None,\n    order: str = \"desc\",\n    per_page: int = 30,\n    page: int = 1,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--list_workflows",
+          "name": "list_workflows",
+          "description": "List GitHub Actions workflows in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    per_page: int = 30,\n    page: int = 1,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--get_workflow_runs",
+          "name": "get_workflow_runs",
+          "description": "Get workflow runs for a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    workflow_id: Optional[str] = None,\n    status: Optional[str] = None,\n    branch: Optional[str] = None,\n    per_page: int = 30,\n    page: int = 1,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--trigger_workflow",
+          "name": "trigger_workflow",
+          "description": "Trigger a workflow dispatch event.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    workflow_id: str,\n    ref: str,\n    inputs: Optional[dict] = None,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--list_commits",
+          "name": "list_commits",
+          "description": "List commits in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    sha: Optional[str] = None,\n    path: Optional[str] = None,\n    author: Optional[str] = None,\n    since: Optional[str] = None,\n    until: Optional[str] = None,\n    per_page: int = 30,\n    page: int = 1,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp--get_commit",
+          "name": "get_commit",
+          "description": "Get details about a specific commit.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "owner: str,\n    repo: str,\n    commit_sha: str,\n    meta: Optional[dict] = None"
+          },
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-kubernetes-mcp",
+      "title": "oap-kubernetes-mcp",
+      "description": "oap-kubernetes-mcp",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "oap-loki-mcp",
+      "title": "oap-loki-mcp",
+      "description": "oap-loki-mcp",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oap-loki-mcp--loki_query",
+          "name": "loki_query",
+          "description": "Query logs from Loki using LogQL.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: str = Field(description=\"LogQL query to execute (e.g., '{app=\\\"nginx\\\"}', '{namespace=\\\"openagentic\\\"} |= \\\"error\\\"')\"),\n    limit: int = Field(default=100, description=\"Maximum number of log lines to return (default: 100, max: 5000)\"),\n    start: str = Field(default=\"1h\", description=\"Start time (e.g., '1h', '30m', '1d', or RFC3339 timestamp)\"),\n    end: Optional[str] = Field(default=None, description=\"End time (defaults to now)\")"
+          },
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "oap-loki-mcp--loki_search_errors",
+          "name": "loki_search_errors",
+          "description": "Search for error logs across the system.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "namespace: str = Field(default=\"\", description=\"Kubernetes namespace to search (leave empty for all)\"),\n    app: str = Field(default=\"\", description=\"Application/container name to filter\"),\n    time_range: str = Field(default=\"1h\", description=\"Time range to search (e.g., '30m', '1h', '6h', '1d')\"),\n    limit: int = Field(default=200, description=\"Maximum number of log lines\")"
+          },
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "oap-loki-mcp--loki_tail",
+          "name": "loki_tail",
+          "description": "Get the most recent log lines (like 'tail -f').",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: str = Field(description=\"LogQL query for the stream to tail\"),\n    lines: int = Field(default=50, description=\"Number of recent lines to show (max: 500)\")"
+          },
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "oap-loki-mcp--loki_labels",
+          "name": "loki_labels",
+          "description": "List all available label names in Loki.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "oap-loki-mcp--loki_label_values",
+          "name": "loki_label_values",
+          "description": "Get all values for a specific label.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "label: str = Field(description=\"Label name to get values for (e.g., 'namespace', 'app', 'pod')\")"
+          },
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "oap-loki-mcp--loki_count_logs",
+          "name": "loki_count_logs",
+          "description": "Count log entries over time.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: str = Field(description=\"LogQL stream selector (e.g., '{app=\\\"nginx\\\"}')\"),\n    time_range: str = Field(default=\"1h\", description=\"Time range to count over\"),\n    interval: str = Field(default=\"5m\", description=\"Interval for counting (e.g., '1m', '5m', '15m')\")"
+          },
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "oap-loki-mcp--loki_log_rate",
+          "name": "loki_log_rate",
+          "description": "Calculate log rate (lines per second) over time.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: str = Field(description=\"LogQL stream selector\"),\n    time_range: str = Field(default=\"1h\", description=\"Time range to analyze\"),\n    interval: str = Field(default=\"1m\", description=\"Rate calculation interval\")"
+          },
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "oap-loki-mcp--loki_context",
+          "name": "loki_context",
+          "description": "Get log context around a specific log entry.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: str = Field(description=\"LogQL query that matches the log line of interest\"),\n    timestamp: str = Field(description=\"Timestamp of the log line (RFC3339 or Unix nanoseconds)\"),\n    before: int = Field(default=10, description=\"Number of lines before the match\"),\n    after: int = Field(default=10, description=\"Number of lines after the match\")"
+          },
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "oap-loki-mcp--loki_streams",
+          "name": "loki_streams",
+          "description": "List all active log streams in Loki.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-prometheus-mcp",
+      "title": "oap-prometheus-mcp",
+      "description": "oap-prometheus-mcp",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oap-prometheus-mcp--prometheus_query",
+          "name": "prometheus_query",
+          "description": "Execute an instant PromQL query against Prometheus to check infrastructure metrics.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: str = Field(description=\"PromQL query to execute (e.g., 'http_requests_total', 'rate(http_requests_total[5m])')\"),\n    time: Optional[str] = Field(default=None, description=\"Evaluation timestamp (RFC3339 or Unix timestamp). Defaults to current time.\")"
+          },
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "oap-prometheus-mcp--prometheus_query_range",
+          "name": "prometheus_query_range",
+          "description": "Execute a range PromQL query against Prometheus for time-series analysis.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: str = Field(description=\"PromQL query to execute\"),\n    start: str = Field(description=\"Start timestamp (RFC3339 or Unix timestamp, e.g., '2024-01-01T00:00:00Z' or '1704067200')\"),\n    end: str = Field(description=\"End timestamp (RFC3339 or Unix timestamp)\"),\n    step: str = Field(default=\"60s\", description=\"Query resolution step (e.g., '15s', '1m', '5m')\")"
+          },
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "oap-prometheus-mcp--prometheus_alerts",
+          "name": "prometheus_alerts",
+          "description": "Get all active alerts from Prometheus for incident detection.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "oap-prometheus-mcp--prometheus_targets",
+          "name": "prometheus_targets",
+          "description": "Get all Prometheus scrape targets and their health status.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "oap-prometheus-mcp--prometheus_metrics_list",
+          "name": "prometheus_metrics_list",
+          "description": "List all available Prometheus metric names for discovery.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "filter: Optional[str] = Field(default=None, description=\"Optional filter pattern to match metric names (e.g., 'http_' or 'memory')\")"
+          },
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "oap-prometheus-mcp--prometheus_metric_info",
+          "name": "prometheus_metric_info",
+          "description": "Get metadata and current values for a specific metric.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "metric: str = Field(description=\"Name of the metric to get info about\")"
+          },
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "oap-prometheus-mcp--prometheus_rules",
+          "name": "prometheus_rules",
+          "description": "Get all alerting and recording rules from Prometheus.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "oap-prometheus-mcp--prometheus_health_summary",
+          "name": "prometheus_health_summary",
+          "description": "Get a quick health summary of the monitored services.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-web-mcp",
+      "title": "oap-web-mcp",
+      "description": "oap-web-mcp",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oap-web-mcp--web_search",
+          "name": "web_search",
+          "description": "Search the web using multiple search engines (with automatic fallback).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: str,\n    num_results: int = 10,\n    region: str = \"wt-wt\",\n    time_range: Optional[str] = None"
+          },
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp--web_fetch",
+          "name": "web_fetch",
+          "description": "Fetch a web page and convert it to readable markdown.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "url: str,\n    extract_links: bool = True,\n    max_length: int = 50000,\n    use_cache: bool = True"
+          },
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp--web_search_and_read",
+          "name": "web_search_and_read",
+          "description": "Search the web and automatically fetch content from the top results.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: str,\n    num_results: int = 3,\n    max_content_per_page: int = 10000"
+          },
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp--web_verify_fact",
+          "name": "web_verify_fact",
+          "description": "Verify a claim or fact by searching multiple sources.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "claim: str,\n    num_sources: int = 3"
+          },
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp--web_store_knowledge",
+          "name": "web_store_knowledge",
+          "description": "Store important information in the knowledge system for future reference.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "title: str,\n    content: str,\n    source_url: Optional[str] = None,\n    tags: Optional[List[str]] = None,\n    importance: str = \"normal\""
+          },
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp--web_extract_structured_data",
+          "name": "web_extract_structured_data",
+          "description": "Extract structured data from a web page (tables, lists, key-value pairs).",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "url: str,\n    data_type: str = \"auto\""
+          },
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp--web_news_search",
+          "name": "web_news_search",
+          "description": "Search for recent news articles on a topic.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": "query: str,\n    num_results: int = 10,\n    time_range: str = \"w\""
+          },
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp--web_help",
+          "name": "web_help",
+          "description": "Get help on using the OpenAgentic Web MCP tools.",
+          "type": "mcp-tool",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        }
+      ]
+    }
+  ]
+}

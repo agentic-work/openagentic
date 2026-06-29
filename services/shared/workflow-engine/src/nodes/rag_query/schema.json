@@ -1,0 +1,81 @@
+{
+  "type": "rag_query",
+  "category": "data",
+  "label": "RAG Query",
+  "description": "Run a semantic search against a Milvus collection via the platform's /api/v1/vector/search endpoint. Returns ranked results with optional score threshold.",
+  "icon": "search",
+  "primary": "results",
+  "ports": {
+    "inputs": [
+      {
+        "name": "input",
+        "type": "any",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "query": "string",
+          "collection": "string",
+          "resultCount": "number",
+          "results": "array"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "collection",
+      "label": "Collection",
+      "type": "string",
+      "required": false,
+      "default": "default",
+      "supportsTemplating": true
+    },
+    {
+      "name": "query",
+      "label": "Query",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "what is the deploy process?"
+    },
+    {
+      "name": "topK",
+      "label": "Top K",
+      "type": "number",
+      "required": false,
+      "default": 5,
+      "min": 1,
+      "max": 100
+    },
+    {
+      "name": "filters",
+      "label": "Filters",
+      "type": "json",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Optional metadata filter — JSON object or JSON string."
+    },
+    {
+      "name": "scoreThreshold",
+      "label": "Score threshold",
+      "type": "number",
+      "required": false,
+      "default": 0.5,
+      "min": 0,
+      "max": 1
+    }
+  ],
+  "ai": {
+    "shortDescription": "Semantic search over a Milvus collection.",
+    "whenToUse": "When the workflow needs context from your knowledge base before generating a response (RAG pattern).",
+    "examplePrompt": "search the support-docs collection for the top 3 chunks matching the user's question",
+    "promptHints": "Reference results via {{steps.<id>.result.results}} (array of chunks). Pre-filter via the filters setting (e.g. {\"tenant\":\"acme\"})."
+  },
+  "outputAssertions": []
+}

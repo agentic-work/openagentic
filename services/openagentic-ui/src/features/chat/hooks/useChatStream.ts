@@ -1,0 +1,4745 @@
+/**
+ * useChatStream — the live chat streaming engine.
+ *
+ * Consumes the `/api/chat/stream` SSE feed and drives the in-flight render:
+ * content/thinking deltas, tool-call events, pipeline-stage state, token
+ * usage, and the approval-gate `approval_required` event. Pairs with the
+ * pure reducer in ./streamReducer (applyCanonicalFrame/deriveFlatMessage),
+ * which owns canonical block accumulation.
+ *
+ * Public surface:
+ * - sendMessage: send a user turn and open the SSE stream
+ * - stopStreaming: abort the current stream
+ * - resetError: clear error state
+ */
+
+import { useState, useCallback, useRef, useEffect, startTransition } from 'react';
+// flushSync removed - React 18 batching is sufficient for streaming updates
+import { apiEndpoint } from '@/utils/api';
+import type { NormalizedStreamEvent } from '../../../types/AnthropicStreamEvent';
+
+import { formatAgentMessage, addVisualEnhancements } from '@/utils/messageFormatter';
+import { useAuth } from '@/app/providers/AuthContext';
+import { ChatMessage } from '@/types/index';
+import { useChatStore } from '@/stores/useChatStore';
+import { useAgentTreeStore } from '@/stores/useAgentTreeStore';
+// Task #158 — in-browser Python/JS sandbox.
+// The manager module is imported lazily inside the event handler so the
+// ~6 MiB Pyodide wasm loader stays out of the initial chunk for users
+// who never trigger a sandbox run.
+import type {
+  BrowserExecRequest,
+  BrowserExecResult,
+} from '../../../sandbox/types';
+
+import {
+  applyCanonicalFrame,
+  initialFrameState,
+  type FrameState,
+  type WireFrame,
+} from './streamReducer/applyCanonicalFrame';
+// Track B Phase 3 (2026-05-22) — canonical streaming rip. The legacy flat
+// `assistantMessage += delta` + `setCurrentMessage(...)` writers were
+// ripped along with the `useState<string>` for currentMessage. Title-gen,
+// copy-to-clipboard, fallback callers, and the `done`-arm onMessage
+// finalize all read the flat-string view through `deriveFlatMessage` now.
+import { deriveFlatMessage } from './streamReducer/deriveFlatMessage';
+// F1 (2026-05-18) — SDK SoT for ContentBlock. The UI-local `ContentBlock`
+// type below is now a strict alias of `UIContentBlock` from
+// `@agentic-work/llm-sdk` so the wire+persistence shape is owned in ONE
+// place. The legacy interface is kept as a wrapper for back-compat with
+// the ~30 callsites that import `ContentBlock` from this module — they
+// transitively see the SDK shape with zero source changes.
+// Sev-0 #924/#925/#926 — pure helper that builds the final onMessage
+// payload at done time, preserving the FULL content_blocks chronology
+// (every type — thinking, text, tool_use, viz_render, app_render,
+// streaming_table, follow_up, sub_agent, hitl_approval, tool_round,
+// tool_result). Replaces the inline filter that dropped non-thinking/
+// non-tool_use blocks and lost artifact + text chronology on finalize.
+import { buildDoneMessagePayload } from './buildDoneMessagePayload';
+
+// ── Pure region decomposition (behaviour-preserving) ───────────────
+// The pure stream TYPE definitions, NDJSON frame reducers, and
+// parsers/normalizers were extracted to three leaf modules so this hook
+// file shrinks to the stateful engine. They are imported back here for
+// the hook body AND re-exported so every existing
+// `import { … } from '…/useChatStream'` keeps working unchanged.
+export * from './streamTypes';
+export * from './streamFrames';
+export {
+  splitModelIdentifier,
+  isArtifactWorthShowing,
+  resolveEmptyCompletionFallback,
+  extractToolExecutingArgs,
+  extractToolExecutingToolUseId,
+  extractToolResultContent,
+  attachModelIdentifier,
+} from './streamParsers';
+
+import type {
+  ContentBlock,
+  UseSSEChatOptions,
+  PipelineState,
+  AnimationMode,
+  SubAgentEntry,
+  ToolShortlist,
+  IntentClassification,
+  StreamingTable,
+  StreamingTableFrame,
+  FindingsArtifact,
+  FindingsFrame,
+  InlineWidget,
+  InlineWidgetFrame,
+  ArtifactEmit,
+  ArtifactEmitFrame,
+} from './streamTypes';
+import {
+  applyRoundFrame,
+  applyStreamingTableFrame,
+  applyFindingsFrame,
+  applyInlineWidgetFrame,
+  applyArtifactEmitFrame,
+  bufferOrApplyIntentClassified,
+  flushPendingIntentClassified,
+  bufferOrApplyToolShortlist,
+  flushPendingToolShortlist,
+  applySubAgentStartedScoped,
+  applySubAgentCompletedScoped,
+  dispatchSubAgentFrame,
+} from './streamFrames';
+import {
+  createInitialPipelineState,
+  shouldSuppressContentForStage,
+  mapBackendStage,
+  getAnimationMode,
+  extractAndCleanThinkingBlocks,
+  resolveEmptyCompletionFallback,
+  attachModelIdentifier,
+  isArtifactWorthShowing,
+  extractToolExecutingArgs,
+  extractToolExecutingToolUseId,
+  extractToolResultContent,
+} from './streamParsers';
+
+export const useChatStream = ({
+  sessionId,
+  onMessage,
+  onToolExecution,
+  onToolApprovalRequest,
+  onMcpApprovalRequest,
+  onAuditApprovalRequired,
+  onError,
+  onThinking,
+  onThinkingContent,
+  onThinkingComplete,
+  onMultiModel,
+  onStream,
+  onPipelineStage,
+  onToolRound,
+  onSessionTitleUpdated,
+  autoApproveTools = false, // HITM enforced: tools always require user approval
+  getAssistantPlaceholderId,
+}: UseSSEChatOptions) => {
+  const [isStreaming, setIsStreaming] = useState(false);
+  // Track B Phase 3 — `currentMessage` flat-string state DELETED. The
+  // streaming bubble reads `contentBlocks` directly; callers that need a
+  // flat string call `deriveFlatMessage(contentBlocks)`.
+  const [currentThinking, setCurrentThinking] = useState('');
+  const [isThinkingCompleted, setIsThinkingCompleted] = useState(false); // Tracks if thinking phase has finished
+  const currentThinkingRef = useRef(''); // Ref to capture thinking at message completion time
+
+  // Interleaved content blocks - renders thinking/text in order
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
+  const contentBlocksRef = useRef<ContentBlock[]>([]); // Ref for closure access
+
+  const canonicalReducerStateRef = useRef<FrameState>(initialFrameState());
+  const [canonicalReducerState, setCanonicalReducerState] = useState<FrameState>(
+    () => initialFrameState(),
+  );
+  const blockIndexOffsetRef = useRef<number>(0); // Offset for multi-round tool loops (prevents index collision)
+  const currentThinkingBlockIndexRef = useRef<number | null>(null); // Track active thinking block for interleaved display
+  const currentTextBlockIndexRef = useRef<number | null>(null); // Track active text block for interleaved display
+  // Task #131 (Phase F₂) — parallel tool-call round grouping. Each
+  // `tool_executing` arriving during an open round is stamped with the
+  // current round number so N concurrent tool calls share one group.
+  // A round opens on the FIRST tool_executing of a new batch and closes
+  // when the first `tool_result` (or `tool_error`) lands; the next
+  // tool_executing after a close starts a new round. This mirrors the
+  // backend pattern where executeToolCalls fires all tool_executing
+  // events upfront in a tight loop before awaiting Promise.allSettled.
+  const toolCallRoundRef = useRef<number>(0);
+  const inToolCallRoundRef = useRef<boolean>(false);
+  const parallelSlotIndexRef = useRef<number>(0);
+  const [thinkingMetrics, setThinkingMetrics] = useState<{
+    tokens: number;
+    elapsedMs: number;
+    tokensPerSecond: number;
+  } | null>(null);
+  // Thinking budget tracking for real progress indicator
+  const [thinkingBudget, setThinkingBudget] = useState<number>(0);
+  const [thinkingPhase, setThinkingPhase] = useState<'thinking' | 'tools' | 'generating'>('thinking');
+  const previousSessionIdRef = useRef<string | null>(null); // Track session changes
+  // TTFT (Time to First Token) tracking for debugging slow responses
+  const [ttftMs, setTtftMs] = useState<number | null>(null);
+  // LiveTurnStatus — ms timestamp when the user submitted the current turn.
+  // Captured when isStreaming flips true. Stays set while streaming so the
+  // ticking elapsed counter stays steady; cleared when stream completes (or
+  // immediately on next sendMessage).
+  const [turnStartedAt, setTurnStartedAt] = useState<number | null>(null);
+  // LiveTurnStatus — running token counters that update on every NDJSON
+  // delta. tokensOut grows as text/thinking_delta frames arrive; tokensIn
+  // is set once when message_received reports prompt size + bumped if a
+  // mid-turn usage frame fires. activity is a SHORT human-readable
+  // summary (e.g. "thinking", "calling azure_list_subscriptions",
+  // "rendering kpi_grid"). All three are zeroed on each new turn.
+  const [liveTokensIn, setLiveTokensIn] = useState<number>(0);
+  const [liveTokensOut, setLiveTokensOut] = useState<number>(0);
+  const [liveActivity, setLiveActivity] = useState<string>('thinking');
+  // Context compaction notification
+  const [contextCompaction, setContextCompaction] = useState<{
+    freedPercent: number;
+    tokensFreed: number;
+    compactionLevel: string;
+  } | null>(null);
+  // v0.6.7 fix 2 — running cost in USD accumulated from server cost_delta
+  // events. Resets to null on each new turn; CostPill consumes as a prop.
+  const [runningCost, setRunningCost] = useState<number | null>(null);
+  const runningCostRef = useRef<number | null>(null);
+  // Normalized stream events (UNIFIED_STREAM=true path)
+  const [normalizedEvents, setNormalizedEvents] = useState<NormalizedStreamEvent[]>([]);
+  const normalizedEventsRef = useRef<NormalizedStreamEvent[]>([]);
+  // Slice G.4b — counter for synthetic canonical `content_block_*` events
+  // bridged from envelope events (agent_thinking, agent_tool_call,
+  // agent_tool_result). Started high to avoid colliding with wire-emitted
+  // `index` values from the api side. Used as `index` on the synthesized
+  // `content_block_start` / `content_block_stop` so buildTree's blockIndex
+  // map can pair them. Each synthesized block consumes one value.
+  const syntheticBlockIndexRef = useRef<number>(100000);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Phase G (task #152) — trust/observability event buffers.
+  // Each slot accumulates the latest payload (or the running list) from
+  // the corresponding NDJSON event. Consumers read these and render the
+  // small components under `components/events/*`.
+  // ═══════════════════════════════════════════════════════════════════
+  const [handoffEvent, setHandoffEvent] = useState<{
+    fromModel?: string;
+    toModel?: string;
+    fromRole?: string;
+    toRole?: string;
+    reason?: string;
+    complexityScore?: number;
+    routeEscalatedDestructive?: boolean;
+  } | null>(null);
+  const [retryEvents, setRetryEvents] = useState<Array<{
+    toolCallId?: string;
+    name?: string;
+    attempt: number;
+    maxAttempts: number;
+    reason?: string;
+    elapsedMs?: number;
+  }>>([]);
+  const [currentStage, setCurrentStage] = useState<
+    'discover' | 'query' | 'analyze' | 'generate' | 'verify' | null
+  >(null);
+  const stageTimingsRef = useRef<Partial<Record<
+    'discover' | 'query' | 'analyze' | 'generate' | 'verify',
+    number
+  >>>({});
+  const [stageTimings, setStageTimings] = useState<Partial<Record<
+    'discover' | 'query' | 'analyze' | 'generate' | 'verify',
+    number
+  >>>({});
+  const [ragCitations, setRagCitations] = useState<Array<{
+    source: string;
+    chunkId?: string;
+    excerpt?: string;
+    score?: number;
+    collection?: string;
+    url?: string;
+  }>>([]);
+  const [correctionEvent, setCorrectionEvent] = useState<{
+    wrongText: string;
+    correctedText: string;
+    reason?: string;
+  } | null>(null);
+  const [warnings, setWarnings] = useState<Array<{
+    id: string;
+    level: 'info' | 'warn' | 'error';
+    source?: string;
+    code?: string;
+    message: string;
+    actionable?: string;
+  }>>([]);
+  const [ragStatus, setRagStatus] = useState<{
+    status?: string;
+    docsRetrieved?: number;
+    collections?: string[];
+    retrievalTimeMs?: number;
+  } | null>(null);
+  const [memoryStatus, setMemoryStatus] = useState<{
+    status?: string;
+    contextInjected?: boolean;
+    tokenEstimate?: number;
+    processingTime?: number;
+    memoriesFound?: number;
+  } | null>(null);
+  const [dlpScan, setDlpScan] = useState<{
+    state: 'scanning' | 'passed' | 'redacted' | 'blocked';
+    severity?: string;
+    categories?: string[];
+    findings?: number;
+    scanPoint?: string;
+    reason?: string;
+  } | null>(null);
+  // Per-tool cache hit marks (keyed by tool name). UI reads to stamp
+  // the badge on the corresponding tool card.
+  const [toolCacheHits, setToolCacheHits] = useState<Record<string, {
+    similarity?: number;
+  }>>({});
+  const [selfCritique, setSelfCritique] = useState<{
+    critique?: string;
+    contradictions?: number;
+    lowestConfidence?: number;
+    status?: string;
+  } | null>(null);
+  const [hallucinationWarning, setHallucinationWarning] = useState<{
+    confidence?: number;
+    message?: string;
+    warningCount?: number;
+    revised?: boolean;
+    toolCount?: number;
+  } | null>(null);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Phase H (task #153) — artifact / image-gen / session / memory state.
+  // Distinct from Phase G because these slots feed five separate UI
+  // surfaces (ArtifactPanel, inline image thumb, memory pill,
+  // session-rename morph, context-compacted notice).
+  // ═══════════════════════════════════════════════════════════════════
+  type ArtifactPanelSlot = {
+    artifactId: string | null;
+    kind: 'markdown' | 'code' | 'chart' | 'csv';
+    title: string;
+    language?: string;
+    fileName?: string;
+    files: Record<string, { fileName: string; language?: string; content: string; lastSeq: number }>;
+    isOpen: boolean;
+    isComplete: boolean;
+    stats?: { bytes: number; lines: number } | null;
+  };
+  const [artifactPanel, setArtifactPanel] = useState<ArtifactPanelSlot | null>(null);
+
+  // E2E/Playwright proof hook — expose a window function that drives the
+  // same reducer path used by real NDJSON `artifact_open` / `artifact_delta` /
+  // `artifact_close` events. Zero-op in normal use; only our evidence
+  // verifier invokes it. Defined unconditionally so prod proofs can
+  // re-verify after deploy. SAFETY: only mutates local UI state; no
+  // network effect, no auth bypass.
+  useEffect(() => {
+    (window as unknown as { __awArtifactStreamInject?: (events: Array<Record<string, unknown>>) => void }).__awArtifactStreamInject = (events) => {
+      for (const evt of events) {
+        const data = evt as Record<string, unknown>;
+        const type = String(data.type || '');
+        if (type === 'artifact_open') {
+          const artId = String(data.artifactId || `art-${Date.now()}`);
+          const defaultFile = String(data.fileName || '__default__');
+          const kindRaw = String(data.kind || 'code');
+          const kind: ArtifactPanelSlot['kind'] =
+            kindRaw === 'markdown' || kindRaw === 'code' ||
+            kindRaw === 'chart' || kindRaw === 'csv' ? kindRaw : 'code';
+          setArtifactPanel({
+            artifactId: artId,
+            kind,
+            title: String(data.title || 'Artifact'),
+            language: (data.language as string) || undefined,
+            fileName: (data.fileName as string) || undefined,
+            files: {
+              [defaultFile]: {
+                fileName: defaultFile,
+                language: (data.language as string) || undefined,
+                content: '',
+                lastSeq: -1,
+              },
+            },
+            isOpen: true,
+            isComplete: false,
+            stats: null,
+          });
+        } else if (type === 'artifact_delta') {
+          setArtifactPanel(prev => {
+            if (!prev || prev.artifactId !== data.artifactId) return prev;
+            const fileName = String(data.fileName || '__default__');
+            const files = { ...prev.files };
+            const existing = files[fileName] ?? {
+              fileName,
+              language: undefined as string | undefined,
+              content: '',
+              lastSeq: -1,
+            };
+            const incomingSeq = typeof data.seq === 'number'
+              ? (data.seq as number) : existing.lastSeq + 1;
+            if (incomingSeq <= existing.lastSeq && existing.lastSeq >= 0) return prev;
+            files[fileName] = {
+              ...existing,
+              language: existing.language || (data.language as string) || undefined,
+              content: existing.content + String(data.contentDelta || ''),
+              lastSeq: incomingSeq,
+            };
+            return { ...prev, files };
+          });
+        } else if (type === 'artifact_close') {
+          setArtifactPanel(prev => {
+            if (!prev || prev.artifactId !== data.artifactId) return prev;
+            return {
+              ...prev,
+              isComplete: true,
+              stats: (data.stats as { bytes: number; lines: number }) || null,
+            };
+          });
+        } else if (type === 'reset') {
+          setArtifactPanel(null);
+        }
+      }
+    };
+    return () => {
+      delete (window as unknown as { __awArtifactStreamInject?: unknown }).__awArtifactStreamInject;
+    };
+  }, []);
+  const [imageProgress, setImageProgress] = useState<{
+    imageGenId: string;
+    progress: number;
+    partialUrl?: string;
+    eta?: number;
+    prompt?: string;
+  } | null>(null);
+
+  // visual_render / app_render / artifact_render frames now route through
+  // the typed-block path (ContentBlock of type 'viz_render' / 'app_render')
+  // via applyCanonicalFrame so artifacts render INLINE at the wire-emit
+  // chronological position inside AgenticActivityStream. The legacy
+  // parent-level state arrays + out-of-band sidecars are ripped.
+  const [memoryWrites, setMemoryWrites] = useState<Array<{
+    key: string;
+    summary: string;
+    scope: 'user' | 'session' | 'shared';
+    entryId?: string;
+    tokenCount?: number;
+  }>>([]);
+  const [sessionRename, setSessionRename] = useState<{
+    sessionId: string;
+    from: string;
+    to: string;
+    reason: 'auto-title' | 'manual' | 'summary';
+  } | null>(null);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Wave 3 (#525) — per-message intent_classified + tool_shortlist state.
+  // Both frames fire from prompt.stage BEFORE the assistant's
+  // message_saved (#473 ordering). Buffer-then-flush on assistant role
+  // using the React placeholder id (NOT the DB CUID).
+  // ═══════════════════════════════════════════════════════════════════
+  const [intentClassifications, setIntentClassifications] = useState<
+    Record<string, IntentClassification>
+  >({});
+  const [toolShortlists, setToolShortlists] = useState<
+    Record<string, ToolShortlist>
+  >({});
+  const pendingIntentClassifiedRef = useRef<IntentClassification | null>(null);
+  const pendingToolShortlistRef = useRef<ToolShortlist | null>(null);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // #502 — sub-agent state. Driven by sub_agent_started / sub_agent_completed
+  // NDJSON envelopes emitted by services/openagentic-api/src/services/TaskTool.ts
+  // (Phase E2). One entry per dispatched sub-agent, status flips
+  // running -> ok|error on completion. Consumed by ChatMessages ->
+  // SubAgentCard. Mock 01 lines 1083-1133 reference layout.
+  // ═══════════════════════════════════════════════════════════════════
+  const [subAgents, setSubAgents] = useState<SubAgentEntry[]>([]);
+  // P0-1 part 2 — per-message scoping. The flat `subAgents` array stays
+  // for backwards compat (any consumer still reading the union); the new
+  // map is what ChatMessages threads into each MessageBubble so older
+  // message bubbles render their OWN sub-agent cards, not the latest
+  // session-global snapshot. Keyed by the active assistant messageId
+  // (uses `getAssistantPlaceholderId?.()`).
+  const [subAgentsByMessageId, setSubAgentsByMessageId] = useState<
+    Record<string, SubAgentEntry[]>
+  >({});
+  // P1-6 — per-message streaming-table state. Keyed by the active
+  // assistant messageId (same flush-key strategy as subAgentsByMessageId).
+  // Each table is keyed by artifact_id within the message; hot-swap on
+  // re-emit, append otherwise. Pure reducer at
+  // useChatStream.streamingTable.test.ts.
+  const [streamingTablesByMessageId, setStreamingTablesByMessageId] = useState<
+    Record<string, StreamingTable[]>
+  >({});
+
+  // Phase 27 — per-message findings artifacts (mocks 03, 07, 08, 09).
+  // Server emits `findings_emit` from security/audit sub-agent results.
+  const [findingsByMessageId, setFindingsByMessageId] = useState<
+    Record<string, FindingsArtifact[]>
+  >({});
+
+  // #502 — per-message inline widgets (kpi_grid / savings_card / runbook
+  // / wave_timeline / stack_grid / stages_strip / annotated_code). One
+  // unified `inline_widget` frame; reducer pure-tested at
+  // useChatStream.inlineWidget.test.ts.
+  const [inlineWidgetsByMessageId, setInlineWidgetsByMessageId] = useState<
+    Record<string, InlineWidget[]>
+  >({});
+
+  // AC-D — per-message clickable download tiles. Server emits
+  // artifact_emit when a tool finishes writing bytes to
+  // UserStorageService. Reducer pure-tested at
+  // useChatStream.artifactEmit.test.ts.
+  const [artifactEmitsByMessageId, setArtifactEmitsByMessageId] = useState<
+    Record<string, ArtifactEmit[]>
+  >({});
+
+  // follow-up chip row ripped 2026-05-12 (user directive — chips were
+  // generic placeholders, never reflected actual conversation data).
+
+  // Audit §10 step 16 — HITL approval card. Server emits `hitl_approval`
+  // (or legacy `mcp_approval_required`) when a write-tier tool needs
+  // operator approval. UI renders an inline card with Approve/Deny
+  // (mocks #9 HIPAA remediation, #15 secret rotation).
+  const [hitlApprovalsByMessageId, setHitlApprovalsByMessageId] = useState<
+    Record<
+      string,
+      Array<{
+        requestId: string;
+        toolName: string;
+        serverName?: string;
+        reason: string;
+        timeoutMs: number;
+        arguments?: unknown;
+        status: 'pending' | 'approved' | 'denied' | 'expired';
+        /** HITL.3 — set for sub-agent HITL frames from openagentic-proxy bridge (HITL.2). */
+        parentToolUseId?: string;
+      }>
+    >
+  >({});
+
+  // B8 (2026-05-12) — content_filter compliance banner per-message slot.
+  // Server's chatLoop emits a `content_filter` frame (kind, model,
+  // message) when canonical stop_reason='content_filter' / 'safety' /
+  // 'recitation' fires. UI renders <ContentFilterBanner> inline so the
+  // operator sees a distinct compliance signal instead of an empty
+  // bubble. audit policy requires this surfaces to the user.
+  // the design notes
+  const [contentFilterBannerByMessageId, setContentFilterBannerByMessageId] = useState<
+    Record<string, { kind: string; model: string; message: string }>
+  >({});
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Phase I (task #154) — durable-stream resume state.
+  //   - `resumeTurnIdRef` captures the server-supplied turnId from the
+  //     stream_start frame. Used by the retry-after-drop path as the
+  //     tail endpoint's query param.
+  //   - `lastSeqRef` tracks the highest `_seq` we've seen this turn so
+  //     dedupe on resume skips frames we already handled.
+  //   - `seenSeqsRef` tracks EVERY _seq seen for the current turn so we
+  //     can drop duplicates from the tail endpoint even if they arrive
+  //     out of order with respect to lastSeqRef (network reorder).
+  //   - `reconnectedPill` shows a brief "↻ Reconnected" chip for 2s on
+  //     successful resume so the user has a visible confirmation.
+  // ═══════════════════════════════════════════════════════════════════
+  const resumeTurnIdRef = useRef<string | null>(null);
+  const lastSeqRef = useRef<number>(0);
+  const seenSeqsRef = useRef<Set<number>>(new Set());
+  const [reconnectedPill, setReconnectedPill] = useState<{ at: number } | null>(null);
+
+  // Chain of Thought steps for COT UI display
+  const [cotSteps, setCotSteps] = useState<Array<{
+    id: string;
+    type: 'thinking' | 'tool_call' | 'rag_lookup' | 'fetch' | 'memory' | 'reasoning';
+    description: string;
+    status: 'pending' | 'in_progress' | 'completed' | 'error';
+    startTime?: number;
+    endTime?: number;
+    request?: unknown;
+    response?: unknown;
+    error?: string;
+  }>>([]);
+  // Ref to capture cotSteps at message completion time (for closure access)
+  const cotStepsRef = useRef<typeof cotSteps>([]);
+  const [pipelineState, setPipelineState] = useState<PipelineState>(createInitialPipelineState);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  // #940 — Wall-clock ms timestamp of the last NDJSON frame the chat
+  // stream received. Updated by the chunk-decode site in the fetch loop
+  // (see `resetStreamTimeout()` adjacent — frames bump that timer for
+  // the 5-minute idle-timeout, AND now this ref for the 60s stale-frame
+  // watchdog that clears the ThinkingSphere if the connection silently
+  // dies). `null` means "no active stream" / "watchdog idle".
+  const lastFrameAtRef = useRef<number | null>(null);
+  const { getAccessToken, user } = useAuth();
+  const [animationMode, setAnimationMode] = useState<AnimationMode>(getAnimationMode());
+
+  // Keep refs in sync with state for capturing at completion time
+  useEffect(() => {
+    currentThinkingRef.current = currentThinking;
+  }, [currentThinking]);
+
+  // Keep cotSteps ref in sync for closure access in done handler
+  useEffect(() => {
+    cotStepsRef.current = cotSteps;
+  }, [cotSteps]);
+
+  // Keep contentBlocks ref in sync for closure access
+  useEffect(() => {
+    contentBlocksRef.current = contentBlocks;
+  }, [contentBlocks]);
+
+  // CRITICAL FIX: Abort active stream AND reset state when session changes
+  // This prevents messages from bleeding between sessions
+  useEffect(() => {
+    if (previousSessionIdRef.current && previousSessionIdRef.current !== sessionId) {
+      // Session changed — IMMEDIATELY abort any running stream.
+      // NOTE: a falsy `previousSessionIdRef.current` ('' or null) means we're
+      // going from "no/empty session" → a freshly-created one (the first-message
+      // flow), NOT switching between two real sessions. We must NOT abort there,
+      // or the first message's just-started stream (kicked off with the live
+      // sessionId) gets killed the instant the store update re-renders the prop.
+      if (abortControllerRef.current) {
+        console.warn('[SSE] Session changed while stream active — ABORTING old stream:', {
+          from: previousSessionIdRef.current,
+          to: sessionId
+        });
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      // Reset all thinking/streaming state
+      setCurrentThinking('');
+      // Track B Phase 3 — `setCurrentMessage('')` ripped; contentBlocks reset below
+      setIsThinkingCompleted(false);
+      setThinkingMetrics(null);
+      setCotSteps([]);
+      setContentBlocks([]);
+      canonicalReducerStateRef.current = initialFrameState();
+      setCanonicalReducerState(initialFrameState());
+      setPipelineState(createInitialPipelineState());
+      currentThinkingRef.current = '';
+      cotStepsRef.current = [];
+      contentBlocksRef.current = [];
+      currentThinkingBlockIndexRef.current = null;
+      currentTextBlockIndexRef.current = null;
+      // Clear normalized stream events from previous session — these feed
+      // MessageBubble's AgenticActivityStream and would otherwise render the
+      // old session's agent cards in the new session ("ghost agents" bug).
+      setNormalizedEvents([]);
+      normalizedEventsRef.current = [];
+      // Clear the global agent tree store — same reason. The store is keyed
+      // by executionId and is NOT session-scoped, so without an explicit clear
+      // the previous session's trees persist until the next stream finishes.
+      useAgentTreeStore.getState().clearAllTrees();
+      // Phase G — drop observability state on session change so the pills
+      // from session A don't ghost into session B.
+      setHandoffEvent(null);
+      setRetryEvents([]);
+      setCurrentStage(null);
+      stageTimingsRef.current = {};
+      setStageTimings({});
+      setRagCitations([]);
+      setCorrectionEvent(null);
+      setWarnings([]);
+      setRagStatus(null);
+      setMemoryStatus(null);
+      setDlpScan(null);
+      setToolCacheHits({});
+      setSelfCritique(null);
+      setHallucinationWarning(null);
+      // Phase H (task #153) — drop artifact/image/memory/session state
+      // so panels from session A don't ghost into session B.
+      setArtifactPanel(null);
+      setImageProgress(null);
+      setMemoryWrites([]);
+      setSessionRename(null);
+      // Wave 3 (#525) — drop intent classifications + tool shortlists on
+      // session switch, including buffered pendings.
+      setIntentClassifications({});
+      setToolShortlists({});
+      pendingIntentClassifiedRef.current = null;
+      pendingToolShortlistRef.current = null;
+      // P0-1 of chatmode UX parity (2026-04-30) — sub-agent cards from
+      // session A used to bleed into session B because the SubAgentEntry[]
+      // reducer keys by role, not sessionId. New sessions start empty;
+      // any prior session's cards must be dropped here. See
+      // the design notes.
+      setSubAgents([]);
+      // P0-1 part 2 — drop the per-message scoped map too on session switch.
+      setSubAgentsByMessageId({});
+      // P1-6 — drop streaming-table per-message map on session switch
+      // alongside the rest of the session-scoped state.
+      setStreamingTablesByMessageId({});
+      setFindingsByMessageId({});
+      setInlineWidgetsByMessageId({});
+      setArtifactEmitsByMessageId({});
+      // Audit §10 step 16 — drop HITL map on session switch.
+      // (follow-up chip row ripped 2026-05-12 — user directive.)
+      setHitlApprovalsByMessageId({});
+      // B8 — drop content_filter banners on session switch.
+      setContentFilterBannerByMessageId({});
+      // Phase I (task #154) — drop resume cursors when switching sessions.
+      resumeTurnIdRef.current = null;
+      lastSeqRef.current = 0;
+      seenSeqsRef.current = new Set();
+      setReconnectedPill(null);
+      // #940 — orphan ThinkingSphere on session change.
+      // MessageBubble.tsx renders the animated <ThinkingSphere> keyed on
+      // `isStreaming` — when that flag stays true after the user switches
+      // chats, the previous session's sphere keeps spinning on top of the
+      // (now wrong) active session. Customer-visible: "AI looks like it's
+      // still working but the session changed." Fix is to ALSO clear the
+      // live-turn slice here, AFTER the abort above so a stray frame can't
+      // flip it back on. Keeps `setIsStreaming(false)` PHYSICALLY AFTER the
+      // `abortControllerRef.current.abort()` call (test enforces order).
+      setIsStreaming(false);
+      setTurnStartedAt(null);
+      setLiveTokensIn(0);
+      setLiveTokensOut(0);
+      setLiveActivity('thinking');
+      setThinkingPhase('thinking');
+      setTtftMs(null);
+      lastFrameAtRef.current = null;
+    }
+    previousSessionIdRef.current = sessionId;
+  }, [sessionId]);
+
+  // #940 — unmount cleanup: closing the window or navigating away from
+  // the chat page must abort the in-flight stream and flip `isStreaming`
+  // off so the next mount does not hydrate with an orphan ThinkingSphere.
+  // Without this, a half-streaming hook leaves the AbortController + the
+  // streaming flag dangling on the React tree until garbage collection.
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      setIsStreaming(false);
+      lastFrameAtRef.current = null;
+    };
+  }, []);
+
+  // #940 — stale-frame watchdog. If `isStreaming === true` but no frame
+  // has arrived in the last STREAM_STALE_MS, the upstream stream is
+  // silently dead (network drop, provider hang, abort-race). Clear the
+  // streaming flag so the ThinkingSphere stops animating. This is a
+  // belt-and-suspenders guard on top of the 5-minute idle-timeout in
+  // the fetch loop: the watchdog runs continuously (every 5s) regardless
+  // of whether the fetch promise is alive, so it rescues users from
+  // truly stuck UIs (e.g. tab thrown to background, browser killed the
+  // fetch, controller never aborted).
+  const STREAM_STALE_MS = 60_000; // 60s of frame silence = stale
+  useEffect(() => {
+    if (!isStreaming) {
+      lastFrameAtRef.current = null;
+      return;
+    }
+    // Mark start-of-stream so the watchdog has a baseline.
+    if (lastFrameAtRef.current === null) {
+      lastFrameAtRef.current = Date.now();
+    }
+    const intervalId = setInterval(() => {
+      const last = lastFrameAtRef.current;
+      if (last === null) return;
+      if (Date.now() - last > STREAM_STALE_MS) {
+        console.warn('[SSE] stale-frame watchdog tripped — clearing isStreaming after', Date.now() - last, 'ms of silence');
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+          abortControllerRef.current = null;
+        }
+        setIsStreaming(false);
+        setLiveActivity('thinking');
+        lastFrameAtRef.current = null;
+      }
+    }, 5_000);
+    return () => clearInterval(intervalId);
+  }, [isStreaming]);
+
+  const sendMessage = useCallback(async (
+    message: string,
+    options?: {
+      model?: string;
+      enabledTools?: string[];
+      files?: unknown[];
+      promptTechniques?: string[];
+      enableExtendedThinking?: boolean;
+      flowContext?: unknown;
+      artifactContext?: { content: string; title: string; type: string };
+    }
+  ) => {
+    // Critical debug logging
+    // console.log('[SSE] sendMessage called with:', { message, sessionId, options });
+    
+    // First-message race fix: on the first send of a brand-new chat the prop
+    // `sessionId` can still be '' because createNewSession()'s store update
+    // hasn't re-rendered this hook yet. Resolve the id LIVE from the store at
+    // call time so the very first message opens the stream. (Previously it hit
+    // the guard below, silently bailed before any /api/chat/stream fetch, and
+    // left a spinner — which is why it "worked after reload": on reload the id
+    // is already hydrated before the first send.)
+    const effectiveSessionId =
+      (sessionId && sessionId.trim()) ? sessionId : (useChatStore.getState().activeSessionId || '');
+
+    // Validate sessionId before attempting to send
+    if (!effectiveSessionId || effectiveSessionId.trim() === '') {
+      console.error('[SSE] Cannot send message - no sessionId provided');
+      setIsStreaming(false);
+      if (onError) {
+        onError(new Error('No session ID provided'));
+      }
+      return;
+    }
+
+    // Phase 13 (2026-04-30) — sub-agent cards stick to the bottom of the
+    // session unless we drop the flat `subAgents` array between turns.
+    // The per-message-scoped map (`subAgentsByMessageId`) is the SoT for
+    // showing prior turns' cards in their original location; the flat
+    // array is only the in-flight scratchpad. Reset it on every new
+    // sendMessage so completed sub-agents from turn N don't bleed into
+    // turn N+1's bubble.
+    setSubAgents([]);
+
+    // CRITICAL FIX: Save current streaming message BEFORE clearing it
+    // If there's a streaming message in progress, finalize it first to prevent message loss.
+    // Track B Phase 3 — read flat-string view from contentBlocks via deriveFlatMessage
+    // (the legacy `currentMessage` flat-string state was ripped).
+    const __interruptedFlat = deriveFlatMessage(contentBlocksRef.current);
+    if (__interruptedFlat && onMessage) {
+      // console.log('[SSE] Finalizing previous streaming message before starting new one');
+      onMessage({
+        id: `streaming_${Date.now()}`,
+        role: 'assistant',
+        content: __interruptedFlat,
+        timestamp: new Date().toISOString(),
+        mcpCalls: [],
+        metadata: { streamingInterrupted: true }
+      });
+    }
+
+    // Abort any existing stream and wait briefly to prevent race conditions
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      // Small delay to ensure cleanup is complete before creating new controller
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+
+    // Create new abort controller
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    // Additional safety check - if the controller was somehow aborted immediately, recreate it
+    if (abortController.signal.aborted) {
+      // console.warn('[SSE] AbortController was aborted immediately, creating new one');
+      const newController = new AbortController();
+      abortControllerRef.current = newController;
+    }
+
+    setIsStreaming(true);
+    // LiveTurnStatus — capture turn-start ts so the strip can render an
+    // elapsed ticking counter under the streaming assistant avatar.
+    setTurnStartedAt(Date.now());
+    setLiveTokensIn(0);
+    setLiveTokensOut(0);
+    setLiveActivity('thinking');
+    // Track B Phase 3 — `setCurrentMessage('')` ripped; contentBlocks reset below
+    setCurrentThinking('');
+    setContentBlocks([]); // Reset interleaved content blocks for new message
+    contentBlocksRef.current = [];
+    canonicalReducerStateRef.current = initialFrameState();
+    setCanonicalReducerState(initialFrameState());
+    blockIndexOffsetRef.current = 0; // Reset block index offset for new message
+    setIsThinkingCompleted(false); // Reset thinking completion flag
+    setThinkingMetrics(null);
+    setThinkingBudget(0); // Reset thinking budget
+    setThinkingPhase('thinking'); // Reset phase
+    setTtftMs(null); // Reset TTFT for new message
+    setRunningCost(null); // v0.6.7 fix 2 — reset running cost each turn
+    runningCostRef.current = null;
+    setCotSteps([]); // Clear COT steps for new message
+    setPipelineState(createInitialPipelineState());
+    normalizedEventsRef.current = [];
+    setNormalizedEvents([]);
+    // Phase G (task #152) — reset observability slots for the new turn.
+    setHandoffEvent(null);
+    setRetryEvents([]);
+    setCurrentStage(null);
+    stageTimingsRef.current = {};
+    setStageTimings({});
+    setRagCitations([]);
+    setCorrectionEvent(null);
+    setWarnings([]);
+    setRagStatus(null);
+    setMemoryStatus(null);
+    setDlpScan(null);
+    setToolCacheHits({});
+    setSelfCritique(null);
+    setHallucinationWarning(null);
+    // Phase H (task #153) — reset artifact / image / memory / rename
+    // slots for the new turn. memoryWrites is turn-scoped so each turn's
+    // "Remembered" pill belongs to that turn only.
+    setArtifactPanel(null);
+    setImageProgress(null);
+    setMemoryWrites([]);
+    setSessionRename(null);
+    // Phase I (task #154) — reset durable-resume tracking for the new turn.
+    resumeTurnIdRef.current = null;
+    lastSeqRef.current = 0;
+    seenSeqsRef.current = new Set();
+    setReconnectedPill(null);
+
+    let hasReportedError = false;
+    let hasCompletedStream = false;
+
+    try {
+      // Get access token - try multiple auth methods
+      let token;
+      try {
+        token = await getAccessToken(['User.Read']);
+      } catch (error) {
+        console.error('[SSE] getAccessToken failed:', error);
+        // Fallback to manual token retrieval (try all known key names + cookie)
+        token = localStorage.getItem('accessToken') || localStorage.getItem('auth_token') || sessionStorage.getItem('accessToken');
+        if (!token) {
+          // Extract from cookie as last resort
+          const match = document.cookie.match(/openagentic_token=([^;]+)/);
+          if (match) token = match[1];
+        }
+      }
+      
+      if (!token) {
+        console.error('[SSE] No authentication token available');
+        throw new Error('Authentication required - no token available');
+      }
+
+      // Critical debug logging - always log this fetch attempt
+      // console.log('[SSE] About to send fetch request to:', apiEndpoint('/chat/stream'), {
+      //   sessionId,
+      //   model: options?.model,
+      //   hasToken: !!token,
+      //   tokenLength: token?.length,
+      //   userId: user?.id || user?.oid,
+      //   fullPayload: {
+      //     sessionId,
+      //     message,
+      //     model: options?.model,
+      //     enabledTools: options?.enabledTools || [],
+      //     autoApproveTools,
+      //     files: options?.files,
+      //     promptTechniques: options?.promptTechniques || []
+      //   }
+      // });
+
+      // console.log('[SSE] FETCH REQUEST STARTING NOW - URL:', apiEndpoint('/chat/stream'));
+      // console.log('[SSE] FETCH REQUEST HEADERS:', {
+      //   'Content-Type': 'application/json',
+      //   'Authorization': token ? `Bearer ${token.substring(0, 20)}...` : 'NO TOKEN',
+      //   'x-user-id': user?.id || user?.oid
+      // });
+      
+      const response = await fetch(apiEndpoint('/chat/stream'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'x-user-id': user?.id || user?.userId || '',
+          // Don't let proxies cache the streamed response.
+          'Cache-Control': 'no-cache',
+          // v0.6.6: chat stream is NDJSON-only (SSE removed in BLOCKER-004).
+          'Accept': 'application/x-ndjson',
+        },
+        body: JSON.stringify({
+          sessionId: effectiveSessionId,
+          message,
+          model: options?.model,
+          enabledTools: options?.enabledTools || [],
+          autoApproveTools,
+          files: options?.files,
+          promptTechniques: options?.promptTechniques || [],
+          enableExtendedThinking: options?.enableExtendedThinking,
+          flowContext: options?.flowContext,
+          artifactContext: options?.artifactContext,
+          // P1 #940 (2026-05-18) — grounding T1. When ON, the api injects
+          // a system-prompt addendum instructing the model to verify
+          // factual claims via the existing web_search MCP tool and emit
+          // a final markdown verdict line. Pulled from the persisted
+          // useGroundingStore (localStorage-backed) — no UI prop drilling.
+          groundingEnabled: (() => {
+            try {
+              // Lazy global read so this hook stays free of cross-store
+              // import order ambiguity at module-init time. Falls back to the
+              // pre-rename `awp.` key in case useGroundingStore (which performs
+              // the one-time key migration) hasn't been imported on this route.
+              const raw =
+                localStorage.getItem('openagentic:grounding.v1') ??
+                localStorage.getItem('awp.grounding.v1');
+              if (!raw) return false;
+              const parsed = JSON.parse(raw);
+              return Boolean(parsed?.state?.enabled);
+            } catch {
+              return false;
+            }
+          })(),
+          // Z.ET (2026-05-19) — per-turn extended thinking toggle. When
+          // the UI Brain toggle is OFF (extendedThinkingEnabled=false), the
+          // api skips attaching a thinking budget even for capable models.
+          // undefined (when store is empty) = ON (backwards-compatible).
+          extendedThinkingEnabled: (() => {
+            try {
+              const raw = localStorage.getItem('openagentic:extended-thinking');
+              if (!raw) return undefined; // Store not yet written → use server default (ON)
+              const parsed = JSON.parse(raw);
+              const enabled = parsed?.state?.enabled;
+              // Only send false when explicitly turned off; omit otherwise
+              // so the api's existing logic runs unmodified for undefined.
+              return enabled === false ? false : undefined;
+            } catch {
+              return undefined; // Fallback: let server decide
+            }
+          })()
+        }),
+        signal: abortControllerRef.current?.signal,
+        // CRITICAL: Disable browser caching for SSE
+        cache: 'no-store'
+      });
+      
+      // SSE response logging - disabled in production to reduce console noise
+      // console.log('[SSE] FETCH REQUEST COMPLETED - Response received:', {
+      //   status: response.status,
+      //   ok: response.ok,
+      //   statusText: response.statusText,
+      //   contentType: response.headers.get('content-type'),
+      //   hasBody: !!response.body
+      // });
+
+      // Log errors
+      if (!response.ok) {
+        console.error('[SSE] Response error:', {
+          status: response.status,
+          ok: response.ok
+        });
+      }
+      
+      if (!response.ok) {
+        console.error('[SSE] HTTP ERROR - Response not ok:', {
+          status: response.status,
+          statusText: response.statusText
+        });
+        // Surface a specific message for size/auth errors instead of the
+        // opaque "HTTP error! status: NNN" — most 413s on this endpoint are
+        // a fallback inline-base64 attachment exceeding the API body cap
+        // because pre-upload to MinIO failed earlier in the pipeline.
+        if (response.status === 413) {
+          throw new Error('Attachment too large to send (server returned 413). Please attach a smaller file (under 25 MB) or remove the attachment and try again.');
+        }
+        if (response.status === 401) {
+          throw new Error('Your session has expired. Please refresh the page and sign in again.');
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      
+      if (!reader) {
+        throw new Error('No response body');
+      }
+      
+      // Track B Phase 3 — `let assistantMessage = ''` flat-string accumulator
+      // RIPPED. The canonical `applyCanonicalFrame` reducer owns ContentBlock
+      // SoT and `deriveFlatMessage(contentBlocksRef.current)` produces the
+      // legacy flat-string view for callers that still need it (title-gen,
+      // copy-to-clipboard, durable-tail-resume `done` payload, etc.).
+      let messageId = '';
+      let mcpCalls: unknown[] = [];
+      let chunkCount = 0;
+      let currentPipelineState = createInitialPipelineState();
+      let hasCompletedStream = false; // Guard against duplicate done events
+      let hasReportedError = false; // Guard against duplicate error messages (fixes 3x error display)
+      let responseModel = options?.model || ''; // Track which model was used for this response (fallback to requested model)
+
+      // Phase I (task #154) — durable-stream resume helper.
+      // Minimal tail-replay consumer that handles the subset of events
+      // needed to catch the user up to where the main stream got cut
+      // off: content deltas (`stream` / `content_delta`), terminal
+      // markers (`done`, `stream_complete`, `resume_exhausted`), and a
+      // safety `error` ticker. Frames the ring buffer replays retain
+      // their full original payload — we just dedupe on `_seq` and
+      // re-apply the critical subset. Other events (tool_progress,
+      // thinking_delta) are observed + acknowledged but not re-rendered
+      // on the post-reconnect path; the spec explicitly allows this
+      // because the backend is correct whether the UI retries or not.
+      const attemptTailResume = async (
+        sid: string,
+        tid: string,
+        afterSeq: number,
+        bearer: string,
+        uid: string,
+      ): Promise<void> => {
+        const url = `${apiEndpoint('/chat/stream')}/${encodeURIComponent(sid)}/tail?turnId=${encodeURIComponent(tid)}&after=${encodeURIComponent(String(afterSeq))}`;
+        const tailResp = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/x-ndjson',
+            'Authorization': `Bearer ${bearer}`,
+            'x-user-id': uid,
+          },
+          cache: 'no-store',
+        });
+        if (!tailResp.ok || !tailResp.body) {
+          throw new Error(`tail HTTP ${tailResp.status}`);
+        }
+        const tailReader = tailResp.body.getReader();
+        const tailDec = new TextDecoder();
+        let tailBuf = '';
+        let sawAnyFrame = false;
+
+        while (true) {
+          const { done: tDone, value: tVal } = await tailReader.read();
+          if (tDone) break;
+          tailBuf += tailDec.decode(tVal, { stream: true });
+          const lines = tailBuf.split('\n');
+          tailBuf = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            let frame;
+            try {
+              frame = JSON.parse(line);
+            } catch {
+              continue;
+            }
+
+            // Dedupe on _seq.
+            if (typeof frame._seq === 'number') {
+              if (seenSeqsRef.current.has(frame._seq)) continue;
+              seenSeqsRef.current.add(frame._seq);
+              if (frame._seq > lastSeqRef.current) {
+                lastSeqRef.current = frame._seq;
+              }
+            }
+
+            // First real frame → show the pill for 2s.
+            if (!sawAnyFrame) {
+              sawAnyFrame = true;
+              const at = Date.now();
+              setReconnectedPill({ at });
+              setTimeout(() => {
+                setReconnectedPill(p => (p?.at === at ? null : p));
+              }, 2000);
+            }
+
+            const t = frame.type;
+            if (t === 'stream' || t === 'content_delta' || t === 'delta') {
+              const delta = frame.content || frame.delta || frame.text || '';
+              if (typeof delta === 'string' && delta.length > 0) {
+                // Track B Phase 3 — `assistantMessage += delta` +
+                // `setCurrentMessage(...)` RIPPED. The canonical reducer
+                // accumulates text into contentBlocks via the
+                // `content_block_delta` arm; the `onStream` callback still
+                // fires so downstream activity-stream consumers see the
+                // delta in real time.
+                onStream?.(delta);
+              }
+            } else if (t === 'done' || t === 'completion_complete' || t === 'stream_complete' || t === 'resume_exhausted') {
+              hasCompletedStream = true;
+              const __tailFlat = deriveFlatMessage(contentBlocksRef.current);
+              if (onMessage && __tailFlat.length > 0) {
+                onMessage({
+                  id: messageId || `tail_${Date.now()}`,
+                  role: 'assistant',
+                  content: __tailFlat,
+                  timestamp: new Date().toISOString(),
+                  mcpCalls,
+                  metadata: { resumedFromTail: true, lastSeq: lastSeqRef.current },
+                });
+              }
+              return;
+            } else if (t === 'error') {
+              if (!hasReportedError) {
+                hasReportedError = true;
+                const err = new Error(frame.message || 'stream resumed with error');
+                err.name = frame.code || 'TailError';
+                onError?.(err);
+              }
+              return;
+            }
+          }
+        }
+      };
+
+      // Rolling idle timeout - resets on every received chunk/ping
+      // This allows long-running agentic loops (tool calls, thinking) to run indefinitely
+      // as long as the server keeps sending data (pings every 3s, tool events, content deltas)
+      const STREAM_IDLE_TIMEOUT = 5 * 60 * 1000; // 5 minutes of INACTIVITY (not total time)
+      let streamTimeoutId: ReturnType<typeof setTimeout>;
+      const resetStreamTimeout = () => {
+        clearTimeout(streamTimeoutId);
+        streamTimeoutId = setTimeout(() => {
+          abortControllerRef.current?.abort();
+          onError?.(new Error('Stream timeout - no data received for 5 minutes'));
+        }, STREAM_IDLE_TIMEOUT);
+      };
+      resetStreamTimeout();
+      
+      // Proper SSE parsing that doesn't break on JSON boundaries
+      let buffer = '';
+      let eventType = '';
+      let eventData = '';
+      
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            clearTimeout(streamTimeoutId);
+            if (import.meta.env.DEV) {
+              // console.log('[SSE] Stream complete, total chunks:', chunkCount);
+            }
+            break;
+          }
+        
+        chunkCount++;
+        resetStreamTimeout(); // Reset idle timeout on every received chunk
+        // #940 — also bump the stale-frame watchdog. A healthy stream
+        // bumps this on every chunk; the 60s watchdog interval reads
+        // this ref to decide if the stream has gone silent.
+        lastFrameAtRef.current = Date.now();
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+
+        // v0.6.6: NDJSON-only wire format (BLOCKER-004). Each complete
+        // line is one typed JSON object `{type: "...", ...payload}`. The
+        // incomplete tail (no trailing `\n`) stays in `buffer` until the
+        // next chunk arrives.
+        const eventStrings = buffer.split('\n');
+        buffer = eventStrings.pop() || '';
+
+        for (const eventString of eventStrings) {
+          if (!eventString.trim()) continue;
+
+          let eventType: string | null = null;
+          let eventData = eventString;
+          try {
+            const peek = JSON.parse(eventString);
+            eventType = peek?.type || null;
+          } catch {
+            // Non-JSON line — will JSON.parse-fail again below and skip.
+          }
+          
+          if (eventData) {
+            try {
+              // JSON.parse already returns fresh, extensible objects - no need to clone again
+              const safeData = JSON.parse(eventData);
+
+              // SSE event logging - disabled in production to reduce console noise
+              // Enable by uncommenting for debugging streaming issues
+              // console.log(`[SSE-DEBUG] Event received - Type: "${eventType}"`, safeData);
+
+              // Only log specific events in dev when needed for debugging
+              // if (import.meta.env.DEV && ['error', 'tool_call', 'pipeline', 'stream'].includes(eventType || '')) {
+              //   console.log(`[SSE] Processing event: ${eventType}`, safeData);
+              // }
+              
+              // Update pipeline state based on event
+              const mappedStage = mapBackendStage(eventType || '');
+              if (mappedStage && mappedStage !== currentPipelineState.currentStage) {
+                // Stage transition
+                if (currentPipelineState.currentStage && currentPipelineState.stageStartTime) {
+                  const stageTime = Date.now() - currentPipelineState.stageStartTime;
+                  currentPipelineState.stageTiming[currentPipelineState.currentStage] = stageTime;
+                }
+
+                currentPipelineState.currentStage = mappedStage;
+                currentPipelineState.stageStartTime = Date.now();
+
+                // Update tool execution phase detection
+                currentPipelineState.isToolExecutionPhase = mappedStage === 'mcp';
+
+                // Update content suppression
+                currentPipelineState.shouldSuppressContent = shouldSuppressContentForStage(
+                  mappedStage,
+                  currentPipelineState.activeToolRound
+                );
+
+                setPipelineState({...currentPipelineState});
+                onPipelineStage?.(mappedStage, safeData);
+              }
+
+              // Phase I (task #154) — durable-stream dedupe + cursor.
+              // Every frame with `_seq` metadata is checked against
+              // `seenSeqsRef`. If we've already processed it (replay
+              // from /tail after a reconnect), skip the switch below.
+              // Otherwise mark it seen + advance lastSeqRef.
+              if (typeof safeData._seq === 'number') {
+                if (seenSeqsRef.current.has(safeData._seq)) {
+                  // Duplicate from a replay path — drop silently.
+                  continue;
+                }
+                seenSeqsRef.current.add(safeData._seq);
+                if (safeData._seq > lastSeqRef.current) {
+                  lastSeqRef.current = safeData._seq;
+                }
+              }
+
+              // Pure canonical reducer runs alongside the inline switch.
+              // Skip the React commit when the reducer returns the same
+              // state object — applyCanonicalFrame preserves identity
+              // for frames it doesn't consume (ping, done, unknown).
+              {
+                const nextCanonical = applyCanonicalFrame(
+                  canonicalReducerStateRef.current,
+                  safeData as WireFrame,
+                );
+                if (nextCanonical !== canonicalReducerStateRef.current) {
+                  canonicalReducerStateRef.current = nextCanonical;
+                  setCanonicalReducerState(nextCanonical);
+                }
+              }
+
+              switch (eventType) {
+                case 'stream_start':
+                  // Phase I — capture the turnId so an abrupt mid-turn
+                  // disconnect can hit GET /api/chat/stream/:sessionId/tail
+                  // with the right cursor.
+                  if (typeof safeData.turnId === 'string' && safeData.turnId.length > 0) {
+                    resumeTurnIdRef.current = safeData.turnId;
+                  }
+                  break;
+
+                case 'resume_exhausted':
+                  // Phase I — the tail endpoint just told us there are
+                  // no more frames to replay (turn finalized or TTL
+                  // expired). Treat identically to `stream_complete`
+                  // so downstream callbacks finalize the message.
+                  hasCompletedStream = true;
+                  break;
+
+                case 'message_received':
+                  messageId = safeData.messageId;
+                  // LiveTurnStatus — seed input tokens once if the server
+                  // includes a prompt-size hint. Output tokens grow as
+                  // text/thinking deltas arrive.
+                  if (typeof safeData.promptTokens === 'number') {
+                    setLiveTokensIn(safeData.promptTokens);
+                  } else if (typeof safeData.inputTokens === 'number') {
+                    setLiveTokensIn(safeData.inputTokens);
+                  }
+                  break;
+
+                case 'ttft':
+                  // Time to First Token - useful for debugging slow responses
+                  // This measures how long from request to first content chunk
+                  if (safeData.ttftMs) {
+                    setTtftMs(safeData.ttftMs);
+                    // TTFT logging - disabled in production
+                    // console.log(`[SSE-METRICS] TTFT: ${safeData.ttftMs}ms`);
+                  }
+                  break;
+
+                // v0.6.7 fix 2 — running cost delta from the streaming pipeline.
+                // Server emits this per chunk with the incremental USD cost
+                // (or the running total). We accumulate into runningCost which
+                // CostPill consumes as a prop + pulses on each update.
+                case 'cost_delta': {
+                  const delta =
+                    typeof safeData.delta === 'number'
+                      ? safeData.delta
+                      : typeof safeData.costDelta === 'number'
+                      ? safeData.costDelta
+                      : undefined;
+                  const total =
+                    typeof safeData.totalCost === 'number'
+                      ? safeData.totalCost
+                      : typeof safeData.runningCost === 'number'
+                      ? safeData.runningCost
+                      : undefined;
+                  if (total != null) {
+                    runningCostRef.current = total;
+                    setRunningCost(total);
+                  } else if (delta != null) {
+                    const next = (runningCostRef.current ?? 0) + Math.max(0, delta);
+                    runningCostRef.current = next;
+                    setRunningCost(next);
+                  }
+                  break;
+                }
+
+                case 'message_saved':
+                  // Database-First: Message confirmed in PostgreSQL before streaming
+                  // console.log('[SSE] message_saved event received:', safeData);
+                  messageId = safeData.messageId || messageId;
+
+                  // If this is a user message, we can ignore it (already handled by UI)
+                  // If this is an assistant message starting to stream, prepare for content
+                  if (safeData.role === 'assistant' && safeData.streaming) {
+                    // console.log('[SSE] Assistant message starting with DB ID:', messageId);
+                  }
+
+                  // Wave 3 (#525) — flush any buffered intent_classified +
+                  // tool_shortlist frames now that we know the assistant
+                  // message exists.
+                  //
+                  // #473 — flush key MUST match the React message.id used
+                  // by ChatMessages's per-message lookups. ChatContainer
+                  // creates the assistant with a client-side placeholder
+                  // id like `assistant_<ts>_<rand>` and that id stays in
+                  // messages[] forever. The DB CUID arriving via
+                  // safeData.messageId is a different namespace and
+                  // misses the lookup. Prefer the caller-supplied
+                  // placeholder id when available; fall back to the wire
+                  // CUID for back-compat in test/dev paths that don't
+                  // wire `getAssistantPlaceholderId`.
+                  if (safeData.role === 'assistant') {
+                    const placeholderId = getAssistantPlaceholderId?.() || null;
+                    const flushKey = placeholderId || (safeData.messageId ? String(safeData.messageId) : '');
+                    if (flushKey) {
+                      setIntentClassifications((prev) => {
+                        const out = flushPendingIntentClassified(
+                          flushKey,
+                          prev,
+                          pendingIntentClassifiedRef.current,
+                        );
+                        pendingIntentClassifiedRef.current = out.pending;
+                        return out.intentClassifications;
+                      });
+                      setToolShortlists((prev) => {
+                        const out = flushPendingToolShortlist(
+                          flushKey,
+                          prev,
+                          pendingToolShortlistRef.current,
+                        );
+                        pendingToolShortlistRef.current = out.pending;
+                        return out.toolShortlists;
+                      });
+                    }
+                  }
+                  break;
+
+                case 'message_updated':
+                  // Database-First: Final message content after streaming completes
+                  // console.log('[SSE] message_updated event received:', safeData);
+                  if (safeData.final && safeData.role === 'assistant') {
+                    // console.log('[SSE] Assistant message finalized in database:', messageId);
+                  }
+                  break;
+
+                case 'thinking':
+                case 'thinking_event':
+                  // Capture AI's real thinking process with metrics from backend
+                  // This path is used by Ollama/gpt-oss models (non-Anthropic format)
+
+                  // Handle both 'content' and legacy 'message' fields
+                  const thinkingContent = safeData.content || safeData.message;
+                  const accumulatedThinking = safeData.accumulated || thinkingContent || '';
+
+                  if (thinkingContent) {
+                    setCurrentThinking(accumulatedThinking);
+                    // Also update ref for persistence
+                    currentThinkingRef.current = accumulatedThinking;
+                    // LiveTurnStatus — bump output tokens + surface the
+                    // last non-empty thinking line as the activity summary
+                    // so the strip RIGHT of the sphere shows a real one-
+                    // line live thought from the model (not stuck at
+                    // "thinking"). Mirrors the Anthropic + OpenAgentic delta hooks.
+                    if (typeof thinkingContent === 'string' && thinkingContent.length > 0) {
+                      setLiveTokensOut(prev => prev + Math.max(1, Math.round(thinkingContent.length / 4)));
+                    }
+                    const lastLine = (accumulatedThinking || '').split('\n').filter(Boolean).pop() ?? '';
+                    const trimmed = lastLine.trim().slice(0, 110);
+                    if (trimmed) setLiveActivity(trimmed);
+
+                    // CRITICAL FIX: Also track as ContentBlock so thinking persists after finalization.
+                    // The Anthropic path (thinking_start/thinking_delta) creates ContentBlocks but this
+                    // Ollama path did not — causing thinking blocks to vanish after stream completion.
+                    // Each thinking round (separated by tool calls) gets its own ContentBlock.
+                    if (currentThinkingBlockIndexRef.current === null) {
+                      // New thinking round — create a new ContentBlock
+                      const thinkingBlockIdx = contentBlocksRef.current.length;
+                      const thinkingBlockTs = Date.now();
+                      const thinkingCB: ContentBlock = {
+                        id: `block-${thinkingBlockIdx}-${thinkingBlockTs}`,
+                        index: thinkingBlockIdx,
+                        type: 'thinking',
+                        content: accumulatedThinking,
+                        isComplete: false,
+                        timestamp: thinkingBlockTs,
+                        // #813 — InlineThinkingBlock derives endedAt = startTime
+                        // + duration. Stamp startTime here so the close handler
+                        // can compute wall-clock elapsed; otherwise the UI
+                        // header reads "Thought · 0.0s · ~N tok".
+                        startTime: thinkingBlockTs,
+                      };
+                      setContentBlocks(prev => [...prev, thinkingCB]);
+                      contentBlocksRef.current = [...contentBlocksRef.current, thinkingCB];
+                      currentThinkingBlockIndexRef.current = thinkingBlockIdx;
+                    } else {
+                      // Same thinking round — update existing ContentBlock with accumulated content
+                      setContentBlocks(prev => prev.map(block =>
+                        block.index === currentThinkingBlockIndexRef.current
+                          ? { ...block, content: accumulatedThinking }
+                          : block
+                      ));
+                      contentBlocksRef.current = contentBlocksRef.current.map(block =>
+                        block.index === currentThinkingBlockIndexRef.current
+                          ? { ...block, content: accumulatedThinking }
+                          : block
+                      );
+                    }
+                  }
+
+                  // Capture thinking metrics (tokens, timing, speed)
+                  const thinkingTokens = safeData.tokens;
+                  if (thinkingTokens !== undefined) {
+                    const metrics = {
+                      tokens: thinkingTokens,
+                      elapsedMs: safeData.elapsedMs || 0,
+                      tokensPerSecond: safeData.tokensPerSecond || 0
+                    };
+                    setThinkingMetrics(metrics);
+                  }
+
+                  // Call callbacks for unified activity display
+                  onThinking?.(safeData.status || 'Thinking');
+                  onThinkingContent?.(accumulatedThinking, thinkingTokens);
+                  break;
+
+                case 'thinking_complete':
+                  // Thinking phase finished - DON'T clear thinking content here!
+                  // Let the UI decide when to collapse/hide the thinking display
+                  // The content should remain visible for users to review
+                  setIsThinkingCompleted(true); // Mark thinking as completed for UI
+
+                  // Mark ContentBlock as complete + stamp duration for interleaved display.
+                  // #813 — InlineThinkingBlock reads endedAt = startTime + duration. Without
+                  // a duration on close the UI shows "Thought · 0.0s". Use Date.now() since
+                  // wire _ts isn't threaded through the legacy inline handler.
+                  if (currentThinkingBlockIndexRef.current !== null) {
+                    const closeTs = Date.now();
+                    const closeBlock = (block: ContentBlock): ContentBlock => {
+                      const next: ContentBlock = { ...block, isComplete: true };
+                      if (typeof block.startTime === 'number' && block.duration == null) {
+                        next.duration = Math.max(0, closeTs - block.startTime);
+                      }
+                      return next;
+                    };
+                    setContentBlocks(prev => prev.map(block =>
+                      block.index === currentThinkingBlockIndexRef.current
+                        ? closeBlock(block)
+                        : block
+                    ));
+                    contentBlocksRef.current = contentBlocksRef.current.map(block =>
+                      block.index === currentThinkingBlockIndexRef.current
+                        ? closeBlock(block)
+                        : block
+                    );
+                    currentThinkingBlockIndexRef.current = null; // Clear tracking ref
+                  }
+
+                  onThinkingComplete?.();
+                  // Only clear metrics (the spinner), not the content
+                  setThinkingMetrics(null);
+                  break;
+
+                case 'token_metrics':
+                  // Live token metrics during streaming (separate from thinking events)
+                  if (safeData.tokens !== undefined || safeData.elapsedMs !== undefined) {
+                    const metrics = {
+                      tokens: safeData.tokens || 0,
+                      elapsedMs: safeData.elapsedMs || 0,
+                      tokensPerSecond: safeData.tokensPerSecond || 0
+                    };
+                    setThinkingMetrics(metrics);
+                  }
+                  break;
+
+                case 'stream':
+                case 'content_delta':
+                case 'delta': // Additional common SSE event name
+                  // Track B Phase 3 (2026-05-22) — the legacy `stream` /
+                  // `content_delta` / `delta` envelopes are dead post-Phase-2
+                  // (server now emits ONLY canonical `content_block_delta`
+                  // with `text_delta` payload). The canonical reducer arm
+                  // (`case 'content_block_delta'`) is the single writer that
+                  // lands text into `contentBlocks` via `appendDelta`. This
+                  // arm is kept as an explicit no-op so legacy/dev/replay
+                  // wires that still emit the old envelope don't tripping
+                  // the `default` "Unknown event type" warn-and-fallback —
+                  // but it adds NO state.
+                  break;
+
+                case 'tool_approval_request':
+                  // Human-in-the-loop: AI is requesting approval to execute tools
+                  // console.log('[SSE] Tool approval requested:', {
+                  //   round: safeData.toolCallRound,
+                  //   toolCount: safeData.tools?.length,
+                  //   tools: safeData.tools
+                  // });
+
+                  // Call the approval callback to display the dialog
+                  if (onToolApprovalRequest && safeData.tools && safeData.tools.length > 0) {
+                    onToolApprovalRequest({
+                      tools: safeData.tools,
+                      toolCallRound: safeData.toolCallRound,
+                      messageId: safeData.messageId
+                    });
+                  }
+                  break;
+
+                // Legacy `mcp_approval_required` popup-modal handler RIPPED
+                // 2026-05-12 per user: "the legacy hitl with the popup modal
+                // sucks- leave the inline new one- its aewesome". The newer
+                // inline HITL handler below (case 'hitl_approval': case
+                // 'mcp_approval_required') writes the same event into
+                // `hitlApprovalsByMessageId` which ChatMessages renders as
+                // an inline approval card — the kept path.
+
+                case 'force_reauth':
+                  // Server says token is expired and can't be refreshed — force logout
+                  console.warn('[SSE] Force re-authentication required:', safeData.reason);
+                  // Clear local auth state and redirect to login
+                  try {
+                    localStorage.removeItem('accessToken');
+                    sessionStorage.removeItem('accessToken');
+                    // Redirect to login page after a short delay to allow the user to see the message
+                    setTimeout(() => {
+                      window.location.href = '/';
+                    }, 2000);
+                  } catch (e) {
+                    console.error('[SSE] Failed to clear auth state:', e);
+                  }
+                  // Also fire the error callback so the user sees a message
+                  onError?.(new Error(safeData.message || 'Session expired. Please sign in again.'));
+                  break;
+
+                case 'tool_execution_start':
+                  // Update pipeline state for tool execution
+                  currentPipelineState.isToolExecutionPhase = true;
+                  currentPipelineState.activeToolRound = Math.max(1, currentPipelineState.activeToolRound);
+                  // CRITICAL FIX: DO NOT suppress content during tool execution
+                  // We want real-time streaming even during MCP tool calls
+                  currentPipelineState.shouldSuppressContent = false;
+
+                  // Update thinking phase to tools for progress indicator
+                  setThinkingPhase('tools');
+
+                  setPipelineState({...currentPipelineState});
+                  onToolRound?.(currentPipelineState.activeToolRound, currentPipelineState.maxToolRounds);
+                  onToolExecution?.({
+                    type: 'start',
+                    tools: safeData.tools,
+                    round: currentPipelineState.activeToolRound
+                  });
+                  break;
+
+                case 'tool_execution_complete':
+                  // Tool execution finished - prepare for next completion stream
+                  currentPipelineState.isToolExecutionPhase = false;
+                  onToolExecution?.({
+                    type: 'complete',
+                    executionTimeMs: safeData.executionTimeMs,
+                    successCount: safeData.successCount,
+                    errorCount: safeData.errorCount
+                  });
+                  break;
+
+                case 'completion_restart':
+                  // Completion is restarting after tool execution
+                  // Un-suppress content so the next completion stream shows
+                  currentPipelineState.shouldSuppressContent = false;
+                  setPipelineState({...currentPipelineState});
+
+                  // CRITICAL FIX: Set block index offset to current length
+                  // Server restarts block indices at 0 for each LLM call, but we need
+                  // unique indices to prevent all thinking blocks from merging together
+                  blockIndexOffsetRef.current = contentBlocksRef.current.length;
+                  console.debug('[SSE] completion_restart - block index offset set to:', blockIndexOffsetRef.current);
+                  break;
+
+                case 'completion_start':
+                  // Capture the model at completion start for the response badge
+                  if (safeData.model) {
+                    responseModel = safeData.model;
+                  }
+                  break;
+
+                case 'react_progress':
+                case 'completeness_check':
+                  // ReAct cognitive loop events — pass to activity stream for display
+                  console.debug(`[SSE] ${eventType}`, safeData);
+                  break;
+
+                // ── Wire-in D (#82) — tool_round envelopes ─────────────
+                // tool_round_start / tool_round_end wrap parallel fan-out
+                // batches. Handled through the pure applyRoundFrame
+                // reducer so the correlation rule (roundId → nested
+                // children) stays unit-tested in one place.
+                case 'tool_round_start': {
+                  if (typeof safeData.roundId !== 'string') break;
+                  contentBlocksRef.current = applyRoundFrame(
+                    contentBlocksRef.current,
+                    {
+                      type: 'tool_round_start',
+                      roundId: safeData.roundId,
+                      toolCount: safeData.toolCount,
+                      toolIds: safeData.toolIds,
+                      toolNames: safeData.toolNames,
+                    },
+                  );
+                  setContentBlocks([...contentBlocksRef.current]);
+                  break;
+                }
+
+                case 'tool_round_end': {
+                  if (typeof safeData.roundId !== 'string') break;
+                  contentBlocksRef.current = applyRoundFrame(
+                    contentBlocksRef.current,
+                    {
+                      type: 'tool_round_end',
+                      roundId: safeData.roundId,
+                      succeeded: safeData.succeeded,
+                      failed: safeData.failed,
+                      durationMs: safeData.durationMs,
+                    },
+                  );
+                  setContentBlocks([...contentBlocksRef.current]);
+                  // Wire-in D — a tool_round envelope explicitly closes
+                  // the Task #131 round counter so subsequent work opens
+                  // a fresh legacy round if the backend falls back to
+                  // the un-wrapped path.
+                  inToolCallRoundRef.current = false;
+                  break;
+                }
+
+                case 'tool_executing': {
+                  // E1.5 (2026-05-12) — wire-shape normalization. The V2
+                  // pipeline emits canonical `{name, tool_use_id, input}`
+                  // (api/.../pipeline/chat/builders.ts buildToolExecuting).
+                  // Legacy OpenAI-shape callers used `arguments` /
+                  // `toolCallId`. Read canonical first, legacy fallback.
+                  // Without this every INPUT panel renders `{}` because
+                  // safeData.arguments is undefined on V2 turns. Pinned by
+                  // useChatStream.e15WireShapeNormalizer.test.ts.
+                  const teArgs = extractToolExecutingArgs(safeData);
+                  const teToolCallId = extractToolExecutingToolUseId(safeData);
+                  // Fire callback for external consumers
+                  onToolExecution?.({
+                    type: 'executing',
+                    name: safeData.name,
+                    arguments: teArgs,
+                  });
+                  // LiveTurnStatus — surface tool-name as the live activity
+                  // ("calling azure_list_subscriptions") so the user can see
+                  // what the model is doing right now.
+                  if (typeof safeData.name === 'string' && safeData.name) {
+                    setLiveActivity(`calling ${safeData.name}`);
+                  }
+
+                  // Wire-in D (#82) — if this tool_executing carries a
+                  // roundId AND an open tool_round block exists for it,
+                  // route the frame into that round's children[] via the
+                  // pure reducer and skip the sibling-creation path
+                  // below. An unknown roundId falls through to the
+                  // existing Task #131 sibling behaviour.
+                  if (typeof safeData.roundId === 'string') {
+                    const hasMatchingRound = contentBlocksRef.current.some(
+                      (b) => b.type === 'tool_round' && b.roundId === safeData.roundId,
+                    );
+                    if (hasMatchingRound) {
+                      contentBlocksRef.current = applyRoundFrame(
+                        contentBlocksRef.current,
+                        {
+                          type: 'tool_executing',
+                          roundId: safeData.roundId,
+                          toolCallId: teToolCallId,
+                          name: safeData.name,
+                          arguments: teArgs,
+                        },
+                      );
+                      setContentBlocks([...contentBlocksRef.current]);
+                      break;
+                    }
+                  }
+
+                  // Task #131 (Phase F₂) — parallel tool-call round stamping.
+                  // Backend `executeToolCalls` fires tool_executing for every
+                  // parallel MCP tool upfront before awaiting Promise.allSettled,
+                  // so a burst of consecutive tool_executing events with no
+                  // intervening tool_result represents ONE parallel round.
+                  // Bump the round counter once on the boundary; all members
+                  // of the round get the same toolCallRound value.
+                  if (!inToolCallRoundRef.current) {
+                    toolCallRoundRef.current += 1;
+                    inToolCallRoundRef.current = true;
+                    parallelSlotIndexRef.current = 0;
+                  }
+                  const currentRound = toolCallRoundRef.current;
+                  const currentSlot = parallelSlotIndexRef.current;
+                  parallelSlotIndexRef.current += 1;
+
+                  // CREATE a ContentBlock so the tool appears in the activity stream.
+                  // This ensures ALL models (including Ollama) show tool execution inline,
+                  // not just models that emit tool_use content blocks (like Claude).
+                  const execBlockId = `tool-exec-${teToolCallId || safeData.name}-${Date.now()}`;
+                  const existingExecBlock = contentBlocksRef.current.find(
+                    b => b.type === 'tool_use' && b.toolName === safeData.name && !b.isComplete
+                  );
+                  if (!existingExecBlock) {
+                    const execBlockIndex = contentBlocksRef.current.length;
+                    contentBlocksRef.current = [
+                      ...contentBlocksRef.current,
+                      {
+                        id: execBlockId,
+                        index: execBlockIndex,
+                        type: 'tool_use' as const,
+                        toolName: safeData.name,
+                        toolId: teToolCallId || execBlockId,
+                        // E1.5 — content carries the model's input args
+                        // (rendered in ToolCard's JSON view). Stringify
+                        // here so the legacy `block.content` consumers see
+                        // a stable JSON form; the parallel `block.input`
+                        // slot keeps the raw object so ToolCard can render
+                        // structured JsonView without a parse round-trip.
+                        content: JSON.stringify(teArgs ?? {}),
+                        input: teArgs,
+                        isComplete: false,
+                        startTime: Date.now(),
+                        toolCallRound: currentRound,
+                        parallelSlotIndex: currentSlot,
+                      }
+                    ];
+                    setContentBlocks([...contentBlocksRef.current]);
+                  } else if (existingExecBlock.toolCallRound == null) {
+                    // Anthropic content_block_start may have already created
+                    // the block; stamp the round on it so parallel grouping
+                    // still works regardless of which emit-path opens the block.
+                    existingExecBlock.toolCallRound = currentRound;
+                    existingExecBlock.parallelSlotIndex = currentSlot;
+                    setContentBlocks([...contentBlocksRef.current]);
+                  }
+                  break;
+                }
+
+                case 'tool_result': {
+                  // E1.5 (2026-05-12) — wire-shape normalization. V2
+                  // emits canonical `{name, tool_use_id, content, is_error,
+                  // _meta}` (api/.../pipeline/chat/builders.ts buildToolResult).
+                  // Legacy callers used `result` + `success`/`toolCallId`.
+                  // Read canonical first, legacy fallback.
+                  const trContent = extractToolResultContent(safeData);
+                  const trToolCallId = extractToolExecutingToolUseId(safeData);
+                  // Sev-1 (2026-04-19) + E1.5: failure detection. V2 stamps
+                  // `is_error: true`; legacy callers stamped
+                  // `success: false`. Either signals the failure path —
+                  // red card, explicit error text.
+                  const isFailure =
+                    safeData.is_error === true || safeData.success === false;
+                  const failureMsg =
+                    safeData.error ||
+                    (isFailure
+                      ? `${safeData.errorCode || 'UNKNOWN_ERROR'}: tool returned no data`
+                      : undefined);
+
+                  onToolExecution?.({
+                    type: isFailure ? 'error' : 'result',
+                    name: safeData.name,
+                    result: isFailure ? undefined : trContent,
+                    error: isFailure ? failureMsg : undefined,
+                  });
+
+                  // Task #131 — close the open parallel round. The NEXT
+                  // tool_executing will open round N+1. Subsequent tool_result
+                  // events in the same wave still complete their matching
+                  // blocks (they keep their toolCallRound stamp), but any
+                  // tool_executing after this point is a NEW round.
+                  inToolCallRoundRef.current = false;
+
+                  // Wire-in D (#82) — if this result belongs to an open
+                  // tool_round container, update the child in place.
+                  if (typeof safeData.roundId === 'string') {
+                    const hasMatchingRound = contentBlocksRef.current.some(
+                      (b) => b.type === 'tool_round' && b.roundId === safeData.roundId,
+                    );
+                    if (hasMatchingRound) {
+                      contentBlocksRef.current = applyRoundFrame(
+                        contentBlocksRef.current,
+                        isFailure
+                          ? {
+                              type: 'tool_error',
+                              roundId: safeData.roundId,
+                              toolCallId: trToolCallId,
+                              name: safeData.name,
+                              error: failureMsg,
+                            }
+                          : {
+                              type: 'tool_result',
+                              roundId: safeData.roundId,
+                              toolCallId: trToolCallId,
+                              name: safeData.name,
+                              result: trContent,
+                            },
+                      );
+                      setContentBlocks([...contentBlocksRef.current]);
+                      break;
+                    }
+                  }
+
+                  const resultBlockIdx = contentBlocksRef.current.findIndex(
+                    b => b.type === 'tool_use' && b.toolName === safeData.name && !b.isComplete
+                  );
+                  if (resultBlockIdx >= 0) {
+                    const prev = contentBlocksRef.current[resultBlockIdx];
+                    // Phase 4 — when the V3 chatLoop emits the two-channel
+                    // envelope (Spec §6.2), `_meta.outputTemplate` on the
+                    // tool_result frame names the FrameRendererRegistry
+                    // slug (e.g. 'k8s_pod_list', 'cost_savings'). Stamp it
+                    // onto the ContentBlock so the render layer can resolve
+                    // the React component without re-parsing the wire frame.
+                    const outputTemplate: string | undefined =
+                      !isFailure && safeData?._meta?.outputTemplate
+                        ? safeData._meta.outputTemplate
+                        : undefined;
+                    contentBlocksRef.current[resultBlockIdx] = {
+                      ...prev,
+                      isComplete: true,
+                      ...(isFailure
+                        ? { error: failureMsg, result: undefined }
+                        : {
+                            // E1.5 — keep the structured object on
+                            // `resultRaw` so ToolCard renders the actual
+                            // object via JsonView (no escape-soup). The
+                            // legacy `result: string` slot still gets a
+                            // JSON form for code paths that expect a string.
+                            result:
+                              typeof trContent === 'string'
+                                ? trContent
+                                : JSON.stringify(trContent),
+                            resultRaw: trContent,
+                          }),
+                      ...(outputTemplate ? { outputTemplate } : {}),
+                      duration: Date.now() - (prev.startTime || Date.now()),
+                    };
+                    setContentBlocks([...contentBlocksRef.current]);
+                  }
+                  break;
+                }
+                  
+                case 'tool_error': {
+                  onToolExecution?.({
+                    type: 'error',
+                    name: safeData.name,
+                    error: safeData.error
+                  });
+
+                  // Task #131 — close the open parallel round on error too.
+                  inToolCallRoundRef.current = false;
+
+                  // Mark matching ContentBlock as error
+                  const errBlockIdx = contentBlocksRef.current.findIndex(
+                    b => b.type === 'tool_use' && b.toolName === safeData.name && !b.isComplete
+                  );
+                  if (errBlockIdx >= 0) {
+                    contentBlocksRef.current[errBlockIdx] = {
+                      ...contentBlocksRef.current[errBlockIdx],
+                      isComplete: true,
+                      error: safeData.error,
+                      duration: Date.now() - (contentBlocksRef.current[errBlockIdx].startTime || Date.now()),
+                    };
+                    setContentBlocks([...contentBlocksRef.current]);
+                  }
+                  break;
+                }
+
+                case 'tool_progress':
+                  // Heartbeat progress event from backend during long-running tool execution.
+                  // F.2: also stamp the progress message onto the matching tool_use ContentBlock
+                  // so AgenticActivityStream can show "Executing... (15s)" under the tool row.
+                  {
+                    const progressToolId = safeData.toolCallId;
+                    const progressMessage = safeData.message;
+                    const progressElapsed = safeData.elapsed;
+                    if (progressToolId) {
+                      contentBlocksRef.current = contentBlocksRef.current.map(b =>
+                        b.type === 'tool_use' && b.toolId === progressToolId
+                          ? { ...b, progressMessage, progressElapsed }
+                          : b
+                      );
+                      startTransition(() => {
+                        setContentBlocks(prev => prev.map(b =>
+                          b.type === 'tool_use' && b.toolId === progressToolId
+                            ? { ...b, progressMessage, progressElapsed }
+                            : b
+                        ));
+                      });
+                    }
+                  }
+                  onToolExecution?.({
+                    type: 'progress',
+                    toolCallId: safeData.toolCallId,
+                    name: safeData.name,
+                    elapsed: safeData.elapsed,
+                    message: safeData.message,
+                  });
+                  break;
+
+                case 'tool_call_delta':
+                  // Tool call detected - increment round if needed
+                  if (currentPipelineState.activeToolRound === 0) {
+                    currentPipelineState.activeToolRound = 1;
+                  }
+
+                  // Notify UI about tool calls being made so they display as steps during streaming
+                  // These are real LLM function calls (not synthetic) - we just don't have results yet
+                  if (safeData.toolCalls && safeData.toolCalls.length > 0) {
+                    // FIX: Create tool_use content blocks for non-Anthropic providers (Ollama, OpenAI)
+                    // This ensures hasInterleavedContent=true and tools render inline
+                    safeData.toolCalls.forEach((tc) => {
+                      const toolId = tc.id || `tool_${Date.now()}`;
+                      const toolName = tc.function?.name || tc.name || 'unknown';
+                      const existingBlock = contentBlocksRef.current.find(
+                        b => b.type === 'tool_use' && b.toolId === toolId
+                      );
+
+                      if (!existingBlock) {
+                        const newBlockIndex = contentBlocksRef.current.length;
+                        const newBlock: ContentBlock = {
+                          id: `tool-${toolId}`,
+                          index: newBlockIndex,
+                          type: 'tool_use',
+                          content: tc.function?.arguments || tc.arguments || '',
+                          isComplete: false,
+                          timestamp: Date.now(),
+                          toolName,
+                          toolId,
+                        };
+                        console.log('[SSE] Creating tool_use content block for non-Anthropic provider:', toolName);
+                        setContentBlocks(prev => [...prev, newBlock]);
+                        contentBlocksRef.current = [...contentBlocksRef.current, newBlock];
+                      }
+                    });
+
+                    onToolExecution?.({
+                      type: 'tool_call_streaming',
+                      calls: safeData.toolCalls.map((tc) => ({
+                        id: tc.id,
+                        name: tc.function?.name || tc.name,
+                        tool: tc.function?.name || tc.name,
+                        args: tc.function?.arguments || tc.arguments,
+                        status: 'running'
+                      })),
+                      round: currentPipelineState.activeToolRound
+                    });
+                  }
+
+                  setPipelineState({...currentPipelineState});
+                  break;
+                  
+                case 'tool_call_complete':
+                  // CRITICAL FIX: Don't track synthetic tool completions
+                  // Real MCP results come through 'mcp_execution' events
+
+                  // Just update pipeline state for tool rounds
+                  currentPipelineState.isToolExecutionPhase = false;
+                  if (currentPipelineState.activeToolRound < currentPipelineState.maxToolRounds) {
+                    currentPipelineState.shouldSuppressContent = false;
+                  }
+
+                  setPipelineState({...currentPipelineState});
+                  break;
+                  
+                case 'tool_calls_required':
+                  // CRITICAL FIX: Don't initialize synthetic mcpCalls
+                  // Real MCP results will come through proper 'mcp_execution' events
+                  break;
+                  
+                case 'mcp_status':
+                  // Store MCP status in metadata, don't append to content
+                  // This information can be shown in a status bar or separate UI element
+                  break;
+                  
+                case 'session_title':
+                  // Update session title in the store
+                  if (safeData.title && sessionId) {
+                    const { updateSessionTitle } = useChatStore.getState();
+                    updateSessionTitle(sessionId, safeData.title);
+                  }
+                  break;
+
+                case 'multi_model_start':
+                case 'orchestration_start':
+                  // Multi-model orchestration started
+                  console.log('[SSE] Multi-model orchestration started:', safeData);
+                  onMultiModel?.({
+                    type: 'start',
+                    orchestrationId: safeData.orchestrationId,
+                    executionPlan: safeData.executionPlan
+                  });
+                  break;
+
+                case 'role_start':
+                  // A specific role (reasoning, tool_execution, synthesis) started
+                  console.log('[SSE] Role started:', safeData.role, 'model:', safeData.model);
+                  onMultiModel?.({
+                    type: 'role_start',
+                    orchestrationId: safeData.orchestrationId,
+                    role: safeData.role,
+                    model: safeData.model
+                  });
+                  break;
+
+                case 'role_thinking':
+                  // Thinking content from a role
+                  console.log('[SSE] Role thinking:', safeData.role, 'accumulated:', safeData.accumulated?.length || 0);
+                  onMultiModel?.({
+                    type: 'role_thinking',
+                    orchestrationId: safeData.orchestrationId,
+                    role: safeData.role,
+                    content: safeData.content
+                  });
+                  // Also update thinking state for display
+                  // CRITICAL FIX: Use accumulated from backend if available, otherwise build locally
+                  // The agentState.thinkingContent gets REPLACED, not appended
+                  if (safeData.content || safeData.accumulated) {
+                    // Prefer backend-accumulated value for accuracy
+                    const accumulatedContent = safeData.accumulated || '';
+                    if (accumulatedContent) {
+                      setCurrentThinking(accumulatedContent);
+                      onThinkingContent?.(accumulatedContent);
+                    } else if (safeData.content) {
+                      // Fallback: accumulate locally
+                      setCurrentThinking(prev => {
+                        const accumulated = prev + safeData.content;
+                        onThinkingContent?.(accumulated);
+                        return accumulated;
+                      });
+                    }
+                  }
+                  break;
+
+                case 'role_stream':
+                  // Streaming content from a role (multi-model mode).
+                  // Track B Phase 3 — `assistantMessage += ` + `setCurrentMessage`
+                  // RIPPED. The canonical reducer accumulates text via
+                  // `content_block_delta`; `onStream` still fires for callback
+                  // consumers (multi-model orchestrators / activity stream).
+                  if (safeData.content) {
+                    onStream?.(safeData.content);
+                  }
+                  break;
+
+                case 'role_complete':
+                  // A specific role completed
+                  console.log('[SSE] Role completed:', safeData.role, 'metrics:', safeData.metrics);
+                  onMultiModel?.({
+                    type: 'role_complete',
+                    orchestrationId: safeData.orchestrationId,
+                    role: safeData.role,
+                    model: safeData.model,
+                    metrics: safeData.metrics
+                  });
+                  break;
+
+                case 'multi_model_handoff':
+                case 'handoff':
+                  // Model handoff during orchestration
+                  console.log('[SSE] Handoff:', safeData.fromRole, '->', safeData.toRole);
+                  onMultiModel?.({
+                    type: 'handoff',
+                    orchestrationId: safeData.orchestrationId,
+                    fromRole: safeData.fromRole,
+                    toRole: safeData.toRole,
+                    fromModel: safeData.fromModel,
+                    toModel: safeData.toModel,
+                    handoffCount: safeData.handoffCount
+                  });
+                  // Phase G (task #152) — stash for HandoffPill render.
+                  setHandoffEvent({
+                    fromModel: safeData.fromModel,
+                    toModel: safeData.toModel,
+                    fromRole: safeData.fromRole,
+                    toRole: safeData.toRole,
+                    reason: safeData.reason,
+                    complexityScore: typeof safeData.complexityScore === 'number'
+                      ? safeData.complexityScore
+                      : undefined,
+                    routeEscalatedDestructive: !!safeData.route_escalated_destructive,
+                  });
+                  break;
+
+                case 'multi_model_complete':
+                case 'orchestration_complete':
+                  // Multi-model orchestration completed
+                  console.log('[SSE] Orchestration complete:', safeData);
+                  onMultiModel?.({
+                    type: 'complete',
+                    orchestrationId: safeData.orchestrationId,
+                    rolesExecuted: safeData.rolesExecuted,
+                    totalCost: safeData.totalCost,
+                    totalDuration: safeData.totalDuration
+                  });
+                  break;
+
+                case 'multi_model_error':
+                case 'orchestration_error':
+                  // Multi-model orchestration error
+                  console.log('[SSE] Orchestration error:', safeData);
+                  onMultiModel?.({
+                    type: 'error',
+                    orchestrationId: safeData.orchestrationId,
+                    error: safeData.error
+                  });
+                  break;
+
+                // ═══════════════════════════════════════════════════════
+                // Phase G (task #152) — trust / observability events.
+                // Each branch is 5-15 lines: parse payload, update the
+                // matching state slot. Rendering is delegated to the
+                // small components in `components/events/*`.
+                // ═══════════════════════════════════════════════════════
+                case 'stage_change': {
+                  const stage = safeData.stage as
+                    | 'discover' | 'query' | 'analyze' | 'generate' | 'verify' | undefined;
+                  if (stage === 'discover' || stage === 'query' || stage === 'analyze' ||
+                      stage === 'generate' || stage === 'verify') {
+                    setCurrentStage(stage);
+                    // LiveTurnStatus — surface the stage as the activity
+                    // summary so non-streaming providers (AIF gpt-5.4 in
+                    // Responses-API mode) still show a meaningful live
+                    // line right of the spinner instead of stuck at
+                    // "thinking".
+                    const stageLabels: Record<string, string> = {
+                      discover: 'discovering tools',
+                      query: 'querying model',
+                      analyze: 'analyzing context',
+                      generate: 'generating response',
+                      verify: 'verifying output',
+                    };
+                    setLiveActivity(stageLabels[stage] ?? stage);
+                    if (typeof safeData.elapsedMs === 'number') {
+                      stageTimingsRef.current = {
+                        ...stageTimingsRef.current,
+                        [stage]: safeData.elapsedMs,
+                      };
+                      setStageTimings({ ...stageTimingsRef.current });
+                    }
+                  }
+                  break;
+                }
+
+                case 'retry': {
+                  setRetryEvents(prev => [
+                    ...prev,
+                    {
+                      toolCallId: safeData.toolCallId,
+                      name: safeData.name,
+                      attempt: Number(safeData.attempt) || 1,
+                      maxAttempts: Number(safeData.maxAttempts) || 1,
+                      reason: safeData.reason,
+                      elapsedMs: safeData.elapsedMs,
+                    },
+                  ]);
+                  break;
+                }
+
+                case 'rag_citation': {
+                  setRagCitations(prev => [
+                    ...prev,
+                    {
+                      source: String(safeData.source || 'platform-rag'),
+                      chunkId: safeData.chunkId,
+                      excerpt: safeData.excerpt,
+                      score: typeof safeData.score === 'number' ? safeData.score : undefined,
+                      collection: safeData.collection,
+                      url: safeData.url,
+                    },
+                  ]);
+                  break;
+                }
+
+                case 'correction': {
+                  if (safeData.wrongText && safeData.correctedText) {
+                    setCorrectionEvent({
+                      wrongText: String(safeData.wrongText),
+                      correctedText: String(safeData.correctedText),
+                      reason: safeData.reason || undefined,
+                    });
+                  }
+                  break;
+                }
+
+                case 'warning': {
+                  const warnLevel: 'info' | 'warn' | 'error' =
+                    safeData.level === 'info' || safeData.level === 'error'
+                      ? safeData.level
+                      : 'warn';
+                  setWarnings(prev => [
+                    ...prev,
+                    {
+                      id: `warn-${Date.now()}-${prev.length}`,
+                      level: warnLevel,
+                      source: safeData.source,
+                      code: safeData.code,
+                      message: String(safeData.message || safeData.code || 'Warning'),
+                      actionable: safeData.actionable,
+                    },
+                  ]);
+                  break;
+                }
+
+                case 'rag_status': {
+                  setRagStatus({
+                    status: safeData.status,
+                    docsRetrieved: typeof safeData.docsRetrieved === 'number'
+                      ? safeData.docsRetrieved
+                      : undefined,
+                    collections: Array.isArray(safeData.collections)
+                      ? safeData.collections
+                      : undefined,
+                    retrievalTimeMs: typeof safeData.retrievalTime === 'number'
+                      ? safeData.retrievalTime
+                      : undefined,
+                  });
+                  break;
+                }
+
+                case 'memory_status': {
+                  setMemoryStatus({
+                    status: safeData.status,
+                    contextInjected: typeof safeData.contextInjected === 'boolean'
+                      ? safeData.contextInjected
+                      : undefined,
+                    tokenEstimate: typeof safeData.tokenEstimate === 'number'
+                      ? safeData.tokenEstimate
+                      : undefined,
+                    processingTime: typeof safeData.processingTime === 'number'
+                      ? safeData.processingTime
+                      : undefined,
+                    memoriesFound: typeof safeData.memoriesFound === 'number'
+                      ? safeData.memoriesFound
+                      : undefined,
+                  });
+                  break;
+                }
+
+                case 'dlp_blocked': {
+                  setDlpScan({
+                    state: 'blocked',
+                    severity: safeData.severity,
+                    categories: Array.isArray(safeData.categories) ? safeData.categories : undefined,
+                    reason: safeData.reason,
+                    scanPoint: safeData.scanPoint,
+                  });
+                  break;
+                }
+
+                case 'dlp_scan_performed': {
+                  const state: 'passed' | 'redacted' =
+                    safeData.action === 'redact' ? 'redacted' : 'passed';
+                  setDlpScan({
+                    state,
+                    severity: safeData.severity,
+                    categories: Array.isArray(safeData.categories) ? safeData.categories : undefined,
+                    findings: typeof safeData.findings === 'number' ? safeData.findings : undefined,
+                    scanPoint: safeData.scanPoint,
+                  });
+                  break;
+                }
+
+                case 'tool_cache_hit':
+                case 'tool_semantic_cache_hit': {
+                  const name = String(safeData.name || 'unknown');
+                  setToolCacheHits(prev => ({
+                    ...prev,
+                    [name]: {
+                      similarity: typeof safeData.similarity === 'number'
+                        ? safeData.similarity
+                        : undefined,
+                    },
+                  }));
+                  break;
+                }
+
+                case 'self_critique': {
+                  setSelfCritique(prev => ({
+                    ...(prev || {}),
+                    critique: safeData.critique ?? prev?.critique,
+                    contradictions: typeof safeData.contradictions === 'number'
+                      ? safeData.contradictions
+                      : prev?.contradictions,
+                    lowestConfidence: typeof safeData.lowestConfidence === 'number'
+                      ? safeData.lowestConfidence
+                      : prev?.lowestConfidence,
+                    status: safeData.status ?? prev?.status,
+                  }));
+                  break;
+                }
+
+                case 'hallucination_warning': {
+                  setHallucinationWarning({
+                    confidence: typeof safeData.confidence === 'number'
+                      ? safeData.confidence
+                      : undefined,
+                    message: safeData.message,
+                    warningCount: Array.isArray(safeData.warnings)
+                      ? safeData.warnings.length
+                      : typeof safeData.warningCount === 'number'
+                        ? safeData.warningCount
+                        : undefined,
+                    revised: !!safeData.revised,
+                    toolCount: typeof safeData.toolCount === 'number'
+                      ? safeData.toolCount
+                      : undefined,
+                  });
+                  break;
+                }
+
+                case 'tool_end':
+                case 'tool_execution': {
+                  // Phase G — alternate completion paths share the
+                  // tool_complete render. Mark the matching tool_use
+                  // block as done if not already closed.
+                  const endToolName = safeData.toolName || safeData.name;
+                  if (endToolName) {
+                    const endBlockIdx = contentBlocksRef.current.findIndex(
+                      b => b.type === 'tool_use' && b.toolName === endToolName && !b.isComplete
+                    );
+                    if (endBlockIdx >= 0) {
+                      const prev = contentBlocksRef.current[endBlockIdx];
+                      contentBlocksRef.current[endBlockIdx] = {
+                        ...prev,
+                        isComplete: true,
+                        duration: Date.now() - (prev.startTime || Date.now()),
+                      };
+                      setContentBlocks([...contentBlocksRef.current]);
+                    }
+                  }
+                  break;
+                }
+
+                // ═══════════════════════════════════════════════════════
+                // Phase H (task #153) — artifact / image / session /
+                // memory envelopes. Slotted AFTER the Phase G branches
+                // per task spec. The existing `artifact_start/delta/end`
+                // cases lower down are preserved untouched; Phase H
+                // shape is DISCRIMINATED by an `artifactId` field so
+                // both coexist.
+                // ═══════════════════════════════════════════════════════
+                case 'artifact_open': {
+                  const kindRaw = String(safeData.kind || 'code');
+                  const kind: 'markdown' | 'code' | 'chart' | 'csv' =
+                    kindRaw === 'markdown' || kindRaw === 'code' ||
+                    kindRaw === 'chart' || kindRaw === 'csv' ? kindRaw : 'code';
+                  const artId = String(safeData.artifactId || `artifact-${Date.now()}`);
+                  const defaultFile = String(safeData.fileName || '__default__');
+                  setArtifactPanel({
+                    artifactId: artId,
+                    kind,
+                    title: String(safeData.title || 'Artifact'),
+                    language: safeData.language || undefined,
+                    fileName: safeData.fileName || undefined,
+                    files: {
+                      [defaultFile]: {
+                        fileName: defaultFile,
+                        language: safeData.language || undefined,
+                        content: '',
+                        lastSeq: -1,
+                      },
+                    },
+                    isOpen: true,
+                    isComplete: false,
+                    stats: null,
+                  });
+                  break;
+                }
+
+                case 'artifact_close': {
+                  setArtifactPanel(prev => {
+                    if (!prev || prev.artifactId !== safeData.artifactId) return prev;
+                    const files = { ...prev.files };
+                    if (safeData.finalContent && Object.keys(files).length === 1) {
+                      const fn = Object.keys(files)[0];
+                      if (files[fn].content.length < String(safeData.finalContent).length) {
+                        files[fn] = {
+                          ...files[fn],
+                          content: String(safeData.finalContent),
+                        };
+                      }
+                    }
+                    // P1-5 chatmode UX parity — drop the panel entirely when
+                    // the accumulated content is empty / trivial markdown.
+                    // The server fires artifact_open eagerly for any
+                    // structured response, but plain prose with no fences
+                    // / SVG / Mermaid / chart should never have triggered
+                    // a slide-out. Deciding at close time means we have
+                    // the full content to evaluate. See punch list P1-5.
+                    const totalContent = Object.values(files)
+                      .map(f => f.content)
+                      .join('\n');
+                    if (!isArtifactWorthShowing(totalContent, prev.kind)) {
+                      return null;
+                    }
+                    return {
+                      ...prev,
+                      files,
+                      isComplete: true,
+                      stats: safeData.stats && typeof safeData.stats === 'object'
+                        ? {
+                            bytes: Number(safeData.stats.bytes) || 0,
+                            lines: Number(safeData.stats.lines) || 0,
+                          }
+                        : null,
+                    };
+                  });
+                  break;
+                }
+
+                case 'image_progress': {
+                  const progress = Number(safeData.progress);
+                  if (!Number.isFinite(progress)) break;
+                  setImageProgress({
+                    imageGenId: String(safeData.imageGenId || 'img'),
+                    progress: Math.max(0, Math.min(1, progress)),
+                    partialUrl: safeData.partialUrl,
+                    eta: typeof safeData.eta === 'number' ? safeData.eta : undefined,
+                    prompt: safeData.prompt,
+                  });
+                  break;
+                }
+
+                // visual_render / app_render / artifact_render frames are
+                // consumed by applyCanonicalFrame (runs above this switch) and
+                // become ContentBlocks of type 'viz_render' / 'app_render'.
+                // No parent-level state subscriber here — they render INLINE
+                // at the wire-emit chronological position inside
+                // AgenticActivityStream via the typed-block path.
+
+                // P1-6 — server emits `streaming_table` for rectangular
+                // tool results (right-sizing candidates, IAM drift rows,
+                // cost summaries). Reducer is pure-tested at
+                // useChatStream.streamingTable.test.ts.
+                case 'streaming_table': {
+                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                  if (flushKey) {
+                    setStreamingTablesByMessageId((prev) =>
+                      applyStreamingTableFrame(prev, flushKey, safeData as StreamingTableFrame),
+                    );
+                  }
+                  break;
+                }
+
+                // Phase 27 — server emits `findings_emit` from security/
+                // audit sub-agent results (mocks 03, 07, 08, 09). Reducer
+                // is pure-tested at useChatStream.findings.test.ts.
+                case 'findings_emit': {
+                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                  if (flushKey) {
+                    setFindingsByMessageId((prev) =>
+                      applyFindingsFrame(prev, flushKey, safeData as FindingsFrame),
+                    );
+                  }
+                  break;
+                }
+
+                // #502 — server emits `inline_widget` for KpiGrid /
+                // SavingsCard / Runbook / WaveTimeline / StackGrid /
+                // StagesStrip / AnnotatedCode. Reducer pure-tested at
+                // useChatStream.inlineWidget.test.ts.
+                case 'inline_widget': {
+                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                  if (flushKey) {
+                    setInlineWidgetsByMessageId((prev) =>
+                      applyInlineWidgetFrame(prev, flushKey, safeData as InlineWidgetFrame),
+                    );
+                  }
+                  break;
+                }
+
+                // B8 (2026-05-12) — Azure Responsible AI / Vertex SAFETY /
+                // Vertex RECITATION trip. Server emits a `content_filter`
+                // frame with {kind, model, message}. UI stores the latest
+                // banner per assistant message id so <ContentFilterBanner>
+                // renders inline with the (possibly partial) assistant
+                // bubble. audit policy requires this surfaces to user
+                // instead of silently truncating as end_turn.
+                case 'content_filter': {
+                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                  const d = safeData as Record<string, unknown>;
+                  const kind = typeof d.kind === 'string' ? d.kind : 'content_filter';
+                  const model = typeof d.model === 'string' ? d.model : '';
+                  const message =
+                    typeof d.message === 'string' && d.message.length > 0
+                      ? d.message
+                      : 'This response was filtered by Azure Responsible AI. The platform owner has been notified per audit policy. Try rephrasing your request.';
+                  if (flushKey) {
+                    setContentFilterBannerByMessageId((prev) => ({
+                      ...prev,
+                      [flushKey]: { kind, model, message },
+                    }));
+                  }
+                  break;
+                }
+
+                // F1-6 (2026-05-17) — follow_up chip-row re-introduced.
+                // Server emits a `follow_up` frame at end_turn with N
+                // contextual chips per the mock contract. Push the block
+                // into the legacy contentBlocks slot so MessageBubble's
+                // existing render path picks it up (canonicalReducerState
+                // is shadow-only for MessageBubble). The block is also
+                // folded into canonicalReducerState by applyCanonicalFrame
+                // for ChatMessages' canonical-preferred render path.
+                case 'follow_up': {
+                  const d = safeData as Record<string, unknown>;
+                  const rawItems = Array.isArray(d.items) ? d.items : [];
+                  const items: string[] = rawItems
+                    .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+                    .map((s) => s.trim())
+                    .slice(0, 5);
+                  if (items.length === 0) break;
+                  const followUpBlock: ContentBlock = {
+                    id: `followup-${messageId || Date.now()}`,
+                    type: 'follow_up',
+                    timestamp: Date.now(),
+                    isComplete: true,
+                    // `content` is required on UIContentBlock; follow_up chips
+                    // render from `items`, so the empty string is a no-op here.
+                    content: '',
+                    items,
+                  };
+                  setContentBlocks((prev) => {
+                    const filtered = prev.filter((b) => b.type !== 'follow_up');
+                    return [...filtered, followUpBlock];
+                  });
+                  break;
+                }
+
+                // Audit §10 step 16 — HITL approval card. Server emits
+                // `hitl_approval` for write-tier tools (and legacy
+                // `mcp_approval_required` during the dual-emit window).
+                case 'hitl_approval':
+                case 'mcp_approval_required': {
+                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                  const d = safeData as Record<string, unknown>;
+                  const reqId = typeof d.requestId === 'string' ? d.requestId : '';
+                  if (!flushKey || !reqId) break;
+                  const entry = {
+                    requestId: reqId,
+                    toolName: typeof d.toolName === 'string' ? d.toolName : 'unknown',
+                    serverName: typeof d.serverName === 'string' ? d.serverName : undefined,
+                    reason: typeof d.reason === 'string' ? d.reason : '',
+                    timeoutMs: typeof d.timeoutMs === 'number' ? d.timeoutMs : 60_000,
+                    arguments: d.arguments,
+                    status: 'pending' as const,
+                    // HITL.3 — carry parentToolUseId from sub-agent bridge frames
+                    // so AAS can position the chip at the correct sub-agent tool card.
+                    // Absent on main-agent HITL frames; present when the frame arrived
+                    // via the HITL.2 stream.handler bridge from openagentic-proxy.
+                    parentToolUseId: typeof d.parentToolUseId === 'string' ? d.parentToolUseId : undefined,
+                  };
+                  setHitlApprovalsByMessageId((prev) => {
+                    const arr = prev[flushKey] ?? [];
+                    if (arr.some((a) => a.requestId === reqId)) return prev;
+                    return { ...prev, [flushKey]: [...arr, entry] };
+                  });
+                  break;
+                }
+
+                // AC-D — clickable download tile. Emitted when a tool
+                // finishes writing bytes to UserStorageService and
+                // returns a presigned URL.
+                // Reducer pure-tested at useChatStream.artifactEmit.test.ts.
+                case 'artifact_emit': {
+                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                  if (flushKey) {
+                    setArtifactEmitsByMessageId((prev) =>
+                      applyArtifactEmitFrame(prev, flushKey, safeData as ArtifactEmitFrame),
+                    );
+                  }
+                  break;
+                }
+
+                // Wave 3 (#525) — per-message intent classification.
+                // Emitted from prompt.stage BEFORE the assistant's
+                // message_saved. Buffer until we know the React placeholder
+                // id, then flush in case 'message_saved' arm (role ===
+                // 'assistant').
+                case 'intent_classified': {
+                  setIntentClassifications((prev) => {
+                    const out = bufferOrApplyIntentClassified(
+                      safeData,
+                      '',
+                      prev,
+                      pendingIntentClassifiedRef.current,
+                    );
+                    pendingIntentClassifiedRef.current = out.pending;
+                    return out.intentClassifications;
+                  });
+                  break;
+                }
+
+                // Wave 3 (#525) — per-message tool shortlist (count + intent
+                // + first ≤5 ranked tool names). Drives ToolShortlistChip.
+                case 'tool_shortlist': {
+                  setToolShortlists((prev) => {
+                    const out = bufferOrApplyToolShortlist(
+                      safeData,
+                      '',
+                      prev,
+                      pendingToolShortlistRef.current,
+                    );
+                    pendingToolShortlistRef.current = out.pending;
+                    return out.toolShortlists;
+                  });
+                  break;
+                }
+
+                // #502 — sub-agent lifecycle. Emitted by TaskTool.ts in api
+                // for every Task tool dispatch (Phase E2). Consumed by
+                // ChatMessages -> SubAgentCard. Wire-up unit-tested via
+                // dispatchSubAgentFrame in useChatStream.subAgentEnvelope.test.ts.
+                case 'sub_agent_started': {
+                  setSubAgents((prev) => {
+                    const out = dispatchSubAgentFrame('sub_agent_started', safeData, prev);
+                    return out.subAgents;
+                  });
+                  // P0-1 part 2 — also store under the active assistant
+                  // messageId so older bubbles render their own cards on
+                  // re-render.
+                  {
+                    const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                    if (flushKey) {
+                      setSubAgentsByMessageId((prev) =>
+                        applySubAgentStartedScoped(prev, flushKey, {
+                          type: 'sub_agent_started',
+                          role: typeof safeData?.role === 'string' ? safeData.role : '',
+                          description:
+                            typeof safeData?.description === 'string'
+                              ? safeData.description
+                              : undefined,
+                          model:
+                            typeof safeData?.model === 'string' ? safeData.model : null,
+                          session_id:
+                            typeof safeData?.session_id === 'string'
+                              ? safeData.session_id
+                              : undefined,
+                        }),
+                      );
+                    }
+                  }
+                  break;
+                }
+
+                case 'sub_agent_completed': {
+                  setSubAgents((prev) => {
+                    const out = dispatchSubAgentFrame('sub_agent_completed', safeData, prev);
+                    return out.subAgents;
+                  });
+                  {
+                    const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                    if (flushKey) {
+                      setSubAgentsByMessageId((prev) =>
+                        applySubAgentCompletedScoped(prev, flushKey, {
+                          type: 'sub_agent_completed',
+                          role: typeof safeData?.role === 'string' ? safeData.role : '',
+                          ok: safeData?.ok === true,
+                          error: typeof safeData?.error === 'string' ? safeData.error : null,
+                          turns: typeof safeData?.turns === 'number' ? safeData.turns : 0,
+                          tokens: typeof safeData?.tokens === 'number' ? safeData.tokens : 0,
+                          durationMs:
+                            typeof safeData?.durationMs === 'number' ? safeData.durationMs : 0,
+                          toolsUsed: Array.isArray(safeData?.toolsUsed)
+                            ? safeData.toolsUsed
+                            : undefined,
+                          output: typeof safeData?.output === 'string' ? safeData.output : undefined,
+                        }),
+                      );
+                    }
+                  }
+                  break;
+                }
+
+                case 'session_rename': {
+                  if (safeData.sessionId && safeData.from && safeData.to) {
+                    setSessionRename({
+                      sessionId: String(safeData.sessionId),
+                      from: String(safeData.from),
+                      to: String(safeData.to),
+                      reason:
+                        safeData.reason === 'manual' || safeData.reason === 'summary'
+                          ? safeData.reason
+                          : 'auto-title',
+                    });
+                  }
+                  break;
+                }
+
+                case 'memory_write': {
+                  if (!safeData.key || !safeData.summary) break;
+                  const scope: 'user' | 'session' | 'shared' =
+                    safeData.scope === 'session' || safeData.scope === 'shared'
+                      ? safeData.scope
+                      : 'user';
+                  setMemoryWrites(prev => [
+                    ...prev,
+                    {
+                      key: String(safeData.key),
+                      summary: String(safeData.summary),
+                      scope,
+                      entryId: safeData.entryId,
+                      tokenCount: typeof safeData.tokenCount === 'number'
+                        ? safeData.tokenCount
+                        : undefined,
+                    },
+                  ]);
+                  break;
+                }
+
+                // ── Agent Spawn Events (parallel sub-agents) ──
+                // These create nested content blocks under the parent spawn_parallel_agents tool
+                case 'agent_spawn_plan':
+                  console.log('[SSE] Agent spawn plan:', safeData.agents?.length, 'agents');
+                  if (safeData.executionId) {
+                    useAgentTreeStore.getState().handleSpawnPlan(safeData.executionId, {
+                      strategy: safeData.strategy || safeData.orchestration || 'parallel',
+                      agents: safeData.agents,
+                      timestamp: safeData.timestamp ? new Date(safeData.timestamp).toISOString() : undefined,
+                    });
+                  }
+                  onMultiModel?.({
+                    type: 'agent_spawn_plan',
+                    agents: safeData.agents,
+                    strategy: safeData.strategy
+                  });
+                  break;
+
+                case 'agent_start': {
+                  console.log('[SSE] Agent started:', safeData.agentId, safeData.role, safeData.model);
+                  if (safeData.executionId && safeData.agentId) {
+                    useAgentTreeStore.getState().handleAgentStart(safeData.executionId, {
+                      agentId: safeData.agentId,
+                      role: safeData.role || 'agent',
+                      model: safeData.model,
+                      task: safeData.task?.substring(0, 120),
+                      timestamp: safeData.timestamp ? new Date(safeData.timestamp).toISOString() : undefined,
+                    });
+                  }
+                  // Find the parent spawn_parallel_agents tool_use block
+                  const parentSpawnBlock = contentBlocksRef.current.find(
+                    b => b.type === 'tool_use' && b.toolName === 'spawn_parallel_agents' && !b.isComplete
+                  );
+                  // Create a child content block for this sub-agent
+                  const agentBlockId = `agent-${safeData.agentId}`;
+                  const existingAgentBlock = contentBlocksRef.current.find(b => b.id === agentBlockId);
+                  if (!existingAgentBlock) {
+                    const agentBlock: ContentBlock = {
+                      id: agentBlockId,
+                      index: contentBlocksRef.current.length,
+                      type: 'tool_use',
+                      content: '',
+                      isComplete: false,
+                      toolName: safeData.role || safeData.agentId,
+                      toolId: safeData.agentId,
+                      timestamp: Date.now(),
+                      agentId: safeData.agentId,
+                      parentToolId: parentSpawnBlock?.toolId,
+                      agentRole: safeData.role,
+                    };
+                    setContentBlocks(prev => [...prev, agentBlock]);
+                    contentBlocksRef.current = [...contentBlocksRef.current, agentBlock];
+                  }
+                  onMultiModel?.({
+                    type: 'role_start',
+                    role: safeData.role,
+                    model: safeData.model,
+                    orchestrationId: safeData.agentId
+                  });
+                  // v0.6.7 Mockup 03 — bridge raw agent_start events into
+                  // the NormalizedStreamEvent stream so UnifiedActivityTree
+                  // renders a sub-agent card. Without this push the agent
+                  // tree store gets the event but the `normalizedEvents`
+                  // array does not, so the `.subagent` card never
+                  // decomposes inside the assistant message body.
+                  if (safeData.agentId) {
+                    const norm: NormalizedStreamEvent = {
+                      type: 'agent_start',
+                      id: String(safeData.agentId),
+                      name: String(safeData.role || safeData.agentId),
+                      role: String(safeData.role || 'agent'),
+                      parentId: safeData.parentAgentId
+                        ? String(safeData.parentAgentId)
+                        : undefined,
+                    } as NormalizedStreamEvent;
+                    normalizedEventsRef.current = [
+                      ...normalizedEventsRef.current,
+                      norm,
+                    ];
+                    setNormalizedEvents([...normalizedEventsRef.current]);
+                  }
+                  break;
+                }
+
+                case 'agent_stream': {
+                  // Streaming content from a sub-agent — append to agent's own content block
+                  // NEVER fall through to onStream — agent output goes through artifact detection
+                  // on the backend after agent_complete, not streamed raw into chat
+                  if (safeData.content && safeData.agentId) {
+                    const agentStreamBlockId = `agent-${safeData.agentId}`;
+                    const agentStreamBlock = contentBlocksRef.current.find(b => b.id === agentStreamBlockId);
+                    if (agentStreamBlock) {
+                      const updated = contentBlocksRef.current.map(b =>
+                        b.id === agentStreamBlockId
+                          ? { ...b, content: b.content + safeData.content }
+                          : b
+                      );
+                      setContentBlocks(updated);
+                      contentBlocksRef.current = updated;
+                    }
+                    // If no agent block found, suppress — don't leak raw HTML/CSS into chat
+                  }
+                  // Content without agentId is also suppressed — agents should not stream to main chat
+                  break;
+                }
+
+                case 'agent_tool_call': {
+                  console.log('[SSE] Agent tool call:', safeData.agentId, safeData.toolName);
+                  if (safeData.executionId && safeData.agentId) {
+                    useAgentTreeStore.getState().handleToolCall(safeData.executionId, {
+                      agentId: safeData.agentId,
+                      toolCallId: safeData.toolCallId || `${safeData.agentId}-${safeData.toolName}-${Date.now()}`,
+                      toolName: safeData.toolName,
+                      args: typeof safeData.arguments === 'string' ? safeData.arguments : JSON.stringify(safeData.arguments || ''),
+                      timestamp: safeData.timestamp ? new Date(safeData.timestamp).toISOString() : undefined,
+                    });
+                  }
+                  // Create a nested tool call block under the agent's block
+                  const agentToolId = `${safeData.agentId}-${safeData.toolName}-${Date.now()}`;
+                  const agentParent = contentBlocksRef.current.find(
+                    b => b.agentId === safeData.agentId && !b.parentToolId?.includes('-')
+                  );
+                  const agentToolBlock: ContentBlock = {
+                    id: `tool-${agentToolId}`,
+                    index: contentBlocksRef.current.length,
+                    type: 'tool_use',
+                    content: safeData.arguments || '',
+                    isComplete: false,
+                    toolName: safeData.toolName,
+                    toolId: agentToolId,
+                    timestamp: Date.now(),
+                    agentId: safeData.agentId,
+                    parentToolId: agentParent?.toolId || safeData.agentId,
+                  };
+                  setContentBlocks(prev => [...prev, agentToolBlock]);
+                  contentBlocksRef.current = [...contentBlocksRef.current, agentToolBlock];
+                  onMultiModel?.({
+                    type: 'role_thinking',
+                    role: safeData.agentId,
+                    content: `Calling tool: ${safeData.toolName}`
+                  });
+                  // Slice G.4b — push canonical `content_block_start` with
+                  // `type: 'tool_use'`. buildTree nests it under the active
+                  // agentStack top (the parent agent, pushed by the prior
+                  // `agent_start` Normalized event). Open block — the
+                  // matching `content_block_stop` is pushed by
+                  // `agent_tool_result` below, paired by `index`.
+                  if (safeData.agentId && safeData.toolName) {
+                    const blockIdx = syntheticBlockIndexRef.current++;
+                    const cbStart: NormalizedStreamEvent = {
+                      type: 'content_block_start',
+                      index: blockIdx,
+                      content_block: {
+                        type: 'tool_use',
+                        id: agentToolId,
+                        name: String(safeData.toolName),
+                        input: {},
+                      },
+                    } as unknown as NormalizedStreamEvent;
+                    normalizedEventsRef.current = [
+                      ...normalizedEventsRef.current,
+                      cbStart,
+                    ];
+                    setNormalizedEvents([...normalizedEventsRef.current]);
+                  }
+                  break;
+                }
+
+                case 'agent_tool_result': {
+                  console.log('[SSE] Agent tool result:', safeData.agentId, safeData.toolName, safeData.success);
+                  if (safeData.executionId && safeData.agentId) {
+                    useAgentTreeStore.getState().handleToolResult(safeData.executionId, {
+                      agentId: safeData.agentId,
+                      toolCallId: safeData.toolCallId || '',
+                      status: safeData.success === false ? 'error' : 'completed',
+                      durationMs: safeData.durationMs,
+                      resultPreview: safeData.resultPreview || safeData.result?.substring?.(0, 120),
+                      timestamp: safeData.timestamp ? new Date(safeData.timestamp).toISOString() : undefined,
+                    });
+                  }
+                  // Mark the agent's tool call as complete — store result preview + args for inline summary
+                  const matchingToolBlock = contentBlocksRef.current.find(
+                    b => b.agentId === safeData.agentId && b.toolName === safeData.toolName && !b.isComplete
+                  );
+                  if (matchingToolBlock) {
+                    const updated = contentBlocksRef.current.map(b =>
+                      b.id === matchingToolBlock.id
+                        ? {
+                            ...b,
+                            isComplete: true,
+                            content: safeData.success ? 'success' : 'error',
+                            // Store result + args so the activity stream can compute inline summaries
+                            output: safeData.resultPreview || safeData.result?.substring?.(0, 500) || (safeData.success ? 'success' : 'error'),
+                            toolArgs: safeData.toolArgs,
+                            durationMs: safeData.durationMs,
+                          }
+                        : b
+                    );
+                    setContentBlocks(updated);
+                    contentBlocksRef.current = updated;
+                  }
+                  // Slice G.4b — bridge tool result into a canonical
+                  // `content_block_stop` paired by `index` with the
+                  // `content_block_start` pushed at `agent_tool_call` time.
+                  // We locate the index by scanning recent canonical
+                  // tool_use blocks for the matching agentId+toolName.
+                  if (safeData.agentId && safeData.toolName) {
+                    // Find the most recent open synthetic tool_use whose
+                    // content_block_start carried this toolName. We can't
+                    // rely on agentId on the canonical event itself (it
+                    // doesn't carry one), so we scan back for the most
+                    // recent unclosed `content_block_start` of type tool_use
+                    // by toolName.
+                    const events = normalizedEventsRef.current;
+                    let matchIndex: number | undefined;
+                    for (let i = events.length - 1; i >= 0; i--) {
+                      const ev = events[i] as unknown as {
+                        type?: string;
+                        content_block?: { type?: string; name?: string };
+                        index?: number;
+                      };
+                      if (
+                        ev?.type === 'content_block_start' &&
+                        ev?.content_block?.type === 'tool_use' &&
+                        ev?.content_block?.name === String(safeData.toolName)
+                      ) {
+                        // Skip if a content_block_stop for this index already
+                        // exists later in the buffer.
+                        const idx = ev.index as number;
+                        const closed = events.slice(i + 1).some(
+                          (e: { type?: string; index?: number }) =>
+                            e?.type === 'content_block_stop' && e?.index === idx,
+                        );
+                        if (!closed) {
+                          matchIndex = idx;
+                          break;
+                        }
+                      }
+                    }
+                    if (matchIndex !== undefined) {
+                      const cbStop: NormalizedStreamEvent = {
+                        type: 'content_block_stop',
+                        index: matchIndex,
+                      } as unknown as NormalizedStreamEvent;
+                      normalizedEventsRef.current = [
+                        ...normalizedEventsRef.current,
+                        cbStop,
+                      ];
+                      setNormalizedEvents([...normalizedEventsRef.current]);
+                    }
+                  }
+                  break;
+                }
+
+                case 'agent_complete': {
+                  console.log('[SSE] Agent complete:', safeData.agentId, safeData.status);
+                  if (safeData.executionId && safeData.agentId) {
+                    useAgentTreeStore.getState().handleAgentComplete(safeData.executionId, {
+                      agentId: safeData.agentId,
+                      status: safeData.status === 'error' ? 'error' : 'completed',
+                      durationMs: safeData.durationMs ?? safeData.metrics?.durationMs,
+                      inputTokens: safeData.inputTokens ?? safeData.metrics?.inputTokens,
+                      outputTokens: safeData.outputTokens ?? safeData.metrics?.outputTokens,
+                      error: safeData.error,
+                      timestamp: safeData.timestamp ? new Date(safeData.timestamp).toISOString() : undefined,
+                    });
+                  }
+                  // Mark the agent's content block as complete
+                  const agentCompleteBlock = contentBlocksRef.current.find(
+                    b => b.agentId === safeData.agentId && b.toolName !== undefined && !b.parentToolId?.includes('-')
+                  );
+                  if (agentCompleteBlock) {
+                    const updated = contentBlocksRef.current.map(b =>
+                      b.id === agentCompleteBlock.id
+                        ? { ...b, isComplete: true, content: safeData.status === 'success' ? 'success' : 'error' }
+                        : b
+                    );
+                    setContentBlocks(updated);
+                    contentBlocksRef.current = updated;
+                  }
+                  onMultiModel?.({
+                    type: 'role_complete',
+                    role: safeData.role,
+                    orchestrationId: safeData.agentId,
+                    metrics: safeData.metrics
+                  });
+                  // v0.6.7 Mockup 03 — mirror agent_complete → normalized
+                  // `agent_stop` so UnifiedActivityTree can close its
+                  // sub-agent card, show final stats (turns/tokens/time),
+                  // and render the return_value pill.
+                  if (safeData.agentId) {
+                    const normStop: NormalizedStreamEvent = {
+                      type: 'agent_stop',
+                      id: String(safeData.agentId),
+                      durationMs:
+                        Number(
+                          safeData.durationMs ??
+                            safeData.metrics?.durationMs ??
+                            0,
+                        ) || 0,
+                      tokensIn:
+                        Number(
+                          safeData.inputTokens ??
+                            safeData.metrics?.inputTokens ??
+                            0,
+                        ) || 0,
+                      tokensOut:
+                        Number(
+                          safeData.outputTokens ??
+                            safeData.metrics?.outputTokens ??
+                            0,
+                        ) || 0,
+                      cost:
+                        Number(
+                          safeData.cost ?? safeData.metrics?.costUsd ?? 0,
+                        ) || 0,
+                    } as NormalizedStreamEvent;
+                    normalizedEventsRef.current = [
+                      ...normalizedEventsRef.current,
+                      normStop,
+                    ];
+                    setNormalizedEvents([...normalizedEventsRef.current]);
+                  }
+                  break;
+                }
+
+                case 'agent_synthesis': {
+                  // Agent synthesis content — the master LLM's final answer after agent execution.
+                  // This arrives AFTER agent_complete and should be rendered below the execution timeline.
+                  // Track B Phase 3 — `assistantMessage += ` + `setCurrentMessage` RIPPED.
+                  // Canonical reducer owns the flat-string concat via content_block_delta.
+                  // `onStream` callback still fires for downstream activity-stream consumers.
+                  const synthContent = safeData.content || safeData.text || safeData.delta || '';
+                  if (synthContent) {
+                    onStream?.(synthContent);
+                  }
+                  break;
+                }
+
+                case 'agent_thinking': {
+                  if (safeData.executionId && safeData.agentId) {
+                    useAgentTreeStore.getState().handleAgentThinking(safeData.executionId, {
+                      agentId: safeData.agentId,
+                      tokens: safeData.tokens || 0,
+                      durationMs: safeData.durationMs || 0,
+                      timestamp: safeData.timestamp ? new Date(safeData.timestamp).toISOString() : undefined,
+                    });
+                  }
+                  // Slice G.4b — push canonical `content_block_start` +
+                  // `content_block_stop` with `type: 'thinking'`. buildTree
+                  // nests it under the active agentStack top so the
+                  // sub-agent card body shows the "thinking · N.Ns" row
+                  // matching mockup 03's `.sa-subthink` aesthetic. The
+                  // canonical thinking content_block does not have an
+                  // explicit `agentId` field — agent nesting comes from
+                  // the prior `agent_start` push having opened agentStack.
+                  if (safeData.agentId) {
+                    const blockIdx = syntheticBlockIndexRef.current++;
+                    const cbStart: NormalizedStreamEvent = {
+                      type: 'content_block_start',
+                      index: blockIdx,
+                      content_block: { type: 'thinking', thinking: '' },
+                    } as unknown as NormalizedStreamEvent;
+                    const cbStop: NormalizedStreamEvent = {
+                      type: 'content_block_stop',
+                      index: blockIdx,
+                    } as unknown as NormalizedStreamEvent;
+                    normalizedEventsRef.current = [
+                      ...normalizedEventsRef.current,
+                      cbStart,
+                      cbStop,
+                    ];
+                    setNormalizedEvents([...normalizedEventsRef.current]);
+                  }
+                  break;
+                }
+
+                // Artifact events emitted by agent orchestration when agents produce HTML artifacts
+                case 'artifact_start': {
+                  // Store accumulator for artifact content
+                  window.__pendingArtifact = {
+                    type: safeData.type || safeData.artifactType || 'html',
+                    title: safeData.title || 'Artifact',
+                    content: '',
+                  };
+                  break;
+                }
+                case 'artifact_delta': {
+                  // Phase H (task #153) — the Phase H artifact_delta
+                  // shape carries an `artifactId` + `contentDelta` +
+                  // optional `fileName`/`seq`. Route it to the
+                  // ArtifactPanel state when present; fall through to
+                  // the legacy `{content}` path otherwise.
+                  if (safeData.artifactId && typeof safeData.contentDelta === 'string') {
+                    setArtifactPanel(prev => {
+                      if (!prev || prev.artifactId !== safeData.artifactId) return prev;
+                      const fileName = String(safeData.fileName || '__default__');
+                      const files = { ...prev.files };
+                      const existing = files[fileName] ?? {
+                        fileName,
+                        language: undefined as string | undefined,
+                        content: '',
+                        lastSeq: -1,
+                      };
+                      const incomingSeq =
+                        typeof safeData.seq === 'number' ? safeData.seq : existing.lastSeq + 1;
+                      if (incomingSeq <= existing.lastSeq && existing.lastSeq >= 0) {
+                        // Stale/out-of-order — ignore.
+                        return prev;
+                      }
+                      files[fileName] = {
+                        ...existing,
+                        content: existing.content + String(safeData.contentDelta),
+                        lastSeq: incomingSeq,
+                      };
+                      return { ...prev, files };
+                    });
+                    break;
+                  }
+                  // Legacy chat-artifact path (agent HTML artifacts).
+                  const pending = window.__pendingArtifact;
+                  if (pending) {
+                    pending.content += safeData.content || '';
+                  }
+                  break;
+                }
+                case 'artifact_end': {
+                  const artifact = window.__pendingArtifact;
+                  if (artifact && artifact.content) {
+                    const lang = artifact.type === 'html' ? 'html' : artifact.type === 'react' ? 'tsx' : artifact.type;
+                    window.dispatchEvent(new CustomEvent('openagentic:open-canvas', {
+                      detail: {
+                        content: artifact.content,
+                        type: lang,
+                        title: artifact.title,
+                        language: lang,
+                      }
+                    }));
+                  }
+                  window.__pendingArtifact = null;
+                  break;
+                }
+
+                case 'execution_complete': {
+                  console.log('[SSE] Execution complete:', safeData.executionId, safeData.status);
+                  if (safeData.executionId) {
+                    useAgentTreeStore.getState().handleExecutionComplete(safeData.executionId, {
+                      totalDurationMs: safeData.totalDurationMs,
+                      totalInputTokens: safeData.totalInputTokens,
+                      totalOutputTokens: safeData.totalOutputTokens,
+                      totalToolCalls: safeData.totalToolCalls,
+                      status: safeData.status === 'error' ? 'error' : 'completed',
+                      timestamp: safeData.timestamp ? new Date(safeData.timestamp).toISOString() : undefined,
+                    });
+                  }
+                  break;
+                }
+
+                case 'approval_required': {
+                  // OSS-only: mutating-tool approval gate (commit 7e6637539).
+                  // Shape: { auditId, toolName, serverName?, args, preview }.
+                  // Discriminated from the agent-tree path by `auditId`.
+                  if (safeData.auditId) {
+                    onAuditApprovalRequired?.({
+                      auditId: safeData.auditId,
+                      toolName: safeData.toolName || 'unknown',
+                      serverName: safeData.serverName,
+                      args: safeData.args,
+                      preview: safeData.preview,
+                    });
+                    break;
+                  }
+                  console.log('[SSE] Agent approval required:', safeData.agentId, safeData.toolName);
+                  if (safeData.executionId && safeData.agentId) {
+                    useAgentTreeStore.getState().handleApprovalRequired(safeData.executionId, {
+                      agentId: safeData.agentId,
+                      toolCallId: safeData.toolCallId || `approval-${Date.now()}`,
+                      toolName: safeData.toolName || 'unknown',
+                      args: typeof safeData.args === 'string' ? safeData.args : JSON.stringify(safeData.args || ''),
+                      timestamp: safeData.timestamp ? new Date(safeData.timestamp).toISOString() : undefined,
+                    });
+                  }
+                  break;
+                }
+
+                case 'job_completed':
+                  // Autonomous job monitoring - background job completed
+                  // console.log('[SSE] Background job completed:', {
+                  //   jobId: safeData.jobId,
+                  //   status: safeData.status,
+                  //   completedAt: safeData.completedAt
+                  // });
+
+                  // Dispatch a custom event so BackgroundJobsPanel can refresh its list
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('background-job-completed', {
+                      detail: {
+                        jobId: safeData.jobId,
+                        status: safeData.status,
+                        result: safeData.result,
+                        error: safeData.error,
+                        completedAt: safeData.completedAt
+                      }
+                    }));
+                  }
+
+                  // Optionally, inject a system message into the chat
+                  const jobStatusMessage = safeData.error
+                    ? `Background job ${safeData.jobId} failed: ${safeData.error}`
+                    : `Background job ${safeData.jobId} completed successfully`;
+
+                  onMessage?.({
+                    id: `job_${safeData.jobId}_${Date.now()}`,
+                    role: 'system',
+                    content: jobStatusMessage,
+                    timestamp: new Date(safeData.completedAt).toISOString(),
+                    metadata: {
+                      type: 'job_completion',
+                      jobId: safeData.jobId,
+                      status: safeData.status
+                    }
+                  });
+                  break;
+
+                case 'context_compacted':
+                  // Context compaction occurred - show subtle notification to user
+                  if (safeData.freedPercent > 0) {
+                    setContextCompaction({
+                      freedPercent: safeData.freedPercent,
+                      tokensFreed: safeData.tokensFreed || 0,
+                      compactionLevel: safeData.compactionLevel || 'light',
+                    });
+                    // Auto-dismiss after 5 seconds
+                    setTimeout(() => setContextCompaction(null), 5000);
+                  }
+                  break;
+
+                case 'mcp_calls_data':
+                  // Store MCP calls for the current message AND notify for display
+                  console.log('[SSE] MCP calls data received:', {
+                    callsCount: safeData.calls?.length,
+                    calls: safeData.calls?.map((c) => ({ name: c.name, status: c.status }))
+                  });
+
+                  if (safeData.calls && safeData.calls.length > 0) {
+                    // safeData is already a fresh parsed object - safe to use directly
+                    mcpCalls = safeData.calls;
+
+                    // FIX: Mark corresponding tool_use content blocks as complete
+                    // This updates the visual status from "running" spinner to checkmark/error
+                    safeData.calls.forEach((call) => {
+                      const toolId = call.id || call.tool || call.name;
+                      const isComplete = call.status === 'completed' || call.result !== undefined;
+
+                      setContentBlocks(prev => prev.map(block => {
+                        if (block.type === 'tool_use' && (block.toolId === toolId || block.toolName === call.name)) {
+                          return { ...block, isComplete };
+                        }
+                        return block;
+                      }));
+                      contentBlocksRef.current = contentBlocksRef.current.map(block => {
+                        if (block.type === 'tool_use' && (block.toolId === toolId || block.toolName === call.name)) {
+                          return { ...block, isComplete };
+                        }
+                        return block;
+                      });
+                    });
+
+                    // Notify onToolExecution callback to update activeMcpCalls for real-time display
+                    onToolExecution?.({
+                      type: 'mcp_calls_data',
+                      calls: mcpCalls,
+                      round: safeData.round
+                    });
+                  }
+                  break;
+                  
+                case 'cot_step':
+                  // Chain of Thought step event - update COT display
+                  if (safeData.step) {
+                    setCotSteps(prev => {
+                      const existingIndex = prev.findIndex(s => s.id === safeData.step.id);
+                      if (existingIndex >= 0) {
+                        // Update existing step
+                        const updated = [...prev];
+                        updated[existingIndex] = { ...updated[existingIndex], ...safeData.step };
+                        return updated;
+                      } else {
+                        // Add new step
+                        return [...prev, safeData.step];
+                      }
+                    });
+                  }
+                  break;
+
+                case 'cot_data':
+                case 'cot_processed':
+                  // Legacy CoT events - still processed for backwards compatibility
+                  break;
+
+                // ============================================================
+                // ANTHROPIC-NATIVE EVENTS
+                // These handle raw Anthropic API events if passed through
+                // See: https://docs.anthropic.com/en/docs/build-with-claude/streaming
+                // ============================================================
+
+                case 'message_start':
+                  // Anthropic: Initial message object
+                  if (safeData.message?.id) {
+                    messageId = safeData.message.id;
+                  }
+                  break;
+
+                case 'content_block_start':
+                  // Anthropic: Start of a content block (thinking, text, or tool_use)
+                  // INTERLEAVED THINKING: Add block to contentBlocks array
+                  // Handle both Anthropic native format (content_block.type) and OpenAgentic format (blockType)
+                  const serverBlockIndex = safeData.index ?? 0;
+                  // CRITICAL FIX: Apply offset to get unique index across tool rounds
+                  const blockIndex = serverBlockIndex + blockIndexOffsetRef.current;
+                  const blockType = (safeData.content_block?.type || safeData.blockType) as 'thinking' | 'text' | 'tool_use';
+
+                  if (blockType) {
+                    const blockTimestamp = Date.now();
+                    const newBlock: ContentBlock = {
+                      id: `block-${blockIndex}-${blockTimestamp}`,  // Unique ID for React key
+                      index: blockIndex,
+                      type: blockType,
+                      content: '',
+                      isComplete: false,
+                      timestamp: blockTimestamp,
+                      // #813 — InlineThinkingBlock derives endedAt = startTime + duration.
+                      startTime: blockTimestamp,
+                      // Handle both Anthropic format (content_block.name) and OpenAgentic format (toolName)
+                      toolName: blockType === 'tool_use' ? (safeData.content_block?.name || safeData.toolName) : undefined,
+                      toolId: blockType === 'tool_use' ? (safeData.content_block?.id || safeData.toolId) : undefined,
+                    };
+                    setContentBlocks(prev => [...prev, newBlock]);
+                    contentBlocksRef.current = [...contentBlocksRef.current, newBlock];
+
+                    console.debug('[SSE] content_block_start - new block:', {
+                      serverIndex: serverBlockIndex,
+                      offsetIndex: blockIndex,
+                      offset: blockIndexOffsetRef.current,
+                      type: blockType,
+                      toolName: newBlock.toolName
+                    });
+                  }
+
+                  // Handle thinking block start (both formats)
+                  if (blockType === 'thinking') {
+                    // Extended thinking block started
+                    onThinking?.('Thinking');
+                  } else if (blockType === 'tool_use') {
+                    // Tool use block started (handle both Anthropic and OpenAgentic formats)
+                    const toolId = safeData.content_block?.id || safeData.toolId || `tool_${blockIndex}`;
+                    const toolName = safeData.content_block?.name || safeData.toolName || 'unknown';
+                    onToolExecution?.({
+                      type: 'tool_call_streaming',
+                      calls: [{
+                        id: toolId,
+                        name: toolName,
+                        tool: toolName,
+                        args: '',
+                        status: 'running'
+                      }],
+                      round: currentPipelineState.activeToolRound || 1
+                    });
+                  }
+                  break;
+
+                case 'content_block_delta':
+                  // Anthropic: Delta update for a content block
+                  // INTERLEAVED THINKING: Update the correct block in contentBlocks
+                  // Handle both Anthropic native format (delta.type) and OpenAgentic format (blockType + content)
+                  const serverDeltaIndex = safeData.index;
+                  // CRITICAL FIX: Apply offset to match the unique block index
+                  const deltaIndex = serverDeltaIndex !== undefined
+                    ? serverDeltaIndex + blockIndexOffsetRef.current
+                    : undefined;
+
+                  // OpenAgentic format: blockType + content directly on safeData
+                  if (safeData.blockType && safeData.content !== undefined) {
+                    const oapBlockType = safeData.blockType;
+                    const oapContent = safeData.content || '';
+
+                    // Update contentBlocks for interleaved display
+                    if (deltaIndex !== undefined) {
+                      setContentBlocks(prev => prev.map(block =>
+                        block.index === deltaIndex
+                          ? { ...block, content: block.content + oapContent }
+                          : block
+                      ));
+                      contentBlocksRef.current = contentBlocksRef.current.map(block =>
+                        block.index === deltaIndex
+                          ? { ...block, content: block.content + oapContent }
+                          : block
+                      );
+                    }
+
+                    // Also update legacy state for backwards compatibility
+                    if (oapBlockType === 'thinking') {
+                      const newAccumulatedThinking = currentThinkingRef.current + oapContent;
+                      currentThinkingRef.current = newAccumulatedThinking;
+                      setCurrentThinking(newAccumulatedThinking);
+                      onThinkingContent?.(newAccumulatedThinking);
+                      // LiveTurnStatus — bump ↓ output tokens on thinking
+                      // deltas from the OpenAgentic/OpenAI-normalized path (chars/4
+                      // estimate). Activity = last non-empty thinking line
+                      // truncated to one inline-tight summary.
+                      if (oapContent.length > 0) {
+                        setLiveTokensOut(prev => prev + Math.max(1, Math.round(oapContent.length / 4)));
+                        const lastLine = newAccumulatedThinking.split('\n').filter(Boolean).pop() ?? '';
+                        const trimmed = lastLine.trim().slice(0, 110);
+                        if (trimmed) setLiveActivity(trimmed);
+                      }
+                    } else if (oapBlockType === 'text') {
+                      // Track B Phase 3 — `assistantMessage += ` + `setCurrentMessage`
+                      // RIPPED. Canonical reducer accumulates text via
+                      // content_block_delta. The onStream callback stays for
+                      // downstream activity-stream consumers.
+                      onStream?.(oapContent);
+                      // LiveTurnStatus — bump ↓ output tokens on text deltas
+                      // from the OpenAgentic/OpenAI-normalized path.
+                      if (oapContent.length > 0) {
+                        setLiveTokensOut(prev => prev + Math.max(1, Math.round(oapContent.length / 4)));
+                        setLiveActivity('writing response');
+                      }
+                    }
+                    break;
+                  }
+
+                  // Anthropic native format: delta.type with specific content fields
+                  if (safeData.delta?.type === 'thinking_delta') {
+                    // Streaming thinking content. See text_delta comment below
+                    // for why renders run in startTransition. Refs are still
+                    // updated synchronously so the done handler reads current
+                    // thinking without waiting for the deferred render.
+                    const thinkingDelta = safeData.delta.thinking || '';
+
+                    if (deltaIndex !== undefined) {
+                      contentBlocksRef.current = contentBlocksRef.current.map(block =>
+                        block.index === deltaIndex
+                          ? { ...block, content: block.content + thinkingDelta }
+                          : block
+                      );
+                    }
+
+                    const newAccumulatedThinking = currentThinkingRef.current + thinkingDelta;
+                    currentThinkingRef.current = newAccumulatedThinking;
+
+                    // LiveTurnStatus — bump live ↓ output tokens (~chars/4)
+                    // and surface the latest line of the thinking trace as
+                    // the "what the model is doing" summary, truncated to a
+                    // single short line so the strip stays inline-tight.
+                    if (thinkingDelta.length > 0) {
+                      setLiveTokensOut(prev => prev + Math.max(1, Math.round(thinkingDelta.length / 4)));
+                      const lastLine = newAccumulatedThinking.split('\n').filter(Boolean).pop() ?? '';
+                      const trimmed = lastLine.trim().slice(0, 110);
+                      if (trimmed) setLiveActivity(trimmed);
+                    }
+
+                    startTransition(() => {
+                      if (deltaIndex !== undefined) {
+                        setContentBlocks(prev => prev.map(block =>
+                          block.index === deltaIndex
+                            ? { ...block, content: block.content + thinkingDelta }
+                            : block
+                        ));
+                      }
+                      setCurrentThinking(newAccumulatedThinking);
+                    });
+                    onThinkingContent?.(newAccumulatedThinking);
+                  } else if (safeData.delta?.type === 'text_delta') {
+                    // Streaming text content.
+                    //
+                    // Track B Phase 3 (2026-05-22) — `assistantMessage += textDelta`
+                    // + `setCurrentMessage(cleaned)` RIPPED. The canonical reducer's
+                    // `content_block_delta` arm is the single writer that lands text
+                    // into contentBlocks via appendDelta. The per-block contentBlocks
+                    // mutation below (when `deltaIndex` is provided) is the legacy
+                    // path that pre-dated the canonical reducer; it's still safe to
+                    // keep because Phase 4 will rip the manual setContentBlocks
+                    // writers entirely. For now it co-exists with the reducer
+                    // (idempotent on the same delta).
+                    //
+                    // These updates fire on every chunk (often 10-50/sec) and
+                    // re-render SharedMarkdownRenderer each time. React 18's
+                    // automatic batching only covers setState calls within one
+                    // microtask; the `for await` loop breaks batching across
+                    // chunks. Wrapping the render-driving state in
+                    // startTransition tells React the delta is interruptible,
+                    // so it can coalesce bursts into frame-sized renders.
+                    // Fixes the "streaming inline is glitchy and janky" report
+                    // (2026-04-18). The ref `contentBlocksRef` is still
+                    // updated synchronously elsewhere for correctness.
+                    const textDelta = safeData.delta.text || '';
+
+                    // LiveTurnStatus — bump ↓ output tokens for visible
+                    // assistant text. Activity rolls to "writing response"
+                    // once we leave the thinking phase.
+                    if (textDelta.length > 0) {
+                      setLiveTokensOut(prev => prev + Math.max(1, Math.round(textDelta.length / 4)));
+                      setLiveActivity('writing response');
+                    }
+
+                    startTransition(() => {
+                      if (deltaIndex !== undefined) {
+                        setContentBlocks(prev => prev.map(block =>
+                          block.index === deltaIndex
+                            ? { ...block, content: block.content + textDelta }
+                            : block
+                        ));
+                      }
+                    });
+                    onStream?.(textDelta);
+                  } else if (safeData.delta?.type === 'input_json_delta') {
+                    // Streaming tool input JSON
+                    // Update contentBlocks for tool args display
+                    const jsonDelta = safeData.delta.partial_json || '';
+                    if (deltaIndex !== undefined && jsonDelta) {
+                      setContentBlocks(prev => prev.map(block =>
+                        block.index === deltaIndex
+                          ? { ...block, content: block.content + jsonDelta }
+                          : block
+                      ));
+                    }
+                  } else if (safeData.delta?.type === 'signature_delta') {
+                    // Extended thinking signature (for verification)
+                    // Store but don't display
+                  }
+                  break;
+
+                case 'content_block_stop':
+                  // Anthropic: End of a content block
+                  // INTERLEAVED THINKING: Mark the block as complete
+                  // Handle both Anthropic native format and OpenAgentic format
+                  const serverStopIndex = safeData.index;
+                  // CRITICAL FIX: Apply offset to match the unique block index
+                  const stopIndex = serverStopIndex !== undefined
+                    ? serverStopIndex + blockIndexOffsetRef.current
+                    : undefined;
+                  if (stopIndex !== undefined) {
+                    // #813 — stamp duration so InlineThinkingBlock renders real
+                    // wall-clock elapsed (endedAt = startTime + duration).
+                    const stopTs = Date.now();
+                    const closeStopBlock = (block: ContentBlock): ContentBlock => {
+                      const next: ContentBlock = { ...block, isComplete: true };
+                      if (typeof block.startTime === 'number' && block.duration == null) {
+                        next.duration = Math.max(0, stopTs - block.startTime);
+                      }
+                      return next;
+                    };
+                    setContentBlocks(prev => prev.map(block =>
+                      block.index === stopIndex
+                        ? closeStopBlock(block)
+                        : block
+                    ));
+                    // Also update ref for closure access
+                    contentBlocksRef.current = contentBlocksRef.current.map(block =>
+                      block.index === stopIndex
+                        ? closeStopBlock(block)
+                        : block
+                    );
+
+                    // If OpenAgentic format includes finalContent, we can use it for verification
+                    // but the content should already be accumulated from deltas
+                    if (safeData.finalContent && safeData.blockType) {
+                      console.debug('[SSE] content_block_stop with finalContent:', {
+                        serverIndex: serverStopIndex,
+                        offsetIndex: stopIndex,
+                        blockType: safeData.blockType,
+                        contentLength: safeData.finalContent?.length
+                      });
+                    }
+                  }
+                  break;
+
+                case 'message_delta':
+                  // Anthropic: Top-level message changes (stop_reason, usage)
+                  if (safeData.usage) {
+                    // Token usage stats
+                    const usage = safeData.usage;
+                    setThinkingMetrics({
+                      tokens: usage.input_tokens + usage.output_tokens,
+                      elapsedMs: 0,
+                      tokensPerSecond: 0
+                    });
+                  }
+                  break;
+
+                case 'message_stop':
+                  // Anthropic: End of message stream
+                  // This is equivalent to our 'done' event
+                  // Don't handle here - let 'done' case handle finalization
+                  break;
+
+                // ============================================================
+                // END ANTHROPIC-NATIVE EVENTS
+                // ============================================================
+
+                // ============================================================
+                // OpenAgentic UNIFIED ACTIVITY STREAMING EVENTS
+                // Version: openagentic-activity-streaming-2025-01
+                // These normalize thinking/tools/activity from ALL providers
+                // ============================================================
+
+                case 'activity_start':
+                  // New activity session started
+                  // Store session info if needed for metrics display
+                  if (safeData.model) {
+                    responseModel = safeData.model;
+                  }
+                  break;
+
+                case 'thinking_start':
+                  // Thinking/reasoning phase started (Claude, o1, Gemini, DeepSeek)
+                  // Create ContentBlock for interleaved display
+                  const thinkingBlockIndex = contentBlocksRef.current.length;
+                  const thinkingBlockTimestamp = Date.now();
+                  const thinkingBlock: ContentBlock = {
+                    id: `block-${thinkingBlockIndex}-${thinkingBlockTimestamp}`,  // Unique ID for React key
+                    index: thinkingBlockIndex,
+                    type: 'thinking',
+                    content: '',
+                    isComplete: false,
+                    timestamp: thinkingBlockTimestamp,
+                    // #813 — InlineThinkingBlock derives endedAt = startTime + duration.
+                    startTime: thinkingBlockTimestamp,
+                  };
+                  setContentBlocks(prev => [...prev, thinkingBlock]);
+                  contentBlocksRef.current = [...contentBlocksRef.current, thinkingBlock];
+                  currentThinkingBlockIndexRef.current = thinkingBlockIndex;
+
+                  // Capture thinking budget for progress indicator
+                  // Budget can come from: budgetTokens, thinkingBudget, maxTokens, or use default
+                  const budget = safeData.budgetTokens || safeData.thinkingBudget || safeData.maxTokens || 10000;
+                  setThinkingBudget(budget);
+                  setThinkingPhase('thinking');
+
+                  onThinking?.(safeData.thinkingMode === 'hidden' ? 'Reasoning' : 'Thinking');
+                  break;
+
+                case 'thinking_delta':
+                  // Streaming thinking content - use accumulated for accuracy
+                  const thinkingDelta = safeData.delta || '';
+                  const thinkingAccumulated = safeData.accumulated || '';
+
+                  // Update ContentBlock for interleaved display
+                  if (currentThinkingBlockIndexRef.current !== null) {
+                    setContentBlocks(prev => prev.map(block =>
+                      block.index === currentThinkingBlockIndexRef.current
+                        ? { ...block, content: thinkingAccumulated || (block.content + thinkingDelta) }
+                        : block
+                    ));
+                    // Keep ref in sync
+                    contentBlocksRef.current = contentBlocksRef.current.map(block =>
+                      block.index === currentThinkingBlockIndexRef.current
+                        ? { ...block, content: thinkingAccumulated || (block.content + thinkingDelta) }
+                        : block
+                    );
+                  }
+
+                  // Also update legacy currentThinking for backwards compatibility
+                  if (thinkingAccumulated) {
+                    setCurrentThinking(thinkingAccumulated);
+                    onThinkingContent?.(thinkingAccumulated, safeData.tokenCount);
+                  } else if (thinkingDelta) {
+                    setCurrentThinking(prev => {
+                      const accumulated = prev + thinkingDelta;
+                      onThinkingContent?.(accumulated, safeData.tokenCount);
+                      return accumulated;
+                    });
+                  }
+                  // Update metrics if provided
+                  if (safeData.tokenCount !== undefined) {
+                    setThinkingMetrics(prev => ({
+                      tokens: safeData.tokenCount || prev?.tokens || 0,
+                      elapsedMs: safeData.elapsedMs || prev?.elapsedMs || 0,
+                      tokensPerSecond: prev?.tokensPerSecond || 0
+                    }));
+                  }
+                  break;
+
+                // NOTE: thinking_complete is handled above at line ~567
+                // Removed duplicate case here
+
+                case 'content_start':
+                  // Response content phase started - create text ContentBlock for interleaved display
+                  const textBlockIndex = contentBlocksRef.current.length;
+                  const contentStartTimestamp = Date.now();
+                  const textBlock: ContentBlock = {
+                    id: `block-${textBlockIndex}-${contentStartTimestamp}`,  // Unique ID for React key
+                    index: textBlockIndex,
+                    type: 'text',
+                    content: '',
+                    isComplete: false,
+                    timestamp: contentStartTimestamp,
+                  };
+                  setContentBlocks(prev => [...prev, textBlock]);
+                  contentBlocksRef.current = [...contentBlocksRef.current, textBlock];
+                  currentTextBlockIndexRef.current = textBlockIndex;
+
+                  // Update phase to generating for progress indicator
+                  setThinkingPhase('generating');
+                  break;
+
+                // NOTE: 'content_delta' is handled above in the 'stream'/'content_delta'/'delta' case group
+                // to avoid duplicate case clauses
+
+                case 'content_complete':
+                  // Response content finished - mark text ContentBlock as complete
+                  if (currentTextBlockIndexRef.current !== null) {
+                    setContentBlocks(prev => prev.map(block =>
+                      block.index === currentTextBlockIndexRef.current
+                        ? { ...block, isComplete: true }
+                        : block
+                    ));
+                    contentBlocksRef.current = contentBlocksRef.current.map(block =>
+                      block.index === currentTextBlockIndexRef.current
+                        ? { ...block, isComplete: true }
+                        : block
+                    );
+                    currentTextBlockIndexRef.current = null; // Clear tracking ref
+                  }
+                  break;
+
+                case 'tool_start':
+                  // Tool call initiated (normalized from all providers)
+                  onToolExecution?.({
+                    type: 'tool_call_streaming',
+                    calls: [{
+                      id: safeData.toolCallId,
+                      name: safeData.toolName,
+                      tool: safeData.toolName,
+                      args: '',
+                      status: 'running'
+                    }],
+                    round: currentPipelineState.activeToolRound || 1
+                  });
+                  break;
+
+                case 'tool_delta':
+                  // Tool argument streaming (shows args building up)
+                  onToolExecution?.({
+                    type: 'stream_delta',
+                    toolCallId: safeData.toolCallId,
+                    delta: safeData.delta,
+                    accumulated: safeData.accumulated,
+                    sequenceNumber: safeData.sequenceNumber,
+                    isValidJson: safeData.isValidJson
+                  });
+                  break;
+
+                case 'tool_complete':
+                  // Tool call ready for execution
+                  onToolExecution?.({
+                    type: 'stream_complete',
+                    toolCallId: safeData.toolCallId,
+                    toolName: safeData.toolName,
+                    arguments: safeData.arguments,
+                    durationMs: safeData.durationMs,
+                    status: 'pending_execution'
+                  });
+                  break;
+
+                // NOTE: 'tool_result' is handled above at line ~763
+                // to avoid duplicate case clauses
+
+                case 'model_info':
+                  // Model identification event
+                  if (safeData.model) {
+                    responseModel = safeData.model;
+                  }
+                  // Could emit multi-model event for role info
+                  if (safeData.role) {
+                    onMultiModel?.({
+                      type: 'role_start',
+                      role: safeData.role,
+                      model: safeData.model
+                    });
+                  }
+                  break;
+
+                case 'metrics_update':
+                  // Live metrics during streaming
+                  if (safeData.tokens) {
+                    setThinkingMetrics({
+                      tokens: safeData.tokens.total || 0,
+                      elapsedMs: safeData.timing?.elapsed || 0,
+                      tokensPerSecond: safeData.timing?.tokensPerSecond || 0
+                    });
+                  }
+                  if (safeData.timing?.ttft && !ttftMs) {
+                    setTtftMs(safeData.timing.ttft);
+                  }
+                  break;
+
+                case 'activity_complete':
+                  // Activity session finished - similar to done but with more metrics
+                  // Let the existing done handler finalize the message
+                  break;
+
+                // ============================================================
+                // OpenAgentic TOOL STREAMING EVENTS
+                // Version: openagentic-tool-streaming-2025-01
+                // Fine-grained tool argument streaming
+                // ============================================================
+
+                case 'tool_stream_start':
+                  // Tool argument streaming started
+                  onToolExecution?.({
+                    type: 'stream_start',
+                    toolCallId: safeData.toolCallId,
+                    toolName: safeData.toolName,
+                    toolIndex: safeData.toolIndex,
+                    provider: safeData.provider,
+                    status: 'streaming'
+                  });
+                  break;
+
+                case 'tool_stream_delta':
+                  // Tool argument chunk received
+                  onToolExecution?.({
+                    type: 'stream_delta',
+                    toolCallId: safeData.toolCallId,
+                    delta: safeData.delta,
+                    accumulated: safeData.accumulated,
+                    sequenceNumber: safeData.sequenceNumber,
+                    isValidJson: safeData.isValidJson
+                  });
+                  break;
+
+                case 'tool_stream_complete':
+                  // Tool arguments fully received
+                  onToolExecution?.({
+                    type: 'stream_complete',
+                    toolCallId: safeData.toolCallId,
+                    toolName: safeData.toolName,
+                    arguments: safeData.arguments,
+                    durationMs: safeData.durationMs,
+                    status: 'pending_execution'
+                  });
+                  break;
+
+                case 'tool_stream_error':
+                  // Tool streaming failed
+                  onToolExecution?.({
+                    type: 'stream_error',
+                    toolCallId: safeData.toolCallId,
+                    toolName: safeData.toolName,
+                    error: safeData.error,
+                    errorCode: safeData.errorCode
+                  });
+                  break;
+
+                // ============================================================
+                // ============================================================
+                // RAG CONTEXT EVENT - Knowledge base retrieval completed
+                // ============================================================
+                case 'rag_context': {
+                  const ragDocsCount = safeData.docsRetrieved || 0;
+                  const ragCollections = safeData.collections || [];
+                  const ragTime = safeData.retrievalTime || 0;
+
+                  if (ragDocsCount > 0) {
+                    // Add RAG as a tool_use content block so it shows in the UI
+                    const ragBlockIndex = contentBlocksRef.current.length;
+                    const ragBlock: ContentBlock = {
+                      id: `rag-context-${messageId || Date.now()}`,
+                      index: ragBlockIndex,
+                      type: 'tool_use',
+                      content: JSON.stringify({
+                        docsRetrieved: ragDocsCount,
+                        collections: ragCollections,
+                        retrievalTime: ragTime,
+                        sources: safeData.sources || []
+                      }),
+                      isComplete: true,
+                      timestamp: Date.now(),
+                      toolName: `RAG Knowledge (${ragDocsCount} docs)`,
+                      toolId: `rag_${Date.now()}`,
+                    };
+                    setContentBlocks(prev => [...prev, ragBlock]);
+                    contentBlocksRef.current = [...contentBlocksRef.current, ragBlock];
+                  }
+                  break;
+                }
+
+                // TOOL CALL EVENT ALIASES
+                // Some providers emit these alternative event names
+                // ============================================================
+
+                case 'tool_call_start': {
+                  // Alias for tool_start - some providers use this name
+                  const tcToolId = safeData.toolCallId || safeData.id || `tool_${Date.now()}`;
+                  const tcToolName = safeData.toolName || safeData.name || 'unknown';
+
+                  // Create tool_use content block for interleaved display
+                  const existingToolBlock = contentBlocksRef.current.find(
+                    b => b.type === 'tool_use' && b.toolId === tcToolId
+                  );
+                  if (!existingToolBlock) {
+                    const newBlockIndex = contentBlocksRef.current.length;
+                    const newBlock: ContentBlock = {
+                      id: `tool-${tcToolId}`,
+                      index: newBlockIndex,
+                      type: 'tool_use',
+                      content: safeData.arguments || safeData.args || '',
+                      isComplete: false,
+                      timestamp: Date.now(),
+                      toolName: tcToolName,
+                      toolId: tcToolId,
+                    };
+                    setContentBlocks(prev => [...prev, newBlock]);
+                    contentBlocksRef.current = [...contentBlocksRef.current, newBlock];
+                  }
+
+                  onToolExecution?.({
+                    type: 'tool_call_streaming',
+                    calls: [{
+                      id: tcToolId,
+                      name: tcToolName,
+                      tool: tcToolName,
+                      args: safeData.arguments || safeData.args || '',
+                      status: 'running'
+                    }],
+                    round: currentPipelineState.activeToolRound || 1
+                  });
+                  break;
+                }
+
+                case 'tool_call_result': {
+                  // Alias for tool_result - some providers emit this
+                  const trToolId = safeData.toolCallId || safeData.id;
+                  const trToolName = safeData.toolName || safeData.name;
+
+                  // Mark the corresponding tool_use content block as complete
+                  if (trToolId) {
+                    setContentBlocks(prev => prev.map(block => {
+                      if (block.type === 'tool_use' && (block.toolId === trToolId || block.toolName === trToolName)) {
+                        return { ...block, isComplete: true };
+                      }
+                      return block;
+                    }));
+                    contentBlocksRef.current = contentBlocksRef.current.map(block => {
+                      if (block.type === 'tool_use' && (block.toolId === trToolId || block.toolName === trToolName)) {
+                        return { ...block, isComplete: true };
+                      }
+                      return block;
+                    });
+                  }
+
+                  onToolExecution?.({
+                    type: 'result',
+                    name: trToolName,
+                    result: safeData.result
+                  });
+                  break;
+                }
+
+                case 'tool_call_error': {
+                  // Alias for tool_error - some providers emit this
+                  const teToolId = safeData.toolCallId || safeData.id;
+                  const teToolName = safeData.toolName || safeData.name;
+
+                  // Mark the corresponding tool_use content block as complete (with error)
+                  if (teToolId) {
+                    setContentBlocks(prev => prev.map(block => {
+                      if (block.type === 'tool_use' && (block.toolId === teToolId || block.toolName === teToolName)) {
+                        return { ...block, isComplete: true };
+                      }
+                      return block;
+                    }));
+                    contentBlocksRef.current = contentBlocksRef.current.map(block => {
+                      if (block.type === 'tool_use' && (block.toolId === teToolId || block.toolName === teToolName)) {
+                        return { ...block, isComplete: true };
+                      }
+                      return block;
+                    });
+                  }
+
+                  onToolExecution?.({
+                    type: 'error',
+                    name: teToolName,
+                    error: safeData.error
+                  });
+                  break;
+                }
+
+                // ============================================================
+                // END OpenAgentic ACTIVITY/TOOL STREAMING EVENTS
+                // ============================================================
+
+                case 'image':
+                  // CRITICAL FIX: Do NOT add image to assistantMessage here
+                  // The backend already emits a 'stream' event with the full markdown content
+                  // including the image. Adding it here causes duplication.
+                  // Image event logging - disabled in production
+                  // if (import.meta.env.DEV) {
+                  //   console.log('[SSE] Image event received (will be included in stream event):', {
+                  //     imageUrl: safeData.imageUrl,
+                  //     revisedPrompt: safeData.revisedPrompt
+                  //   });
+                  // }
+                  // Don't modify assistantMessage - the stream event already contains the image
+                  break;
+                  
+                case 'completion_complete':
+                  // CRITICAL: Do NOT add any content here - it was already streamed
+                  // This event only carries metadata like toolCalls, usage, finishReason
+                  // Capture the model for the final message badge
+                  if (safeData.model) {
+                    responseModel = safeData.model;
+                  }
+                  break;
+                  
+                case 'done':
+                case 'stream_complete':
+                  // CRITICAL FIX: Prevent duplicate messages from multiple done events
+                  if (hasCompletedStream) {
+                    // console.warn('[SSE] Ignoring duplicate done/stream_complete event');
+                    break;
+                  }
+                  hasCompletedStream = true;
+
+                  // CRITICAL FIX: Capture model from done event (server renames completion_complete to done)
+                  // This is needed because the completion_complete case may not be hit
+                  if (safeData.model && !responseModel) {
+                    responseModel = safeData.model;
+                  }
+
+                  // Mark pipeline as complete
+                  currentPipelineState.currentStage = 'response';
+                  currentPipelineState.shouldSuppressContent = false;
+                  currentPipelineState.isToolExecutionPhase = false;
+
+                  // Sev-0 2026-05-08: empty-completion fallback. When the
+                  // model exits with `end_turn` after a tool-use chain but
+                  // emits zero `assistant_message_delta` frames, both
+                  // the derived flat message and mcpCalls.length can be 0
+                  // even though tool_use content blocks exist. Without a
+                  // fallback the UI hangs on "waiting for first token"
+                  // because no message ever gets appended. resolveEmptyCompletionFallback
+                  // chooses original content / empty / italic placeholder.
+                  //
+                  // Track B Phase 3 — flat-string view derived from the
+                  // canonical contentBlocks via deriveFlatMessage (the legacy
+                  // `assistantMessage` accumulator was ripped). Prefer the
+                  // canonical reducer's blocks when present, fall back to the
+                  // legacy ref (same source-selection logic as buildDoneMessagePayload).
+                  const __doneCanonicalBlocks = canonicalReducerStateRef.current.contentBlocks;
+                  const __doneLegacyBlocks = contentBlocksRef.current;
+                  const __doneSourceBlocks =
+                    __doneCanonicalBlocks.length >= __doneLegacyBlocks.length
+                      ? __doneCanonicalBlocks
+                      : __doneLegacyBlocks;
+                  const __derivedAssistantMessage = deriveFlatMessage(__doneSourceBlocks);
+                  const __completionResolution = resolveEmptyCompletionFallback({
+                    assistantMessage: __derivedAssistantMessage,
+                    mcpCallsLength: mcpCalls.length,
+                    hasToolUseBlocks: contentBlocksRef.current.some(
+                      b => b.type === 'tool_use' && (b.toolName || b.content),
+                    ),
+                  });
+                  if (__completionResolution.shouldRender) {
+                    const __renderableAssistantMessage = __completionResolution.content;
+                    // Sev-0 #924/#925/#926 — extract thinking ONCE for use inside
+                    // buildDoneMessagePayload (avoids duplicate regex passes).
+                    const { thinking: extractedThinking } = extractAndCleanThinkingBlocks(__renderableAssistantMessage || '');
+
+                    // Sev-0 #924/#925/#926 fix — delegate to the pure helper so
+                    // the full content_blocks chronology survives finalize.
+                    // The pre-fix inline code dropped every block that wasn't
+                    // thinking | tool_use (text, viz_render, app_render,
+                    // streaming_table, follow_up, sub_agent, hitl_approval,
+                    // tool_round, tool_result), causing the post-`done` DOM
+                    // to lose all interleaved prose, charts, and apps the
+                    // live stream had shown.
+                    // 3-Sev-0 #3 (2026-05-18) — persistence completeness.
+                    //
+                    // The api emits canonical `content_block_delta` with
+                    // `thinking_delta` / `text_delta` payloads WITHOUT a
+                    // top-level wire `index`. The legacy switch arm
+                    // (case 'content_block_delta' at ~line 5019) only
+                    // updates `contentBlocksRef` when `safeData.index` is
+                    // defined — so the legacy ref MISSES every thinking
+                    // delta on the current wire shape. Result: the persisted
+                    // `chat_messages.content_blocks` row never contains the
+                    // thinking block. On session reload the completed
+                    // assistant message renders incompletely ("completed
+                    // responses are not rendered").
+                    //
+                    // The canonical reducer (`applyCanonicalFrame`) DOES
+                    // accumulate every block type into
+                    // `canonicalReducerStateRef.current.contentBlocks`
+                    // regardless of wire index. Prefer it when it has
+                    // equal-or-more blocks than the legacy ref. The legacy
+                    // ref still wins when it has strictly more blocks (a
+                    // corner case: tool_round + tool_result envelopes
+                    // mutate the legacy ref via `applyRoundFrame` only).
+                    //
+                    // Live evidence on chat.example.com image
+                    // 0.7.1-f65b94e4 (2026-05-18):
+                    //   - Wire: 200+ thinking_delta + 1 text_delta + 1 follow_up
+                    //   - Pre-fix DB content_blocks: [text, follow_up]  (thinking MISSING)
+                    //   - Canonical reducer state: [thinking, text, follow_up]
+                    //
+                    // Track B Phase 3 — source-selection already computed
+                    // above (`__doneCanonicalBlocks` / `__doneLegacyBlocks` /
+                    // `__doneSourceBlocks`) for the deriveFlatMessage call.
+                    // Reuse here so we don't duplicate the canonical-vs-legacy
+                    // selection logic.
+                    const canonicalBlocks = __doneCanonicalBlocks;
+                    const legacyBlocks = __doneLegacyBlocks;
+                    const sourceBlocks = __doneSourceBlocks;
+
+                    const donePayload = buildDoneMessagePayload({
+                      contentBlocks: sourceBlocks,
+                      assistantMessage: __renderableAssistantMessage || '',
+                      mcpCalls,
+                      cotSteps: cotStepsRef.current,
+                      extractedThinking,
+                      currentThinking: currentThinkingRef.current,
+                      messageId: messageId || new Date().toISOString(),
+                      safeData,
+                      responseModel: responseModel || undefined,
+                      pipelineState: {
+                        stageTiming: currentPipelineState.stageTiming,
+                        activeToolRound: currentPipelineState.activeToolRound,
+                      },
+                    });
+
+                    if (donePayload) {
+                      console.log('[SSEChat] Finalizing content blocks:', {
+                        canonicalBlocks: canonicalBlocks.length,
+                        legacyBlocks: legacyBlocks.length,
+                        sourceUsed: sourceBlocks === canonicalBlocks ? 'canonical' : 'legacy',
+                        contentBlocksOut: donePayload.content_blocks?.length ?? 0,
+                        blockTypes: donePayload.content_blocks?.map((b) => b.type) ?? [],
+                      });
+
+                      // P0-2: stamp modelTag/modelId via attachModelIdentifier so MessageHeader
+                      //       can render the assistant pill (mocks/UX/01:206-212).
+                      onMessage?.(attachModelIdentifier(donePayload, responseModel || undefined));
+                    }
+                  }
+
+                  // MODERN FIX: Clear active tool execution indicators AFTER final message is queued
+                  // The useTransition below ensures onMessage completes before this executes
+                  // This prevents stale "✓ Completed" badges from lingering with streaming cursor
+                  onToolExecution?.({ type: 'clear_all' });
+
+                  // CRITICAL FIX: Set streaming state IMMEDIATELY when done event is received
+                  // The previous use of startTransition caused the "Generating" indicator to persist
+                  // because deferred updates have lower priority. For UI indicators, immediate updates are essential.
+                  setIsStreaming(false);
+                  // Track B Phase 3 — `setCurrentMessage('')` ripped; contentBlocks reset below
+                  // CRITICAL FIX: Clear contentBlocks to prevent duplicate rendering
+                  // The final message is now in the messages list, so InterleavedContent should not render
+                  setContentBlocks([]);
+                  contentBlocksRef.current = [];
+                  currentTextBlockIndexRef.current = null;
+                  currentThinkingBlockIndexRef.current = null;
+                  // DON'T clear thinking content on completion - let it persist for user review!
+                  // The thinking will be cleared when a NEW message starts (line ~291)
+                  // setCurrentThinking('');  // REMOVED - was hiding thinking from users
+                  setThinkingMetrics(null); // Only clear metrics (spinner)
+
+                  setPipelineState({...currentPipelineState});
+                  onPipelineStage?.('response', { complete: true });
+                  break;
+                  
+                case 'ping':
+                case 'heartbeat':
+                case 'keep_alive':
+                  // Server keepalive events - no action needed, timeout already reset above
+                  break;
+
+                // ==========================================================
+                // Task #158 — in-browser Python/JS sandbox (Claude.ai parity)
+                //
+                // The chat pipeline emits `browser_exec_request` when the
+                // model wants a short snippet evaluated (math, data parse,
+                // quick plot). We dispatch through sandboxManager, then
+                // POST the result envelope back to /api/chat/sandbox-result
+                // so the backend can feed it into the model's next turn as
+                // a tool_result.
+                // ==========================================================
+                case 'browser_exec_request': {
+                  const req = safeData as unknown as BrowserExecRequest;
+                  if (!req?.requestId || !req?.code || !req?.language) {
+                    console.warn('[sandbox] malformed browser_exec_request', safeData);
+                    break;
+                  }
+                  // Record the request as a tool_use-shaped content block so
+                  // MessageBubble renders a slot for SandboxExecCard.
+                  const sandboxBlockIndex = contentBlocksRef.current.length;
+                  const sandboxBlock: ContentBlock = {
+                    id: `sandbox-${req.requestId}`,
+                    index: sandboxBlockIndex,
+                    type: 'tool_use',
+                    content: JSON.stringify(req),
+                    isComplete: false,
+                    timestamp: Date.now(),
+                    toolName: req.language === 'python' ? 'Python Sandbox' : 'JS Sandbox',
+                    toolId: req.requestId,
+                  };
+                  setContentBlocks(prev => [...prev, sandboxBlock]);
+                  contentBlocksRef.current = [...contentBlocksRef.current, sandboxBlock];
+
+                  // Lazy-import the sandbox manager and run. The POST back
+                  // to /api/chat/sandbox-result re-joins the pending turn
+                  // on the server side, so the model sees the result as a
+                  // tool_result on its next iteration.
+                  (async () => {
+                    try {
+                      const mod = await import('../../../sandbox');
+                      const manager = mod.getSandboxManager();
+                      const result: BrowserExecResult = await manager.execute(req);
+                      // Fire-and-forget POST — backend only needs ok/fail.
+                      try {
+                        const token = localStorage.getItem('auth_token') || '';
+                        await fetch(apiEndpoint('/chat/sandbox-result'), {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                          },
+                          body: JSON.stringify(result),
+                        });
+                      } catch (postErr) {
+                        // Non-fatal — the turn will time out server-side if
+                        // the envelope never arrives.
+                        console.warn('[sandbox] POST /sandbox-result failed', postErr);
+                      }
+                      setContentBlocks(prev => prev.map(b =>
+                        b.id === sandboxBlock.id
+                          ? { ...b, isComplete: true, result: result as unknown }
+                          : b
+                      ));
+                      contentBlocksRef.current = contentBlocksRef.current.map(b =>
+                        b.id === sandboxBlock.id
+                          ? { ...b, isComplete: true, result: result as unknown }
+                          : b
+                      );
+                    } catch (err) {
+                      console.error('[sandbox] execute failed', err);
+                      const errResult: BrowserExecResult = {
+                        requestId: req.requestId,
+                        ok: false,
+                        stdout: '',
+                        stderr: err instanceof Error ? err.message : String(err),
+                        durationMs: 0,
+                        errorCode: 'UNKNOWN',
+                      };
+                      setContentBlocks(prev => prev.map(b =>
+                        b.id === sandboxBlock.id
+                          ? { ...b, isComplete: true, result: errResult as unknown, error: errResult.stderr }
+                          : b
+                      ));
+                    }
+                  })();
+                  break;
+                }
+
+                case 'browser_exec_result': {
+                  // Server-side echo after /api/chat/sandbox-result. Used
+                  // purely to surface the final envelope on re-hydrated
+                  // history views (the live run path already filled the
+                  // block via the async handler above).
+                  const result = safeData as unknown as BrowserExecResult;
+                  if (!result?.requestId) break;
+                  const existingId = `sandbox-${result.requestId}`;
+                  setContentBlocks(prev => prev.map(b =>
+                    b.id === existingId
+                      ? {
+                          ...b,
+                          isComplete: true,
+                          result: result as unknown,
+                          error: result.ok ? undefined : result.stderr,
+                        }
+                      : b
+                  ));
+                  contentBlocksRef.current = contentBlocksRef.current.map(b =>
+                    b.id === existingId
+                      ? {
+                          ...b,
+                          isComplete: true,
+                          result: result as unknown,
+                          error: result.ok ? undefined : result.stderr,
+                        }
+                      : b
+                  );
+                  break;
+                }
+
+                default:
+                  // FALLBACK HANDLER: Log unknown event types and attempt to render as content
+                  // This prevents silently dropping content from unknown/new event types
+                  if (eventType) {
+                    console.warn(`[SSE] Unknown event type: "${eventType}"`, safeData);
+
+                    // If the unknown event contains content-like data, render it via onStream.
+                    // Track B Phase 3 — `assistantMessage += ` + `setCurrentMessage` +
+                    // manual text-block create RIPPED. The canonical reducer's
+                    // content_block_delta arm is the single text writer. Unknown
+                    // events that carry content still fire the onStream callback
+                    // so downstream consumers (activity-stream, sub-agent forwarders)
+                    // see them, but they no longer create a sibling text ContentBlock
+                    // that would race the reducer (the source of "LetLet me" dup).
+                    const fallbackContent = safeData.content || safeData.text || safeData.delta || safeData.message;
+                    if (fallbackContent && typeof fallbackContent === 'string' && fallbackContent.trim()) {
+                      onStream?.(fallbackContent);
+                    }
+                  }
+                  break;
+
+                case 'normalized': {
+                  // UNIFIED_STREAM=true path — backend emits pre-normalised events
+                  const normEvent = safeData as NormalizedStreamEvent;
+                  normalizedEventsRef.current = [...normalizedEventsRef.current, normEvent];
+                  setNormalizedEvents([...normalizedEventsRef.current]);
+                  // Continue — do NOT break here so legacy event handling can also fire
+                  // (no-op: fall through to default/break via the next case)
+                  break;
+                }
+
+                case 'error':
+                  // Guard against duplicate error messages (fixes 3x error display)
+                  if (hasReportedError) {
+                    console.log('[SSE] Skipping duplicate error event');
+                    break;
+                  }
+                  hasReportedError = true;
+
+                  console.error('[SSE] Error event received:', safeData);
+
+                  // Enhanced error handling with specific details about what failed
+                  let detailedErrorMessage = safeData.message || 'Unknown error occurred';
+                  let errorContext = '';
+
+                  // If it's a model provider error, add specific details
+                  if (safeData.code === 'PIPELINE_ERROR' || safeData.code === 'COMPLETION_FAILED') {
+                    errorContext += `\n\nError Code: ${safeData.code}`;
+                    if (safeData.stage) {
+                      errorContext += `\nFailed Stage: ${safeData.stage}`;
+                    }
+                    if (safeData.retryable !== undefined) {
+                      errorContext += `\nRetryable: ${safeData.retryable ? 'Yes' : 'No'}`;
+                    }
+
+                    // Check for specific model provider issues
+                    const lowerMsg = detailedErrorMessage.toLowerCase();
+                    if (lowerMsg.includes('could not identify azure model') ||
+                        lowerMsg.includes('base_model')) {
+                      detailedErrorMessage = `MODEL CONFIGURATION ERROR\n\nCannot identify the Azure model deployment.\n\nTechnical Details:\n${detailedErrorMessage}`;
+                    } else if (lowerMsg.includes('no provider') ||
+                               lowerMsg.includes('provider not found') ||
+                               lowerMsg.includes('no llm provider')) {
+                      detailedErrorMessage = `NO LLM PROVIDER CONFIGURED\n\nNo AI model provider is available for chat.\n\nAdmin Action Required:\n• Go to Admin Portal → LLM Providers\n• Add at least one enabled provider (Vertex AI, Bedrock, Ollama, etc.)\n• Ensure the provider has a chat model configured\n\nTechnical Details:\n${detailedErrorMessage}`;
+                    } else if (lowerMsg.includes('model not found') ||
+                               lowerMsg.includes('model does not exist') ||
+                               lowerMsg.includes('no model') ||
+                               lowerMsg.includes('invalid model')) {
+                      detailedErrorMessage = `MODEL NOT FOUND\n\nThe selected AI model is not available.\n\nPossible Causes:\n• Model was deleted or renamed\n• Model ID is incorrect\n• Provider doesn't have this model\n\nTry selecting a different model from the dropdown.\n\nTechnical Details:\n${detailedErrorMessage}`;
+                    } else if (lowerMsg.includes('credential') ||
+                               lowerMsg.includes('api key') ||
+                               lowerMsg.includes('invalid key') ||
+                               lowerMsg.includes('access denied')) {
+                      detailedErrorMessage = `CREDENTIAL ERROR\n\nModel provider credentials are invalid or missing.\n\nAdmin Action Required:\n• Go to Admin Portal → LLM Providers\n• Check/update API keys or credentials\n• Verify the credentials have correct permissions\n\nTechnical Details:\n${detailedErrorMessage}`;
+                    } else if (lowerMsg.includes('failed to connect') ||
+                               lowerMsg.includes('connection failed') ||
+                               lowerMsg.includes('econnrefused') ||
+                               lowerMsg.includes('network')) {
+                      detailedErrorMessage = `CONNECTION ERROR\n\nCannot connect to the AI model provider.\n\nCheck if:\n• API service is running\n• Network connectivity is available\n• API endpoints are correct\n\nTechnical Details:\n${detailedErrorMessage}`;
+                    } else if (lowerMsg.includes('401') ||
+                               lowerMsg.includes('unauthorized')) {
+                      detailedErrorMessage = `AUTHENTICATION ERROR\n\nModel provider authentication failed.\n\nCheck if:\n• API keys are valid\n• OAuth tokens haven't expired\n• Model deployment permissions are correct\n\nTechnical Details:\n${detailedErrorMessage}`;
+                    } else if (lowerMsg.includes('quota') ||
+                               lowerMsg.includes('rate limit') ||
+                               lowerMsg.includes('429')) {
+                      detailedErrorMessage = `RATE LIMIT / QUOTA EXCEEDED\n\nThe AI model provider rate limit or quota has been exceeded.\n\nTry:\n• Wait a few minutes and try again\n• Use a different model/provider\n• Contact admin to increase quotas\n\nTechnical Details:\n${detailedErrorMessage}`;
+                    } else if (lowerMsg.includes('timeout') ||
+                               lowerMsg.includes('timed out')) {
+                      detailedErrorMessage = `TIMEOUT ERROR\n\nThe AI model took too long to respond.\n\nThis could be due to:\n• High model load\n• Network latency\n• Complex request processing\n\nTechnical Details:\n${detailedErrorMessage}`;
+                    }
+                  }
+
+                  const enhancedError = new Error(detailedErrorMessage + errorContext);
+                  enhancedError.name = safeData.code || 'ChatError';
+                  onError?.(enhancedError);
+                  break;
+              }
+            } catch (error) {
+              console.error('[SSE] Error parsing SSE data:', error, 'Raw data:', eventData);
+            }
+          }
+        }
+      }
+    } catch (streamError) {
+        // CRITICAL FIX: Don't report AbortError - it's expected when sending a new message
+        // AbortError occurs when abortControllerRef.current.abort() is called for a new message
+        if (streamError.name === 'AbortError') {
+          // Stream abort is normal when stopping/sending new message - silent
+          return;
+        }
+
+        // Firefox "Error in input stream" TypeError - network-level stream timeout
+        // Also catch any other TypeError from ReadableStream (Chrome/Safari variants)
+        const isStreamTimeout = streamError instanceof TypeError && (
+          streamError.message?.includes('input stream') ||
+          streamError.message?.includes('terminated') ||
+          streamError.message?.includes('network') ||
+          streamError.message?.includes('Failed to fetch')
+        );
+
+        if (isStreamTimeout) {
+          // Phase I (task #154) — durable-stream resume. If the server
+          // handed us a turnId in stream_start and we weren't already
+          // finalized, try the /tail endpoint to catch up missed frames.
+          // This is a best-effort retry: the backend is correct even
+          // if we skip it.
+          if (resumeTurnIdRef.current && !hasCompletedStream) {
+            console.warn(
+              '[SSE] Stream connection lost — attempting durable resume via /tail',
+              { turnId: resumeTurnIdRef.current, lastSeq: lastSeqRef.current }
+            );
+            // 500ms back-off per spec so the socket has a chance to
+            // settle before we hit the tail endpoint.
+            await new Promise(r => setTimeout(r, 500));
+            try {
+              await attemptTailResume(
+                sessionId,
+                resumeTurnIdRef.current,
+                lastSeqRef.current,
+                token!,
+                user?.id || user?.userId || ''
+              );
+            } catch (resumeErr) {
+              // Degrade to the pre-#154 behavior — user keeps the
+              // partial content they already have.
+              console.warn('[SSE] /tail resume failed, falling back to existing content', resumeErr);
+            }
+            return;
+          }
+          // Stream connection lost - gracefully finalize with whatever content we have
+          console.warn('[SSE] Stream connection lost (browser timeout). Finalizing with existing content.');
+          // Don't propagate to onError - the user already has partial content displayed
+          // The streaming state will be cleaned up in the finally block
+          return;
+        }
+
+        // Guard against duplicate error messages (fixes 3x error display)
+        if (!hasReportedError) {
+          hasReportedError = true;
+          console.error('[SSE] Stream processing error:', streamError);
+          onError?.(streamError);
+        }
+      } finally {
+        // Clear timeout regardless of how the stream ends
+        clearTimeout(streamTimeoutId);
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        // Normal abort - silent
+        return;
+      }
+
+      // Catch stream timeouts at the outer level too (Firefox/Safari variants)
+      const isStreamTimeout = error instanceof TypeError && (
+        error.message?.includes('input stream') ||
+        error.message?.includes('terminated') ||
+        error.message?.includes('network') ||
+        error.message?.includes('Failed to fetch')
+      );
+
+      if (isStreamTimeout) {
+        console.warn('[SSE] Connection lost (outer catch). Finalizing gracefully.');
+        return;
+      }
+
+      // Guard against duplicate error messages (fixes 3x error display)
+      if (!hasReportedError) {
+        hasReportedError = true;
+        console.error('[SSE] Chat error:', error.message);
+        onError?.(error);
+      }
+    } finally {
+      // CRITICAL: If stream ended without explicit done/stream_complete,
+      // notify tool execution callbacks so tool cards show abandoned state
+      // instead of spinning forever
+      if (!hasCompletedStream) {
+        onToolExecution?.({ type: 'stream_ended' });
+      }
+      setIsStreaming(false);
+      // DON'T clear currentMessage here - it causes double display
+      // It's already handled in the done/stream_complete event handler
+      // setCurrentMessage(''); // REMOVED - causes double display bug
+      abortControllerRef.current = null;
+
+      // Reset pipeline state
+      setPipelineState(createInitialPipelineState());
+    }
+  }, [sessionId, autoApproveTools, onMessage, onToolExecution, onToolApprovalRequest, onError, onThinking, onThinkingContent, onThinkingComplete, onMultiModel, onStream, onPipelineStage, onToolRound, getAccessToken, animationMode]);
+  
+  const stopStreaming = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsStreaming(false);
+      // Track B Phase 3 — `setCurrentMessage('')` ripped; contentBlocks cleared below
+      setCurrentThinking('');
+      setContentBlocks([]); // Clear interleaved content blocks when stopped
+      contentBlocksRef.current = [];
+      setThinkingMetrics(null);
+      setCotSteps([]); // Clear COT steps when stopped
+    }
+
+    // Reset pipeline state
+    setPipelineState(createInitialPipelineState());
+  }, []);
+  
+  // Update animation mode preference
+  const updateAnimationMode = useCallback((mode: AnimationMode) => {
+    setAnimationMode(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('chat-animation-mode', mode);
+    }
+  }, []);
+  
+  // Listen for animation mode changes from other tabs/windows
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'chat-animation-mode' && e.newValue) {
+        const newMode = e.newValue as AnimationMode;
+        if (newMode === 'smooth' || newMode === 'none') {
+          setAnimationMode(newMode);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+  
+  // Compute thinkingProgress for the progress indicator
+  const thinkingProgress = thinkingBudget > 0 && thinkingMetrics ? {
+    tokensUsed: thinkingMetrics.tokens,
+    tokenBudget: thinkingBudget,
+    percentage: Math.min(100, (thinkingMetrics.tokens / thinkingBudget) * 100),
+    phase: thinkingPhase,
+  } : undefined;
+
+  return {
+    sendMessage,
+    stopStreaming,
+    isStreaming,
+    // Track B Phase 3 — `currentMessage` flat-string state RIPPED from the
+    // hook's return shape. Callers that need the streaming text read from
+    // `contentBlocks` directly, or call `deriveFlatMessage(contentBlocks)`
+    // when they need a flat string (title-gen, copy-to-clipboard, etc.).
+    currentThinking,
+    isThinkingCompleted, // Whether thinking phase has finished (for UI collapse)
+    thinkingMetrics,
+    thinkingProgress, // Thinking progress for real progress indicator
+    ttftMs, // Time to First Token - for debugging slow responses
+    turnStartedAt, // ms ts of the current turn-start (LiveTurnStatus)
+    liveTokensIn, // running ↑ input tokens (LiveTurnStatus)
+    liveTokensOut, // running ↓ output tokens (LiveTurnStatus)
+    liveActivity, // short summary of what the model is doing right now
+    pipelineState,
+    animationMode,
+    updateAnimationMode,
+    cotSteps, // Chain of Thought steps for COT UI display
+    contentBlocks, // Interleaved content blocks for thinking/text display
+    canonicalContentBlocks: canonicalReducerState.contentBlocks,
+    contextCompaction, // Context compaction notification data (auto-dismisses after 5s)
+    normalizedEvents, // Normalized stream events (UNIFIED_STREAM=true path)
+    runningCost, // v0.6.7 fix 2 — streaming running cost (USD) from cost_delta events
+    // Phase G (task #152) — trust / observability state slots
+    handoffEvent, // smart-router / multi-model handoff envelope
+    retryEvents, // tool-execution retry envelopes (list)
+    currentStage, // active pipeline stage (discover/query/analyze/generate/verify)
+    stageTimings, // elapsed-ms per stage (hover tooltips)
+    ragCitations, // per-chunk platform RAG hits
+    correctionEvent, // self-correction before/after envelope
+    warnings, // soft warnings (level/source/code/message)
+    ragStatus, // rag retrieval status line payload
+    memoryStatus, // memory check status line payload
+    dlpScan, // DLP scan status (scanning/passed/redacted/blocked)
+    toolCacheHits, // map of tool name → cache-hit info
+    selfCritique, // self-critique summary
+    hallucinationWarning, // hallucination warning envelope
+    // Phase H (task #153) — artifact / image / session / memory state slots.
+    artifactPanel, // streaming artifact state (open/delta/close lifecycle)
+    imageProgress, // live image-gen progress envelope
+    // visualRenders / appRenders / artifactRenders are ripped — those wire
+    // frames now route through applyCanonicalFrame into the typed-block
+    // contentBlocks[] array and render inline inside AgenticActivityStream.
+    // Wave 3 (#525) — per-message intent classification + tool shortlist
+    // keyed by assistant messageId. Consumed by ToolShortlistChip
+    // in ChatMessages.
+    intentClassifications,
+    toolShortlists,
+    // #502 — sub-agent lifecycle entries from sub_agent_* envelopes.
+    // Consumed by ChatMessages to render SubAgentCard per active dispatch.
+    subAgents,
+    // P0-1 part 2 — same data scoped per messageId so older message bubbles
+    // render only the sub-agents dispatched DURING their own turn. Consumers
+    // can prefer this map when available; the flat `subAgents` stays for
+    // legacy callers and chrome that doesn't need per-message scoping.
+    subAgentsByMessageId,
+    // P1-6 — per-message streaming-table state. ChatMessages threads
+    // `streamingTablesByMessageId[message.id]` into each MessageBubble so
+    // tables render inline alongside prose, scoped to the message that
+    // produced them.
+    streamingTablesByMessageId,
+    // Phase 27 — per-message findings artifacts (mocks 03, 07, 08, 09).
+    findingsByMessageId,
+    // #502 — per-message inline widgets (kpi_grid / savings_card /
+    // stages_strip / wave_timeline / runbook / stack_grid / annotated_code).
+    inlineWidgetsByMessageId,
+    // AC-D — per-message clickable download tiles. ChatMessages
+    // renders one <DownloadTile> per entry with filename + size +
+    // click → presigned MinIO URL.
+    artifactEmitsByMessageId,
+    memoryWrites, // list of memory_write pills fired this turn
+    sessionRename, // latest session-rename animation payload
+    // Phase I (task #154) — durable-stream resume visible signal.
+    // Brief "↻ Reconnected" pill that renders for 2s after a successful
+    // tail-replay recovers from a mid-turn disconnect. `null` otherwise.
+    reconnectedPill,
+    // Audit §10 step 16 — HITL approval cards (mocks 09, 15).
+    // (follow_up chip row ripped 2026-05-12 — user directive.)
+    hitlApprovalsByMessageId,
+    // Q1-fix-8 (2026-05-12) — expose the setter so the Approve/Deny
+    // click handler in ChatContainer can transition card status from
+    // `pending` to `approved`/`denied` after the POST resolves. Without
+    // this the buttons stay clickable forever even after a successful
+    // approval since the live state never updates.
+    setHitlApprovalsByMessageId,
+    // B8 — per-message content_filter compliance banner. ChatMessages
+    // renders <ContentFilterBanner> when set. Replaces silent-truncate
+    // end_turn UX for Azure RAI / Vertex SAFETY / Vertex RECITATION.
+    contentFilterBannerByMessageId,
+  };
+};
