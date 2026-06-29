@@ -24,7 +24,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 
-const SRC = join(__dirname, '..', 'AgenticActivityStream', 'AgenticActivityStream.tsx');
+// God-file decomposition (behavior-preserving): CollapsedToolRow + the
+// per-row open-state wiring were extracted into the serial-cluster module.
+const SRC = join(__dirname, '..', 'AgenticActivityStream', 'TreeToolCallGroup.tsx');
 
 describe('B3 — completed inline tool row click-to-expand (mock 06:267-349)', () => {
   const src = readFileSync(SRC, 'utf8');

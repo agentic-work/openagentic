@@ -15,7 +15,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 
-const SRC = join(__dirname, '..', 'AgenticActivityStream', 'AgenticActivityStream.tsx');
+// God-file decomposition (behavior-preserving): the running-state ToolCallCard
+// JSX lives in the extracted serial-cluster module (ExpandableToolItem) now.
+const SRC = join(__dirname, '..', 'AgenticActivityStream', 'TreeToolCallGroup.tsx');
 
 describe('AgenticActivityStream — streaming-state ToolCard ungated (#515)', () => {
   it('renders the running-state <ToolCallCard> without a content-truthy guard', () => {

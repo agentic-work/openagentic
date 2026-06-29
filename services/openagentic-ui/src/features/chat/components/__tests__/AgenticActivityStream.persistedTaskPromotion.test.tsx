@@ -25,9 +25,13 @@ import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 
 const SRC = join(__dirname, '..', 'AgenticActivityStream', 'AgenticActivityStream.tsx');
+// God-file decomposition (behavior-preserving): the T1_TOOL_NAMES set moved to
+// the extracted activityUtils module; the promotion loop stays in the main
+// component. Read both so every source-content assertion still tracks the code.
+const UTILS = join(__dirname, '..', 'AgenticActivityStream', 'activityUtils.ts');
 
 describe('Sev-0 #841 — AAS persisted Task → agent_group promotion', () => {
-  const src = readFileSync(SRC, 'utf8');
+  const src = readFileSync(SRC, 'utf8') + '\n' + readFileSync(UTILS, 'utf8');
 
   it('mentions #841 promotion logic with rationale', () => {
     expect(src).toMatch(/#841/);

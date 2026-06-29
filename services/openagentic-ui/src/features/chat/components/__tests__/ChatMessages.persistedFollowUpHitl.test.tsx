@@ -31,7 +31,11 @@ describe('ChatMessages → AAS — persisted hitl_approval fallback (Sev-1 #91, 
   });
 
   it('AAS owns the hitl-approval-card data-testid anchor (Sev-1 #922 inline render)', () => {
-    const src = readFileSync(AAS_SRC, 'utf8');
+    // God-file decomposition (behavior-preserving): the HitlInlineCard DOM
+    // (which carries this data-testid) was extracted into a sibling module of
+    // the AAS component. Read both so the AAS-surface ownership contract holds.
+    const src = readFileSync(AAS_SRC, 'utf8') + '\n' +
+      readFileSync(join(__dirname, '..', 'AgenticActivityStream', 'HitlInlineCard.tsx'), 'utf8');
     expect(src).toMatch(/data-testid="hitl-approval-card"/);
   });
 
